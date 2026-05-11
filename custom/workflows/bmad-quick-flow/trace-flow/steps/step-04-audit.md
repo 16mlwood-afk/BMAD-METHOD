@@ -7,7 +7,7 @@ nextStepFile: './step-05-suggest-ui.md'
 
 # Step 4: Audit
 
-**Goal:** Now that the pipeline is mapped and data captured, audit it for issues that aren't obvious from tracing alone. This step looks at the pipeline holistically — not just "does data flow?" but "does it flow _well_?"
+**Goal:** Now that the pipeline is mapped and data captured, audit it for issues that aren't obvious from tracing alone. This step looks at the pipeline holistically — not just "does data flow?" but "does it flow *well*?"
 
 ---
 
@@ -36,13 +36,11 @@ Run each audit check against the traced pipeline. Record findings as `{gaps}`.
 Fields that exist at one stage but are never consumed downstream.
 
 **How to check:**
-
 - For each field in the source/model stage, verify it appears in at least one downstream stage
 - For each field in the transport stage, verify the frontend actually destructures and uses it
 - `grep -rn "{field_name}" frontend/src/` to confirm consumption
 
 **Common patterns:**
-
 - DB column included in query but filtered out before API response
 - API response field that no component ever reads
 - SSE event field that frontend receives but never displays
@@ -55,13 +53,11 @@ Fields that exist at one stage but are never consumed downstream.
 Fields that reach the frontend but aren't rendered anywhere.
 
 **How to check:**
-
 - For each field destructured from API responses or SSE events in frontend code
 - `grep -rn "{field_name}" frontend/src/**/*.tsx` — look for JSX usage, not just imports
 - A field stored in state but only used in conditions (`if (x)`) without display is "used but not displayed" — note it separately
 
 **Common patterns:**
-
 - Field stored in React state but never referenced in JSX
 - Field available in a hook's return value but no component destructures it
 - Field rendered in one view (detail) but missing from another (list/card)
@@ -73,12 +69,10 @@ Fields that reach the frontend but aren't rendered anywhere.
 Fields whose type changes unexpectedly across stages.
 
 **How to check:**
-
 - Compare the actual runtime type at each stage (from `{live_data}`)
 - Watch for: number → string (JSON serialization), Date → ISO string → displayed as raw string, null vs undefined, snake_case → camelCase name changes without mapping
 
 **Common patterns:**
-
 - `python-fastapi-sse`: Python `datetime` → ISO string in JSON → rendered without formatting
 - `python-fastapi-sse`: Python `None` → JSON `null` → JavaScript `null` but component expects `undefined`
 - `express-react-drizzle`: Drizzle JSONB → parsed once in service → double-parsed in component
@@ -91,14 +85,12 @@ Fields whose type changes unexpectedly across stages.
 Multiple stages that fetch the same data independently.
 
 **How to check:**
-
 - List all API calls / DB queries in the pipeline
 - Look for components that fetch the same endpoint as a parent component
 - Check for React Query keys that should be shared but aren't
 - Look for SSE event handlers that re-fetch data that the event already contains
 
 **Common patterns:**
-
 - Parent component fetches lead detail, child component re-fetches the same lead for one field
 - SSE event contains updated data, but handler triggers a full refetch anyway
 - Multiple `useEffect` hooks hitting the same endpoint on different triggers
@@ -110,13 +102,11 @@ Multiple stages that fetch the same data independently.
 Stages that handle the happy path but not edge cases.
 
 **How to check:**
-
 - For each data-fetching stage, check if there's error handling
 - For each render stage, check if there's a loading state and empty state
 - Look for `{value || "—"}` patterns that incorrectly hide `0`, `false`, or `""` values
 
 **Common patterns:**
-
 - Component renders data but shows nothing during loading (flash of empty content)
 - Error from API silently swallowed — component shows stale data instead of error state
 - List component doesn't handle empty array (no "no results" message)
@@ -129,14 +119,12 @@ Stages that handle the happy path but not edge cases.
 Points where data can become stale without the user knowing.
 
 **How to check:**
-
 - Identify polling intervals or lack thereof
 - Check if mutations invalidate the right queries
 - Look for SSE reconnection logic
 - Check if cached data has TTL or is treated as forever-fresh
 
 **Common patterns:**
-
 - Data fetched once on mount but never refreshed (user sees stale values after background changes)
 - Mutation updates local state but doesn't invalidate the server cache
 - SSE connection drops silently — no reconnection, no staleness indicator
@@ -171,14 +159,14 @@ Add an `## Audit Findings` section to the pipeline document written in step 3:
 
 **{total} issues found** across {categories} categories.
 
-| Category          | Count | Severity                       |
-| ----------------- | ----- | ------------------------------ |
-| Dead fields       | {n}   | {highest severity in category} |
-| Missing display   | {n}   | ...                            |
-| Type drift        | {n}   | ...                            |
-| Redundant fetches | {n}   | ...                            |
-| Missing states    | {n}   | ...                            |
-| Stale data risk   | {n}   | ...                            |
+| Category | Count | Severity |
+|----------|-------|----------|
+| Dead fields | {n} | {highest severity in category} |
+| Missing display | {n} | ... |
+| Type drift | {n} | ... |
+| Redundant fetches | {n} | ... |
+| Missing states | {n} | ... |
+| Stale data risk | {n} | ... |
 
 {Then list each finding using the format above}
 
@@ -187,15 +175,12 @@ Add an `## Audit Findings` section to the pipeline document written in step 3:
 {Prioritized list of suggested improvements, grouped by effort:}
 
 ### Quick wins (< 30 min each)
-
 - {concrete fix}
 
 ### Medium effort (1-2 hours)
-
 - {concrete fix}
 
 ### Structural improvements
-
 - {architectural suggestion — e.g., "consolidate these 3 fetches into one React Query hook"}
 ```
 

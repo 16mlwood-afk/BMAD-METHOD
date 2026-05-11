@@ -29,13 +29,13 @@ From step 1:
 
 Based on `{server_live}` and `{stack}`, choose the data capture approach:
 
-| Condition                               | Strategy                                                                                     |
-| --------------------------------------- | -------------------------------------------------------------------------------------------- |
-| Server live + REST endpoint in pipeline | `curl` the endpoint, capture response JSON                                                   |
-| Server live + SSE endpoint in pipeline  | `curl` with streaming, capture events                                                        |
-| Server live + DB stage                  | Query SQLite directly via `sqlite3` CLI                                                      |
-| Server NOT live + DB exists on disk     | Query SQLite directly (read-only)                                                            |
-| Server NOT live + no DB                 | Static analysis only — extract example values from code (defaults, test fixtures, mock data) |
+| Condition | Strategy |
+|-----------|----------|
+| Server live + REST endpoint in pipeline | `curl` the endpoint, capture response JSON |
+| Server live + SSE endpoint in pipeline | `curl` with streaming, capture events |
+| Server live + DB stage | Query SQLite directly via `sqlite3` CLI |
+| Server NOT live + DB exists on disk | Query SQLite directly (read-only) |
+| Server NOT live + no DB | Static analysis only — extract example values from code (defaults, test fixtures, mock data) |
 
 ### 2. Capture Data at Each Stage
 
@@ -52,14 +52,12 @@ sqlite3 -json {project-root}/{db_file} "SELECT * FROM {table} ORDER BY ROWID DES
 Record the actual column names and values. If the table has many columns, focus on the ones that flow through the pipeline (identified in step 1's shape analysis).
 
 For external API sources (Exa, crawl4ai), capture from the code:
-
 - The request parameters/URL pattern
 - A sample response structure from recent logs, test fixtures, or inline examples
 
 #### Model / Transform Stage
 
 Read the transformation code and apply it mentally to the captured source data:
-
 - Which fields are renamed? Record old → new name with the actual value
 - Which fields are computed? Show the computation and its result
 - Which fields are dropped? Note them as "filtered out at this stage"
@@ -81,7 +79,6 @@ curl -s "http://127.0.0.1:8000{endpoint_path}?{params}" | python3 -m json.tool |
 ```
 
 If not live, extract the response shape from:
-
 - Pydantic response models (`class FooResponse(BaseModel)`)
 - Express Zod schemas
 - TypeScript return types
@@ -91,7 +88,6 @@ Record the actual JSON keys and values (or the typed shape if no live data).
 #### Frontend State Stage
 
 This stage can't be directly queried from the CLI. Instead:
-
 - Read the hook/component that receives the transport data
 - Map which transport fields are destructured into state variables
 - Record the variable names and their values (same as transport, unless transformed)
@@ -99,7 +95,6 @@ This stage can't be directly queried from the CLI. Instead:
 #### Render Stage
 
 Read the JSX that displays each value. Record:
-
 - The display label (what the user sees, e.g., "Buy-box", "Status", "Last checked")
 - The value expression (e.g., `{lead.buyBoxPrice}`, `{formatCurrency(price)}`)
 - The formatted output (apply the formatter to the captured value)

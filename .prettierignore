@@ -15,3 +15,6 @@ _bmad*/
 # (per-skill .analysis/ folders contain JSON/HTML reports that should
 # not block commits with formatting checks)
 **/.analysis/
+
+# Custom workflow files — preserve original formatting per project convention
+custom/workflows/**/*.md

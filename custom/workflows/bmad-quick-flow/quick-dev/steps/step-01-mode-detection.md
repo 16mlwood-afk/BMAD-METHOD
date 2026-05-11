@@ -53,8 +53,8 @@ If the image contains **tabular or grid-like data** (data tables, spreadsheets, 
 Instead, follow this priority order:
 
 1. **Query the source directly.** If the table is rendered by this app, read the API route or database query that populates it. The actual data is always more reliable than a screenshot of it.
-2. **Ask the user for structured text.** If the data is external or you cannot access the source, ask: _"Can you paste 3-5 rows as text (copy from browser/DevTools/export), or share the API response? Structured text lets me pinpoint the exact issue."_
-3. **Extract from the image as a last resort.** If neither option is available, transcribe the visible data into a markdown table in your response, then confirm with the user: _"I read these values from the screenshot — can you confirm they're accurate before I proceed?"_
+2. **Ask the user for structured text.** If the data is external or you cannot access the source, ask: *"Can you paste 3-5 rows as text (copy from browser/DevTools/export), or share the API response? Structured text lets me pinpoint the exact issue."*
+3. **Extract from the image as a last resort.** If neither option is available, transcribe the visible data into a markdown table in your response, then confirm with the user: *"I read these values from the screenshot — can you confirm they're accurate before I proceed?"*
 
 **The image is still valuable for context** — use it to understand layout, column order, visual hierarchy, and which page/tab the user is on. Just don't rely on it for the actual cell values or for diagnosing data correctness issues.
 

@@ -5,7 +5,7 @@ description: 'Evaluate whether the traced pipeline would benefit from a user-fac
 
 # Step 5: Suggest Pipeline UI
 
-**Goal:** Evaluate whether the traced data flow is something end users would benefit from _seeing_ — not just developers. If so, offer to build a pipeline visualization component that surfaces the flow as a live, interactive UI element.
+**Goal:** Evaluate whether the traced data flow is something end users would benefit from *seeing* — not just developers. If so, offer to build a pipeline visualization component that surfaces the flow as a live, interactive UI element.
 
 ---
 
@@ -27,24 +27,24 @@ Score the traced pipeline against these signals. Each signal is +1. A score of 3
 
 ### Positive signals (suggest UI)
 
-| Signal                        | What to check                                                                                                                                      |
-| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Multi-stage progression**   | Pipeline has 3+ sequential stages where a record moves through distinct states                                                                     |
-| **User-visible status**       | Each stage has a clear success/failure/pending state that a user would care about                                                                  |
-| **Temporal progression**      | Stages happen over time (not all at once) — the user benefits from seeing where things are in the process                                          |
-| **Live data enrichment**      | Each stage adds or transforms data that's meaningful to the user (not just internal reshaping)                                                     |
-| **No existing visualization** | The page currently shows the _result_ of the pipeline but not the _journey_ — the user can't see which stages completed or where something stalled |
-| **Debugging value**           | When something goes wrong, the user currently has no way to see _where_ it broke — they just see the final error or missing data                   |
+| Signal | What to check |
+|--------|--------------|
+| **Multi-stage progression** | Pipeline has 3+ sequential stages where a record moves through distinct states |
+| **User-visible status** | Each stage has a clear success/failure/pending state that a user would care about |
+| **Temporal progression** | Stages happen over time (not all at once) — the user benefits from seeing where things are in the process |
+| **Live data enrichment** | Each stage adds or transforms data that's meaningful to the user (not just internal reshaping) |
+| **No existing visualization** | The page currently shows the *result* of the pipeline but not the *journey* — the user can't see which stages completed or where something stalled |
+| **Debugging value** | When something goes wrong, the user currently has no way to see *where* it broke — they just see the final error or missing data |
 
 ### Negative signals (don't suggest)
 
-| Signal                 | What to check                                                                       |
-| ---------------------- | ----------------------------------------------------------------------------------- |
-| **Simple CRUD**        | Data goes from form → DB → list. No pipeline to visualize                           |
-| **Internal plumbing**  | The stages are infrastructure (cache → queue → worker) that the user shouldn't see  |
+| Signal | What to check |
+|--------|--------------|
+| **Simple CRUD** | Data goes from form → DB → list. No pipeline to visualize |
+| **Internal plumbing** | The stages are infrastructure (cache → queue → worker) that the user shouldn't see |
 | **Already visualized** | The page already has a progress indicator, timeline, or pipeline view for this flow |
-| **Single-stage**       | Data is fetched and displayed in one step — no progression to show                  |
-| **Batch/background**   | The pipeline runs in the background with no user watching it in real time           |
+| **Single-stage** | Data is fetched and displayed in one step — no progression to show |
+| **Batch/background** | The pipeline runs in the background with no user watching it in real time |
 
 ### Score calculation
 
@@ -61,7 +61,6 @@ score = (positive signals present) - (negative signals present)
 ## AUTONOMOUS MODE GATE
 
 > **AUTONOMOUS MODE:** If `autonomous_mode` is `true` in config:
->
 > - **Score 3+:** Auto-accept. Proceed directly to "BUILD THE COMPONENT" without asking.
 > - **Score 1-2:** Note the opportunity in the final summary but do NOT build. The signal is too weak for autonomous action.
 > - **Score 0 or below:** Skip suggestion entirely.
@@ -143,20 +142,20 @@ The component receives a **pipeline definition** that maps directly from the tra
 
 ```typescript
 interface PipelineStage {
-  name: string;
-  description: string;
-  status: 'complete' | 'in_progress' | 'pending' | 'failed' | 'skipped';
-  layer: string;
-  data: Record<string, string | number | boolean | null>;
-  file?: string;
-  updatedAt?: string;
+  name: string
+  description: string
+  status: 'complete' | 'in_progress' | 'pending' | 'failed' | 'skipped'
+  layer: string
+  data: Record<string, string | number | boolean | null>
+  file?: string
+  updatedAt?: string
 }
 
 interface PipelineVisualizationProps {
-  title: string;
-  description: string;
-  stages: PipelineStage[];
-  anchor: string;
+  title: string
+  description: string
+  stages: PipelineStage[]
+  anchor: string
 }
 ```
 

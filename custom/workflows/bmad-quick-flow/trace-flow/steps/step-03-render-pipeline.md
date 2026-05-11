@@ -37,7 +37,7 @@ created: '{date}'
 anchor: '{anchor}'
 anchor_type: '{anchor_type}'
 stack: '{stack}'
-live_data: { true|false }
+live_data: {true|false}
 type: flow-trace
 ---
 
@@ -54,10 +54,9 @@ type: flow-trace
 ## Pipeline Overview
 
 {Brief one-sentence description of what this pipeline does — e.g., "Loads a lead record from SQLite, enriches it via the agent pipeline, streams progress via SSE, and renders the lead detail card."}
+
 ```
-
 {source_name} → {transform_name} → {transport_name} → {state_name} → {render_name}
-
 ```
 
 ---
@@ -118,12 +117,12 @@ type: flow-trace
 
 Each stage card gets a status icon:
 
-| Icon | Meaning                                                                            |
-| ---- | ---------------------------------------------------------------------------------- |
-| ✅   | Stage confirmed — data flows through and all fields accounted for                  |
-| ⚠️   | Stage has gaps — some fields present but others are null, missing, or not rendered |
-| ❌   | Stage broken — data doesn't reach this stage or critical fields missing            |
-| 🔍   | Stage unverified — could not capture live data, static analysis only               |
+| Icon | Meaning |
+|------|---------|
+| ✅ | Stage confirmed — data flows through and all fields accounted for |
+| ⚠️ | Stage has gaps — some fields present but others are null, missing, or not rendered |
+| ❌ | Stage broken — data doesn't reach this stage or critical fields missing |
+| 🔍 | Stage unverified — could not capture live data, static analysis only |
 
 ### Data Values in Stage Cards
 
@@ -159,18 +158,16 @@ Show the branch point, then indent the branches:
 {Data splits here — consumed by multiple components}
 
 #### Branch A: LeadCard component
-
-| Field  | Value        |
-| ------ | ------------ |
-| name   | `Widget Pro` |
-| status | `active`     |
+| Field | Value |
+|-------|-------|
+| name | `Widget Pro` |
+| status | `active` |
 
 #### Branch B: PricingPanel component
-
-| Field         | Value    |
-| ------------- | -------- |
+| Field | Value |
+|-------|-------|
 | buy_box_price | `£61.47` |
-| lowest_price  | `£61.47` |
+| lowest_price | `£61.47` |
 ```
 
 ### Join Rendering
@@ -184,10 +181,10 @@ Show the join point with its sources:
 
 **From:** GET /api/leads/{id} + SSE /api/runs/{id}/stream
 
-| Field    | Source | Value        |
-| -------- | ------ | ------------ |
-| name     | REST   | `Widget Pro` |
-| progress | SSE    | `85%`        |
+| Field | Source | Value |
+|-------|--------|-------|
+| name | REST | `Widget Pro` |
+| progress | SSE | `85%` |
 ```
 
 ---
