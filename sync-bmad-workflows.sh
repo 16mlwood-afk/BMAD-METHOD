@@ -367,6 +367,29 @@ while IFS= read -r target || [[ -n "$target" ]]; do
   fi
 done < "$TARGETS_FILE"
 
+# --- POST-SYNC VERIFICATION ---
+if ! $CHECK_ONLY && [[ $synced -gt 0 ]] && [[ -f "$CLAUDEMD_TEMPLATE" ]] && [[ -f "$CLAUDEMD_SYNC" ]]; then
+  verify_failures=0
+  for target in "${seen_targets[@]}"; do
+    project_root="${target%/_bmad/bmm/workflows}"
+    [[ "$project_root" == "$target" ]] && continue
+    project_claudemd="$project_root/CLAUDE.md"
+    [[ ! -f "$project_claudemd" ]] && continue
+    missing=$(python3 "$CLAUDEMD_SYNC" --check "$CLAUDEMD_TEMPLATE" "$project_claudemd" 2>/dev/null || true)
+    if [[ -n "$missing" ]]; then
+      project="$(basename "$project_root")"
+      echo "VERIFY FAIL  $project — still missing CLAUDE.md sections after sync:"
+      echo "$missing" | sed 's/^/  ↳  /'
+      verify_failures=$((verify_failures + 1))
+    fi
+  done
+  if [[ $verify_failures -gt 0 ]]; then
+    echo ""
+    echo "⚠  $verify_failures project(s) still missing CLAUDE.md sections after sync."
+    echo "   Investigate: Python error, file permissions, or template parse failure."
+  fi
+fi
+
 echo ""
 if $CHECK_ONLY; then
   if [[ $stale -eq 0 ]]; then
