@@ -46,7 +46,7 @@
           {
             "type": "command",
             "command": "SYNC=\"$HOME/bmad-method-v6/sync-bmad-workflows.sh\"; [ -x \"$SYNC\" ] || exit 0; stale=$(\"$SYNC\" --check 2>/dev/null | grep -c \"^STALE\" || true); if [ \"$stale\" -gt 0 ]; then printf '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"BMAD DRIFT: %s project(s) have stale workflows. Run ~/bmad-method-v6/sync-bmad-workflows.sh or /project-health.\"}}\\n' \"$stale\"; fi",
-            "timeout": 15,
+            "timeout": 30,
             "statusMessage": "Checking BMAD sync status..."
           }
         ]
@@ -56,9 +56,20 @@
         "hooks": [
           {
             "type": "command",
-            "command": "MEM_DIR=\"$HOME/.claude/projects\"; issues=\"\"; for idx in \"$MEM_DIR\"/*/memory/MEMORY.md; do [ -f \"$idx\" ] || continue; dir=\"$(dirname \"$idx\")\"; proj=\"$(basename \"$(dirname \"$dir\")\")\"; for f in \"$dir\"/*.md; do [ -f \"$f\" ] || continue; bn=\"$(basename \"$f\")\"; [ \"$bn\" = \"MEMORY.md\" ] && continue; if ! grep -qF \"$bn\" \"$idx\" 2>/dev/null; then issues=\"$issues orphan:$proj/$bn\"; fi; done; done; if [ -n \"$issues\" ]; then printf '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"MEMORY INTEGRITY: Orphaned files (no index entry):%s. Run /audit-memory to fix.\"}}\\n' \"$issues\"; fi",
+            "command": "MEM_DIR=\"$HOME/.claude/projects\"; issues=\"\"; for idx in \"$MEM_DIR\"/*/memory/MEMORY.md; do [ -f \"$idx\" ] || continue; dir=\"$(dirname \"$idx\")\"; proj=\"$(basename \"$(dirname \"$dir\")\")\"; for f in \"$dir\"/*.md; do [ -f \"$f\" ] || continue; bn=\"$(basename \"$f\")\"; [ \"$bn\" = \"MEMORY.md\" ] && continue; if ! grep -qF \"$bn\" \"$idx\" 2>/dev/null; then issues=\"$issues orphan:$proj/$bn\"; fi; done; for ref in $(grep -oE \"\\([^)]+\\.md\\)\" \"$idx\" 2>/dev/null | tr -d \"()\" || true); do [ -z \"$ref\" ] && continue; if [ ! -f \"$dir/$ref\" ]; then issues=\"$issues broken:$proj/$ref\"; fi; done; done; if [ -n \"$issues\" ]; then printf '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"MEMORY INTEGRITY issues:%s. Run /audit-memory to fix.\"}}\\n' \"$issues\"; fi",
             "timeout": 10,
             "statusMessage": "Checking memory integrity..."
+          }
+        ]
+      },
+      {
+        "name": "bmad-auto-register",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "TARGETS=\"$HOME/.bmad-targets\"; [ -f \"$TARGETS\" ] || exit 0; BMM=\"$PWD/_bmad/bmm/workflows\"; [ -d \"$BMM\" ] || exit 0; if ! grep -qF \"$BMM\" \"$TARGETS\" 2>/dev/null; then echo \"$BMM\" >> \"$TARGETS\"; printf '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"Auto-registered %s in ~/.bmad-targets. Run sync to distribute workflows.\"}}\\n' \"$BMM\"; fi",
+            "timeout": 3,
+            "statusMessage": "Checking BMAD registration..."
           }
         ]
       }
