@@ -46,6 +46,7 @@ JQ_MERGE='
       + $template.hooks[$event]
     )
   )
+  | .["$schema"] = "https://json.schemastore.org/claude-code-settings.json"
 '
 
 synced=0
