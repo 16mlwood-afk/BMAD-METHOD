@@ -40,6 +40,20 @@
           }
         ]
       }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "name": "bmad-auto-format",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "FILE=\"$CLAUDE_TOOL_INPUT_FILE_PATH\"; case \"$FILE\" in *.py) ruff format --quiet \"$FILE\" 2>/dev/null || .venv/bin/ruff format --quiet \"$FILE\" 2>/dev/null;; *.ts|*.tsx|*.js|*.jsx|*.json|*.css|*.svelte) npx prettier --write --log-level silent \"$FILE\" 2>/dev/null;; esac; exit 0",
+            "timeout": 10,
+            "statusMessage": "Auto-formatting..."
+          }
+        ]
+      }
     ]
   }
 }
