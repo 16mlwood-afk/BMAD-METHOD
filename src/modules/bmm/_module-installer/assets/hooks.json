@@ -39,9 +39,43 @@
             "statusMessage": "Loading secrets..."
           }
         ]
+      },
+      {
+        "name": "bmad-sync-check",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "SYNC=\"$HOME/bmad-method-v6/sync-bmad-workflows.sh\"; [ -x \"$SYNC\" ] || exit 0; stale=$(\"$SYNC\" --check 2>/dev/null | grep -c \"^STALE\" || true); if [ \"$stale\" -gt 0 ]; then printf '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"BMAD DRIFT: %s project(s) have stale workflows. Run ~/bmad-method-v6/sync-bmad-workflows.sh or /project-health.\"}}\\n' \"$stale\"; fi",
+            "timeout": 15,
+            "statusMessage": "Checking BMAD sync status..."
+          }
+        ]
+      },
+      {
+        "name": "bmad-memory-integrity",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "MEM_DIR=\"$HOME/.claude/projects\"; issues=\"\"; for idx in \"$MEM_DIR\"/*/memory/MEMORY.md; do [ -f \"$idx\" ] || continue; dir=\"$(dirname \"$idx\")\"; proj=\"$(basename \"$(dirname \"$dir\")\")\"; for f in \"$dir\"/*.md; do [ -f \"$f\" ] || continue; bn=\"$(basename \"$f\")\"; [ \"$bn\" = \"MEMORY.md\" ] && continue; if ! grep -qF \"$bn\" \"$idx\" 2>/dev/null; then issues=\"$issues orphan:$proj/$bn\"; fi; done; done; if [ -n \"$issues\" ]; then printf '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"MEMORY INTEGRITY: Orphaned files (no index entry):%s. Run /audit-memory to fix.\"}}\\n' \"$issues\"; fi",
+            "timeout": 10,
+            "statusMessage": "Checking memory integrity..."
+          }
+        ]
       }
     ],
     "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "name": "bmad-credential-scan",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "FILE=\"$CLAUDE_TOOL_INPUT_FILE_PATH\"; case \"$FILE\" in */.claude/*/memory/*.md) ;; *) exit 0;; esac; if grep -qiE '(password|passwd|token|secret|api.?key|bearer|credential)[[:space:]]*[:=]' \"$FILE\" 2>/dev/null || grep -qE '(whk_|sk_|pk_|ghp_|gho_|xox[bpas]-|eyJ[A-Za-z0-9])' \"$FILE\" 2>/dev/null || grep -qE '[A-Za-z0-9+/]{60,}' \"$FILE\" 2>/dev/null; then printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"WARNING: Potential credential/secret detected in memory file %s. Remove it immediately and store in ~/.secrets instead.\"}}\\n' \"$FILE\"; fi",
+            "timeout": 3,
+            "statusMessage": "Scanning for credentials..."
+          }
+        ]
+      },
       {
         "matcher": "Write|Edit",
         "name": "bmad-auto-format",
