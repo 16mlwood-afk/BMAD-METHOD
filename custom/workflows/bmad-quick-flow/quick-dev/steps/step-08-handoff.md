@@ -39,7 +39,6 @@ Reflect on the full implementation cycle and identify items in these categories.
 Things the spec didn't cover that you handled during implementation. These are already shipped — document them so the requester knows what was added beyond the original ask.
 
 Examples:
-
 - "Detail page was missing estimatedDeliveryWindow — sidebar had it but detail page didn't. Added for parity."
 - "Spec said to add a column but didn't mention the filter config. Added a filter option for consistency."
 
@@ -48,7 +47,6 @@ Examples:
 Things you noticed but intentionally left alone — either out of scope, blocked, or requiring a product decision.
 
 Examples:
-
 - "carrierAppointmentDetails is in the DB and API but not shown anywhere. Probably useful for LTL shipments."
 - "The weight formatting assumes only KILOGRAMS and POUNDS but the schema allows freetext — could break if Amazon adds a new unit."
 
@@ -57,7 +55,6 @@ Examples:
 Patterns, duplication, or structural issues you encountered that aren't bugs but create friction or risk.
 
 Examples:
-
 - "Three components had identical format helpers copy-pasted. Extracted to shared util but there may be more."
 - "The shipment detail sidebar casts `shipment` to `Record<string, unknown>` because the TypeScript type from the API response is too loose. Should type the getShipmentDetail return properly."
 
@@ -66,7 +63,6 @@ Examples:
 Specific follow-up work you'd suggest. Each should be actionable enough to hand to another dev.
 
 Examples:
-
 - "Add estimatedShippingCost column to the main table — data is already fetched, just needs a column def."
 - "The transportation-progress.tsx component also formats shipping costs independently — should use the shared transport-format.ts util."
 
@@ -85,13 +81,11 @@ Ask yourself these questions based on what you touched, read, or debugged during
 - **Data pipeline gaps:** Is there data flowing through the system that's collected but not surfaced, or surfaced but not acted on? Monitoring blind spots?
 
 **Format each insight as:**
-
 1. **Observation** — what you noticed (be specific: name the service, endpoint, config, metric)
 2. **Impact** — why it matters (cost, reliability, developer velocity, user experience)
 3. **Suggested action** — what to do about it, with a rough effort estimate
 
 **Examples:**
-
 - "The API rate limit is 20 req/min shared across two services with continuous pipelines. The budget math doesn't close — upgrading the plan doubles headroom and likely costs less than the engineering time spent on rate-limit workarounds."
 - "The scheduled sweep fires hourly regardless of API quota pressure. Checking available quota before processing and skipping the tick if quota is low would prevent the sweep from burning requests and getting rate-limited. ~15 lines in the sweep processor."
 - "Each cache miss triggers a secondary API lookup. The cache TTL and hit rate are worth auditing — if the cache is cold after deploys, it's a significant cost multiplier that doesn't show up in the per-request count."
@@ -188,7 +182,6 @@ After presenting the handoff summary, trigger a wire-check on the handoff artifa
 **In autonomous mode:** Run the wire-check immediately — do not ask.
 
 **In interactive mode:** Present the option:
-
 ```
 Wire-check available — trace data wires from this handoff?
 → /bmad:bmm:workflows:wire-check {handoff_file_path}

@@ -45,13 +45,13 @@ Store as `{server_live}` (true/false).
 
 Classify the anchor and find its entry point in the code:
 
-| Anchor type        | How to resolve                                                                                                                     |
-| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
-| **Page route**     | Find the route definition in `react-router-dom` config or file-based routing. Identify the page component.                         |
-| **API endpoint**   | Find the route handler in `src/main.py` (FastAPI), `server/src/features/**/*.routes.ts` (Express), or `app/api/**/*.ts` (Next.js). |
-| **Component**      | Find the component file directly. Identify its data sources (props, hooks, context).                                               |
-| **DB table/model** | Find the schema definition. Trace forward to where it's queried.                                                                   |
-| **Feature name**   | Search for the feature across the codebase. Identify the primary page/endpoint that implements it. Reclassify as one of the above. |
+| Anchor type | How to resolve |
+|-------------|---------------|
+| **Page route** | Find the route definition in `react-router-dom` config or file-based routing. Identify the page component. |
+| **API endpoint** | Find the route handler in `src/main.py` (FastAPI), `server/src/features/**/*.routes.ts` (Express), or `app/api/**/*.ts` (Next.js). |
+| **Component** | Find the component file directly. Identify its data sources (props, hooks, context). |
+| **DB table/model** | Find the schema definition. Trace forward to where it's queried. |
+| **Feature name** | Search for the feature across the codebase. Identify the primary page/endpoint that implements it. Reclassify as one of the above. |
 
 Store the resolved file path and line as `{anchor_file}` and `{anchor_line}`.
 
@@ -111,7 +111,6 @@ From the anchor, trace data forward to where it's rendered to the user.
 ### 4. Identify Stages
 
 A **stage** is a point where data:
-
 - **Originates** (DB query, external API call, user input)
 - **Transforms** (mapping function, Pydantic model, `rowTo*`, computed field)
 - **Crosses a boundary** (backend → API response, SSE event → frontend, prop drilling, context)

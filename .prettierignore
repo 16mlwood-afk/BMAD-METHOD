@@ -10,3 +10,5 @@ _bmad*/
 
 # IDE integration folders (user-specific, not in repo)
 .junie/
+
+custom/workflows/**/*.md

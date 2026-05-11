@@ -90,7 +90,6 @@ Merge findings from BOTH reviews into a single unified findings list.
 #### 3a. Normalize edge-case findings
 
 The edge-case hunter returns a JSON array. Convert each entry into a finding with:
-
 - **Severity:** Infer from `potential_consequence` — data loss/security → Critical, incorrect behavior → High, degraded UX → Medium, cosmetic → Low
 - **Validity:** Default to "real" (the hunter only reports unhandled paths)
 - **Source:** "edge-case"
@@ -99,7 +98,6 @@ The edge-case hunter returns a JSON array. Convert each entry into a finding wit
 #### 3b. Tag adversarial findings
 
 For each adversarial review finding, add:
-
 - **Source:** "adversarial"
 
 #### 3c. Merge and present
