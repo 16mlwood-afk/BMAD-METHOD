@@ -70,17 +70,27 @@
 - Never ask the user to deploy manually — handle it yourself.
 
 ### Local Dev
-<!-- TODO: Replace with your dev server commands -->
+<!-- TODO: Replace with your dev server commands and port -->
 - **Start:** `npm run dev` (or `./dev.sh`, `docker compose up`, etc.)
+- **Port:** (e.g., 5173 for Vite, 3000 for Express, 8787 for Wrangler)
 - **Check port availability before starting.** Only kill processes belonging to this project.
 - Check `lsof -iTCP:<port> -sTCP:LISTEN` before starting. If held by a different project, use the next available port.
+<!-- If this project should NEVER be run locally, replace the above with:
+- **This project is production-only.** Do not start a dev server, run `docker compose up`, or browse to `localhost`. All changes are tested via CI and deployed to Railway. -->
+
+### Production Data Awareness
+<!-- TODO: Set has_local_db to true/false and customize -->
+- **This project has no local database.** The dev server connects to the same production Railway Postgres as the deployed app. Every query, migration, and script hits real data.
+<!-- If you DO have a local DB, replace the above with:
+- **This project has a local database.** Use `DATABASE_URL_LOCAL` for dev servers. Production `DATABASE_URL` is only used by Railway. -->
+- **Before running migrations:** state what changes, confirm the target database with the user, and warn any parallel sessions that their dev server may need a restart.
+- **Before running scripts that modify data:** verify `DATABASE_URL` points where you expect. Never seed, wipe, or bulk-update without explicit user approval.
 
 ### Shared Resources
-<!-- TODO: Add if running parallel sessions with shared state (DB, files, ports) -->
-<!-- Examples:
-- SQLite: use WAL mode, separate DB files per worktree if needed
-- Port isolation: only one session runs the server at a time
-- Shared directories: note any dirs shared across worktrees -->
+- **Database:** shared across all worktrees and sessions — a migration in one affects all others.
+- **Dev server:** only one instance per project at a time. Check before starting; don't stack a second on a different worktree.
+- **External services:** R2 buckets, webhooks, third-party APIs are shared. Worktrees isolate code, not infrastructure.
+<!-- TODO: Add project-specific shared resources if any (e.g., shared file directories, message queues) -->
 
 ### Stale Server Code — Check Before Debugging
 - **When investigating runtime bugs (unexpected API responses, missing features), first check whether the running server has the latest code.** Compare `ps -p <pid> -o etime` against recent `git log --oneline -5` timestamps. If commits landed after the server started, restart the server before investigating further.
