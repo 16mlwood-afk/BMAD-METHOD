@@ -12,6 +12,18 @@
             "statusMessage": "Checking for parallel sessions..."
           }
         ]
+      },
+      {
+        "matcher": "",
+        "name": "bmad-delivery-check",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null); [ \"$branch\" = \"main\" ] && exit 0; [ \"$branch\" = \"HEAD\" ] && exit 0; ahead=$(git rev-list --count main..\"$branch\" 2>/dev/null || echo 0); dirty=$(git status --porcelain 2>/dev/null | head -1); if [ \"$ahead\" -gt 0 ] || [ -n \"$dirty\" ]; then printf '{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"UNDELIVERED WORK on branch %s (%s commits ahead of main, %s). Complete delivery: commit -> push -> PR -> merge -> deploy. See CLAUDE.md.\"}}\\n' \"$branch\" \"$ahead\" \"$([ -n \"$dirty\" ] && echo \"has uncommitted changes\" || echo \"clean working tree\")\"; fi",
+            "timeout": 5,
+            "statusMessage": "Checking delivery status..."
+          }
+        ]
       }
     ],
     "PreToolUse": [
