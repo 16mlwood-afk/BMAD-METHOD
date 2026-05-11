@@ -3,6 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SOURCE="$SCRIPT_DIR/custom/workflows"
+COMMANDS_SOURCE="$SCRIPT_DIR/custom/commands"
 HOOKS_SRC="$SCRIPT_DIR/src/modules/bmm/_module-installer/assets/hooks.json"
 WORKTREE_INCLUDE_SRC="$SCRIPT_DIR/src/modules/bmm/_module-installer/assets/worktreeinclude.template"
 TARGETS_FILE="$HOME/.bmad-targets"
@@ -97,6 +98,34 @@ if [[ -n "$PULL_TARGET" ]]; then
       echo "  ----  $dir (no changes)"
     fi
   done
+
+  # Pull command files
+  commands_target="${project_root}/.claude/commands/bmad"
+  if [[ -d "$commands_target" ]]; then
+    for cmd_dir in "$COMMANDS_SOURCE"/*/; do
+      [[ ! -d "$cmd_dir" ]] && continue
+      module="$(basename "$cmd_dir")"
+      src_cmd_path="$COMMANDS_SOURCE/$module"
+      dst_cmd_path="$commands_target/$module/workflows"
+
+      if [[ ! -d "$dst_cmd_path" ]]; then
+        echo "  SKIP  commands/$module (not in project)"
+        continue
+      fi
+
+      # Only pull files that exist in the target but not in source
+      for f in "$dst_cmd_path"/*.md; do
+        [[ ! -f "$f" ]] && continue
+        fname="$(basename "$f")"
+        if [[ ! -f "$src_cmd_path/workflows/$fname" ]]; then
+          mkdir -p "$src_cmd_path/workflows"
+          cp "$f" "$src_cmd_path/workflows/$fname"
+          echo "  OK    commands/$module/workflows/$fname (pulled)"
+          pulled=$((pulled + 1))
+        fi
+      done
+    done
+  fi
 
   echo ""
   if [[ $pulled -gt 0 ]]; then
@@ -198,6 +227,23 @@ while IFS= read -r target || [[ -n "$target" ]]; do
       fi
     fi
 
+    # Check command files
+    if [[ -d "$COMMANDS_SOURCE" ]]; then
+      commands_target="$project_root/.claude/commands/bmad"
+      while IFS= read -r -d '' src_file; do
+        rel="${src_file#"$COMMANDS_SOURCE/"}"
+        # rel is like bmm/workflows/trace-flow.md
+        dst_file="$commands_target/$rel"
+        if [[ ! -f "$dst_file" ]] || ! diff -q "$src_file" "$dst_file" &>/dev/null; then
+          if ! $dirty; then
+            echo "STALE $project"
+            dirty=true
+          fi
+          echo "  ↳  commands/$rel"
+        fi
+      done < <(find "$COMMANDS_SOURCE" -type f -name '*.md' -not -name '.DS_Store' -print0)
+    fi
+
     if $dirty; then
       stale=$((stale + 1))
     else
@@ -263,6 +309,32 @@ while IFS= read -r target || [[ -n "$target" ]]; do
     if [[ -f "$WORKTREE_INCLUDE_SRC" ]] && [[ ! -f "$worktree_include" ]]; then
       cp "$WORKTREE_INCLUDE_SRC" "$worktree_include"
       echo "  OK    .worktreeinclude (created)"
+    fi
+
+    # Sync command files from custom/commands/ to .claude/commands/bmad/
+    if [[ -d "$COMMANDS_SOURCE" ]]; then
+      commands_target="$project_root/.claude/commands/bmad"
+      cmd_count=0
+      for cmd_dir in "$COMMANDS_SOURCE"/*/; do
+        [[ ! -d "$cmd_dir" ]] && continue
+        module="$(basename "$cmd_dir")"
+        src_cmd_path="$COMMANDS_SOURCE/$module"
+        dst_cmd_path="$commands_target/$module"
+
+        # Walk subdirectories (e.g., workflows/)
+        while IFS= read -r -d '' src_file; do
+          rel="${src_file#"$src_cmd_path/"}"
+          dst_file="$dst_cmd_path/$rel"
+          mkdir -p "$(dirname "$dst_file")"
+          if [[ ! -f "$dst_file" ]] || ! diff -q "$src_file" "$dst_file" &>/dev/null; then
+            cp "$src_file" "$dst_file"
+            cmd_count=$((cmd_count + 1))
+          fi
+        done < <(find "$src_cmd_path" -type f -name '*.md' -not -name '.DS_Store' -print0)
+      done
+      if [[ $cmd_count -gt 0 ]]; then
+        echo "  OK    commands ($cmd_count file(s) synced)"
+      fi
     fi
 
     synced=$((synced + 1))
