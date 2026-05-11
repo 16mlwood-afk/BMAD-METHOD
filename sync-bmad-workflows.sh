@@ -2,7 +2,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SOURCE="$SCRIPT_DIR/src/modules/bmm/workflows"
+SOURCE="$SCRIPT_DIR/custom/workflows"
 HOOKS_SRC="$SCRIPT_DIR/src/modules/bmm/_module-installer/assets/hooks.json"
 TARGETS_FILE="$HOME/.bmad-targets"
 CHECK_ONLY=false
