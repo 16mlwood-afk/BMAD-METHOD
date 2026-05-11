@@ -92,6 +92,13 @@
 - **External services:** R2 buckets, webhooks, third-party APIs are shared. Worktrees isolate code, not infrastructure.
 <!-- TODO: Add project-specific shared resources if any (e.g., shared file directories, message queues) -->
 
+<!-- If using local SQLite, add this block: -->
+<!-- ### SQLite + Worktrees
+- **The DB path MUST be absolute** — set via env var (e.g., `BSF_DATABASE_URL=sqlite:////Users/.../app.db`). Relative paths like `sqlite:///app.db` resolve differently in each worktree, creating orphaned DB copies and WAL corruption.
+- **`.db-wal` and `.db-shm` must be in `.gitignore`** alongside `*.db`. These are SQLite lock files — if they end up in a worktree, they'll cause "database is locked" or corruption errors.
+- **WAL mode allows concurrent readers but only one writer.** Don't run multiple backend instances (from different worktrees) against the same DB simultaneously. If you need a second backend, use a separate DB file.
+- **Never delete `.db-wal` while a process has the DB open** — this causes data loss. Stop all processes first, then clean up. -->
+
 ### Stale Server Code — Check Before Debugging
 - **When investigating runtime bugs (unexpected API responses, missing features), first check whether the running server has the latest code.** Compare `ps -p <pid> -o etime` against recent `git log --oneline -5` timestamps. If commits landed after the server started, restart the server before investigating further.
 - Quick check: `curl` the affected endpoint and compare the response against the code on disk. If the response doesn't match, the server is stale.
