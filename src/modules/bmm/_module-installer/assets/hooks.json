@@ -3,6 +3,7 @@
     "UserPromptSubmit": [
       {
         "matcher": "",
+        "name": "bmad-parallel-session-check",
         "hooks": [
           {
             "type": "command",
@@ -16,6 +17,7 @@
     "PreToolUse": [
       {
         "matcher": "Edit|Write",
+        "name": "bmad-worktree-guard",
         "hooks": [
           {
             "type": "command",

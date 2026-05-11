@@ -24,6 +24,21 @@ SYNC_DIRS=(
   "4-implementation/code-review"
 )
 
+JQ_MERGE='
+  input as $base | input as $template |
+  ($template.hooks | [.. | .statusMessage? // empty]) as $bmad_msgs |
+  reduce ($template.hooks | keys[]) as $event (
+    $base;
+    .hooks[$event] = (
+      [(.hooks[$event] // [])[] | select(
+        ((.name // "") | startswith("bmad-") | not) and
+        ([.hooks[]?.statusMessage // ""] | map(. as $m | $bmad_msgs | index($m)) | any | not)
+      )]
+      + $template.hooks[$event]
+    )
+  )
+'
+
 synced=0
 skipped=0
 stale=0
@@ -64,9 +79,9 @@ while IFS= read -r target || [[ -n "$target" ]]; do
         fi
         echo "  ↳  hooks (missing)"
       else
-        current_hooks=$(jq -S '.hooks' "$settings_file" 2>/dev/null || echo "{}")
-        source_hooks=$(jq -S '.hooks' "$HOOKS_SRC" 2>/dev/null || echo "{}")
-        if [[ "$current_hooks" != "$source_hooks" ]]; then
+        merged=$(jq -n "$JQ_MERGE" "$settings_file" "$HOOKS_SRC")
+        current=$(cat "$settings_file")
+        if [[ "$(echo "$merged" | jq -S .)" != "$(echo "$current" | jq -S .)" ]]; then
           if ! $dirty; then
             echo "STALE $project"
             dirty=true
@@ -104,9 +119,9 @@ while IFS= read -r target || [[ -n "$target" ]]; do
     if [[ -f "$HOOKS_SRC" ]] && command -v jq &>/dev/null; then
       mkdir -p "$settings_dir"
       if [[ -f "$settings_file" ]]; then
-        jq -s '.[0] * {hooks: .[1].hooks}' "$settings_file" "$HOOKS_SRC" > "$settings_file.tmp"
+        jq -n "$JQ_MERGE" "$settings_file" "$HOOKS_SRC" > "$settings_file.tmp"
         mv "$settings_file.tmp" "$settings_file"
-        echo "  OK    hooks (merged)"
+        echo "  OK    hooks (upserted)"
       else
         cp "$HOOKS_SRC" "$settings_file"
         echo "  OK    hooks (created)"
