@@ -5,6 +5,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SOURCE="$SCRIPT_DIR/custom/workflows"
 HOOKS_SRC="$SCRIPT_DIR/src/modules/bmm/_module-installer/assets/hooks.json"
 WORKTREE_INCLUDE_SRC="$SCRIPT_DIR/src/modules/bmm/_module-installer/assets/worktreeinclude.template"
+CLAUDEMD_TEMPLATE="$SCRIPT_DIR/src/modules/bmm/_module-installer/assets/CLAUDE.md.template"
+CLAUDEMD_SYNC="$SCRIPT_DIR/sync-claudemd-sections.py"
 TARGETS_FILE="$HOME/.bmad-targets"
 CHECK_ONLY=false
 FORCE=false
@@ -259,6 +261,20 @@ while IFS= read -r target || [[ -n "$target" ]]; do
       fi
     done
 
+    # Check CLAUDE.md sections
+    project_claudemd="$project_root/CLAUDE.md"
+    if [[ -f "$CLAUDEMD_TEMPLATE" ]] && [[ -f "$CLAUDEMD_SYNC" ]] && [[ -f "$project_claudemd" ]]; then
+      missing_sections=$(python3 "$CLAUDEMD_SYNC" --check "$CLAUDEMD_TEMPLATE" "$project_claudemd" 2>/dev/null || true)
+      if [[ -n "$missing_sections" ]]; then
+        if ! $dirty; then
+          echo "STALE $project"
+          dirty=true
+        fi
+        echo "  ↳  CLAUDE.md (missing sections):"
+        echo "$missing_sections" | sed 's/^/     /'
+      fi
+    fi
+
     if $dirty; then
       stale=$((stale + 1))
     else
@@ -335,6 +351,16 @@ while IFS= read -r target || [[ -n "$target" ]]; do
     done
     if [[ $cmd_total -gt 0 ]]; then
       echo "  OK    commands ($cmd_total file(s) generated)"
+    fi
+
+    # Sync missing CLAUDE.md sections
+    project_claudemd="$project_root/CLAUDE.md"
+    if [[ -f "$CLAUDEMD_TEMPLATE" ]] && [[ -f "$CLAUDEMD_SYNC" ]] && [[ -f "$project_claudemd" ]]; then
+      added_sections=$(python3 "$CLAUDEMD_SYNC" --sync "$CLAUDEMD_TEMPLATE" "$project_claudemd" 2>/dev/null || true)
+      if [[ -n "$added_sections" ]]; then
+        count=$(echo "$added_sections" | wc -l | tr -d ' ')
+        echo "  OK    CLAUDE.md ($count section(s) added)"
+      fi
     fi
 
     synced=$((synced + 1))
