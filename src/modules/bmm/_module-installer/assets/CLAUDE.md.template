@@ -1,0 +1,62 @@
+# CLAUDE.md
+
+## Project Structure
+
+<!-- TODO: Replace with your project's actual structure -->
+- `src/` — Application source code
+- `_bmad-output/` — Planning and implementation artifacts
+- `_bmad/` — BMAD workflow engine and configuration
+
+## Agent Behavior Rules
+
+### ALWAYS Use Worktrees — CRITICAL
+- **Call `EnterWorktree` at the start of EVERY session before editing any files.** Do not wait for the user to tell you about parallel sessions — you will not always know. The cost of an unnecessary worktree is near zero; the cost of a collision (silent overwrites, lost edits) is high.
+- The ONLY exception: the user explicitly tells you "you're the only session, skip worktree."
+- When spawning sub-agents via the `Agent` tool for work that edits files, always set `isolation: "worktree"` so each agent gets its own copy of the repo.
+- The user has authorized worktree usage as project policy — you do not need an explicit per-session request.
+
+### Branch Naming Convention
+- **Always use descriptive branch names.** Format: `<type>/<short-description>` (e.g., `feat/bsf-compare-leads`, `fix/null-metadata`, `refactor/format-utils`).
+- Types: `feat/`, `fix/`, `refactor/`, `chore/`, `docs/`.
+- If `EnterWorktree` auto-generates a name, rename the branch before committing: `git branch -m <new-name>`.
+
+### Worktree Hygiene
+- **Prune stale worktrees at session start.** Run `git worktree list` and compare against `.claude/worktrees/`. Orphaned directories or branches already merged to main are stale — remove them with `git worktree remove <path>`.
+- **Never leave a worktree behind after delivering work.** Always clean up via `ExitWorktree` after the PR is merged.
+- **One worktree per task.** Don't reuse a worktree from a previous task — create fresh from current HEAD.
+
+### Worktree Enforcement Hooks
+- **UserPromptSubmit hook** — warns about parallel sessions, suppresses when already in a worktree (`$PWD` contains `/.claude/worktrees/`).
+- **PreToolUse hook (Edit|Write)** — hard-blocks file edits when parallel sessions detected and NOT in a worktree.
+- Hooks count all `claude` processes system-wide (includes other projects). This is intentionally conservative — false positive (forced worktree when unnecessary) is safer than false negative (collision).
+
+### NEVER Hardcode Secrets — CRITICAL
+- **Scripts must read secrets from the environment.** If a required env var is not set, the script must exit with a clear error message — never fall back to a hardcoded value.
+- Local secrets go in `~/.secrets` (sourced by `~/.zshrc`). If a Claude session can't see it, tell the user to set it — do NOT embed credentials in code.
+
+### ALWAYS Deliver Your Work — CRITICAL
+- **Work that isn't merged to main doesn't exist.** Never end a session with code sitting on an unmerged branch.
+- The delivery pipeline is: **commit -> push -> PR -> merge -> deploy**. Skipping any step means the work isn't live.
+- In worktrees: use `gh pr view` to verify merge (you can't `git checkout main` from a worktree). Then call `ExitWorktree` with `action: "remove"` to clean up.
+- Never push directly to `main` — always use a feature branch + PR.
+- If the worktree branch name is generic (auto-generated), rename it to something descriptive (`feat/`, `fix/`, `refactor/`) before pushing.
+
+### ALWAYS Deploy After Merge — CRITICAL
+<!-- TODO: Replace with your deploy command (e.g., `railway up`, `vercel --prod`, `fly deploy`) -->
+- **After merging a PR to main, trigger a production deploy.** Never leave merged code undeployed — the user expects changes to be live.
+- Deploy command: `railway up`
+- Never ask the user to deploy manually — handle it yourself.
+
+### Do NOT search endlessly for files
+- If a glob/grep returns no results after 1-2 attempts, **stop searching and move on**.
+- Prefer `find` with `head` over repeated glob attempts when exploring unknown file structures.
+
+### File discovery strategy
+1. Try the most likely path first
+2. If not found, try ONE broader glob
+3. If still not found, **assume it doesn't exist and proceed**
+
+### General efficiency
+- Read files you need, then start coding. Don't over-research.
+- If type-checking reveals only pre-existing errors unrelated to your changes, note them and move on.
+- **Don't ask permission for obvious next steps.** If tests pass and the work is done, push the branch and create the PR. If the user says "y" or "go ahead", that means execute — don't ask again.
