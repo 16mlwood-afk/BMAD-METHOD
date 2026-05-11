@@ -3,7 +3,6 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SOURCE="$SCRIPT_DIR/custom/workflows"
-COMMANDS_SOURCE="$SCRIPT_DIR/custom/commands"
 HOOKS_SRC="$SCRIPT_DIR/src/modules/bmm/_module-installer/assets/hooks.json"
 WORKTREE_INCLUDE_SRC="$SCRIPT_DIR/src/modules/bmm/_module-installer/assets/worktreeinclude.template"
 TARGETS_FILE="$HOME/.bmad-targets"
@@ -63,6 +62,54 @@ JQ_MERGE='
   | .["$schema"] = "https://json.schemastore.org/claude-code-settings.json"
 '
 
+# Auto-generate a .claude/commands/ file from a workflow.md's YAML frontmatter.
+# Args: $1 = workflow.md path, $2 = relative path from _bmad/bmm/workflows/ (e.g. bmad-quick-flow/trace-flow)
+generate_command_content() {
+  local workflow_md="$1" rel_dir="$2"
+  local description
+  description=$(sed -n '/^---$/,/^---$/{ /^---$/d; /^description:/{ s/^description:[[:space:]]*//; s/^['\''"]//; s/['\''"][[:space:]]*$//; p; }; }' "$workflow_md")
+  [[ -z "$description" ]] && return 1
+  printf '%s\n' \
+    '---' \
+    "description: '${description}'" \
+    '---' \
+    '' \
+    "IT IS CRITICAL THAT YOU FOLLOW THIS COMMAND: LOAD the FULL @_bmad/bmm/workflows/${rel_dir}/workflow.md, READ its entire contents and follow its directions exactly!"
+}
+
+# Sync auto-generated command files for all workflows under a synced directory.
+# Args: $1 = target workflows dir (e.g. /path/project/_bmad/bmm/workflows),
+#        $2 = synced dir name (e.g. bmad-quick-flow),
+#        $3 = commands target dir (e.g. /path/project/.claude/commands/bmad/bmm/workflows),
+#        $4 = mode ("check" or "sync")
+# Prints status lines. Returns count of stale/synced files via stdout last line "COUNT:<n>".
+sync_commands_for_dir() {
+  local workflows_dir="$1" sync_dir="$2" commands_dir="$3" mode="$4"
+  local count=0
+
+  while IFS= read -r -d '' workflow_md; do
+    local dir_name
+    dir_name="$(dirname "$workflow_md")"
+    dir_name="${dir_name#"$workflows_dir/"}"
+    local wf_name
+    wf_name="$(basename "$dir_name")"
+    local cmd_file="$commands_dir/${wf_name}.md"
+
+    local expected
+    expected="$(generate_command_content "$workflow_md" "$dir_name")" || continue
+
+    if [[ ! -f "$cmd_file" ]] || [[ "$(cat "$cmd_file")" != "$expected" ]]; then
+      if [[ "$mode" == "sync" ]]; then
+        mkdir -p "$commands_dir"
+        printf '%s\n' "$expected" > "$cmd_file"
+      fi
+      count=$((count + 1))
+    fi
+  done < <(find "$workflows_dir/$sync_dir" -name 'workflow.md' -print0 2>/dev/null)
+
+  echo "$count"
+}
+
 # --- PULL MODE ---
 if [[ -n "$PULL_TARGET" ]]; then
   if [[ ! -d "$PULL_TARGET" ]]; then
@@ -98,34 +145,6 @@ if [[ -n "$PULL_TARGET" ]]; then
       echo "  ----  $dir (no changes)"
     fi
   done
-
-  # Pull command files
-  commands_target="${project_root}/.claude/commands/bmad"
-  if [[ -d "$commands_target" ]]; then
-    for cmd_dir in "$COMMANDS_SOURCE"/*/; do
-      [[ ! -d "$cmd_dir" ]] && continue
-      module="$(basename "$cmd_dir")"
-      src_cmd_path="$COMMANDS_SOURCE/$module"
-      dst_cmd_path="$commands_target/$module/workflows"
-
-      if [[ ! -d "$dst_cmd_path" ]]; then
-        echo "  SKIP  commands/$module (not in project)"
-        continue
-      fi
-
-      # Only pull files that exist in the target but not in source
-      for f in "$dst_cmd_path"/*.md; do
-        [[ ! -f "$f" ]] && continue
-        fname="$(basename "$f")"
-        if [[ ! -f "$src_cmd_path/workflows/$fname" ]]; then
-          mkdir -p "$src_cmd_path/workflows"
-          cp "$f" "$src_cmd_path/workflows/$fname"
-          echo "  OK    commands/$module/workflows/$fname (pulled)"
-          pulled=$((pulled + 1))
-        fi
-      done
-    done
-  fi
 
   echo ""
   if [[ $pulled -gt 0 ]]; then
@@ -227,22 +246,18 @@ while IFS= read -r target || [[ -n "$target" ]]; do
       fi
     fi
 
-    # Check command files
-    if [[ -d "$COMMANDS_SOURCE" ]]; then
-      commands_target="$project_root/.claude/commands/bmad"
-      while IFS= read -r -d '' src_file; do
-        rel="${src_file#"$COMMANDS_SOURCE/"}"
-        # rel is like bmm/workflows/trace-flow.md
-        dst_file="$commands_target/$rel"
-        if [[ ! -f "$dst_file" ]] || ! diff -q "$src_file" "$dst_file" &>/dev/null; then
-          if ! $dirty; then
-            echo "STALE $project"
-            dirty=true
-          fi
-          echo "  ↳  commands/$rel"
+    # Check auto-generated command files
+    commands_target="$project_root/.claude/commands/bmad/bmm/workflows"
+    for dir in "${SYNC_DIRS[@]}"; do
+      cmd_stale=$(sync_commands_for_dir "$target" "$dir" "$commands_target" "check")
+      if [[ "$cmd_stale" -gt 0 ]]; then
+        if ! $dirty; then
+          echo "STALE $project"
+          dirty=true
         fi
-      done < <(find "$COMMANDS_SOURCE" -type f -name '*.md' -not -name '.DS_Store' -print0)
-    fi
+        echo "  ↳  commands ($cmd_stale missing/outdated in $dir)"
+      fi
+    done
 
     if $dirty; then
       stale=$((stale + 1))
@@ -311,30 +326,15 @@ while IFS= read -r target || [[ -n "$target" ]]; do
       echo "  OK    .worktreeinclude (created)"
     fi
 
-    # Sync command files from custom/commands/ to .claude/commands/bmad/
-    if [[ -d "$COMMANDS_SOURCE" ]]; then
-      commands_target="$project_root/.claude/commands/bmad"
-      cmd_count=0
-      for cmd_dir in "$COMMANDS_SOURCE"/*/; do
-        [[ ! -d "$cmd_dir" ]] && continue
-        module="$(basename "$cmd_dir")"
-        src_cmd_path="$COMMANDS_SOURCE/$module"
-        dst_cmd_path="$commands_target/$module"
-
-        # Walk subdirectories (e.g., workflows/)
-        while IFS= read -r -d '' src_file; do
-          rel="${src_file#"$src_cmd_path/"}"
-          dst_file="$dst_cmd_path/$rel"
-          mkdir -p "$(dirname "$dst_file")"
-          if [[ ! -f "$dst_file" ]] || ! diff -q "$src_file" "$dst_file" &>/dev/null; then
-            cp "$src_file" "$dst_file"
-            cmd_count=$((cmd_count + 1))
-          fi
-        done < <(find "$src_cmd_path" -type f -name '*.md' -not -name '.DS_Store' -print0)
-      done
-      if [[ $cmd_count -gt 0 ]]; then
-        echo "  OK    commands ($cmd_count file(s) synced)"
-      fi
+    # Auto-generate command files from workflow.md frontmatter
+    commands_target="$project_root/.claude/commands/bmad/bmm/workflows"
+    cmd_total=0
+    for dir in "${SYNC_DIRS[@]}"; do
+      cmd_count=$(sync_commands_for_dir "$target" "$dir" "$commands_target" "sync")
+      cmd_total=$((cmd_total + cmd_count))
+    done
+    if [[ $cmd_total -gt 0 ]]; then
+      echo "  OK    commands ($cmd_total file(s) generated)"
     fi
 
     synced=$((synced + 1))
