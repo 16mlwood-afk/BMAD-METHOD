@@ -4,6 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SOURCE="$SCRIPT_DIR/custom/workflows"
 HOOKS_SRC="$SCRIPT_DIR/src/modules/bmm/_module-installer/assets/hooks.json"
+WORKTREE_INCLUDE_SRC="$SCRIPT_DIR/src/modules/bmm/_module-installer/assets/worktreeinclude.template"
 TARGETS_FILE="$HOME/.bmad-targets"
 CHECK_ONLY=false
 
@@ -151,6 +152,13 @@ while IFS= read -r target || [[ -n "$target" ]]; do
         cp "$HOOKS_SRC" "$settings_file"
         echo "  OK    hooks (created)"
       fi
+    fi
+
+    # Copy .worktreeinclude if missing
+    worktree_include="$project_root/.worktreeinclude"
+    if [[ -f "$WORKTREE_INCLUDE_SRC" ]] && [[ ! -f "$worktree_include" ]]; then
+      cp "$WORKTREE_INCLUDE_SRC" "$worktree_include"
+      echo "  OK    .worktreeinclude (created)"
     fi
 
     synced=$((synced + 1))
