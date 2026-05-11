@@ -84,6 +84,17 @@
             "statusMessage": "Checking BMAD registration..."
           }
         ]
+      },
+      {
+        "name": "bmad-health-reminder",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "TS=\"$HOME/.bmad-last-health-check\"; if [ ! -f \"$TS\" ]; then printf '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"PROJECT HEALTH: No /project-health run on record. Run /project-health for a full cross-project maintenance audit.\"}}\\n'; exit 0; fi; last=$(cat \"$TS\" 2>/dev/null || echo 0); now=$(date +%s); age=$(( (now - last) / 86400 )); if [ \"$age\" -ge 7 ]; then printf '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"PROJECT HEALTH: Last /project-health run was %s days ago. Run /project-health for a full cross-project maintenance audit.\"}}\\n' \"$age\"; fi",
+            "timeout": 3,
+            "statusMessage": "Checking health audit freshness..."
+          }
+        ]
       }
     ],
     "PostToolUse": [
