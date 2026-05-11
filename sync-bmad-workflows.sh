@@ -7,10 +7,30 @@ HOOKS_SRC="$SCRIPT_DIR/src/modules/bmm/_module-installer/assets/hooks.json"
 WORKTREE_INCLUDE_SRC="$SCRIPT_DIR/src/modules/bmm/_module-installer/assets/worktreeinclude.template"
 TARGETS_FILE="$HOME/.bmad-targets"
 CHECK_ONLY=false
+FORCE=false
+PULL_TARGET=""
 
-if [[ "${1:-}" == "--check" ]]; then
-  CHECK_ONLY=true
-fi
+usage() {
+  echo "Usage: $0 [--check] [--force] [--pull <project-workflows-path>]"
+  echo ""
+  echo "  (no args)   Sync source → all targets (aborts if targets have local-only content)"
+  echo "  --check     Report drift without modifying anything"
+  echo "  --force     Sync even if targets have local-only content (DESTRUCTIVE)"
+  echo "  --pull PATH Pull changes from a project back to the source of truth"
+  exit 1
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --check) CHECK_ONLY=true; shift ;;
+    --force) FORCE=true; shift ;;
+    --pull)
+      [[ -z "${2:-}" ]] && { echo "ERROR: --pull requires a path argument"; usage; }
+      PULL_TARGET="$2"; shift 2 ;;
+    -h|--help) usage ;;
+    *) echo "ERROR: Unknown argument: $1"; usage ;;
+  esac
+done
 
 # Dependency checks
 for cmd in rsync jq; do
@@ -19,13 +39,6 @@ for cmd in rsync jq; do
     exit 1
   fi
 done
-
-if [[ ! -f "$TARGETS_FILE" ]]; then
-  echo "ERROR: $TARGETS_FILE not found"
-  echo "Create it with one workflow path per line, e.g.:"
-  echo "  /Users/you/project/_bmad/bmm/workflows"
-  exit 1
-fi
 
 SYNC_DIRS=(
   "bmad-quick-flow"
@@ -49,9 +62,63 @@ JQ_MERGE='
   | .["$schema"] = "https://json.schemastore.org/claude-code-settings.json"
 '
 
+# --- PULL MODE ---
+if [[ -n "$PULL_TARGET" ]]; then
+  if [[ ! -d "$PULL_TARGET" ]]; then
+    echo "ERROR: $PULL_TARGET not found"
+    exit 1
+  fi
+
+  project_root="${PULL_TARGET%/_bmad/bmm/workflows}"
+  if [[ "$project_root" == "$PULL_TARGET" ]]; then
+    echo "ERROR: path doesn't end in /_bmad/bmm/workflows"
+    exit 1
+  fi
+  project="$(basename "$project_root")"
+
+  echo "PULL  $project → source"
+  pulled=0
+
+  for dir in "${SYNC_DIRS[@]}"; do
+    src_path="$SOURCE/$dir"
+    dst_path="$PULL_TARGET/$dir"
+
+    if [[ ! -d "$dst_path" ]]; then
+      echo "  SKIP  $dir (not in project)"
+      continue
+    fi
+
+    if [[ ! -d "$src_path" ]] || ! diff -rq --exclude='.DS_Store' "$src_path" "$dst_path" &>/dev/null; then
+      mkdir -p "$src_path"
+      rsync -a --delete --exclude='.DS_Store' "$dst_path/" "$src_path/"
+      echo "  OK    $dir"
+      pulled=$((pulled + 1))
+    else
+      echo "  ----  $dir (no changes)"
+    fi
+  done
+
+  echo ""
+  if [[ $pulled -gt 0 ]]; then
+    echo "Pulled $pulled dir(s) from $project. Review changes in $SOURCE, then commit and re-sync."
+  else
+    echo "Nothing to pull — source already matches $project."
+  fi
+  exit 0
+fi
+
+# --- CHECK / SYNC MODE ---
+if [[ ! -f "$TARGETS_FILE" ]]; then
+  echo "ERROR: $TARGETS_FILE not found"
+  echo "Create it with one workflow path per line, e.g.:"
+  echo "  /Users/you/project/_bmad/bmm/workflows"
+  exit 1
+fi
+
 synced=0
 skipped=0
 stale=0
+blocked=0
 seen_targets=()
 
 while IFS= read -r target || [[ -n "$target" ]]; do
@@ -73,7 +140,7 @@ while IFS= read -r target || [[ -n "$target" ]]; do
     continue
   fi
 
-  # Derive project root: strip _bmad/bmm/workflows suffix instead of counting dirnames
+  # Derive project root: strip _bmad/bmm/workflows suffix
   project_root="${target%/_bmad/bmm/workflows}"
   if [[ "$project_root" == "$target" ]]; then
     echo "SKIP  $target (path doesn't end in /_bmad/bmm/workflows)"
@@ -94,6 +161,19 @@ while IFS= read -r target || [[ -n "$target" ]]; do
           dirty=true
         fi
         echo "  ↳  $dir"
+      fi
+
+      # Check for local-only content in target that would be deleted
+      if [[ -d "$dst_path" ]]; then
+        local_only=$(diff -rq --exclude='.DS_Store' "$dst_path" "$src_path" 2>/dev/null | grep "^Only in $dst_path" || true)
+        if [[ -n "$local_only" ]]; then
+          if ! $dirty; then
+            echo "STALE $project"
+            dirty=true
+          fi
+          echo "  ⚠  LOCAL-ONLY content in $dir (would be DELETED on sync):"
+          echo "$local_only" | sed 's/^/     /'
+        fi
       fi
     done
 
@@ -124,6 +204,29 @@ while IFS= read -r target || [[ -n "$target" ]]; do
       echo "OK    $project"
     fi
   else
+    # --- Pre-sync safety check: detect local-only content ---
+    has_local_only=false
+    for dir in "${SYNC_DIRS[@]}"; do
+      src_path="$SOURCE/$dir"
+      dst_path="$target/$dir"
+      [[ ! -d "$dst_path" ]] && continue
+      [[ ! -d "$src_path" ]] && { has_local_only=true; continue; }
+
+      local_only=$(diff -rq --exclude='.DS_Store' "$dst_path" "$src_path" 2>/dev/null | grep "^Only in $dst_path" || true)
+      if [[ -n "$local_only" ]]; then
+        has_local_only=true
+      fi
+    done
+
+    if $has_local_only && ! $FORCE; then
+      echo "BLOCK $project — has local-only workflow content that would be deleted"
+      echo "  Options:"
+      echo "    1. Pull changes first:  $0 --pull $target"
+      echo "    2. Force overwrite:     $0 --force"
+      blocked=$((blocked + 1))
+      continue
+    fi
+
     echo "SYNC  $project"
 
     for dir in "${SYNC_DIRS[@]}"; do
@@ -174,5 +277,10 @@ if $CHECK_ONLY; then
     echo "$stale project(s) out of date. Run without --check to sync."
   fi
 else
-  echo "Done: $synced synced, $skipped skipped"
+  echo "Done: $synced synced, $skipped skipped, $blocked blocked"
+  if [[ $blocked -gt 0 ]]; then
+    echo ""
+    echo "⚠  $blocked project(s) blocked due to local-only content."
+    echo "   Pull changes first, or use --force to overwrite."
+  fi
 fi
