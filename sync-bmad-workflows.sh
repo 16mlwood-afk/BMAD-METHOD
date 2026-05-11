@@ -3,13 +3,15 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SOURCE="$SCRIPT_DIR/src/modules/bmm/workflows"
+HOOKS_SRC="$SCRIPT_DIR/src/modules/bmm/_module-installer/assets/hooks.json"
+TARGETS_FILE="$HOME/.bmad-targets"
 
-TARGETS=(
-  "/Users/masonwood/code/comms_dashboard/_bmad/bmm/workflows"
-  "/Users/masonwood/brand-source-finder/_bmad/bmm/workflows"
-  "/Users/masonwood/code/inbound-flow/_bmad/bmm/workflows"
-  "/Users/masonwood/code/accounting-tools/_bmad/bmm/workflows"
-)
+if [[ ! -f "$TARGETS_FILE" ]]; then
+  echo "ERROR: $TARGETS_FILE not found"
+  echo "Create it with one workflow path per line, e.g.:"
+  echo "  /Users/you/project/_bmad/bmm/workflows"
+  exit 1
+fi
 
 SYNC_DIRS=(
   "bmad-quick-flow"
@@ -19,18 +21,21 @@ SYNC_DIRS=(
 
 synced=0
 skipped=0
-errors=0
 
-for target in "${TARGETS[@]}"; do
+while IFS= read -r target || [[ -n "$target" ]]; do
+  [[ -z "$target" || "$target" == \#* ]] && continue
+
   if [[ ! -d "$target" ]]; then
     echo "SKIP  $target (not found)"
     skipped=$((skipped + 1))
     continue
   fi
 
-  project="$(basename "$(dirname "$(dirname "$(dirname "$target")")")")"
+  project_root="$(dirname "$(dirname "$(dirname "$target")")")"
+  project="$(basename "$project_root")"
   echo "SYNC  $project"
 
+  # Sync workflow directories
   for dir in "${SYNC_DIRS[@]}"; do
     src_path="$SOURCE/$dir"
     dst_path="$target/$dir"
@@ -45,8 +50,26 @@ for target in "${TARGETS[@]}"; do
     echo "  OK    $dir"
   done
 
+  # Sync hooks into .claude/settings.local.json
+  settings_dir="$project_root/.claude"
+  settings_file="$settings_dir/settings.local.json"
+
+  if [[ -f "$HOOKS_SRC" ]] && command -v jq &>/dev/null; then
+    mkdir -p "$settings_dir"
+    if [[ -f "$settings_file" ]]; then
+      # Merge hooks into existing settings, preserving permissions and other keys
+      jq -s '.[0] * {hooks: .[1].hooks}' "$settings_file" "$HOOKS_SRC" > "$settings_file.tmp"
+      mv "$settings_file.tmp" "$settings_file"
+      echo "  OK    hooks (merged)"
+    else
+      # No existing settings — create with just hooks
+      cp "$HOOKS_SRC" "$settings_file"
+      echo "  OK    hooks (created)"
+    fi
+  fi
+
   synced=$((synced + 1))
-done
+done < "$TARGETS_FILE"
 
 echo ""
 echo "Done: $synced synced, $skipped skipped"

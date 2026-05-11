@@ -1,0 +1,30 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "case \"$PWD\" in */.claude/worktrees/*) exit 0;; esac; count=$(ps -eo command 2>/dev/null | grep -c \"^claude\"); if [ \"$count\" -gt 1 ]; then printf \"{\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"UserPromptSubmit\\\",\\\"additionalContext\\\":\\\"PARALLEL SESSIONS DETECTED (%s CLI sessions active): You MUST call EnterWorktree before editing any files if you have not already. See CLAUDE.md ALWAYS Use Worktrees section.\\\"}}\\n\" \"$count\"; fi",
+            "timeout": 5,
+            "statusMessage": "Checking for parallel sessions..."
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "case \"$PWD\" in */.claude/worktrees/*) exit 0;; esac; count=$(ps -eo command 2>/dev/null | grep -c \"^claude\"); if [ \"$count\" -gt 1 ]; then printf \"{\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"PreToolUse\\\",\\\"permissionDecision\\\":\\\"deny\\\",\\\"permissionDecisionReason\\\":\\\"BLOCKED: %s parallel claude sessions detected and you are NOT in a worktree. Call EnterWorktree before editing files. See CLAUDE.md.\\\"}}\\n\" \"$count\"; fi",
+            "timeout": 5,
+            "statusMessage": "Worktree guard..."
+          }
+        ]
+      }
+    ]
+  }
+}
