@@ -11,6 +11,14 @@ if [[ "${1:-}" == "--check" ]]; then
   CHECK_ONLY=true
 fi
 
+# Dependency checks
+for cmd in rsync jq; do
+  if ! command -v "$cmd" &>/dev/null; then
+    echo "ERROR: $cmd is required but not installed."
+    exit 1
+  fi
+done
+
 if [[ ! -f "$TARGETS_FILE" ]]; then
   echo "ERROR: $TARGETS_FILE not found"
   echo "Create it with one workflow path per line, e.g.:"
@@ -42,9 +50,20 @@ JQ_MERGE='
 synced=0
 skipped=0
 stale=0
+seen_targets=()
 
 while IFS= read -r target || [[ -n "$target" ]]; do
+  target="${target%%[[:space:]]}"
+  target="${target##[[:space:]]}"
   [[ -z "$target" || "$target" == \#* ]] && continue
+
+  # Deduplicate
+  for seen in "${seen_targets[@]+"${seen_targets[@]}"}"; do
+    if [[ "$seen" == "$target" ]]; then
+      continue 2
+    fi
+  done
+  seen_targets+=("$target")
 
   if [[ ! -d "$target" ]]; then
     echo "SKIP  $target (not found)"
@@ -52,7 +71,13 @@ while IFS= read -r target || [[ -n "$target" ]]; do
     continue
   fi
 
-  project_root="$(dirname "$(dirname "$(dirname "$target")")")"
+  # Derive project root: strip _bmad/bmm/workflows suffix instead of counting dirnames
+  project_root="${target%/_bmad/bmm/workflows}"
+  if [[ "$project_root" == "$target" ]]; then
+    echo "SKIP  $target (path doesn't end in /_bmad/bmm/workflows)"
+    skipped=$((skipped + 1))
+    continue
+  fi
   project="$(basename "$project_root")"
 
   if $CHECK_ONLY; then
@@ -61,7 +86,7 @@ while IFS= read -r target || [[ -n "$target" ]]; do
       src_path="$SOURCE/$dir"
       dst_path="$target/$dir"
       [[ ! -d "$src_path" ]] && continue
-      if [[ ! -d "$dst_path" ]] || ! diff -rq "$src_path" "$dst_path" &>/dev/null; then
+      if [[ ! -d "$dst_path" ]] || ! diff -rq --exclude='.DS_Store' "$src_path" "$dst_path" &>/dev/null; then
         if ! $dirty; then
           echo "STALE $project"
           dirty=true
@@ -71,7 +96,7 @@ while IFS= read -r target || [[ -n "$target" ]]; do
     done
 
     settings_file="$project_root/.claude/settings.local.json"
-    if [[ -f "$HOOKS_SRC" ]] && command -v jq &>/dev/null; then
+    if [[ -f "$HOOKS_SRC" ]]; then
       if [[ ! -f "$settings_file" ]]; then
         if ! $dirty; then
           echo "STALE $project"
@@ -109,14 +134,14 @@ while IFS= read -r target || [[ -n "$target" ]]; do
       fi
 
       mkdir -p "$dst_path"
-      rsync -a --delete "$src_path/" "$dst_path/"
+      rsync -a --delete --exclude='.DS_Store' "$src_path/" "$dst_path/"
       echo "  OK    $dir"
     done
 
     settings_dir="$project_root/.claude"
     settings_file="$settings_dir/settings.local.json"
 
-    if [[ -f "$HOOKS_SRC" ]] && command -v jq &>/dev/null; then
+    if [[ -f "$HOOKS_SRC" ]]; then
       mkdir -p "$settings_dir"
       if [[ -f "$settings_file" ]]; then
         jq -n "$JQ_MERGE" "$settings_file" "$HOOKS_SRC" > "$settings_file.tmp"

@@ -7,6 +7,15 @@ SYNC_SCRIPT="$SCRIPT_DIR/sync-bmad-workflows.sh"
 echo "=== Upgrade BMAD ==="
 echo ""
 
+# Guard: abort if fork has uncommitted changes
+if ! git -C "$SCRIPT_DIR" diff --quiet || ! git -C "$SCRIPT_DIR" diff --cached --quiet; then
+  echo "ERROR: ~/bmad-method-v6 has uncommitted changes."
+  echo "Commit or stash them first, then re-run."
+  echo ""
+  git -C "$SCRIPT_DIR" status --short
+  exit 1
+fi
+
 # Step 1: Fetch upstream
 echo "Fetching upstream (bmad-code-org/BMAD-METHOD)..."
 git -C "$SCRIPT_DIR" fetch origin
