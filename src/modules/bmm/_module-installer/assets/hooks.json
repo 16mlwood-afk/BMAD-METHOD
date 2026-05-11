@@ -79,7 +79,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "TARGETS=\"$HOME/.bmad-targets\"; [ -f \"$TARGETS\" ] || exit 0; BMM=\"$PWD/_bmad/bmm/workflows\"; [ -d \"$BMM\" ] || exit 0; if ! grep -qF \"$BMM\" \"$TARGETS\" 2>/dev/null; then echo \"$BMM\" >> \"$TARGETS\"; printf '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"Auto-registered %s in ~/.bmad-targets. Run sync to distribute workflows.\"}}\\n' \"$BMM\"; fi",
+            "command": "TARGETS=\"$HOME/.bmad-targets\"; [ -f \"$TARGETS\" ] || exit 0; case \"$PWD\" in */.claude/worktrees/*) exit 0;; esac; BMM=\"$PWD/_bmad/bmm/workflows\"; [ -d \"$BMM\" ] || exit 0; if ! grep -qF \"$BMM\" \"$TARGETS\" 2>/dev/null; then echo \"$BMM\" >> \"$TARGETS\"; printf '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"Auto-registered %s in ~/.bmad-targets. Run sync to distribute workflows.\"}}\\n' \"$BMM\"; fi",
             "timeout": 3,
             "statusMessage": "Checking BMAD registration..."
           }
