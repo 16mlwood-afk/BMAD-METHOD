@@ -46,7 +46,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "if [ -n \"$CLAUDE_ENV_FILE\" ] && [ -f \"$HOME/.secrets\" ]; then source \"$HOME/.secrets\" 2>/dev/null && env | grep -vE \"^(_|SHELL|HOME|USER|LOGNAME|PATH|TERM|PWD|OLDPWD|SHLVL|CLAUDE_)\" >> \"$CLAUDE_ENV_FILE\"; fi",
+            "command": "if [ -n \"$CLAUDE_ENV_FILE\" ] && [ -f \"$HOME/.secrets\" ]; then source \"$HOME/.secrets\" 2>/dev/null && env | grep -vE \"^(_|SHELL|HOME|USER|LOGNAME|PATH|TERM|PWD|OLDPWD|SHLVL|CLAUDE_)\" | while IFS='=' read -r k v; do printf '%s=%q\\n' \"$k\" \"$v\"; done >> \"$CLAUDE_ENV_FILE\"; fi",
             "timeout": 5,
             "statusMessage": "Loading secrets..."
           }
