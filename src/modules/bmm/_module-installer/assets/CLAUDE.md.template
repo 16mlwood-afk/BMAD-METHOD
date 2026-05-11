@@ -69,6 +69,13 @@
 - Manual: describe the command here -->
 - Never ask the user to deploy manually — handle it yourself.
 
+### CI Health Check — Verify Deploy Actually Happened
+- **After pushing to a branch or merging to main, check CI status:** `gh run list --limit 1 --json conclusion,name,createdAt --jq '.[0]'`
+- **If the latest run has `conclusion: "failure"` with zero steps (job completed in <15 seconds, no runner assigned), CI is down** — this is a GitHub Actions quota exhaustion, not a code problem. Do NOT debug your code or re-push.
+- **When CI is down, deploy manually** using the project's deploy command above. Never leave code undeployed because CI is broken.
+- **If CI fails WITH steps** (runner was assigned, steps executed), that IS a code problem — read the logs and fix it.
+- **Quick diagnosis:** `gh run view --json jobs --jq '.jobs[0] | {steps: (.steps | length), conclusion}'` — zero steps = quota issue, non-zero steps = real failure.
+
 ### Local Dev
 <!-- TODO: Replace with your dev server commands and port -->
 - **Start:** `npm run dev` (or `./dev.sh`, `docker compose up`, etc.)
