@@ -171,6 +171,31 @@ This is a corporate/enterprise application. The design MUST follow these rules �
 6. Numeric badges without explanatory labels
 7. "Indie SaaS" or "startup template" aesthetic of any kind
 
+**AI design tool fingerprints (reject these — they signal auto-generated output, not intentional design):**
+
+*Layout:*
+- Bento grid layouts (asymmetric mixed-size card grids) — use uniform grids, tables, or lists
+- Hero sections on internal pages — start with content, not a tagline
+- Dashboard-as-homepage with metric card grids — route to the primary workflow instead
+- Massive padding/whitespace — dense is fine for power-user tools; 16px card padding, 24px section gaps
+
+*Visual:*
+- Purple/violet primary color (the #1 AI default) — use brand color or conservative blue
+- Gradient text, gradient backgrounds, glassmorphism — flat solid colors only
+- Oversized border-radius (16px+) — use 4px–8px max; pill shapes only for tags/badges
+- Heavy card shadows as decoration — reserve elevation for overlays and modals
+- Gradient/colored dividers — use `1px solid var(--border)`
+- Colored sidebar icons (different color per nav item) — monochrome icons, color = state only
+
+*Content/UX:*
+- Chatty empty states with illustrations ("No items yet! Get started…") — plain text: "No results."
+- Icons on every label, heading, and menu item — icons only where they add recognition speed
+- Hover scale transforms on cards — hover = background/border change, no movement
+- Animated number counters on metrics — render data immediately
+- Excessive status colors (8+ badge colors) — use 4 max: green, yellow, red, gray
+
+**Self-test:** If someone would guess the design is AI-generated, it fails. Corporate tools look like they were built by an in-house team — competent, consistent, invisible.
+
 ---
 
 ## 5. Constraints
