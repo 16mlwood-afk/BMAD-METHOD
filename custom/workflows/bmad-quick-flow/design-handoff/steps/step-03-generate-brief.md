@@ -144,6 +144,33 @@ The UI has access to this data shape. All fields are listed neutrally — you de
 
 {reference_pages — "Look at /pipeline for the app's visual language" with description of what's good about it. These are for design language consistency, NOT for layout inspiration for this feature.}
 
+{If `{design_system_style}` = "corporate", include this section. Otherwise skip it entirely.}
+
+## 4a. Corporate Design Guardrails
+
+This is a corporate/enterprise application. The design MUST follow these rules — they are hard constraints, not suggestions.
+
+**Aesthetic:**
+- Pure white (#FFFFFF) or cool neutral gray backgrounds — never cream, off-white, or warm tints
+- One neutral sans-serif family (Inter, SF Pro, Segoe UI) — no personality typography
+- Monospace fonts for data only (IDs, codes, tabular numbers) — never in headings or as a decorative voice
+- Color used sparingly and functionally — not as personality or branding
+- Dark mode: true dark neutrals (#1A1A1A–#2D2D2D) — not navy, not deep blue
+
+**Voice:**
+- Functional, instructional labeling: "Search Results," "Distributor Details" — not "01 — FOUNDATIONS"
+- No marketing copy, no aspirational headlines, no agency voice
+- Every UI element must be self-explanatory: no unexplained badges, no icons without labels, no truncated text
+
+**Anti-patterns (hard failures — do not produce any of these):**
+1. Cream or warm-tinted backgrounds
+2. Monospace fonts used decoratively (headings, section labels, navigation)
+3. Oversized editorial typography or playful numbering ("01 —")
+4. Marketing-style hero sections or aspirational copy
+5. Truncated text that isn't explicitly handled with a tooltip or expand pattern
+6. Numeric badges without explanatory labels
+7. "Indie SaaS" or "startup template" aesthetic of any kind
+
 ---
 
 ## 5. Constraints

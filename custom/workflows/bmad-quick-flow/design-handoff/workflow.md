@@ -38,6 +38,7 @@ This uses **step-file architecture** for focused execution:
 - `{implementation_files}` - File paths for implementation reference only (designer may browse for technical context, not for layout inspiration)
 - `{design_system}` - "existing" (inline tokens from the codebase) or "external" (design system provided separately — e.g., created in Claude Design). When "external", section 4 of the brief is replaced with a note telling the designer to apply their own system.
 - `{design_system_name}` - If external: the name of the design system (e.g., "Meridian"). Empty if "existing".
+- `{design_system_style}` - "corporate" or "default". When "corporate", the brief includes anti-patterns and guidelines from the corporate design system reference doc. Detect from user input or ask.
 - `{design_tokens}` - Existing CSS variables, font stacks, color palette, spacing scale (only populated when design_system = "existing")
 - `{existing_patterns}` - Component patterns already in the app (card styles, table patterns, form patterns)
 - `{constraints}` - Hard constraints the designer must respect (responsive breakpoints, data density, accessibility)
@@ -84,11 +85,17 @@ If the input is ambiguous, ask ONE clarifying question maximum, then proceed.
 
 ### Design System Detection
 
-Determine `{design_system}` and `{design_system_name}`:
+Determine `{design_system}`, `{design_system_name}`, and `{design_system_style}`:
 
 - If the user mentions an external design system by name → `{design_system}` = "external", `{design_system_name}` = that name
 - If NOT in autonomous mode → ask: **"Should this design use the existing tokens from the codebase, or an external design system (e.g., one created in Claude Design)?"**
 - If in autonomous mode and no explicit directive → default to "existing"
+
+Determine `{design_system_style}`:
+- If user says "corporate," "enterprise," "B2B," or the project is a business tool → `{design_system_style}` = "corporate"
+- Otherwise → `{design_system_style}` = "default"
+
+When `{design_system_style}` = "corporate", the brief includes anti-pattern guardrails from the corporate design guidelines reference doc (`_bmad-output/planning-artifacts/corporate-design-system-guidelines.md` if it exists in the project, otherwise inline the key rules). These prevent Claude Design from producing "indie SaaS" aesthetics instead of corporate.
 
 **Why this matters:** The codebase tokens may be developer placeholders copied from another project — NOT an intentional design system. Inlining them into the brief anchors the designer to dev choices, which is just as biased as describing the current layout. When a proper design system exists externally, the brief should reference it by name and tell the designer to apply it — not compete with inline tokens.
 
