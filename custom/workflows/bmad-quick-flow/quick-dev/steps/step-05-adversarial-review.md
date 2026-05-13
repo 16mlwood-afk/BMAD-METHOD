@@ -55,6 +55,29 @@ Merge all changes into `{diff_output}`.
 
 ---
 
+### 1b. Gather Outbound Payload Context
+
+**Why:** Review subagents only see `{diff_output}`. If the diff adds fields to a model, the reviewers cannot detect whether outbound serialization points (webhooks, external API forwards, exports) are now stale — because those files aren't in the diff. This step pulls in the relevant context so reviewers can catch **outbound payload drift**.
+
+**Procedure:**
+
+1. Extract the names of all Pydantic models, TypeScript interfaces, Drizzle tables, or Prisma models that gained fields in the diff (look for `class X(BaseModel)`, `interface X {`, table/model definitions with `+` lines).
+2. For each model name, search the codebase for outbound serialization points that reference it:
+   ```bash
+   grep -rn "ModelName\|model_name" --include="*.py" --include="*.ts" | grep -iE "webhook|payload|export|forward|send|notify|dispatch"
+   ```
+3. If any outbound payload builders are found that are **not** in the diff, read those files and append them to `{diff_output}` as a clearly labeled section:
+   ```
+   === OUTBOUND PAYLOAD CONTEXT (not in diff — included for drift detection) ===
+   // file: src/webhook.py
+   [full content of payload builder function]
+   ```
+4. If no outbound payloads reference the changed models, note: "No outbound payload drift risk detected."
+
+Store the augmented output as `{diff_output}` (replacing the original).
+
+---
+
 ### 2. Invoke Reviews
 
 Run both reviews against `{diff_output}`. These are orthogonal — the adversarial review is attitude-driven (cynical skepticism), while the edge-case hunter is method-driven (exhaustive path enumeration). Both should run.
@@ -64,20 +87,20 @@ If possible, run them in parallel using separate subagents with read access to t
 #### 2a. Adversarial Review
 
 ```xml
-<invoke-task>Review {diff_output} using {project-root}/_bmad/core/tasks/review-adversarial-general.xml</invoke-task>
+<invoke-task>Review {diff_output} with also_consider="If the diff expands a model with new fields, check the OUTBOUND PAYLOAD CONTEXT section (if present) for webhook/export payload builders that serialize a subset of that model. Flag any fields on the expanded model that are missing from the outbound payload as potential drift." using {project-root}/_bmad/core/tasks/review-adversarial-general.xml</invoke-task>
 ```
 
-**Platform fallback:** If task invocation not available, load the task file and follow its instructions inline, passing `{diff_output}` as the content.
+**Platform fallback:** If task invocation not available, load the task file and follow its instructions inline, passing `{diff_output}` as the content and the `also_consider` text above.
 
 The task should: review `{diff_output}` and return a list of findings.
 
 #### 2b. Edge-Case Hunter Review
 
 ```xml
-<invoke-task>Review {diff_output} using {project-root}/_bmad/core/tasks/review-edge-case-hunter.xml</invoke-task>
+<invoke-task>Review {diff_output} with also_consider="If OUTBOUND PAYLOAD CONTEXT is present, treat each field on the expanded model that is absent from the outbound payload as an unhandled path — the outbound consumer silently receives stale data." using {project-root}/_bmad/core/tasks/review-edge-case-hunter.xml</invoke-task>
 ```
 
-**Platform fallback:** If task invocation not available, load the task file and follow its instructions inline, passing `{diff_output}` as the content.
+**Platform fallback:** If task invocation not available, load the task file and follow its instructions inline, passing `{diff_output}` as the content and the `also_consider` text above.
 
 The task should: walk every branching path and boundary condition in the diff, returning a JSON array of unhandled edge cases (location, trigger_condition, guard_snippet, potential_consequence).
 
@@ -122,7 +145,8 @@ With findings in hand, read fully and follow: `{project-root}/_bmad/bmm/workflow
 
 - Diff constructed from baseline_commit
 - New files included in diff
-- Both review tasks invoked with diff as input
+- Outbound payload context gathered for any expanded models (step 1b)
+- Both review tasks invoked with augmented diff as input
 - Findings received from both reviews
 - Findings merged, normalized, and presented as unified table/TODOs
 
@@ -135,3 +159,4 @@ With findings in hand, read fully and follow: `{project-root}/_bmad/bmm/workflow
 - Accepting zero findings from both reviews without questioning
 - Presenting fewer findings than the review tasks returned without explicit instruction to do so
 - Not attributing findings to their source (adversarial vs edge-case)
+- **Skipping step 1b (outbound payload context)** — reviewers only see the diff and cannot detect webhook/export drift. This is the most common class of silent cross-system breakage: a model gains fields, the frontend gets updated, but the outbound webhook still sends the old subset.
