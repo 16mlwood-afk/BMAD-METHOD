@@ -186,6 +186,7 @@ This is a corporate/enterprise application. The design MUST follow these rules �
 - Heavy card shadows as decoration — reserve elevation for overlays and modals
 - Gradient/colored dividers — use `1px solid var(--border)`
 - Colored sidebar icons (different color per nav item) — monochrome icons, color = state only
+- Semantic-colored card fills (green card = good, red card = bad) — use a left-border accent or small badge, never fill an entire card background
 
 *Content/UX:*
 - Chatty empty states with illustrations ("No items yet! Get started…") — plain text: "No results."
