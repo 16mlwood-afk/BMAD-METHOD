@@ -59,6 +59,12 @@ For each modified file, classify it using the **stack-specific layer table**:
 - Derived fields in `rowTo*` functions that combine or transform columns
 - Frontend computed values (`useMemo`, inline expressions) that derive from API data
 
+**Outbound payload patterns to check:**
+
+- Webhook payload builders that serialize a **subset** of a model — if the source model gains fields, the outbound payload silently drifts
+- External API response shapes forwarded to third-party services
+- Export endpoints (CSV, JSON, PDF) that serialize domain models
+
 ---
 
 #### `python-fastapi-sse`
@@ -75,6 +81,12 @@ For each modified file, classify it using the **stack-specific layer table**:
 - Dict keys in `progress_snapshot()` or API response builders
 - Frontend state variables that display these values
 
+**Outbound payload patterns to check:**
+
+- Webhook payload builders (`webhook.py`, `*_webhook*`, `build_payload()`) that serialize a **subset** of a model — if the source model gains fields, the outbound payload silently drifts
+- External API response shapes that forward data to other services (not the frontend)
+- Export/download endpoints that serialize models to CSV, JSON, or PDF
+
 ---
 
 #### `nextjs-prisma`
@@ -90,6 +102,12 @@ For each modified file, classify it using the **stack-specific layer table**:
 - Prisma `_count` and aggregation queries
 - Computed fields in server actions or API handlers
 - Client-side derived state from query results
+
+**Outbound payload patterns to check:**
+
+- Webhook handlers or external notification functions that serialize a subset of a Prisma model
+- Third-party API integrations that forward domain data
+- Export/download routes that build payloads from domain models
 
 ---
 
@@ -126,6 +144,12 @@ Present the inventory to the conversation context (not to a file — this is int
    Produced: {file:line}
    Transported: {file:line in API response or hook}
    Displayed: {frontend file:line or "unknown"}
+
+### Outbound Payload Wires
+1. {payload_field or model_name} — {webhook / external API / export}
+   Source model: {file:line}
+   Payload builder: {file:line}
+   Gap: {fields on source model NOT in outbound payload}
 
 ### Potentially Dead Exports
 1. {export_name} — {file:line, was imported by {modified_file}, check remaining consumers}

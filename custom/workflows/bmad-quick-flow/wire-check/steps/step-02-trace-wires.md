@@ -124,6 +124,39 @@ For wires flagged as "potentially dead" in step 1:
 - [ ] If zero consumers found outside the definition file → confirmed dead
 - [ ] If consumers found → reclassify as connected and remove from issues
 
+### Check 5: Outbound Payload Drift
+
+For every outbound payload wire identified in step 1 (webhooks, external API forwards, exports):
+
+- [ ] Read the **source model** (the Pydantic model, Drizzle schema, or Prisma model that owns the data)
+- [ ] Read the **payload builder** (the function that constructs what gets sent outbound)
+- [ ] Compare the fields: list every field on the source model that is **not** included in the outbound payload
+- [ ] Classify the gap: is each missing field (a) intentionally excluded, (b) an oversight from a recent model expansion, or (c) not relevant to the outbound consumer?
+
+**Why this matters:** When a model is expanded (new fields added), the frontend sink gets updated in the same PR, but outbound payloads (webhooks, external APIs) are a separate serialization path that is easy to forget. The result is **silent drift** — the outbound consumer sees a frozen schema while the rest of the system evolves. This is invisible until the outbound consumer needs the new data and discovers it was never sent.
+
+**Common drift patterns by stack:**
+
+#### `python-fastapi-sse`
+- `WebhookPayload` / `build_payload()` manually maps fields from a domain model — new fields on the domain model don't automatically appear in the webhook
+- `model_dump()` / `model_dump_json()` on a subset model (not the full domain model) — the subset was defined before the expansion
+
+#### `express-react-drizzle`
+- Webhook handler constructs a plain object from `rowTo*` output, cherry-picking fields — new columns are excluded
+- Zod schema on the outbound payload acts as a whitelist — new fields stripped by validation
+
+#### `nextjs-prisma`
+- Server action or API route that forwards data to a third-party service uses a Prisma `select` that predates the schema change
+- Webhook handler uses a TypeScript `Pick<>` type that doesn't include new fields
+
+**Classification:**
+
+| Gap type | Action |
+|---|---|
+| **Drift** — field added to source model after payload builder was written, clearly relevant to outbound consumer | Flag as **Loose** wire with fix suggestion |
+| **Intentional** — field is internal-only or not relevant to the outbound consumer | Note as acknowledged, no fix needed |
+| **Ambiguous** — unclear whether the consumer needs it | Flag for product decision |
+
 ---
 
 ## CLASSIFICATION
@@ -136,6 +169,7 @@ After tracing, classify each wire:
 | **Loose**      | Chain breaks at a specific point (source OK but transport drops it, or transport OK but sink doesn't consume it) |
 | **Mismatched** | Data flows but format/type/name doesn't match between layers                                                     |
 | **Dead**       | Value never produced, export never consumed, or counter never increments                                         |
+| **Drifted**    | Outbound payload sends a frozen subset of a model that has since been expanded — silent schema divergence         |
 
 For each non-connected wire, record:
 
@@ -165,6 +199,7 @@ Proceed immediately to `{project-root}/_bmad/bmm/workflows/bmad-quick-flow/wire-
 - Non-connected wires have specific break points with file:line
 - Fix suggestions are concrete and actionable
 - No wire assumed "connected" without reading the actual code at each layer
+- Outbound payload wires checked for drift against their source models
 
 ## FAILURE MODES
 
@@ -174,3 +209,4 @@ Proceed immediately to `{project-root}/_bmad/bmm/workflows/bmad-quick-flow/wire-
 - Not checking conditional inclusion logic (the `if x > 0` / `?? []` pattern)
 - Marking a wire as "connected" because the variable exists, without verifying it's populated
 - Skipping dead export verification because "it's just a constant"
+- **Not checking outbound payloads (webhooks, external APIs, exports) when a model is expanded** — the frontend gets updated but the webhook silently sends stale data. This is the most common source of cross-system drift.
