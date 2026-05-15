@@ -84,6 +84,8 @@ _bmad/custom/*.user.toml
 website/.astro/
 website/dist/
 build/
-
 # Web bundle release artifacts
 dist/web-bundles/
+
+# Sharded module build output
+bmad/

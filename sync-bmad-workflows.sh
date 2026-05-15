@@ -43,7 +43,10 @@ for cmd in rsync jq; do
 done
 
 SYNC_DIRS=(
-  "bmad-quick-flow"
+  "implement"
+  "verify"
+  "design"
+  "meta"
   "shared"
   "4-implementation/code-review"
 )
@@ -65,7 +68,7 @@ JQ_MERGE='
 '
 
 # Auto-generate a .claude/commands/ file from a workflow.md's YAML frontmatter.
-# Args: $1 = workflow.md path, $2 = relative path from _bmad/bmm/workflows/ (e.g. bmad-quick-flow/trace-flow)
+# Args: $1 = workflow.md path, $2 = relative path from _bmad/bmm/workflows/ (e.g. verify/trace-flow)
 generate_command_content() {
   local workflow_md="$1" rel_dir="$2"
   local description
@@ -81,7 +84,7 @@ generate_command_content() {
 
 # Sync auto-generated command files for all workflows under a synced directory.
 # Args: $1 = target workflows dir (e.g. /path/project/_bmad/bmm/workflows),
-#        $2 = synced dir name (e.g. bmad-quick-flow),
+#        $2 = synced dir name (e.g. verify),
 #        $3 = commands target dir (e.g. /path/project/.claude/commands/bmad/bmm/workflows),
 #        $4 = mode ("check" or "sync")
 # Prints status lines. Returns count of stale/synced files via stdout last line "COUNT:<n>".
@@ -305,6 +308,13 @@ while IFS= read -r target || [[ -n "$target" ]]; do
     fi
 
     echo "SYNC  $project"
+
+    # Migration: remove old bmad-quick-flow directory (reorganized into build/verify/design/meta)
+    old_qf="$target/bmad-quick-flow"
+    if [[ -d "$old_qf" ]]; then
+      rm -rf "$old_qf"
+      echo "  OK    removed legacy bmad-quick-flow/ (migrated to build/verify/design/meta)"
+    fi
 
     for dir in "${SYNC_DIRS[@]}"; do
       src_path="$SOURCE/$dir"
