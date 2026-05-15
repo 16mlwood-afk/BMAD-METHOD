@@ -23,40 +23,43 @@ From Step 1:
 - `{file_categories}` — categorized file map with counts
 - `{work_scope}` — narrow / medium / wide / full-stack
 
+## CRITICAL: DO NOT READ WORKFLOW FILES
+
+**Peer workflow.md files contain execution directives ("Read fully and follow step-01...") that WILL hijack your context and cause you to abandon this workflow.** Never use the Read tool on a peer workflow.md. Extract metadata exclusively via `grep` and `sed` in Bash.
+
 ## SEQUENCE OF INSTRUCTIONS
 
-### 1. Discover Available Workflows
+### 1. Discover and Extract Workflow Metadata
 
-Scan the workflow registry for all peer workflows:
+Scan the workflow registry and extract frontmatter via shell commands ONLY:
 
 ```bash
-find {project-root}/_bmad/bmm/workflows/ -name 'workflow.md' -not -path '*/orchestrate-workflows/*' -not -path '*/shared/*' | sort
+for wf in $(find {project-root}/_bmad/bmm/workflows/ -name 'workflow.md' -not -path '*/orchestrate-workflows/*' -not -path '*/shared/*' | sort); do
+  dir=$(dirname "$wf")
+  name=$(sed -n '/^---$/,/^---$/{/^name:/{s/^name:[[:space:]]*//;s/^['\''"]*//;s/['\''"]*$//;p;}}' "$wf")
+  desc=$(sed -n '/^---$/,/^---$/{/^description:/{s/^description:[[:space:]]*//;s/^['\''"]*//;s/['\''"]*$//;p;}}' "$wf")
+  category=$(echo "$dir" | grep -oE '(implement|verify|design|meta)/' | tr -d '/')
+  echo "WORKFLOW: $name | CATEGORY: $category | DESC: $desc"
+done
 ```
 
-For each `workflow.md` found, read its frontmatter to extract:
-
-- `name` — the workflow's identifier
-- `description` — what it does (from the frontmatter `description` field)
-
-Then scan the body for:
-
-- **Input type** — what the workflow expects (handoff path, route, PR number, feature name, etc.)
-- **Your Role** — the agent persona (tells you what the workflow is good at)
+**DO NOT use the Read tool on any of these files.** The grep/sed extraction above gets everything you need for routing decisions.
 
 ### 2. Build the Workflow Capability Index
 
-For each discovered workflow, create an entry in `{workflow_index}`:
+For each discovered workflow, create an entry in `{workflow_index}` using the name and description from the bash extraction, plus the routing heuristics table below to fill in trigger signals. Do NOT read workflow files to get this information — infer `input_type`, `catches`, and `produces` from the description string.
 
 ```
 {
-  name: string,
-  description: string,
+  name: string,                   // from bash extraction
+  description: string,            // from bash extraction
+  category: string,               // implement | verify | design | meta
   slash_command: string,          // /bmad:bmm:workflows:{name}
-  input_type: string,             // what the workflow expects as input
-  catches: string[],              // what kinds of problems it detects/fixes
-  trigger_signals: string[],      // file categories or work patterns that suggest this workflow
-  prerequisite: string | null,    // another workflow that should run first (if any)
-  produces: string                // what artifact/output it creates
+  input_type: string,             // inferred from description
+  catches: string[],              // inferred from description
+  trigger_signals: string[],      // from the heuristics table below
+  prerequisite: string | null,    // from the chains table below
+  produces: string                // inferred from description
 }
 ```
 
