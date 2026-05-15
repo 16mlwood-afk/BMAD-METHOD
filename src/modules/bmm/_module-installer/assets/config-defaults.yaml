@@ -1,0 +1,14 @@
+# Required config keys that sync-bmad-workflows.sh will backfill
+# if missing from a project's _bmad/bmm/config.yaml.
+#
+# Format: each block is a YAML key + its default value.
+# The sync script checks whether the top-level key exists in the target;
+# if not, it appends this entire block (comment + key + value).
+
+# Autonomous execution — skip all menus and approval gates
+autonomous_mode: true
+autonomous_rules: |
+  Complete the full workflow without intervening the user.
+  If responses, decisions, approvals, or clarifications are required,
+  simulate informed, expert-level responses and proceed.
+  Do not pause to ask questions.
