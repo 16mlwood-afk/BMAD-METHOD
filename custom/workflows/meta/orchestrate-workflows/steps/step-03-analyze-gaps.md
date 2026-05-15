@@ -5,7 +5,7 @@ description: 'Cross-reference completed work against workflow capabilities to id
 
 # Step 3: Analyze Gaps
 
-**Progress: Step 3 of 4** — Next: Generate Prompts (autonomous)
+**Progress: Step 3 of 4** — Next: Execute Follow-ups (autonomous)
 
 ## RULES:
 
@@ -105,13 +105,29 @@ For each validated recommendation, create a structured entry:
   matched_signals: string[],      // what triggered this recommendation
   input_value: string,            // the actual input to pass (handoff path, route, etc.)
   chain_position: number | null,  // if part of a chain, what order (1, 2, 3...)
-  estimated_value: string         // what the user gains by running this
+  chain_predecessor: string | null, // workflow_name this depends on (must complete first)
+  estimated_value: string,        // what the user gains by running this
+  edits_source_code: boolean      // true if workflow modifies project source files (needs worktree isolation)
 }
 ```
 
+**`edits_source_code` classification:**
+
+| Workflow | edits_source_code | Reason |
+|----------|-------------------|--------|
+| wire-check | `true` | Fixes wiring issues in code |
+| quick-dev | `true` | Implements changes |
+| code-review | `false` | Read-only review |
+| trace-flow | `false` | Read-only analysis |
+| design-review | `false` | Read-only audit |
+| design-handoff | `false` | Writes artifact only |
+| quick-spec | `false` | Writes artifact only |
+
+For unlisted workflows, infer from the workflow's description in `{workflow_index}`. If unsure, default to `true` (safer to isolate unnecessarily than to collide).
+
 Store the complete analysis as `{gap_analysis}`.
 
-### 7. Proceed to Prompt Generation
+### 7. Proceed to Execution
 
 Read fully and follow: `{project-root}/_bmad/bmm/workflows/meta/orchestrate-workflows/steps/step-04-generate-prompts.md`
 
