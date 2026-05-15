@@ -309,12 +309,14 @@ while IFS= read -r target || [[ -n "$target" ]]; do
 
     echo "SYNC  $project"
 
-    # Migration: remove old bmad-quick-flow directory (reorganized into build/verify/design/meta)
-    old_qf="$target/bmad-quick-flow"
-    if [[ -d "$old_qf" ]]; then
-      rm -rf "$old_qf"
-      echo "  OK    removed legacy bmad-quick-flow/ (migrated to build/verify/design/meta)"
-    fi
+    # Migration: remove legacy directories (reorganized into implement/verify/design/meta)
+    for legacy_dir in "bmad-quick-flow" "build"; do
+      old_path="$target/$legacy_dir"
+      if [[ -d "$old_path" ]]; then
+        rm -rf "$old_path"
+        echo "  OK    removed legacy $legacy_dir/ (migrated to implement/verify/design/meta)"
+      fi
+    done
 
     for dir in "${SYNC_DIRS[@]}"; do
       src_path="$SOURCE/$dir"
