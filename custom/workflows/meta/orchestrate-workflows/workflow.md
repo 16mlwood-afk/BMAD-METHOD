@@ -1,14 +1,14 @@
 ---
 name: orchestrate-workflows
-description: 'Workflow intelligence layer — analyzes completed work, identifies gaps, and generates copy-pasteable follow-up workflow prompts for clean terminals. Reduces cognitive overhead by routing to the right next workflow automatically.'
+description: 'Workflow intelligence layer — analyzes completed work, identifies gaps, and auto-executes critical/recommended follow-up workflows. Optional follow-ups are presented as copy-paste prompts. Turns post-workflow routing from a TODO list into an assembly line.'
 main_config: '{project-root}/_bmad/bmm/config.yaml'
 ---
 
 # Orchestrate Workflows
 
-**Goal:** After any workflow completes (or on demand), analyze what was done, identify likely gaps and follow-up needs, and generate prioritized, copy-pasteable prompts that the user can fire in a clean terminal to trigger the right next workflow — with full context baked in.
+**Goal:** After any workflow completes (or on demand), analyze what was done, identify likely gaps and follow-up needs, and **auto-execute** the critical and recommended follow-up workflows. Optional follow-ups are presented as copy-pasteable prompts for the user to run if desired.
 
-**Your Role:** You are a workflow routing intelligence. You understand every workflow in the BMAD ecosystem — what it does, what it catches, what inputs it needs. You read the artifacts of completed work, cross-reference against available workflows, and produce targeted follow-up prompts that eliminate the gap between "I just finished X" and "what should I run next?"
+**Your Role:** You are a workflow execution dispatcher. You understand every workflow in the BMAD ecosystem — what it does, what it catches, what inputs it needs. You read the artifacts of completed work, cross-reference against available workflows, and **execute** the high-priority follow-ups directly — eliminating the manual copy-paste-into-clean-terminal loop entirely.
 
 ---
 
@@ -17,8 +17,8 @@ main_config: '{project-root}/_bmad/bmm/config.yaml'
 This uses **step-file architecture** for focused execution:
 
 - Each step loads fresh to combat "lost in the middle"
-- State persists via variables: `{trigger_context}`, `{changed_files}`, `{file_categories}`, `{workflow_index}`, `{gap_analysis}`, `{recommendations}`
-- Sequential progression through 4 phases: gather → index → analyze → generate
+- State persists via variables: `{trigger_context}`, `{changed_files}`, `{file_categories}`, `{workflow_index}`, `{gap_analysis}`, `{execution_results}`
+- Sequential progression through 4 phases: gather → index → analyze → execute
 - ALL steps are fully autonomous — no user interaction after initialization
 
 ### Step Processing Rules
@@ -31,10 +31,11 @@ This uses **step-file architecture** for focused execution:
 
 ### Critical Rules
 
-- **NEVER ask the user which workflow to run next** — that's the whole point of this workflow. Assess and recommend.
-- **ALWAYS generate prompts for clean terminals** — include the slash command, all necessary context (file paths, routes, handoff paths), and a one-sentence rationale.
+- **NEVER ask the user which workflow to run next** — that's the whole point of this workflow. Assess, then execute.
+- **Auto-execute critical and recommended workflows** — spawn each as an Agent sub-agent. Chain-dependent workflows run sequentially; independent workflows run in parallel.
+- **Present optional workflows as copy-paste prompts** — include the slash command, all necessary context (file paths, routes, handoff paths), and a one-sentence rationale.
 - **NEVER recommend workflows that don't match the work done** — a CSS-only change doesn't need a wire-check.
-- **Prompts must be self-contained** — the clean terminal has no memory of this session. Bake in every path and context variable the target workflow needs.
+- **Agent prompts must be self-contained** — the sub-agent has no memory of this session. Bake in every path, context variable, and rationale the target workflow needs.
 
 ---
 
@@ -70,7 +71,7 @@ If the input is ambiguous, infer from context. Do not ask.
 
 ### Worktree Requirement
 
-This workflow is **read-only** — it does not edit project files. It only writes one output file to `{implementation_artifacts}`. No worktree is needed.
+The orchestration phase (steps 1-3) is read-only. Step 4 spawns Agent sub-agents that may edit files — those agents use `isolation: "worktree"` when their target workflow edits code (wire-check, quick-dev, etc.). The orchestration session itself does not need a worktree beyond what it entered at session start.
 
 ### Paths
 
