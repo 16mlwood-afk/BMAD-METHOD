@@ -5,6 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SOURCE="$SCRIPT_DIR/custom/workflows"
 HOOKS_SRC="$SCRIPT_DIR/src/modules/bmm/_module-installer/assets/hooks.json"
 WORKTREE_INCLUDE_SRC="$SCRIPT_DIR/src/modules/bmm/_module-installer/assets/worktreeinclude.template"
+CONFIG_DEFAULTS_SRC="$SCRIPT_DIR/src/modules/bmm/_module-installer/assets/config-defaults.yaml"
 CLAUDEMD_TEMPLATE="$SCRIPT_DIR/src/modules/bmm/_module-installer/assets/CLAUDE.md.template"
 CLAUDEMD_SYNC="$SCRIPT_DIR/sync-claudemd-sections.py"
 TARGETS_FILE="$HOME/.bmad-targets"
@@ -111,6 +112,57 @@ sync_commands_for_dir() {
       count=$((count + 1))
     fi
   done < <(find "$workflows_dir/$sync_dir" -name 'workflow.md' -print0 2>/dev/null)
+
+  echo "$count"
+}
+
+# Backfill missing required keys from config-defaults.yaml into a project's config.yaml.
+# Args: $1 = project config.yaml path, $2 = mode ("check" or "sync")
+# Returns count of missing keys via stdout.
+sync_config_defaults() {
+  local config_file="$1" mode="$2"
+  local count=0
+
+  [[ ! -f "$CONFIG_DEFAULTS_SRC" ]] && { echo "0"; return; }
+  [[ ! -f "$config_file" ]] && { echo "0"; return; }
+
+  # Extract top-level keys from defaults (lines matching "^key:" that aren't comments or indented)
+  local required_keys
+  required_keys=$(grep -E '^[a-zA-Z_][a-zA-Z0-9_]*:' "$CONFIG_DEFAULTS_SRC" | sed 's/:.*//')
+
+  for key in $required_keys; do
+    if ! grep -qE "^${key}:" "$config_file"; then
+      if [[ "$mode" == "sync" ]]; then
+        # Extract the block for this key: from the comment line above it through all indented/continuation lines
+        local block=""
+        local in_block=false
+        local pending_comment=""
+        while IFS= read -r line; do
+          if [[ "$line" =~ ^#.* ]] && ! $in_block; then
+            pending_comment="${pending_comment:+$pending_comment
+}$line"
+          elif [[ "$line" =~ ^${key}: ]]; then
+            in_block=true
+            block="${pending_comment:+$pending_comment
+}$line"
+            pending_comment=""
+          elif $in_block && [[ "$line" =~ ^[[:space:]] ]]; then
+            block="$block
+$line"
+          elif $in_block; then
+            break
+          else
+            pending_comment=""
+          fi
+        done < "$CONFIG_DEFAULTS_SRC"
+
+        if [[ -n "$block" ]]; then
+          printf '\n%s\n' "$block" >> "$config_file"
+        fi
+      fi
+      count=$((count + 1))
+    fi
+  done
 
   echo "$count"
 }
@@ -278,6 +330,17 @@ while IFS= read -r target || [[ -n "$target" ]]; do
       fi
     fi
 
+    # Check config defaults
+    project_config="$project_root/_bmad/bmm/config.yaml"
+    cfg_missing=$(sync_config_defaults "$project_config" "check")
+    if [[ "$cfg_missing" -gt 0 ]]; then
+      if ! $dirty; then
+        echo "STALE $project"
+        dirty=true
+      fi
+      echo "  ↳  config ($cfg_missing required key(s) missing)"
+    fi
+
     if $dirty; then
       stale=$((stale + 1))
     else
@@ -352,6 +415,15 @@ while IFS= read -r target || [[ -n "$target" ]]; do
     if [[ -f "$WORKTREE_INCLUDE_SRC" ]] && [[ ! -f "$worktree_include" ]]; then
       cp "$WORKTREE_INCLUDE_SRC" "$worktree_include"
       echo "  OK    .worktreeinclude (created)"
+    fi
+
+    # Backfill missing config defaults
+    project_config="$project_root/_bmad/bmm/config.yaml"
+    if [[ -f "$project_config" ]]; then
+      cfg_added=$(sync_config_defaults "$project_config" "sync")
+      if [[ "$cfg_added" -gt 0 ]]; then
+        echo "  OK    config ($cfg_added key(s) backfilled)"
+      fi
     fi
 
     # Auto-generate command files from workflow.md frontmatter
