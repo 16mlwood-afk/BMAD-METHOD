@@ -411,6 +411,17 @@ if $CHECK_ONLY; then
   fi
 else
   echo "Done: $synced synced, $skipped skipped, $blocked blocked"
+
+  # Record sync timestamp for stale-session detection
+  date +%s > "$HOME/.bmad-last-sync"
+
+  ACTIVE_SESSIONS=$(pgrep -f "claude" 2>/dev/null | wc -l | tr -d ' ')
+  if [[ "$ACTIVE_SESSIONS" -gt 0 ]]; then
+    echo ""
+    echo "ℹ  $ACTIVE_SESSIONS active Claude session(s) may be using stale workflows."
+    echo "   They will be warned on next prompt. Restart sessions to pick up changes."
+  fi
+
   if [[ $blocked -gt 0 ]]; then
     echo ""
     echo "⚠  $blocked project(s) blocked due to local-only content."
