@@ -9,6 +9,7 @@ CONFIG_DEFAULTS_SRC="$SCRIPT_DIR/src/modules/bmm/_module-installer/assets/config
 CLAUDEMD_TEMPLATE="$SCRIPT_DIR/src/modules/bmm/_module-installer/assets/CLAUDE.md.template"
 CLAUDEMD_SYNC="$SCRIPT_DIR/sync-claudemd-sections.py"
 TARGETS_FILE="$HOME/.bmad-targets"
+REFERENCE_FILE="$HOME/.bmad-reference"
 CHECK_ONLY=false
 FORCE=false
 PULL_TARGET=""
@@ -167,6 +168,116 @@ $line"
   echo "$count"
 }
 
+# --- REFERENCE PROJECT SYNC ---
+# Upstream-only workflow dirs (installed by BMAD CLI, no custom override).
+# These get synced from a reference project to all others so they stay consistent.
+UPSTREAM_WORKFLOW_DIRS=(
+  "1-analysis"
+  "2-plan-workflows"
+  "3-solutioning"
+  "4-implementation/correct-course"
+  "4-implementation/create-story"
+  "4-implementation/dev-story"
+  "4-implementation/retrospective"
+  "4-implementation/sprint-planning"
+  "4-implementation/sprint-status"
+  "document-project"
+  "generate-project-context"
+  "qa-generate-e2e-tests"
+)
+
+# Non-workflow dirs to sync from the reference project's _bmad/ tree
+UPSTREAM_BMAD_DIRS=(
+  "core/agents"
+  "core/tasks"
+  "core/workflows"
+  "core/module-help.csv"
+  "bmm/agents"
+  "bmm/data"
+  "bmm/teams"
+  "bmm/module-help.csv"
+)
+
+# Resolve reference project root from ~/.bmad-reference (first line, stripped).
+# Falls back to the first target with a manifest if the file doesn't exist.
+resolve_reference_root() {
+  if [[ -f "$REFERENCE_FILE" ]]; then
+    local ref_path
+    ref_path=$(grep -v '^#' "$REFERENCE_FILE" | grep -v '^$' | head -1)
+    ref_path="${ref_path%%[[:space:]]}"
+    ref_path="${ref_path##[[:space:]]}"
+    if [[ -n "$ref_path" ]] && [[ -d "$ref_path/_bmad" ]]; then
+      echo "$ref_path"
+      return
+    fi
+  fi
+
+  # Fallback: first target project that has _config/manifest.yaml
+  while IFS= read -r target || [[ -n "$target" ]]; do
+    target="${target%%[[:space:]]}"
+    target="${target##[[:space:]]}"
+    [[ -z "$target" || "$target" == \#* ]] && continue
+    local proot="${target%/_bmad/bmm/workflows}"
+    if [[ -f "$proot/_bmad/_config/manifest.yaml" ]]; then
+      echo "$proot"
+      return
+    fi
+  done < "$TARGETS_FILE"
+
+  echo ""
+}
+
+# Sync upstream dirs from reference to a target project.
+# Args: $1 = reference _bmad root, $2 = target _bmad root, $3 = target workflows dir, $4 = mode ("check"|"sync")
+# Prints count of changes.
+sync_upstream_from_reference() {
+  local ref_bmad="$1" tgt_bmad="$2" tgt_workflows="$3" mode="$4"
+  local count=0
+
+  # Sync upstream workflow dirs
+  for dir in "${UPSTREAM_WORKFLOW_DIRS[@]}"; do
+    local src="$ref_bmad/bmm/workflows/$dir"
+    local dst="$tgt_workflows/$dir"
+    [[ ! -d "$src" ]] && continue
+
+    if [[ ! -d "$dst" ]] || ! diff -rq --exclude='.DS_Store' "$src" "$dst" &>/dev/null; then
+      if [[ "$mode" == "sync" ]]; then
+        mkdir -p "$dst"
+        rsync -a --delete --exclude='.DS_Store' "$src/" "$dst/"
+      fi
+      count=$((count + 1))
+    fi
+  done
+
+  # Sync non-workflow upstream dirs (core, agents, data, teams)
+  for item in "${UPSTREAM_BMAD_DIRS[@]}"; do
+    local src="$ref_bmad/$item"
+    local dst="$tgt_bmad/$item"
+
+    if [[ -f "$src" ]]; then
+      # Single file sync
+      if [[ ! -f "$dst" ]] || ! diff -q "$src" "$dst" &>/dev/null; then
+        if [[ "$mode" == "sync" ]]; then
+          mkdir -p "$(dirname "$dst")"
+          cp "$src" "$dst"
+        fi
+        count=$((count + 1))
+      fi
+    elif [[ -d "$src" ]]; then
+      # Directory sync
+      if [[ ! -d "$dst" ]] || ! diff -rq --exclude='.DS_Store' "$src" "$dst" &>/dev/null; then
+        if [[ "$mode" == "sync" ]]; then
+          mkdir -p "$dst"
+          rsync -a --delete --exclude='.DS_Store' "$src/" "$dst/"
+        fi
+        count=$((count + 1))
+      fi
+    fi
+  done
+
+  echo "$count"
+}
+
 # --- PULL MODE ---
 if [[ -n "$PULL_TARGET" ]]; then
   if [[ ! -d "$PULL_TARGET" ]]; then
@@ -218,6 +329,23 @@ if [[ ! -f "$TARGETS_FILE" ]]; then
   echo "Create it with one workflow path per line, e.g.:"
   echo "  /Users/you/project/_bmad/bmm/workflows"
   exit 1
+fi
+
+# Resolve reference project for upstream sync
+REFERENCE_ROOT=$(resolve_reference_root)
+if [[ -n "$REFERENCE_ROOT" ]]; then
+  REFERENCE_BMAD="$REFERENCE_ROOT/_bmad"
+  ref_project="$(basename "$REFERENCE_ROOT")"
+  if ! $CHECK_ONLY; then
+    echo "REF   $ref_project (upstream source)"
+  fi
+else
+  REFERENCE_BMAD=""
+  if ! $CHECK_ONLY; then
+    echo "WARN  No reference project found — skipping upstream sync"
+    echo "  Create ~/.bmad-reference with the project root path, e.g.:"
+    echo "    /Users/you/project"
+  fi
 fi
 
 synced=0
@@ -341,6 +469,18 @@ while IFS= read -r target || [[ -n "$target" ]]; do
       echo "  ↳  config ($cfg_missing required key(s) missing)"
     fi
 
+    # Check upstream sync from reference project
+    if [[ -n "$REFERENCE_BMAD" ]] && [[ "$project_root" != "$REFERENCE_ROOT" ]]; then
+      upstream_drift=$(sync_upstream_from_reference "$REFERENCE_BMAD" "$project_root/_bmad" "$target" "check")
+      if [[ "$upstream_drift" -gt 0 ]]; then
+        if ! $dirty; then
+          echo "STALE $project"
+          dirty=true
+        fi
+        echo "  ↳  upstream ($upstream_drift dir(s) differ from reference)"
+      fi
+    fi
+
     if $dirty; then
       stale=$((stale + 1))
     else
@@ -423,6 +563,14 @@ while IFS= read -r target || [[ -n "$target" ]]; do
       cfg_added=$(sync_config_defaults "$project_config" "sync")
       if [[ "$cfg_added" -gt 0 ]]; then
         echo "  OK    config ($cfg_added key(s) backfilled)"
+      fi
+    fi
+
+    # Sync upstream content from reference project
+    if [[ -n "$REFERENCE_BMAD" ]] && [[ "$project_root" != "$REFERENCE_ROOT" ]]; then
+      upstream_synced=$(sync_upstream_from_reference "$REFERENCE_BMAD" "$project_root/_bmad" "$target" "sync")
+      if [[ "$upstream_synced" -gt 0 ]]; then
+        echo "  OK    upstream ($upstream_synced dir(s) synced from reference)"
       fi
     fi
 
