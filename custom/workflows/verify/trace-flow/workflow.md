@@ -16,7 +16,7 @@ description: 'Trace data flow through a page, endpoint, or feature. Produces a h
 This uses **step-file architecture** for focused execution:
 
 - Each step loads fresh to combat "lost in the middle"
-- State persists via variables: `{anchor}`, `{anchor_type}`, `{anchor_file}`, `{anchor_line}`, `{stack}`, `{stages}`, `{live_data}`, `{gaps}`, `{server_live}`, `{page_purpose}`, `{user_decisions}`, `{available_not_shown}`, `{recommendations}`
+- State persists via variables: `{anchor}`, `{anchor_type}`, `{anchor_file}`, `{anchor_line}`, `{stack}`, `{stages}`, `{live_data}`, `{gaps}`, `{server_live}`, `{page_purpose}`, `{user_decisions}`, `{available_not_shown}`, `{recommendations}`, `{decisions_file}`
 - Sequential progression through 6 phases: map → snapshot → render → audit → evaluate-purpose → suggest UI
 
 ---

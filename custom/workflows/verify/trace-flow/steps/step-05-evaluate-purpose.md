@@ -194,3 +194,66 @@ Proceed immediately to `{project-root}/_bmad/bmm/workflows/verify/trace-flow/ste
 - Being too conservative ("everything is fine as-is") without genuinely considering the user's workflow
 - Not checking adjacent pages (missing obvious parity opportunities)
 - Vague recommendations ("maybe show more data") instead of specific user stories with locations
+
+---
+
+## RECORD DECISIONS
+
+After producing recommendations, persist all findings to the decisions file at `{implementation_artifacts}/flow-trace-decisions.yaml`. This enables the feedback loop — the next trace-flow on this anchor won't re-flag resolved items.
+
+### File Format
+
+```yaml
+# flow-trace-decisions.yaml
+# Auto-maintained by trace-flow workflow. Do not edit manually.
+
+anchor: "{anchor}"
+last_traced: "{date}"
+
+decisions:
+  - field: "totalAmount"
+    category: "dead-field"
+    status: "resolved"
+    action: "removed"
+    resolved_date: "2026-05-17"
+    pr: "#353"
+    reason: "Only consumer (client CSV export) was removed in PR #344"
+
+  - field: "vatRate"
+    category: "dead-field"
+    status: "resolved"
+    action: "removed"
+    resolved_date: "2026-05-17"
+    pr: "#353"
+    reason: "Same as totalAmount — orphaned by CSV export removal"
+
+  - field: "supplier_country"
+    category: "available-not-queried"
+    status: "keep-omitted"
+    reason: "Not relevant to UK VAT return verification — correct omission"
+    decided_date: "2026-05-17"
+
+  - field: "vat_reclaim_method"
+    category: "available-not-shown"
+    status: "pending"
+    value_score: "medium"
+    recommendation: "Surface in IFD expand row for verification"
+    flagged_date: "2026-05-17"
+```
+
+### Status Values
+
+| Status | Meaning |
+|--------|---------|
+| `resolved` | Issue was fixed — field removed, surfaced, or refactored. Include PR reference. |
+| `keep-omitted` | Evaluated and confirmed: correct to NOT show this field. Won't be re-flagged. |
+| `pending` | Recommendation made but not yet actioned. Will be re-checked on next trace. |
+| `superseded` | Recommendation no longer relevant due to page redesign or feature removal. |
+
+### Rules
+
+- **Create the file** if it doesn't exist (first trace for this anchor)
+- **Append new entries** — never remove old ones (they're the audit trail)
+- **Update status** of existing entries when re-tracing finds them resolved
+- **One file per anchor** — if a project has multiple traced pages, each gets its own decisions file: `flow-trace-decisions-{slug}.yaml`
+- **Confirmed omissions from step 5 section 6** become `keep-omitted` entries — this is the primary mechanism that prevents re-flagging
