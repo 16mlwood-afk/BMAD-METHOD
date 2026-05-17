@@ -2,7 +2,7 @@
 name: 'step-04-audit'
 description: 'Audit the traced pipeline for gaps, dead fields, redundant fetches, type drift, and optimization opportunities'
 
-nextStepFile: './step-05-suggest-ui.md'
+nextStepFile: './step-05-evaluate-purpose.md'
 ---
 
 # Step 4: Audit

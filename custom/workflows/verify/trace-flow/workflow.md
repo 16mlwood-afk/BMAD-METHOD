@@ -16,8 +16,8 @@ description: 'Trace data flow through a page, endpoint, or feature. Produces a h
 This uses **step-file architecture** for focused execution:
 
 - Each step loads fresh to combat "lost in the middle"
-- State persists via variables: `{anchor}`, `{anchor_type}`, `{anchor_file}`, `{anchor_line}`, `{stack}`, `{stages}`, `{live_data}`, `{gaps}`, `{server_live}`
-- Sequential progression through 5 phases: map → snapshot → render → audit → suggest UI
+- State persists via variables: `{anchor}`, `{anchor_type}`, `{anchor_file}`, `{anchor_line}`, `{stack}`, `{stages}`, `{live_data}`, `{gaps}`, `{server_live}`, `{page_purpose}`, `{user_decisions}`, `{available_not_shown}`, `{recommendations}`
+- Sequential progression through 6 phases: map → snapshot → render → audit → evaluate-purpose → suggest UI
 
 ---
 
@@ -54,7 +54,7 @@ If no anchor is provided, ask the user. If the anchor is ambiguous (e.g., a feat
 
 ### Worktree Requirement
 
-If step 5 (suggest-ui) is accepted and the agent builds a component, **enter a worktree via `EnterWorktree` before editing any files.** The trace-flow workflow is read-only through steps 1-4, but step 5 can write code and must not collide with parallel sessions. Follow the project's worktree rules from CLAUDE.md:
+If step 6 (suggest-ui) is accepted and the agent builds a component, **enter a worktree via `EnterWorktree` before editing any files.** The trace-flow workflow is read-only through steps 1-5, but step 6 can write code and must not collide with parallel sessions. Follow the project's worktree rules from CLAUDE.md:
 
 - Enter worktree before any file edits
 - Use descriptive branch names: `feat/pipeline-viz-{slug}`
