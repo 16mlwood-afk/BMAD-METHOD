@@ -49,7 +49,11 @@ Load config from `{main_config}` and resolve:
 
 ### Path Resolution
 
-- `{bmad_root}` = the BMAD fork root directory. Detect by searching upward from the installed workflow path for `sync-bmad-workflows.sh`. If not found, ask the user.
+- `{bmad_root}` = the BMAD fork root directory. Resolution order:
+  1. Check if `~/bmad-method-v6/sync-bmad-workflows.sh` exists → use `~/bmad-method-v6/`
+  2. Search upward from the installed workflow path for `sync-bmad-workflows.sh` (works when running from within the fork itself)
+  3. Ask the user (non-autonomous only)
+  In autonomous mode, if steps 1-2 both fail, HALT — the fork location is required and cannot be guessed.
 - `{installed_path}` = `{project-root}/_bmad/bmm/workflows/meta/create-workflow`
 
 ### Worktree Requirement
