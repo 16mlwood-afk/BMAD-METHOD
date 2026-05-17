@@ -38,6 +38,18 @@
             "statusMessage": "Worktree guard..."
           }
         ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "name": "bmad-workflow-guard",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "FILE=\"$CLAUDE_TOOL_INPUT_FILE_PATH\"; case \"$FILE\" in */_bmad/bmm/config.yaml|*/_bmad/_config/*) exit 0;; */_bmad/*) printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"BLOCKED: %s is managed by BMAD sync and will be overwritten. Edit the source in ~/bmad-method-v6/ (custom/workflows/ for custom workflows, reference project for upstream), then run sync-bmad-workflows.sh to distribute.\"}}\\n' \"$FILE\";; esac",
+            "timeout": 3,
+            "statusMessage": "Workflow source guard..."
+          }
+        ]
       }
     ],
     "SessionStart": [
