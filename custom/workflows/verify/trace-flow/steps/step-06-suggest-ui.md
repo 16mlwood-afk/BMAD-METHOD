@@ -1,11 +1,13 @@
 ---
 name: 'step-06-suggest-ui'
-description: 'Evaluate whether the traced pipeline would benefit from a user-facing pipeline visualization component, and offer to build it'
+description: 'Evaluate whether the traced pipeline would benefit from a user-facing visualization. If so, produce a structured handoff for the design pipeline — never build UI directly.'
 ---
 
-# Step 6: Suggest Pipeline UI
+# Step 6: Evaluate Pipeline UI Opportunity
 
-**Goal:** Evaluate whether the traced data flow is something end users would benefit from *seeing* — not just developers. If so, offer to build a pipeline visualization component that surfaces the flow as a live, interactive UI element.
+**Goal:** Evaluate whether the traced data flow is something end users would benefit from *seeing* — not just developers. If so, produce a structured handoff artifact that feeds into the design pipeline (design-handoff → Claude Design → design-review). This workflow does NOT build UI components.
+
+**Boundary:** This is the final step of a diagnostic workflow. It evaluates and hands off — it does not design or implement. The design-handoff workflow exists precisely to prevent developer implementation choices from masquerading as design decisions.
 
 ---
 
@@ -18,14 +20,18 @@ From previous steps:
 - `{live_data}` — Captured data values
 - `{stack}` — Project stack
 - `{gaps}` — Audit findings
+- `{page_purpose}` — What the page is for
+- `{user_decisions}` — What users decide here
+- `{available_not_shown}` — Unsurfaced data with value scores
+- `{recommendations}` — Value assessments from step 5
 
 ---
 
 ## EVALUATION CRITERIA
 
-Score the traced pipeline against these signals. Each signal is +1. A score of 3+ triggers the suggestion.
+Score the traced pipeline against these signals. Each signal is +1. A score of 3+ means a strong candidate.
 
-### Positive signals (suggest UI)
+### Positive signals (suggest visualization)
 
 | Signal | What to check |
 |--------|--------------|
@@ -52,153 +58,118 @@ Score the traced pipeline against these signals. Each signal is +1. A score of 3
 score = (positive signals present) - (negative signals present)
 ```
 
-- **Score 3+:** Strong candidate → suggest building the UI
-- **Score 1-2:** Possible candidate → mention it as an option but don't push
-- **Score 0 or below:** Not a candidate → skip suggestion, end workflow
+- **Score 3+:** Strong candidate → produce design handoff
+- **Score 1-2:** Possible candidate → mention in summary, don't produce handoff
+- **Score 0 or below:** Not a candidate → skip, end workflow
 
 ---
 
-## AUTONOMOUS MODE GATE
+## WHEN SCORE >= 3: PRODUCE DESIGN HANDOFF
 
-> **AUTONOMOUS MODE:** If `autonomous_mode` is `true` in config:
-> - **Score 3+:** Auto-accept. Proceed directly to "BUILD THE COMPONENT" without asking.
-> - **Score 1-2:** Note the opportunity in the final summary but do NOT build. The signal is too weak for autonomous action.
-> - **Score 0 or below:** Skip suggestion entirely.
+Write a structured handoff artifact to `{implementation_artifacts}/pipeline-ui-handoff-{slug}-{date}.md`. This artifact is input for the design-handoff workflow — it provides the data contracts and user value, NOT the visual design.
+
+### Handoff Artifact Format
+
+```markdown
+---
+title: 'Pipeline UI Opportunity: {anchor description}'
+created: '{date}'
+source: 'trace-flow workflow'
+type: pipeline-ui-handoff
+score: {score}
+---
+
+# Pipeline UI Opportunity: {anchor description}
+
+**Source:** trace-flow analysis of `{anchor}`
+**Score:** {score}/6 positive signals
+**Date:** {date}
+
+## User Context
+
+**Page purpose:** {page_purpose}
+**User decisions:** {user_decisions}
+**Current gap:** {What the user can't see today — e.g., "The user sees the final result but not which processing stages completed or where something stalled"}
+
+## Pipeline Stages
+
+{For each stage — factual data only, no layout suggestions:}
+
+### Stage {n}: {stage_name}
+
+- **What happens:** {one-sentence description}
+- **Status states:** {what determines complete/in-progress/pending/failed}
+- **Key data at this stage:** {field names and example values from live capture}
+- **Layer:** {source | model | service | transport | state | render}
+- **File:** `{file_path}:{line_number}`
+
+## Data Contracts
+
+{For each stage, the input/output shape — TypeScript interfaces or field lists:}
+
+### Stage {n} → Stage {n+1}
+
+**In:** {fields entering this stage}
+**Out:** {fields leaving this stage}
+**Transform:** {what changed — renames, computations, drops}
+
+## User Value Proposition
+
+- {Why seeing the pipeline helps the user}
+- {What question this answers for them}
+- {What they currently have to do instead — workarounds, asking support, etc.}
+
+## Unsurfaced Data (from step 5)
+
+{Include the high/medium value fields from the purpose evaluation — the designer should know what data is available}
+
+| Field | Value Score | Data Source | Why Valuable |
+|-------|-----------|-------------|-------------|
+{from step 5 inventory}
+
+## What This Handoff Does NOT Include
+
+This artifact deliberately excludes:
+- Visual layout or component structure
+- Color schemes, icons, or styling
+- Specific UI patterns (cards, timelines, progress bars)
+- Implementation technology choices
+
+These decisions belong to the design pipeline. Run `/bmad:bmm:workflows:design-handoff {this_file_path}` to produce an unbiased Claude Design brief.
+```
 
 ---
 
-## WHEN TO SUGGEST
+## AUTONOMOUS MODE BEHAVIOR
 
-If score >= 1, present the suggestion. Tailor the enthusiasm to the score:
-
-### Score 3+ (strong candidate)
-
-```
-**Pipeline UI opportunity detected.**
-
-This flow has {n} stages with trackable status — it's a strong candidate for
-a user-facing pipeline visualization. Right now the user sees the end result
-but not the journey:
-
-**Stages that would be visible:**
-{For each stage:}
-  {icon} **{stage_name}** — {one-line description}
-    Status: {what determines success/failure/pending}
-    Data shown: {key fields the user would see at this stage}
-
-**User value:**
-- {Why seeing the pipeline helps — e.g., "Users can see where an import stalled instead of just seeing 'failed'"}
-- {What question this answers — e.g., "Is my ASIN verified? Is the listing active? What's the current price?"}
-
-**Want me to build this?** I have all the stage definitions, data shapes, and
-status logic from this trace — I can generate the component now.
-```
-
-In non-autonomous mode, wait for user response. In autonomous mode with score 3+, proceed immediately.
-
-### Score 1-2 (possible candidate)
-
-```
-**Note:** This flow has some pipeline characteristics ({n} stages, status tracking)
-that could work as a visualization. It's not as clear-cut as a full pipeline —
-{reason for lower score}. Let me know if you'd like to explore it.
-```
-
-### Score 0 or below
-
-No suggestion. End workflow.
-
----
-
-## IF THE USER ACCEPTS: BUILD THE COMPONENT
-
-When the user says yes (or in autonomous mode with score 3+), build the pipeline visualization component.
-
-### Component Design Principles
-
-Model after the project's existing pipeline-style UI patterns. The component should render as a **vertical stage timeline** where each stage is a card showing:
-
-1. **Status indicator** — icon/color based on the stage's state (complete, in-progress, pending, failed)
-2. **Stage name** — bold heading describing what happens at this stage
-3. **Description** — one sentence explaining what this stage does
-4. **Data card** — key-value table showing the actual data at this stage (field name → live value)
-5. **Timestamp** — when this stage was last updated (relative time, e.g., "9d ago")
-
-### Architecture
-
-```
-PipelineVisualization (container)
-├── PipelineHeader (title, summary stats)
-├── PipelineStage[] (one per stage)
-│   ├── StatusIndicator (icon + color)
-│   ├── StageTitle + Description
-│   └── DataCard (key-value pairs from the stage's data)
-└── PipelineActions (optional: refresh, archive, etc.)
-```
-
-### Data Contract
-
-The component receives a **pipeline definition** that maps directly from the trace-flow output:
-
-```typescript
-interface PipelineStage {
-  name: string
-  description: string
-  status: 'complete' | 'in_progress' | 'pending' | 'failed' | 'skipped'
-  layer: string
-  data: Record<string, string | number | boolean | null>
-  file?: string
-  updatedAt?: string
-}
-
-interface PipelineVisualizationProps {
-  title: string
-  description: string
-  stages: PipelineStage[]
-  anchor: string
-}
-```
-
-### Implementation Steps
-
-1. **Create the component** — Place in the project's component directory following existing conventions (e.g., `frontend/src/components/` or `app/components/` depending on the stack)
-2. **Style it** — Match the project's existing design patterns (check for Tailwind, CSS modules, styled-components, or inline styles)
-3. **Wire it up** — Connect to the API endpoint or data source that feeds the stages
-4. **Add status logic** — Map the backend state to stage status (complete/in_progress/pending/failed)
-5. **Add data cards** — Render the key-value pairs from each stage's data
-6. **Handle loading/error/empty** — Follow the project's existing patterns for these states
-
-### What NOT to build
-
-- Don't build a generic "pipeline framework" — build a specific component for THIS flow
-- Don't add routing or navigation — this is a component that gets embedded in an existing page
-- Don't add edit/mutation functionality — this is read-only visualization
-- Don't over-abstract — if there are 5 stages, it's fine to have the stage definitions inline rather than in a config file
-
-### Handoff to quick-dev
-
-If the component build is substantial (more than ~50 lines of changes), the agent should:
-
-1. Generate a quick tech-spec describing the component, its data sources, and where it gets embedded
-2. Offer to execute it via the quick-dev workflow: `→ /bmad:bmm:workflows:quick-dev {spec_path}`
-
-If it's small (a single component file + embedding it in an existing page), build it directly in this step.
+In autonomous mode:
+- **Score 3+:** Write the handoff artifact. Do NOT auto-build any component.
+- **Score 1-2:** Note the opportunity in the final summary but do NOT produce a handoff.
+- **Score 0 or below:** Skip entirely.
 
 ---
 
 ## PRESENT FINAL SUMMARY
 
-After evaluation (whether or not a UI was suggested/built):
+After evaluation:
 
 ```
 **Trace-flow workflow complete.**
 
 **Pipeline:** {source} → ... → {render} ({stage_count} stages)
 **Audit:** {n} issues found
-**Pipeline UI:** {suggested + accepted | suggested + declined | not suggested — {reason}}
+**Purpose evaluation:** {n} high-value unsurfaced fields identified
+**Pipeline UI:** {score >= 3: "opportunity detected — handoff written" | score 1-2: "possible candidate, noted" | score <= 0: "not suggested — {reason}"}
 
-**Deliverable:** {report_file_path}
-{If component built: **Component:** {component_file_path}}
+**Deliverables:**
+1. Pipeline trace: {report_file_path}
+{If score >= 3:}
+2. Pipeline UI handoff: {handoff_file_path}
+   → Run `/bmad:bmm:workflows:design-handoff {handoff_file_path}` to produce the Claude Design brief.
+
+{If high-value unsurfaced fields exist:}
+**Data opportunities:** {count} field(s) with product value not currently shown.
+   → Include in design brief when the page is next redesigned.
 ```
 
 ---
@@ -208,24 +179,27 @@ After evaluation (whether or not a UI was suggested/built):
 The trace-flow workflow ends here. Deliverables:
 
 1. Pipeline document at `{implementation_artifacts}/flow-trace-{slug}-{date}.md`
-2. Pipeline visualization component (if built) in the project's component directory
+2. Decisions file at `{implementation_artifacts}/flow-trace-decisions-{slug}.yaml`
+3. Pipeline UI handoff at `{implementation_artifacts}/pipeline-ui-handoff-{slug}-{date}.md` (if score >= 3)
+
+No code is written by this workflow. UI implementation goes through the design pipeline.
 
 ---
 
 ## SUCCESS METRICS
 
 - Pipeline evaluated against all positive and negative signals
-- Score calculated and appropriate suggestion level chosen
-- If suggested: stages, status logic, and user value clearly articulated
-- If accepted: component built following project patterns, wired to real data
-- If not suggested: clear reason noted in final summary
-- Final summary presented
+- Score calculated correctly
+- If score >= 3: structured handoff artifact written with data contracts and user value
+- Handoff artifact contains NO design decisions (no layout, no components, no styling)
+- Clear next-step prompt pointing to design-handoff workflow
+- Final summary presented with all deliverable paths
 
 ## FAILURE MODES
 
-- Suggesting a pipeline UI for every trace (most flows are simple CRUD — not everything needs visualization)
-- Building a generic framework instead of a specific component for this flow
-- Not checking for existing visualizations (suggesting a duplicate)
-- Building the component without wiring it to real data (static mockup is useless)
-- Over-engineering: adding edit/mutation/routing to what should be a read-only status view
+- Building a UI component directly (this workflow is diagnostic, not implementation)
+- Including layout suggestions in the handoff ("use a vertical timeline", "render as cards")
+- Auto-executing design-handoff (that's a separate workflow the user or dispatch-followups should trigger)
+- Suggesting a pipeline UI for every trace (most flows are simple CRUD)
+- Not including the step-5 unsurfaced data inventory in the handoff (the designer needs this)
 - Suggesting a pipeline UI for internal/developer-only flows that end users never see

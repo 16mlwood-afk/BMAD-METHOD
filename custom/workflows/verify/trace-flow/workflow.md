@@ -54,11 +54,8 @@ If no anchor is provided, ask the user. If the anchor is ambiguous (e.g., a feat
 
 ### Worktree Requirement
 
-If step 6 (suggest-ui) is accepted and the agent builds a component, **enter a worktree via `EnterWorktree` before editing any files.** The trace-flow workflow is read-only through steps 1-5, but step 6 can write code and must not collide with parallel sessions. Follow the project's worktree rules from CLAUDE.md:
+This workflow is entirely read-only — it produces diagnostic artifacts but never edits source code. No worktree is needed. If the pipeline UI evaluation (step 6) identifies an opportunity, it writes a handoff artifact and directs the user to the design pipeline.
 
-- Enter worktree before any file edits
-- Use descriptive branch names: `feat/pipeline-viz-{slug}`
-- Deliver work to main before ending the session
 
 ### Paths
 
