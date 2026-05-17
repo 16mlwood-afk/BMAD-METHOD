@@ -29,6 +29,25 @@ From previous steps:
 
 ## AUDIT CHECKS
 
+### Prior Decisions Gate
+
+Before running checks, load the decisions file:
+
+```
+{implementation_artifacts}/flow-trace-decisions.yaml
+```
+
+If it exists, read it. For each entry with `status: resolved` or `status: keep`:
+- **Skip** the field/component in the corresponding audit check
+- **Note** in the output: "Skipped {field} — previously resolved ({PR link or reason})"
+
+For entries with `status: pending`:
+- **Re-check** the field — it may have been fixed since the last trace
+- If fixed, update status to `resolved` with the date
+- If still present, keep the finding but note "flagged previously on {date}"
+
+If the file does not exist, proceed normally — this is the first trace for this anchor.
+
 Run each audit check against the traced pipeline. Record findings as `{gaps}`.
 
 ### Audit 1: Dead Fields
