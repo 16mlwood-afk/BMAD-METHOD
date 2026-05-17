@@ -97,7 +97,7 @@ Store as `{work_scope}`.
 
 ### 6. Proceed to Index
 
-Read fully and follow: `{project-root}/_bmad/bmm/workflows/meta/orchestrate-workflows/steps/step-02-index-workflows.md`
+Read fully and follow: `{project-root}/_bmad/bmm/workflows/meta/dispatch-followups/steps/step-02-index-workflows.md`
 
 ---
 

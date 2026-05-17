@@ -34,7 +34,7 @@ From Step 1:
 Scan the workflow registry and extract frontmatter via shell commands ONLY:
 
 ```bash
-for wf in $(find {project-root}/_bmad/bmm/workflows/ -name 'workflow.md' -not -path '*/orchestrate-workflows/*' -not -path '*/shared/*' | sort); do
+for wf in $(find {project-root}/_bmad/bmm/workflows/ -name 'workflow.md' -not -path '*/dispatch-followups/*' -not -path '*/shared/*' | sort); do
   dir=$(dirname "$wf")
   name=$(sed -n '/^---$/,/^---$/{/^name:/{s/^name:[[:space:]]*//;s/^['\''"]*//;s/['\''"]*$//;p;}}' "$wf")
   desc=$(sed -n '/^---$/,/^---$/{/^description:/{s/^description:[[:space:]]*//;s/^['\''"]*//;s/['\''"]*$//;p;}}' "$wf")
@@ -97,7 +97,7 @@ Store as `{workflow_chains}`.
 
 ### 5. Proceed to Analysis
 
-Read fully and follow: `{project-root}/_bmad/bmm/workflows/meta/orchestrate-workflows/steps/step-03-analyze-gaps.md`
+Read fully and follow: `{project-root}/_bmad/bmm/workflows/meta/dispatch-followups/steps/step-03-analyze-gaps.md`
 
 ---
 
