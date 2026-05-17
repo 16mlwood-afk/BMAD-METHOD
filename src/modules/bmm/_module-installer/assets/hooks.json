@@ -107,6 +107,17 @@
             "statusMessage": "Checking health audit freshness..."
           }
         ]
+      },
+      {
+        "name": "bmad-handoff-backlog",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "ART=\"$PWD/_bmad-output/implementation-artifacts\"; [ -d \"$ART\" ] || exit 0; pending=0; cutoff=$(date -v-7d +%Y-%m-%d 2>/dev/null || date -d \"7 days ago\" +%Y-%m-%d 2>/dev/null); [ -z \"$cutoff\" ] && exit 0; for hf in \"$ART\"/handoff-*.md; do [ -f \"$hf\" ] || continue; fdate=$(basename \"$hf\" .md | grep -oE \"[0-9]{4}-[0-9]{2}-[0-9]{2}$\"); [ -z \"$fdate\" ] && continue; [[ \"$fdate\" < \"$cutoff\" ]] && continue; body=$(sed -n \"/^## Recommended Follow-ups/,/^## /{/^## /d;p;}\" \"$hf\" 2>/dev/null | sed \"/^$/d\" | head -3); [ -z \"$body\" ] && continue; echo \"$body\" | head -1 | grep -qi \"^none\" && continue; echo \"$body\" | grep -qE \"^[0-9]+\\.\" && pending=$((pending + 1)); done; if [ \"$pending\" -gt 0 ]; then printf '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"HANDOFF BACKLOG: %s handoff(s) from the last 7 days have unactioned follow-ups. Run /bmad:bmm:workflows:dispatch-followups to triage.\"}}\\n' \"$pending\"; fi",
+            "timeout": 10,
+            "statusMessage": "Checking handoff backlog..."
+          }
+        ]
       }
     ],
     "PostToolUse": [
