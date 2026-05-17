@@ -129,7 +129,7 @@ Store the complete analysis as `{gap_analysis}`.
 
 ### 7. Proceed to Execution
 
-Read fully and follow: `{project-root}/_bmad/bmm/workflows/meta/orchestrate-workflows/steps/step-04-generate-prompts.md`
+Read fully and follow: `{project-root}/_bmad/bmm/workflows/meta/dispatch-followups/steps/step-04-generate-prompts.md`
 
 ---
 
