@@ -1,9 +1,9 @@
 ---
-name: 'step-05-suggest-ui'
+name: 'step-06-suggest-ui'
 description: 'Evaluate whether the traced pipeline would benefit from a user-facing pipeline visualization component, and offer to build it'
 ---
 
-# Step 5: Suggest Pipeline UI
+# Step 6: Suggest Pipeline UI
 
 **Goal:** Evaluate whether the traced data flow is something end users would benefit from *seeing* — not just developers. If so, offer to build a pipeline visualization component that surfaces the flow as a live, interactive UI element.
 
