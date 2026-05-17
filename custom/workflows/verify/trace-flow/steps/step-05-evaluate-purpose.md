@@ -1,15 +1,17 @@
 ---
 name: 'step-05-evaluate-purpose'
-description: 'Product-level intelligence layer — evaluates what data SHOULD be surfaced given the pages purpose, not just what IS wired correctly'
+description: 'Product-level intelligence layer — inventories what data is available but not surfaced, scores its value against the pages purpose. Diagnostic only — does not make design decisions.'
 
 nextStepFile: './step-06-suggest-ui.md'
 ---
 
 # Step 5: Evaluate Purpose
 
-**Goal:** Step back from the mechanical wiring audit and think about this page as a product. Given what this page is FOR — what decision does the user make here, what workflow does it support — evaluate whether the right data is being surfaced. Identify data that EXISTS upstream but isn't shown, and assess whether surfacing it would help the user.
+**Goal:** Step back from the mechanical wiring audit and think about this page as a product. Given what this page is FOR — what decision does the user make here, what workflow does it support — evaluate whether the right data is being surfaced. Identify data that EXISTS upstream but isn't shown, and score its value.
 
 **Why this step exists:** The trace-flow audit (step 4) answers "is the wiring correct?" This step answers "is the right data being shown?" Dead fields get flagged for removal by the audit — but some of those fields might actually be valuable if surfaced properly. And there may be data in the DB or upstream services that never enters the pipeline at all but would serve the page's purpose.
+
+**Boundary:** This step produces a diagnostic inventory and value assessment. It does NOT make design decisions — no UI placement recommendations, no component architecture, no layout suggestions. Those belong in the design pipeline (design-handoff → Claude Design → design-review).
 
 ---
 
@@ -29,7 +31,7 @@ From previous steps:
 - `{page_purpose}` — One-sentence statement of the page's purpose
 - `{user_decisions}` — What decisions the user makes on this page
 - `{available_not_shown}` — Fields available upstream but not rendered
-- `{recommendations}` — Product-level suggestions for what to add/surface
+- `{recommendations}` — Value assessments for unsurfaced data (NOT design recommendations)
 
 ---
 
@@ -61,32 +63,34 @@ Compare the full schema (source stage) against what reaches the render stage. Fo
 
 List these in a structured inventory. Don't list every column — focus on fields that are plausibly relevant to `{page_purpose}`.
 
-### 3. Evaluate Each Candidate
+### 3. Score Each Candidate
 
 For each available-but-not-shown field, evaluate:
 
 | Question | What to assess |
 |----------|----------------|
 | **Does it serve the page's purpose?** | Would seeing this help the user make their decision or increase confidence? |
-| **Is there a user story?** | Can you articulate WHO wants to see this and WHY? |
+| **Is there a user need?** | Can you articulate WHO would benefit from seeing this and WHY? |
 | **Is it verifiable from context?** | Could the user cross-check this value against something else they know? |
 | **What's the cost of NOT showing it?** | Does the user have to go elsewhere to find this? |
-| **Is it noise for most views?** | Would it clutter the default view? Should it be behind an expand/detail/tooltip? |
 
 Score each candidate:
 
 - **High value:** Directly supports the page's purpose, users would want it on every visit
 - **Medium value:** Useful for some workflows or occasionally needed for verification
-- **Low value:** Nice to have but adds clutter; better in a detail view or export
+- **Low value:** Nice to have but not essential to the page's core purpose
 - **No value:** Truly irrelevant to this page's purpose — correct to omit
+
+**Do NOT specify WHERE or HOW to surface these fields.** That is a design decision. This step only assesses WHAT is valuable and WHY.
 
 ### 4. Cross-Reference with Audit Findings
 
 Review the step-4 audit findings through the product lens:
 
-- **Dead fields flagged for removal:** Are any of them actually HIGH or MEDIUM value? If so, the recommendation should be "surface properly" not "remove."
-- **Missing display findings:** Upgrade the recommendation from "field not rendered" to a specific suggestion of WHERE and HOW to render it.
-- **Fields currently shown:** Are any LOW value and adding noise? Could they be moved to an expand/detail view?
+- **Dead fields flagged for removal:** Are any of them actually HIGH or MEDIUM value? If so, override the "remove" recommendation — note that the field has product value and should be included in a design brief, not deleted.
+- **Fields currently shown:** Are any LOW value and adding noise? Note them as candidates for design review.
+
+When overriding a step-4 "remove" recommendation, update the audit section with: `**Overridden by purpose evaluation:** field has product value — include in design brief, do not remove.`
 
 ### 5. Check Adjacent Pages
 
@@ -102,21 +106,28 @@ Look for patterns like:
 - An export includes columns that the UI doesn't show (the export might be compensating for a UI gap)
 - A different page shows the same data with additional context
 
-### 6. Produce Recommendations
+Note these as observations — do not prescribe how to resolve them.
 
-For each HIGH or MEDIUM value candidate, produce a concrete recommendation:
+### 6. Produce Value Assessment
+
+For each HIGH or MEDIUM value candidate:
 
 ```
-### {n}. Surface {field_name} — {value_level}
+### {n}. {field_name} — {value_level}
 
-**User story:** As a {role}, I want to see {field} on the {page} so I can {reason}.
-**Where:** {Specific UI location — e.g., "Add column to invoice table", "Show in IFD breakdown expand"}
+**Why valuable:** {One sentence on what user need this serves}
 **Data source:** {Where it comes from — already in query, needs join, needs new fetch}
-**Effort:** {trivial | small | medium}
-**Trade-off:** {What clutter this adds, and whether it should be default-visible or behind an interaction}
+**Adjacent context:** {Is this shown on related pages? In exports?}
+**Include in design brief:** yes
 ```
 
 For fields confirmed as NO VALUE, explicitly state why omission is correct — this prevents the next trace-flow from re-flagging them.
+
+**What NOT to include in recommendations:**
+- No "Add column to invoice table" — that's a design decision
+- No "Show in IFD expand row" — that's a layout decision
+- No "As a {role}, I want..." user stories — those belong in a spec, not a diagnostic
+- No effort estimates for UI work — this workflow doesn't scope implementation
 
 ---
 
@@ -132,17 +143,21 @@ Add a `## Purpose Evaluation` section to the pipeline document (after `## Audit 
 
 ### Available but not surfaced
 
-| Field | Category | Value | Recommendation |
-|-------|----------|-------|----------------|
-| {field} | {category} | {high/medium/low/none} | {one-line action} |
+| Field | Category | Value | Data Source | Why Valuable |
+|-------|----------|-------|-------------|-------------|
+| {field} | {category} | {high/medium/low/none} | {source} | {one-line reason or "correct to omit"} |
 
-### Product Recommendations
+### High-Value Unsurfaced Data
 
-{Numbered list of HIGH/MEDIUM value recommendations with user stories}
+{List of HIGH value fields with brief rationale — these should be included in a design brief}
 
 ### Confirmed Omissions
 
 {Fields that are correctly NOT shown, with brief rationale — prevents re-flagging}
+
+### Adjacent Page Observations
+
+{What related pages show that this page doesn't — factual observations only}
 ```
 
 ---
@@ -151,26 +166,24 @@ Add a `## Purpose Evaluation` section to the pipeline document (after `## Audit 
 
 This step may **override** audit step-4 recommendations:
 
-- If step 4 said "remove dead field X" but step 5 says "X is HIGH value, surface it" → the recommendation becomes "surface X properly" (add UI), not "remove X from the query"
+- If step 4 said "remove dead field X" but step 5 says "X is HIGH value" → the recommendation becomes "do not remove — include in design brief"
 - If step 4 found no issues but step 5 identifies valuable unsurfaced data → the pipeline has a product gap even though it's technically clean
 - If step 5 confirms all omissions are correct → the audit recommendations from step 4 stand as-is
-
-When overriding, update the audit section with a note: `**Overridden by purpose evaluation:** recommend surfacing, not removing.`
 
 ---
 
 ## AUTONOMOUS MODE BEHAVIOR
 
 In autonomous mode:
-- Make product-level judgments based on the page's apparent purpose and the user's role (from project context/memory)
-- Default to recommending surface for HIGH value fields, noting for MEDIUM, omitting for LOW/NONE
-- Do not halt for product decisions — assess and recommend
+- Make product-level value judgments based on the page's apparent purpose and the user's role (from project context/memory)
+- Default to flagging HIGH value fields for design brief, noting MEDIUM, omitting LOW/NONE
+- Do not halt for product decisions — assess and score
 
 ---
 
 ## NEXT STEP
 
-Proceed immediately to `{project-root}/_bmad/bmm/workflows/verify/trace-flow/steps/step-06-suggest-ui.md` — evaluate whether this pipeline would benefit from a user-facing visualization component.
+Proceed immediately to `{project-root}/_bmad/bmm/workflows/verify/trace-flow/steps/step-06-suggest-ui.md` — evaluate whether this pipeline would benefit from a user-facing visualization, and if so produce a design handoff.
 
 ---
 
@@ -179,27 +192,26 @@ Proceed immediately to `{project-root}/_bmad/bmm/workflows/verify/trace-flow/ste
 - Page purpose clearly articulated (not just "shows data")
 - User decisions identified (what the user DOES with this page)
 - Available-not-shown inventory covers DB, joins, and related services
-- Each candidate evaluated against the page's purpose with a clear value score
-- Recommendations are concrete (user story + where + effort), not vague
+- Each candidate scored against the page's purpose with clear rationale
+- NO design decisions made (no UI placement, no layout, no component suggestions)
 - Audit findings cross-referenced — dead field recommendations potentially overridden
-- Adjacent pages checked for patterns and opportunities
+- Adjacent pages checked for patterns
 - Confirmed omissions documented to prevent re-flagging
 
 ## FAILURE MODES
 
+- Making design decisions ("add a column here", "show it in this panel")
+- Writing user stories ("As a business owner, I want...")
+- Specifying UI locations or component patterns
 - Treating every available field as "should be shown" (not everything is relevant)
-- Not identifying the page's purpose (just listing fields without product context)
-- Recommending additions without considering clutter/noise trade-offs
-- Accepting all audit "remove" recommendations without product evaluation
 - Being too conservative ("everything is fine as-is") without genuinely considering the user's workflow
-- Not checking adjacent pages (missing obvious parity opportunities)
-- Vague recommendations ("maybe show more data") instead of specific user stories with locations
+- Not checking adjacent pages
 
 ---
 
 ## RECORD DECISIONS
 
-After producing recommendations, persist all findings to the decisions file at `{implementation_artifacts}/flow-trace-decisions.yaml`. This enables the feedback loop — the next trace-flow on this anchor won't re-flag resolved items.
+After producing the value assessment, persist all findings to the decisions file at `{implementation_artifacts}/flow-trace-decisions.yaml`. This enables the feedback loop — the next trace-flow on this anchor won't re-flag resolved items.
 
 ### File Format
 
@@ -219,14 +231,6 @@ decisions:
     pr: "#353"
     reason: "Only consumer (client CSV export) was removed in PR #344"
 
-  - field: "vatRate"
-    category: "dead-field"
-    status: "resolved"
-    action: "removed"
-    resolved_date: "2026-05-17"
-    pr: "#353"
-    reason: "Same as totalAmount — orphaned by CSV export removal"
-
   - field: "supplier_country"
     category: "available-not-queried"
     status: "keep-omitted"
@@ -235,9 +239,9 @@ decisions:
 
   - field: "vat_reclaim_method"
     category: "available-not-shown"
-    status: "pending"
+    status: "pending-design"
     value_score: "medium"
-    recommendation: "Surface in IFD expand row for verification"
+    note: "Has product value — include in design brief"
     flagged_date: "2026-05-17"
 ```
 
@@ -247,7 +251,7 @@ decisions:
 |--------|---------|
 | `resolved` | Issue was fixed — field removed, surfaced, or refactored. Include PR reference. |
 | `keep-omitted` | Evaluated and confirmed: correct to NOT show this field. Won't be re-flagged. |
-| `pending` | Recommendation made but not yet actioned. Will be re-checked on next trace. |
+| `pending-design` | Has product value, needs design decision. Will be included in design handoff. |
 | `superseded` | Recommendation no longer relevant due to page redesign or feature removal. |
 
 ### Rules
@@ -256,4 +260,5 @@ decisions:
 - **Append new entries** — never remove old ones (they're the audit trail)
 - **Update status** of existing entries when re-tracing finds them resolved
 - **One file per anchor** — if a project has multiple traced pages, each gets its own decisions file: `flow-trace-decisions-{slug}.yaml`
-- **Confirmed omissions from step 5 section 6** become `keep-omitted` entries — this is the primary mechanism that prevents re-flagging
+- **Confirmed omissions from section 6** become `keep-omitted` entries
+- **High/medium value fields** become `pending-design` entries — not `pending` (no implementation action, needs design)
