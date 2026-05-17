@@ -57,7 +57,25 @@ git -C "$SCRIPT_DIR" push "$FORK_REMOTE" "$LOCAL_BRANCH" --force-with-lease
 
 echo ""
 
-# Step 5: Sync to all projects
+# Step 5: Re-install on reference project (transforms SKILL.md → workflow.md)
+REFERENCE_FILE="$HOME/.bmad-reference"
+if [[ -f "$REFERENCE_FILE" ]]; then
+  REF_ROOT=$(grep -v '^#' "$REFERENCE_FILE" | grep -v '^$' | head -1)
+  REF_ROOT="${REF_ROOT%%[[:space:]]}"
+  REF_ROOT="${REF_ROOT##[[:space:]]}"
+  if [[ -n "$REF_ROOT" ]] && [[ -d "$REF_ROOT" ]]; then
+    echo "Re-installing BMAD on reference project ($(basename "$REF_ROOT"))..."
+    (cd "$SCRIPT_DIR" && node tools/installer/bmad-cli.js install --directory "$REF_ROOT" --yes --quiet 2>&1) || {
+      echo ""
+      echo "WARNING: Reference project reinstall failed."
+      echo "Run manually: cd ~/bmad-method-v6 && npx bmad-method install --directory $REF_ROOT"
+      echo "Then re-run: ./sync-bmad-workflows.sh"
+    }
+    echo ""
+  fi
+fi
+
+# Step 6: Sync to all projects
 echo "Syncing workflows to all projects..."
 bash "$SYNC_SCRIPT"
 

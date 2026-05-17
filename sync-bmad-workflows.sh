@@ -295,6 +295,7 @@ if [[ -n "$PULL_TARGET" ]]; then
   echo "PULL  $project → source"
   pulled=0
 
+  # Pull custom workflow dirs back to custom/workflows/
   for dir in "${SYNC_DIRS[@]}"; do
     src_path="$SOURCE/$dir"
     dst_path="$PULL_TARGET/$dir"
@@ -307,18 +308,62 @@ if [[ -n "$PULL_TARGET" ]]; then
     if [[ ! -d "$src_path" ]] || ! diff -rq --exclude='.DS_Store' "$src_path" "$dst_path" &>/dev/null; then
       mkdir -p "$src_path"
       rsync -a --delete --exclude='.DS_Store' "$dst_path/" "$src_path/"
-      echo "  OK    $dir"
+      echo "  OK    $dir (custom)"
       pulled=$((pulled + 1))
     else
       echo "  ----  $dir (no changes)"
     fi
   done
 
+  # Pull upstream workflow dirs back to the reference project
+  REFERENCE_ROOT=$(resolve_reference_root)
+  if [[ -n "$REFERENCE_ROOT" ]] && [[ "$project_root" != "$REFERENCE_ROOT" ]]; then
+    ref_workflows="$REFERENCE_ROOT/_bmad/bmm/workflows"
+    for dir in "${UPSTREAM_WORKFLOW_DIRS[@]}"; do
+      src_path="$ref_workflows/$dir"
+      dst_path="$PULL_TARGET/$dir"
+
+      [[ ! -d "$dst_path" ]] && continue
+
+      if [[ ! -d "$src_path" ]] || ! diff -rq --exclude='.DS_Store' "$src_path" "$dst_path" &>/dev/null; then
+        mkdir -p "$src_path"
+        rsync -a --delete --exclude='.DS_Store' "$dst_path/" "$src_path/"
+        echo "  OK    $dir (→ reference)"
+        pulled=$((pulled + 1))
+      fi
+    done
+
+    # Pull non-workflow upstream dirs (core, agents, etc.)
+    ref_bmad="$REFERENCE_ROOT/_bmad"
+    tgt_bmad="$project_root/_bmad"
+    for item in "${UPSTREAM_BMAD_DIRS[@]}"; do
+      dst="$tgt_bmad/$item"
+      src="$ref_bmad/$item"
+      [[ ! -e "$dst" ]] && continue
+
+      if [[ -d "$dst" ]]; then
+        if [[ ! -d "$src" ]] || ! diff -rq --exclude='.DS_Store' "$src" "$dst" &>/dev/null; then
+          mkdir -p "$src"
+          rsync -a --delete --exclude='.DS_Store' "$dst/" "$src/"
+          echo "  OK    $item (→ reference)"
+          pulled=$((pulled + 1))
+        fi
+      elif [[ -f "$dst" ]]; then
+        if [[ ! -f "$src" ]] || ! diff -q "$src" "$dst" &>/dev/null; then
+          mkdir -p "$(dirname "$src")"
+          cp "$dst" "$src"
+          echo "  OK    $item (→ reference)"
+          pulled=$((pulled + 1))
+        fi
+      fi
+    done
+  fi
+
   echo ""
   if [[ $pulled -gt 0 ]]; then
-    echo "Pulled $pulled dir(s) from $project. Review changes in $SOURCE, then commit and re-sync."
+    echo "Pulled $pulled dir(s) from $project. Review changes, then commit and re-sync."
   else
-    echo "Nothing to pull — source already matches $project."
+    echo "Nothing to pull — sources already match $project."
   fi
   exit 0
 fi
@@ -431,18 +476,24 @@ while IFS= read -r target || [[ -n "$target" ]]; do
       fi
     fi
 
-    # Check auto-generated command files
+    # Check auto-generated command files (custom + upstream workflow dirs)
     commands_target="$project_root/.claude/commands/bmad/bmm/workflows"
+    cmd_stale_total=0
     for dir in "${SYNC_DIRS[@]}"; do
       cmd_stale=$(sync_commands_for_dir "$target" "$dir" "$commands_target" "check")
-      if [[ "$cmd_stale" -gt 0 ]]; then
-        if ! $dirty; then
-          echo "STALE $project"
-          dirty=true
-        fi
-        echo "  ↳  commands ($cmd_stale missing/outdated in $dir)"
-      fi
+      cmd_stale_total=$((cmd_stale_total + cmd_stale))
     done
+    for dir in "${UPSTREAM_WORKFLOW_DIRS[@]}"; do
+      cmd_stale=$(sync_commands_for_dir "$target" "$dir" "$commands_target" "check")
+      cmd_stale_total=$((cmd_stale_total + cmd_stale))
+    done
+    if [[ "$cmd_stale_total" -gt 0 ]]; then
+      if ! $dirty; then
+        echo "STALE $project"
+        dirty=true
+      fi
+      echo "  ↳  commands ($cmd_stale_total missing/outdated)"
+    fi
 
     # Check CLAUDE.md sections
     project_claudemd="$project_root/CLAUDE.md"
@@ -574,10 +625,14 @@ while IFS= read -r target || [[ -n "$target" ]]; do
       fi
     fi
 
-    # Auto-generate command files from workflow.md frontmatter
+    # Auto-generate command files from workflow.md frontmatter (custom + upstream)
     commands_target="$project_root/.claude/commands/bmad/bmm/workflows"
     cmd_total=0
     for dir in "${SYNC_DIRS[@]}"; do
+      cmd_count=$(sync_commands_for_dir "$target" "$dir" "$commands_target" "sync")
+      cmd_total=$((cmd_total + cmd_count))
+    done
+    for dir in "${UPSTREAM_WORKFLOW_DIRS[@]}"; do
       cmd_count=$(sync_commands_for_dir "$target" "$dir" "$commands_target" "sync")
       cmd_total=$((cmd_total + cmd_count))
     done
@@ -593,6 +648,22 @@ while IFS= read -r target || [[ -n "$target" ]]; do
         count=$(echo "$added_sections" | wc -l | tr -d ' ')
         echo "  OK    CLAUDE.md ($count section(s) added)"
       fi
+    fi
+
+    # Write sync stamp for version tracking
+    stamp_dir="$project_root/_bmad/_config"
+    if [[ -d "$stamp_dir" ]]; then
+      ref_version=""
+      if [[ -n "$REFERENCE_ROOT" ]] && [[ -f "$REFERENCE_ROOT/_bmad/_config/manifest.yaml" ]]; then
+        ref_version=$(grep -m1 'bmad_version:' "$REFERENCE_ROOT/_bmad/_config/manifest.yaml" 2>/dev/null | sed 's/.*: *//' || true)
+        [[ -z "$ref_version" ]] && ref_version=$(grep -m1 '  version:' "$REFERENCE_ROOT/_bmad/_config/manifest.yaml" 2>/dev/null | sed 's/.*: *//' | head -1 || true)
+      fi
+      cat > "$stamp_dir/sync-stamp.yaml" <<STAMP
+# Auto-generated by sync-bmad-workflows.sh — do not edit
+synced_at: "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+reference_project: "${REFERENCE_ROOT:-(none)}"
+reference_version: "${ref_version:-(unknown)}"
+STAMP
     fi
 
     synced=$((synced + 1))
