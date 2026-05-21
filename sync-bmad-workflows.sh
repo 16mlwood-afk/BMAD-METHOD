@@ -66,6 +66,8 @@ JQ_MERGE='
       + $template.hooks[$event]
     )
   )
+  | .permissions = ($template.permissions // .permissions // {})
+  | .enableAllProjectMcpServers = ($template.enableAllProjectMcpServers // .enableAllProjectMcpServers // false)
   | .["$schema"] = "https://json.schemastore.org/claude-code-settings.json"
 '
 
