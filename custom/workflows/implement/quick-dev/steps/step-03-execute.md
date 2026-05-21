@@ -104,6 +104,59 @@ Skip this section if the task is not adding an enrichment-output column — e.g.
 
 ---
 
+## PRE-FLIGHT: DESIGN BRIEF SCOPE AUDIT
+
+**Trigger:** Run this check when the task originates from a **design brief** (from Claude Design, a design handoff workflow, or any design artifact that describes UI changes for specific pages/views).
+
+Design briefs only cover **specific pages, views, or components**. They are NOT a mandate to rewrite the entire UI. Treating a design brief as a full replacement is a known failure mode — it causes features outside the design scope to be silently deprecated or broken.
+
+### 1. Identify Design Scope
+
+Read the design brief and list exactly which pages/views/components are covered:
+
+```
+| Page/View       | In Design Scope? |
+|-----------------|------------------|
+| Invoice tab     | YES              |
+| Transaction tab | NO               |
+| CSV Lookup tab  | NO               |
+| Settings panel  | NO               |
+```
+
+### 2. Audit Existing Features
+
+Before touching any code, enumerate **all** existing features, controls, and UI elements across the app (not just the in-scope area). For each, mark whether it's in-scope for the design brief:
+
+- In-scope features: implement the design brief's vision
+- Out-of-scope features: **must remain functionally identical** — do not restructure their HTML, remove their CSS classes, or change their JS wiring
+
+### 3. Shared Resource Check
+
+Identify CSS classes, JS modules, and HTML patterns used by **both** in-scope and out-of-scope views. These are shared resources:
+
+- **Never delete or rename a shared CSS class** without verifying all consumers still work
+- **Never remove HTML elements** that out-of-scope JS references (even if the design brief doesn't show them)
+- If the design introduces new classes/patterns, **add** them — don't replace shared ones
+
+### 4. Present Scope Summary
+
+Before writing any code, present:
+
+```
+**Design scope:** {which pages/views the brief covers}
+**Out of scope (will not be modified):** {list of pages/views/features that must remain untouched}
+**Shared resources identified:** {CSS classes, JS modules used across scopes}
+**Features at risk:** {any feature that could be accidentally broken by the design changes}
+```
+
+In autonomous mode: log this summary but proceed. In non-autonomous mode: wait for user confirmation before executing.
+
+### 5. Skip Condition
+
+Skip this section if the task does not originate from a design brief — e.g. bug fixes, refactors, feature additions from a tech-spec, direct user instructions not tied to a design artifact.
+
+---
+
 ## EXECUTION LOOP
 
 For each task:
@@ -191,3 +244,6 @@ When ALL tasks are complete (or halted on blocker), read fully and follow: `{pro
 - Building UI for fields assumed populated without verifying production data
 - Not presenting the reality table before implementing data-display UI
 - Proposing tacky operator-facing UI buttons in the production app to trigger backfills/re-enrichment
+- Implementing a design brief as a full UI replacement instead of scoped changes
+- Removing or breaking features/pages/views that are outside the design brief's scope
+- Deleting shared CSS classes or HTML elements used by out-of-scope views
