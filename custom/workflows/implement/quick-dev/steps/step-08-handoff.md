@@ -286,6 +286,18 @@ Call `ExitWorktree` with `action: "remove"`:
 
 After `ExitWorktree` succeeds, append one line to the user-facing summary: `**Worktree cleaned up.**`
 
+### Rebuild dist after worktree cleanup
+
+Worktree builds compile into the **worktree's** `dist/` directory, which is destroyed on removal. The main repo's `dist/` is now stale — it still contains pre-change code. For projects that build to a `dist/` directory (Chrome extensions, bundled apps), this means the user is testing against old code without knowing it.
+
+**After `ExitWorktree` returns you to the main repo:**
+
+1. Pull latest main: `git pull origin main`
+2. Rebuild: run the project's build command (e.g., `npm run build`)
+3. Confirm the build succeeded
+
+This is **not optional** — skipping it means the user's local app/extension runs stale code and will report bugs that are already fixed. The agent must never tell the user "just rebuild" as a response to a test failure.
+
 ---
 
 ## SUCCESS METRICS
@@ -308,4 +320,5 @@ After `ExitWorktree` succeeds, append one line to the user-facing summary: `**Wo
 - **Calling `ExitWorktree` before the handoff file is written.** The parallel-sessions `PreToolUse` hook will block the write and the handoff is lost. Always: write handoff → present summary → copy to main repo → exit worktree.
 - **Removing the worktree without copying the handoff file to the main repo first.** The handoff is untracked — it lives inside the worktree directory and is destroyed on removal. This has happened in production.
 - Not calling `ExitWorktree` at all (leaves stale worktrees on disk — see `git worktree list`).
+- **Not rebuilding `dist/` after worktree cleanup.** The worktree's build output is destroyed on removal. The main repo's `dist/` still contains pre-change code. The user tests against stale code, reports bugs that are already fixed, and the agent wastes time saying "just rebuild." This has happened in production.
 - Skipping section 5 (Strategic & Operational Insights) — this is the highest-value section. Implementation context is perishable; if you don't surface system-level observations now, they're lost.
