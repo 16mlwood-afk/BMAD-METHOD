@@ -142,6 +142,11 @@ type: handoff
 {- Suggested action with rough effort estimate}
 
 {Or "None — the implementation was self-contained with no system-level observations."}
+
+## Constraints Persisted
+
+{List memories saved by the "Persist Discovered Constraints" step, or omit this section entirely if none were saved.}
+{- **{memory-name}** — {one-line description}}
 ```
 
 **File naming:** `handoff-{slug}-{date}.md` where `{slug}` matches the PR branch name or tech-spec slug.
@@ -190,6 +195,61 @@ Wire-check available — trace data wires from this handoff?
 The wire-check workflow handles its own worktree, commit, and delivery. It will enter a fresh worktree if fixes are needed, so the current worktree can be cleaned up first.
 
 **Ordering:** Write handoff → present summary → clean up worktree → chain wire-check. The wire-check runs after worktree cleanup because it manages its own worktree independently.
+
+---
+
+## PERSIST DISCOVERED CONSTRAINTS
+
+Implementation often reveals hard platform limits, service ceilings, and infrastructure gotchas that aren't documented anywhere. These constraints are invisible from specs and code reviews — they only surface when you hit them. **Save them to project memory so future sessions don't rediscover them the hard way.**
+
+### What qualifies as a constraint
+
+- **Platform limits:** column counts, row sizes, query variable caps, payload size ceilings, rate limits discovered empirically (not just documented ones)
+- **Service ceilings:** plan-tier restrictions, API quota walls, storage limits, concurrent connection caps
+- **Infrastructure gotchas:** operations that silently fail, features that don't work as documented, version-specific behaviors, deployment sequencing requirements
+- **Workaround patterns:** if you had to work around a constraint, document both the constraint and the pattern — future sessions may need the same workaround
+
+### What does NOT qualify
+
+- Code patterns or architecture (derivable from the codebase)
+- Bug fixes (the fix is in the code; the commit message has context)
+- Anything already in CLAUDE.md or existing memory
+
+### How to save
+
+For each discovered constraint, write a `project`-type memory:
+
+```markdown
+---
+name: {constraint-slug}
+description: {one-line summary — specific enough to match future searches}
+metadata:
+  type: project
+---
+
+{What the constraint is — be specific: name the service, limit, threshold, error message.}
+
+**Why:** {How you discovered it — what failed, what error, what workaround was needed.}
+**How to apply:** {When future sessions should check for this — e.g., "before adding columns to invoices table", "when designing batch queries against D1".}
+```
+
+Add an index entry to the project's `MEMORY.md` under `## Project`.
+
+### When to skip
+
+If the implementation was routine and hit no platform/infrastructure limits, skip this section. Don't manufacture constraints that aren't there.
+
+### In the handoff file
+
+If you saved any constraint memories, add a `## Constraints Persisted` section to the handoff file listing what was saved:
+
+```markdown
+## Constraints Persisted
+
+- **{memory-name}** — {one-line description}
+```
+
+This creates an audit trail connecting the handoff to the memories it produced.
 
 ---
 
