@@ -27,6 +27,31 @@
 
 Initialize the brainstorming workflow by detecting continuation state and setting up session context.
 
+### 0. Autonomous Mode Detection (Check First)
+
+If autonomous mode is active (workflow `autonomous: true` OR arguments were passed with the workflow invocation):
+
+1. **Auto-configure session:**
+   - Set `session_topic` from the arguments provided
+   - Set `session_goals` to "Comprehensive improvement ideation across UX, features, architecture, and business value"
+   - Read key project files (entry points, manifest, config) to build domain understanding
+   
+2. **Create session document** (same as step 3A below)
+
+3. **Present brief autonomous summary:**
+   "**Autonomous Session Initialized**
+   
+   **Topic:** [session_topic from args]
+   **Goals:** [auto-configured goals]
+   **Project Context:** [1-2 sentence summary of what the AI learned from codebase scan]
+   **Approach:** AI-Recommended Techniques (auto-selected)
+   **Mode:** Generating ideas in batches of 20 — react, redirect, or say 'keep going' after each batch
+   
+   Loading techniques and beginning ideation..."
+
+4. **Skip to step-02b** with auto-continue (no user confirmation needed for technique selection)
+5. **In step-02b**, auto-select techniques and proceed directly to step-03 without halting for confirmation
+
 ## INITIALIZATION SEQUENCE:
 
 ### 1. Check for Existing Sessions
@@ -55,6 +80,8 @@ If existing session files are found:
 - If user selects **[3]** (see all): List all session filenames and ask which to continue or if new
 
 ### 3. Fresh Workflow Setup (If No Files or User Chooses New)
+
+> **Note:** Skip this section if autonomous mode handled setup above.
 
 If no document exists or no `stepsCompleted` in frontmatter:
 

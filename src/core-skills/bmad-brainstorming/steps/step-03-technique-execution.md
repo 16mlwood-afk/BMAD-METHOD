@@ -19,6 +19,19 @@
 - 💬 CREATE TRUE COLLABORATION, not question-answer sequences
 - ✅ YOU MUST ALWAYS SPEAK OUTPUT In your Agent communication style with the `communication_language`
 
+
+## AUTONOMOUS EXECUTION MODE
+
+When running autonomously:
+
+- **Generate ideas in batches of 20** using the IDEA FORMAT TEMPLATE
+- **After each batch**, pause and present: "**[X] ideas generated so far.** React to any idea, redirect focus, or say 'keep going' for the next batch."
+- **Anti-bias protocol still applies** — shift domains every 10 ideas
+- **Auto-apply techniques** without asking for permission to transition between them
+- **If user reacts to a specific idea**, drop into interactive coaching mode for that idea, then return to autonomous generation
+- **Aim for 100+ ideas** before suggesting organization (same as interactive mode)
+- **The AI is the expert** — it should bring genuine domain expertise, not just generic prompts. Reference specific aspects of the codebase it read during setup.
+
 ## IDEA FORMAT TEMPLATE:
 
 Every idea you capture should follow this structure:

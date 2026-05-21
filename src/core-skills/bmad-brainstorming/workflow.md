@@ -1,5 +1,6 @@
 ---
 context_file: '' # Optional context file path for project-specific guidance
+autonomous: false # Set to true for AI-expert mode — AI reads codebase, selects techniques, generates ideas autonomously
 ---
 
 # Brainstorming Session Workflow
@@ -44,6 +45,20 @@ Load config from `{project-root}/_bmad/core/config.yaml` and resolve:
 
 All steps MUST reference `{brainstorming_session_output_file}` instead of the full path pattern.
 - `context_file` = Optional context file path from workflow invocation for project-specific guidance
+---
+
+## AUTONOMOUS MODE
+
+When `autonomous: true` OR when arguments are passed to the workflow, the AI enters autonomous mode:
+
+- **AI reads the project codebase** to build domain understanding (entry points, manifest, config, key modules)
+- **AI auto-configures** session topic and goals from the arguments + codebase scan
+- **AI auto-selects** the "AI-Recommended Techniques" (step-02b) approach
+- **AI generates ideas in batches of 20**, pausing after each batch for the user to react, redirect, or say "keep going"
+- **User can interrupt at any time** to go deeper on a specific idea — the AI drops into interactive coaching mode for that idea, then returns to autonomous generation
+
+If autonomous mode is active, skip user prompts in step-01 and step-02b — auto-configure and proceed directly to step-03.
+
 ---
 
 ## EXECUTION
