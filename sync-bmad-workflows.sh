@@ -72,9 +72,10 @@ JQ_MERGE='
 '
 
 # Auto-generate a .claude/commands/ file from a workflow.md's YAML frontmatter.
-# Args: $1 = workflow.md path, $2 = relative path from _bmad/bmm/workflows/ (e.g. verify/trace-flow)
+# Args: $1 = workflow.md path, $2 = relative path from _bmad/bmm/workflows/ (e.g. verify/trace-flow),
+#        $3 = filename (e.g. workflow.md or workflow-technical-research.md)
 generate_command_content() {
-  local workflow_md="$1" rel_dir="$2"
+  local workflow_md="$1" rel_dir="$2" filename="${3:-workflow.md}"
   local description
   description=$(sed -n '/^---$/,/^---$/{ /^---$/d; /^description:/{ s/^description:[[:space:]]*//; s/^['\''"]//; s/['\''"][[:space:]]*$//; p; }; }' "$workflow_md")
   [[ -z "$description" ]] && return 1
@@ -83,10 +84,12 @@ generate_command_content() {
     "description: '${description}'" \
     '---' \
     '' \
-    "IT IS CRITICAL THAT YOU FOLLOW THIS COMMAND: LOAD the FULL @_bmad/bmm/workflows/${rel_dir}/workflow.md, READ its entire contents and follow its directions exactly!"
+    "IT IS CRITICAL THAT YOU FOLLOW THIS COMMAND: LOAD the FULL @_bmad/bmm/workflows/${rel_dir}/${filename}, READ its entire contents and follow its directions exactly!"
 }
 
 # Sync auto-generated command files for all workflows under a synced directory.
+# Handles both standard workflow.md files (command name = parent dir) and
+# variant workflow-*.md files (command name = variant slug, e.g. workflow-technical-research.md → technical-research).
 # Args: $1 = target workflows dir (e.g. /path/project/_bmad/bmm/workflows),
 #        $2 = synced dir name (e.g. verify),
 #        $3 = commands target dir (e.g. /path/project/.claude/commands/bmad/bmm/workflows),
@@ -96,6 +99,7 @@ sync_commands_for_dir() {
   local workflows_dir="$1" sync_dir="$2" commands_dir="$3" mode="$4"
   local count=0
 
+  # Standard workflow.md files — command name from parent directory
   while IFS= read -r -d '' workflow_md; do
     local dir_name
     dir_name="$(dirname "$workflow_md")"
@@ -105,7 +109,7 @@ sync_commands_for_dir() {
     local cmd_file="$commands_dir/${wf_name}.md"
 
     local expected
-    expected="$(generate_command_content "$workflow_md" "$dir_name")" || continue
+    expected="$(generate_command_content "$workflow_md" "$dir_name" "workflow.md")" || continue
 
     if [[ ! -f "$cmd_file" ]] || [[ "$(cat "$cmd_file")" != "$expected" ]]; then
       if [[ "$mode" == "sync" ]]; then
@@ -115,6 +119,55 @@ sync_commands_for_dir() {
       count=$((count + 1))
     fi
   done < <(find "$workflows_dir/$sync_dir" -name 'workflow.md' -print0 2>/dev/null)
+
+  # Variant workflow-*.md files — command name from filename slug
+  while IFS= read -r -d '' variant_md; do
+    local dir_name filename slug
+    dir_name="$(dirname "$variant_md")"
+    dir_name="${dir_name#"$workflows_dir/"}"
+    filename="$(basename "$variant_md")"
+    slug="${filename#workflow-}"
+    slug="${slug%.md}"
+    local cmd_file="$commands_dir/${slug}.md"
+
+    local expected
+    expected="$(generate_command_content "$variant_md" "$dir_name" "$filename")" || continue
+
+    if [[ ! -f "$cmd_file" ]] || [[ "$(cat "$cmd_file")" != "$expected" ]]; then
+      if [[ "$mode" == "sync" ]]; then
+        mkdir -p "$commands_dir"
+        printf '%s\n' "$expected" > "$cmd_file"
+      fi
+      count=$((count + 1))
+    fi
+  done < <(find "$workflows_dir/$sync_dir" -name 'workflow-*.md' -print0 2>/dev/null)
+
+  echo "$count"
+}
+
+# Remove orphaned command pointers whose target workflow files don't exist.
+# Args: $1 = project root, $2 = commands dir, $3 = mode ("check" or "sync")
+# Returns count of orphaned files via stdout.
+cleanup_orphaned_commands() {
+  local project_root="$1" commands_dir="$2" mode="$3"
+  local count=0
+
+  [[ ! -d "$commands_dir" ]] && { echo "0"; return; }
+
+  for cmd_file in "$commands_dir"/*.md; do
+    [[ ! -f "$cmd_file" ]] && continue
+    local target
+    target=$(grep -oE '@_bmad/[^ ,]+' "$cmd_file" 2>/dev/null | head -1)
+    [[ -z "$target" ]] && continue
+    target="${target#@}"
+    local resolved="$project_root/$target"
+    if [[ ! -f "$resolved" ]]; then
+      if [[ "$mode" == "sync" ]]; then
+        rm -f "$cmd_file"
+      fi
+      count=$((count + 1))
+    fi
+  done
 
   echo "$count"
 }
@@ -489,6 +542,8 @@ while IFS= read -r target || [[ -n "$target" ]]; do
       cmd_stale=$(sync_commands_for_dir "$target" "$dir" "$commands_target" "check")
       cmd_stale_total=$((cmd_stale_total + cmd_stale))
     done
+    cmd_orphaned=$(cleanup_orphaned_commands "$project_root" "$commands_target" "check")
+    cmd_stale_total=$((cmd_stale_total + cmd_orphaned))
     if [[ "$cmd_stale_total" -gt 0 ]]; then
       if ! $dirty; then
         echo "STALE $project"
@@ -638,8 +693,12 @@ while IFS= read -r target || [[ -n "$target" ]]; do
       cmd_count=$(sync_commands_for_dir "$target" "$dir" "$commands_target" "sync")
       cmd_total=$((cmd_total + cmd_count))
     done
+    cmd_cleaned=$(cleanup_orphaned_commands "$project_root" "$commands_target" "sync")
+    cmd_total=$((cmd_total + cmd_cleaned))
     if [[ $cmd_total -gt 0 ]]; then
-      echo "  OK    commands ($cmd_total file(s) generated)"
+      cmd_msg="$cmd_total file(s) generated"
+      [[ "$cmd_cleaned" -gt 0 ]] && cmd_msg="$cmd_msg, $cmd_cleaned orphaned removed"
+      echo "  OK    commands ($cmd_msg)"
     fi
 
     # Sync missing CLAUDE.md sections
