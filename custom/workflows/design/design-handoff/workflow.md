@@ -44,6 +44,7 @@ This uses **step-file architecture** for focused execution:
 - `{design_system_name}` - If external: the name of the design system (e.g., "Meridian"). Empty otherwise.
 - `{design_tokens}` - Design tokens — from brand identity (preferred) or extracted from codebase
 - `{existing_patterns}` - Component patterns — from brand identity (preferred) or observed in other pages
+- `{page_mode}` - "operational" (process rows, review items, take actions) or "analytical" (understand patterns, trends, anomalies across a dataset). Determines whether the brief includes the analytics view addendum.
 - `{constraints}` - Hard constraints the designer must respect (responsive breakpoints, data density, accessibility)
 - `{user_context}` - Who uses this feature, what they're trying to accomplish, frequency of use
 - `{reference_pages}` - Existing pages in the app that have good design to reference — from brand identity (preferred)

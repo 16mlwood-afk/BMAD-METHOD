@@ -187,6 +187,28 @@ This product should feel like a high-trust finance operations tool — not a gen
 
 ---
 
+{If `{page_mode}` = "analytical", include this section. Omit entirely for operational pages.}
+
+## 4a. Analytics View Addendum
+
+This page is analytical rather than operational. The user is trying to understand patterns, trends, and anomalies across the dataset — not process individual rows.
+
+**Design principles:**
+- Keep the same corporate visual language: Stripe discipline, Ramp status clarity, Linear filter density, Mercury calm.
+- Use the same restrained palette, compact filter chips, and high-trust fintech tone.
+- Avoid generic BI-dashboard styling, KPI-card walls, and decorative chart clutter.
+- Make the analysis feel evidence-based and precise, not promotional or flashy.
+
+**Interaction model:**
+- Filters define the analytical scope and should remain compact and persistent.
+- Charts may lead the page when the task is pattern discovery.
+- Tables should still exist for drill-down and verification.
+- The user should be able to move from overview to evidence without losing context.
+
+**Composition:** Use chart-led composition for trend analysis, comparisons, and performance review. Never switch into decorative dashboard mode, even on analytics pages.
+
+---
+
 ## 5. Hard Constraints
 
 {Use ONE of the following variants based on `{design_system}`:}
@@ -267,13 +289,19 @@ Additionally, avoid all standard AI design tool fingerprints:
 
 Questions should emerge from the intersection of user goals (section 1), data shape (section 2), and data volume. They must NOT mirror the current UI's solutions.
 
-Good questions name the user's problem:
+Good questions for **operational** pages:
 - "How does the design help the user scan a large set of records and find items needing attention quickly?"
 - "How does the interface let the user understand status, progress, and exceptions at a glance?"
 - "How should the design support reviewing and resolving issues without losing context?"
 - "How does the page stay calm and trustworthy while handling dense operational data?"
 - "The user needs to switch among ~16 time periods, some empty — how is that surfaced?"
 - "Rows often need small edits before they can be filed — how does the design handle inline correction without clutter?"
+
+Good questions for **analytical** pages:
+- "How should the page help the user spot trends and anomalies quickly?"
+- "How should the interface support comparison across time, categories, or segments?"
+- "How should the user drill from overview data into the underlying records?"
+- "How should the layout stay calm and corporate while still feeling analytical?"
 
 Bad questions name the current UI's structure (these are disguised layout instructions — do NOT use):
 - "How should the per-country view work?" ← names the current grouping
@@ -329,6 +357,7 @@ Before writing, verify:
   - existing = visual direction statement + real tokens + anti-pattern list
   - external = names the system, no repo tokens
 - [ ] **Positive before negative** — visual direction and reference products come BEFORE hard failures and anti-patterns.
+- [ ] **Page mode is correct.** If `{page_mode}` = "analytical", section 4a (Analytics View Addendum) is present. If "operational", section 4a is omitted entirely.
 - [ ] **File paths are correct** and relative to repo root.
 
 ### 4. Write the Brief
