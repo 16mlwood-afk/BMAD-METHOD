@@ -207,6 +207,8 @@ This page is analytical rather than operational. The user is trying to understan
 
 **Composition:** Use chart-led composition for trend analysis, comparisons, and performance review. Never switch into decorative dashboard mode, even on analytics pages.
 
+**Evidence rule:** Analytics pages may be chart-led, but they must still preserve a clear path to underlying records or evidence. Every chart, metric, or summary should let the user drill into the rows behind it. An analytical page that cannot show its working is a dashboard — and dashboards are not what this product does.
+
 ---
 
 ## 5. Hard Constraints
