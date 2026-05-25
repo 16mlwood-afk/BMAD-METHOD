@@ -127,7 +127,23 @@ gh pr merge --squash --admin
 
 Then deploy per the project's CLAUDE.md instructions.
 
-### 8. Report Completion
+### 8. Brand Identity Feedback
+
+After successful delivery, check if a brand identity document exists:
+
+```bash
+ls {project-root}/_bmad-output/planning-artifacts/brand-identity.md 2>/dev/null
+```
+
+If it exists, evaluate:
+
+1. **Reference page candidate:** If this page is now at the same quality level as the brand identity's listed reference pages, suggest adding it.
+2. **Token drift:** If any deltas required values outside the brand identity's documented system (e.g., a new color, a new font size, a border radius not in the scale), flag them — the brand identity may need updating.
+3. **Component pattern evolution:** If the design introduced a new component pattern (e.g., a new type of card, a new badge variant), suggest adding it to the brand identity's component language section.
+
+Output these as a `**Brand Identity Updates**` section in the completion report. Do NOT modify the brand identity file directly.
+
+### 9. Report Completion
 
 Output:
 

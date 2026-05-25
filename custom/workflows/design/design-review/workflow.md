@@ -21,6 +21,8 @@ Single step: `steps/step-01-audit.md`. No fix phase. No verify phase.
 - `{tab_id}` — Chrome tab ID
 - `{component_path}` — source file that renders the page (resolved in step-01)
 - `{peer_paths}` — 2–3 peer detail/summary views used as the quality bar
+- `{brand_identity}` — Contents of the project's brand identity document (if it exists). When present, provides the authoritative visual language — typography, colors, component patterns, and hard failures.
+- `{brand_identity_path}` — Path to the brand identity document
 
 ---
 
@@ -29,7 +31,16 @@ Single step: `steps/step-01-audit.md`. No fix phase. No verify phase.
 ### Paths
 
 - `installed_path` = `{project-root}/_bmad/bmm/workflows/design/design-review`
-- `design_standards` = `{installed_path}/design-standards.md` (optional reference, not required)
+- `design_standards` = `{project-root}/_bmad/bmm/workflows/design/shared/design-standards.md` (shared reference — superseded by brand identity on project-specific values)
+- `brand_identity` = `{project-root}/_bmad-output/planning-artifacts/brand-identity.md` (load if exists)
+
+### Brand Identity Loading
+
+```bash
+ls {project-root}/_bmad-output/planning-artifacts/brand-identity.md 2>/dev/null
+```
+
+If found, read and store as `{brand_identity}`. The brand identity provides project-specific visual standards (exact typography, exact colors, exact component patterns) that are more authoritative than the generic `design-standards.md`. When both exist, the brand identity wins on specifics — use `design-standards.md` only for categories the brand identity doesn't cover (functional UX, accessibility, severity levels).
 
 ### Prerequisites
 

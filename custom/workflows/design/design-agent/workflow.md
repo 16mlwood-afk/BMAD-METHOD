@@ -26,6 +26,8 @@ This uses **step-file architecture** for focused execution:
 ### State Variables
 
 - `{baseline_commit}` - Git HEAD at workflow start
+- `{brand_identity}` - Contents of the project's brand identity document (if it exists). When present, provides the authoritative visual language — typography, colors, component patterns, and hard failures. Supersedes generic design-standards.md on specifics.
+- `{brand_identity_path}` - Path to the brand identity document
 - `{screenshot_inventory}` - Every visible feature, field, button, interaction, and data point catalogued from the screenshot
 - `{context_answers}` - Who sees this, what they need, where it appears, emotional register, breakpoints
 - `{open_questions}` - Questions for dev team that couldn't be determined from the screenshot
@@ -49,8 +51,17 @@ Load config from `{project-root}/_bmad/bmm/config.yaml` and resolve:
 ### Paths
 
 - `installed_path` = `{project-root}/_bmad/bmm/workflows/design/design-agent`
-- `design_standards` = `{installed_path}/design-standards.md`
+- `design_standards` = `{project-root}/_bmad/bmm/workflows/design/shared/design-standards.md`
+- `brand_identity` = `{project-root}/_bmad-output/planning-artifacts/brand-identity.md` (load if exists — supersedes design_standards on project-specific values)
 - `project_context` = `**/project-context.md` (load if exists)
+
+### Brand Identity Loading
+
+```bash
+ls {project-root}/_bmad-output/planning-artifacts/brand-identity.md 2>/dev/null
+```
+
+If found, read and store as `{brand_identity}`. The brand identity provides project-specific visual standards (exact typography scale, exact color palette, exact component patterns, hard failure list) that override the generic `design-standards.md`. When producing styling specs, use brand identity values (exact Tailwind classes, exact px sizes) instead of generic recommendations. Use `design-standards.md` only for categories the brand identity doesn't cover.
 
 ### Related Workflows
 
