@@ -23,68 +23,55 @@ description: 'Audit existing design system: tokens, patterns, reference pages'
 From step-01:
 - `{feature_name}`, `{feature_scope}`, `{feature_purpose}`
 - `{data_shape}`, `{api_surface}`, `{implementation_files}`, `{user_context}`
+- `{brand_identity}`, `{brand_identity_path}`, `{design_system}`
 
 ---
 
 ## EXECUTION SEQUENCE
 
-### 1. Extract Design Tokens (conditional)
+### 1. Design Tokens, Patterns, and References (conditional on design_system)
 
-**If `{design_system}` = "external":** SKIP this step entirely. Set `{design_tokens}` = "EXTERNAL — using {design_system_name}". Do NOT read CSS token files — inlining dev tokens when an external design system exists is a form of design bias (anchoring the designer to developer placeholder values).
+**If `{design_system}` = "branded" (brand identity exists):**
 
-**If `{design_system}` = "existing":** Extract tokens from the codebase:
+The brand identity document is the primary source. Extract directly from it:
 
-Find and read the project's design token files:
+- `{design_tokens}` ← sections 2 (Typography), 3 (Color System), 5 (Spacing & Layout)
+- `{existing_patterns}` ← section 4 (Component Language)
+- `{reference_pages}` ← section 6 (Reference Pages)
+- `{hard_failures}` ← section 8 (Hard Failures)
+
+**Do NOT re-extract tokens from CSS/Tailwind files** — the brand identity has already distilled the intentional design decisions from the codebase. Re-extracting from code risks pulling in incidental values that the brand identity deliberately excluded.
+
+**Do verify** that the brand identity's token values still match the codebase (spot-check 2-3 values). If they've drifted, note it for the user but proceed with the brand identity values — they represent the intended design, not the current implementation.
+
+**If `{design_system}` = "external":**
+
+SKIP token extraction entirely. Set:
+- `{design_tokens}` = "EXTERNAL — using {design_system_name}"
+- `{existing_patterns}` = "EXTERNAL — designer will apply {design_system_name} component patterns"
+- `{reference_pages}` = "N/A — external design system"
+- `{hard_failures}` = empty (external system defines its own constraints)
+
+**If `{design_system}` = "existing" (no brand identity, no external system):**
+
+Fall back to extracting tokens from the codebase:
 
 ```bash
-# Common locations
 find . -name "tokens.css" -o -name "variables.css" -o -name "theme.css" -o -name "colors*.css" | head -5
 find . -name "tailwind.config.*" | head -2
 ```
 
-Capture as `{design_tokens}`:
-- **Colors:** background, foreground, primary, muted, border, card, accent colors
-- **Typography:** font families, size scale, weight scale
-- **Spacing:** padding/margin scale (4px grid? 8px grid?)
-- **Borders:** radius values, border widths, border colors
-- **Shadows:** if any
-- **Transitions:** easing, duration
+Capture `{design_tokens}`: colors, typography, spacing, borders, shadows, transitions.
 
-### 2. Identify Existing Component Patterns (conditional)
+Look at 2-3 **other** pages (NOT the target feature) for `{existing_patterns}`: card styles, table patterns, badge patterns, button hierarchy.
 
-**If `{design_system}` = "external":** SKIP detailed pattern extraction. Set `{existing_patterns}` = "EXTERNAL — designer will apply {design_system_name} component patterns." Existing dev patterns would compete with the external design system's own component library.
+Set `{reference_pages}` from observing which pages look best.
 
-**If `{design_system}` = "existing":** Extract patterns from other pages:
+Set `{hard_failures}` from the generic corporate guardrails (section 4a template in step-03).
 
-Look at 2-3 **other** pages in the app (NOT the target feature) for patterns. Good candidates:
-- The page with the most complex data display (tables, cards, lists)
-- The page with the best-looking forms/inputs
-- The main dashboard or landing page
+**WARNING for "existing" mode:** Without a brand identity, the extracted tokens are raw CSS values — they may include incidental choices (a shadow that was copied from a tutorial, a color that was a placeholder). The designer will treat them as intentional design decisions. Consider creating a brand identity document to disambiguate.
 
-**WARNING:** Do NOT look at the target feature's page for patterns. Its structure is a developer implementation that should not influence the designer.
-
-For each, note:
-- Card/container patterns (border, radius, padding, background)
-- Table/list patterns (row height, hover states, column alignment)
-- Form patterns (input styling, button hierarchy, validation display)
-- Status/badge patterns (colors, shapes, sizes)
-- Header/section patterns (heading sizes, spacing, dividers)
-- Empty state patterns
-- Loading state patterns
-
-Capture these as `{existing_patterns}`.
-
-### 3. Identify Reference Pages
-
-**If `{design_system}` = "external":** Set `{reference_pages}` = "N/A — external design system". Skip reference page identification — the external system IS the reference.
-
-**If `{design_system}` = "existing":**
-
-Set `{reference_pages}` — pages the designer should look at to understand the visual language:
-- Which page is the "gold standard" for this app's design?
-- Which page is closest in function to the feature being designed?
-
-### 4. Define Constraints
+### 2. Define Constraints
 
 Set `{constraints}` — hard requirements that limit design freedom:
 - **Responsive breakpoints** — is this desktop-only? Mobile-first?
@@ -102,6 +89,7 @@ Confirm the following state variables are populated:
 - `{design_tokens}` ✓
 - `{existing_patterns}` ✓
 - `{reference_pages}` ✓
+- `{hard_failures}` ✓ (may be empty for external design systems)
 - `{constraints}` ✓
 
 Then load and follow: `{project-root}/_bmad/bmm/workflows/design/design-handoff/steps/step-03-generate-brief.md`

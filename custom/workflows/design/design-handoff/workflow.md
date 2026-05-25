@@ -36,14 +36,16 @@ This uses **step-file architecture** for focused execution:
 - `{data_shape}` - TypeScript interfaces or Python models that define what data is available to the UI — presented neutrally without ranking field importance
 - `{api_surface}` - Endpoints and response shapes the frontend can call
 - `{implementation_files}` - File paths for implementation reference only (designer may browse for technical context, not for layout inspiration)
-- `{design_system}` - "existing" (inline tokens from the codebase) or "external" (design system provided separately — e.g., created in Claude Design). When "external", section 4 of the brief is replaced with a note telling the designer to apply their own system.
-- `{design_system_name}` - If external: the name of the design system (e.g., "Meridian"). Empty if "existing".
-- `{design_system_style}` - "corporate" or "default". When "corporate", the brief includes anti-patterns and guidelines from the corporate design system reference doc. Detect from user input or ask.
-- `{design_tokens}` - Existing CSS variables, font stacks, color palette, spacing scale (only populated when design_system = "existing")
-- `{existing_patterns}` - Component patterns already in the app (card styles, table patterns, form patterns)
+- `{brand_identity_path}` - Path to the project's brand identity document (if it exists)
+- `{brand_identity}` - Contents of the brand identity document — provides positive visual anchors, design tokens, component patterns, reference pages, and hard failures. When present, this is the PRIMARY source for design system context — it supersedes token extraction and generic guardrails.
+- `{design_system}` - "branded" (brand identity exists) or "existing" (extract tokens from code) or "external" (external design system — e.g., created in Claude Design). When "branded", sections 4 and 4a of the brief are replaced with brand identity content. When "external", section 4 is a note telling the designer to apply their own system.
+- `{design_system_name}` - If external: the name of the design system (e.g., "Meridian"). Empty otherwise.
+- `{design_tokens}` - Design tokens — from brand identity (preferred) or extracted from codebase
+- `{existing_patterns}` - Component patterns — from brand identity (preferred) or observed in other pages
 - `{constraints}` - Hard constraints the designer must respect (responsive breakpoints, data density, accessibility)
 - `{user_context}` - Who uses this feature, what they're trying to accomplish, frequency of use
-- `{reference_pages}` - Existing pages in the app that have good design to reference
+- `{reference_pages}` - Existing pages in the app that have good design to reference — from brand identity (preferred)
+- `{hard_failures}` - Non-negotiable anti-patterns from brand identity — designs containing any of these fail review
 - `{github_repo_url}` - GitHub HTTPS URL for the repository (no trailing `.git`)
 - `{output_path}` - Absolute path where the brief is written on disk
 - `{output_path_relative_to_repo_root}` - Brief path relative to the repo root (for GitHub URLs and Claude Design references)
@@ -83,21 +85,32 @@ The user may provide:
 
 If the input is ambiguous, ask ONE clarifying question maximum, then proceed.
 
-### Design System Detection
+### Brand Identity & Design System Detection
 
-Determine `{design_system}`, `{design_system_name}`, and `{design_system_style}`:
+**Step 1 — Check for brand identity (highest priority):**
+
+```bash
+ls {planning_artifacts}/brand-identity.md 2>/dev/null
+```
+
+If the file exists:
+- Read it and store as `{brand_identity}`
+- Set `{brand_identity_path}` to the file path
+- Set `{design_system}` = "branded"
+- Extract `{design_tokens}`, `{existing_patterns}`, `{reference_pages}`, and `{hard_failures}` directly from the brand identity document
+- **Skip design system questions entirely** — the brand identity IS the design system
+
+**Step 2 — If no brand identity, check for external directive:**
 
 - If the user mentions an external design system by name → `{design_system}` = "external", `{design_system_name}` = that name
-- If NOT in autonomous mode → ask: **"Should this design use the existing tokens from the codebase, or an external design system (e.g., one created in Claude Design)?"**
-- If in autonomous mode and no explicit directive → default to "existing"
+- If NOT in autonomous mode → ask: **"Should this design use the existing tokens from the codebase, or an external design system?"**
+- If in autonomous mode → default to "existing"
 
-Determine `{design_system_style}`:
-- If user says "corporate," "enterprise," "B2B," or the project is a business tool → `{design_system_style}` = "corporate"
-- Otherwise → `{design_system_style}` = "default"
+**Step 3 — Fallback (no brand identity, no external directive):**
 
-When `{design_system_style}` = "corporate", the brief includes anti-pattern guardrails from the corporate design guidelines reference doc (`_bmad-output/planning-artifacts/corporate-design-system-guidelines.md` if it exists in the project, otherwise inline the key rules). These prevent Claude Design from producing "indie SaaS" aesthetics instead of corporate.
+Set `{design_system}` = "existing" — tokens will be extracted from the codebase in step 02.
 
-**Why this matters:** The codebase tokens may be developer placeholders copied from another project — NOT an intentional design system. Inlining them into the brief anchors the designer to dev choices, which is just as biased as describing the current layout. When a proper design system exists externally, the brief should reference it by name and tell the designer to apply it — not compete with inline tokens.
+**Why brand identity first:** A brand identity document captures the project's ACTUAL visual language — not raw CSS tokens, not generic anti-patterns, but the specific decisions that make this app look like this app. When one exists, it provides both positive anchors (what we look like) and negative constraints (what we never do), which are far more effective than generic guardrails. Without it, Claude Design fills the vacuum with its strongest priors (generic SaaS templates).
 
 ---
 

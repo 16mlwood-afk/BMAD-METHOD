@@ -26,7 +26,8 @@ description: 'Generate an unbiased Claude Design brief — presents data and pur
 From steps 01–02:
 - `{github_repo_url}`, `{feature_name}`, `{feature_scope}`, `{feature_purpose}`
 - `{data_shape}`, `{api_surface}`, `{implementation_files}`, `{user_context}`
-- `{design_tokens}`, `{existing_patterns}`, `{reference_pages}`, `{constraints}`
+- `{design_system}`, `{brand_identity}`, `{brand_identity_path}`
+- `{design_tokens}`, `{existing_patterns}`, `{reference_pages}`, `{hard_failures}`, `{constraints}`
 
 ---
 
@@ -111,19 +112,77 @@ The UI has access to this data shape. All fields are listed neutrally — you de
 
 ---
 
-## 4. Design System Context
+## 4. Visual Identity & Design Constraints
 
-{Use ONE of the following two variants based on `{design_system}`:}
+{Use ONE of the following THREE variants based on `{design_system}`:}
 
-**--- VARIANT A: If `{design_system}` = "external" ---**
+**--- VARIANT A: If `{design_system}` = "branded" (brand identity document exists) ---**
 
-> **This page should use the {design_system_name} design system.** Do NOT use the CSS tokens currently in the codebase — those are developer placeholders from a different project and are not this product's intended design language. Apply {design_system_name}'s tokens, typography, spacing, component patterns, and visual language to this feature.
+> **CRITICAL — This project has an established visual identity.** The sections below define what this app looks and feels like. These are not suggestions — they are the visual language you must work within. Your creative freedom is in information architecture, layout, and interaction design. The visual system (colors, typography, component patterns, spacing) is fixed.
 
-**Structural constraints from the codebase (these still apply regardless of design system):**
-- App shell structure: {describe the fixed shell elements — e.g., "56px icon rail + 200px nav panel + fluid content area" — because these are architectural, not stylistic}
+### Visual Personality
+
+{Copy section 1 from the brand identity document verbatim — the personality statement, register, density, and "what it's NOT"}
+
+### Typography
+
+{Copy section 2 from the brand identity — font families, type scale table, typography rules}
+
+### Color System
+
+{Copy section 3 from the brand identity — core palette table, semantic colors table, badge pattern, domain colors if relevant to this feature}
+
+### Component Patterns
+
+{Copy section 4 from the brand identity — how cards, tables, badges, buttons, status indicators, and navigation actually look in this app. Include exact Tailwind classes.}
+
+### Spacing & Layout
+
+{Copy section 5 from the brand identity — container, padding, gaps, border radius}
+
+### Reference Pages
+
+{Copy section 6 from the brand identity — internal pages that represent the gold standard, with routes and why they're good}
+
+### External Influences
+
+{Copy section 7 from the brand identity — named products and what to borrow/avoid from each}
+
+### Hard Failures — Non-Negotiable
+
+A design that includes ANY of these fails review. These are specific to this project:
+
+{Copy section 8 from the brand identity — the numbered hard failure list}
+
+### AI Fingerprint Sensitivity
+
+These are patterns this project is specifically sensitive to:
+
+{Copy section 9 from the brand identity — the sensitivity table}
+
+**Additionally, avoid ALL standard AI design tool fingerprints:**
+- Bento grid layouts — use uniform grids, tables, or lists
+- Hero sections on internal pages — content starts immediately
+- Dashboard metric card grids as page openers
+- Purple/violet as primary accent (unless the brand identity assigns it to a specific domain concept)
+- Gradient text, gradient backgrounds, glassmorphism — flat solid colors only
+- Oversized border-radius (>10px on containers)
+- Heavy card shadows — `shadow-sm` maximum
+- Animated number counters — render data immediately
+- Chatty empty states with illustrations — plain text only
+- Icons on every label and heading — icons only where they add recognition speed
+
+**Self-test:** Show this design to someone who doesn't know AI was involved. If they would suspect it, the design fails.
+
+**--- VARIANT B: If `{design_system}` = "external" ---**
+
+> **This page should use the {design_system_name} design system.** Do NOT use the CSS tokens currently in the codebase — those are developer placeholders and are not this product's intended design language. Apply {design_system_name}'s tokens, typography, spacing, component patterns, and visual language.
+
+**Structural constraints from the codebase (still apply regardless of design system):**
+- App shell structure: {describe the fixed shell elements}
 - Navigation position: {where this page lives in the app shell}
 
-**--- VARIANT B: If `{design_system}` = "existing" ---**
+**--- VARIANT C: If `{design_system}` = "existing" (no brand identity, no external system) ---**
 
 ### Tokens (from `{path to tokens file}`)
 
@@ -138,64 +197,37 @@ The UI has access to this data shape. All fields are listed neutrally — you de
 
 ### Existing Patterns in Other Pages
 
-{existing_patterns — describe patterns from OTHER pages in the app, NOT the target feature. These establish the app's visual language — the designer should harmonize with them but is not bound to copy them.}
+{existing_patterns — patterns from OTHER pages in the app, NOT the target feature}
 
 ### Reference Pages
 
-{reference_pages — "Look at /pipeline for the app's visual language" with description of what's good about it. These are for design language consistency, NOT for layout inspiration for this feature.}
+{reference_pages — pages to look at for visual language consistency}
 
-{If `{design_system_style}` = "corporate", include this section. Otherwise skip it entirely.}
+### Design Guardrails
 
-## 4a. Corporate Design Guardrails
-
-This is a corporate/enterprise application. The design MUST follow these rules — they are hard constraints, not suggestions.
+This is a professional tool. The design MUST follow these rules:
 
 **Aesthetic:**
-- Pure white (#FFFFFF) or cool neutral gray backgrounds — never cream, off-white, or warm tints
-- One neutral sans-serif family (Inter, SF Pro, Segoe UI) — no personality typography
-- Monospace fonts for data only (IDs, codes, tabular numbers) — never in headings or as a decorative voice
-- Color used sparingly and functionally — not as personality or branding
-- Dark mode: true dark neutrals (#1A1A1A–#2D2D2D) — not navy, not deep blue
+- Pure white or cool neutral gray backgrounds — never cream, off-white, or warm tints
+- One neutral sans-serif family — no personality typography
+- Monospace fonts for data only (IDs, codes, tabular numbers) — never decorative
+- Color used sparingly and functionally
 
-**Voice:**
-- Functional, instructional labeling: "Search Results," "Distributor Details" — not "01 — FOUNDATIONS"
-- No marketing copy, no aspirational headlines, no agency voice
-- Every UI element must be self-explanatory: no unexplained badges, no icons without labels, no truncated text
+**Anti-patterns (hard failures):**
+1. Bento grid layouts — use uniform grids, tables, or lists
+2. Hero sections on internal pages — content starts immediately
+3. Dashboard metric card grids as page openers
+4. Purple/violet as primary accent
+5. Gradient text, gradient backgrounds, glassmorphism
+6. Oversized border-radius (16px+)
+7. Heavy card shadows
+8. Colored card fills for status (green card = good, red card = bad) — use badges or left-border accents
+9. Chatty empty states with illustrations
+10. Marketing copy or enthusiastic language
+11. Animated number counters
+12. More than 4 distinct badge/status colors
 
-**Anti-patterns (hard failures — do not produce any of these):**
-1. Cream or warm-tinted backgrounds
-2. Monospace fonts used decoratively (headings, section labels, navigation)
-3. Oversized editorial typography or playful numbering ("01 —")
-4. Marketing-style hero sections or aspirational copy
-5. Truncated text that isn't explicitly handled with a tooltip or expand pattern
-6. Numeric badges without explanatory labels
-7. "Indie SaaS" or "startup template" aesthetic of any kind
-
-**AI design tool fingerprints (reject these — they signal auto-generated output, not intentional design):**
-
-*Layout:*
-- Bento grid layouts (asymmetric mixed-size card grids) — use uniform grids, tables, or lists
-- Hero sections on internal pages — start with content, not a tagline
-- Dashboard-as-homepage with metric card grids — route to the primary workflow instead
-- Massive padding/whitespace — dense is fine for power-user tools; 16px card padding, 24px section gaps
-
-*Visual:*
-- Purple/violet primary color (the #1 AI default) — use brand color or conservative blue
-- Gradient text, gradient backgrounds, glassmorphism — flat solid colors only
-- Oversized border-radius (16px+) — use 4px–8px max; pill shapes only for tags/badges
-- Heavy card shadows as decoration — reserve elevation for overlays and modals
-- Gradient/colored dividers — use `1px solid var(--border)`
-- Colored sidebar icons (different color per nav item) — monochrome icons, color = state only
-- Semantic-colored card fills (green card = good, red card = bad) — use a left-border accent or small badge, never fill an entire card background
-
-*Content/UX:*
-- Chatty empty states with illustrations ("No items yet! Get started…") — plain text: "No results."
-- Icons on every label, heading, and menu item — icons only where they add recognition speed
-- Hover scale transforms on cards — hover = background/border change, no movement
-- Animated number counters on metrics — render data immediately
-- Excessive status colors (8+ badge colors) — use 4 max: green, yellow, red, gray
-
-**Self-test:** If someone would guess the design is AI-generated, it fails. Corporate tools look like they were built by an in-house team — competent, consistent, invisible.
+**Self-test:** If someone would guess the design is AI-generated, it fails.
 
 ---
 
@@ -207,19 +239,25 @@ This is a corporate/enterprise application. The design MUST follow these rules �
 
 ## 6. Design Ask
 
-{Based on feature_scope, write the specific ask:}
+{Based on feature_scope and design_system, write the specific ask:}
 
-**If "new" + existing design system:**
+**If "new" + branded:**
+> Design the UI for {feature_name} at route {route}. You have the full data model and user context above. Create the best possible design for this user's workflow — decide what information to foreground, how to group data, what interactions to prioritize, and what layout pattern to use. Section 4 defines this app's visual identity — use its exact typography, colors, component patterns, and spacing. The identity and constraints are fixed; information architecture and interaction design are yours.
+
+**If "redesign" + branded:**
+> Redesign {feature_name} at route {route}. The current implementation was built by a developer and has not been through a design process. Approach this as a fresh design problem: decide the optimal information architecture, visual hierarchy, and interaction patterns from scratch. Support all data fields in the model (see section 2) but you decide how to present them. Section 4 defines this app's visual identity — your design must be indistinguishable from the reference pages listed there. Match their register, density, and component language exactly.
+
+**If "new" + existing:**
 > Design the UI for {feature_name} at route {route}. You have the full data model and user context above. Create the best possible design for this user's workflow — decide what information to foreground, how to group data, what interactions to prioritize, and what layout pattern to use. The design tokens and app patterns above establish the visual language; the constraints are the only hard limits. Everything else is yours to decide.
 
-**If "new" + external design system:**
-> Design the UI for {feature_name} at route {route}. You have the full data model and user context above. Apply the {design_system_name} design system — use its tokens, typography, component patterns, and visual language. Create the best possible design for this user's workflow — decide what information to foreground, how to group data, what interactions to prioritize, and what layout pattern to use. The structural constraints in section 4 and the hard constraints in section 5 are the only limits. Everything else is yours to decide.
-
-**If "redesign" + existing design system:**
+**If "redesign" + existing:**
 > Redesign {feature_name} at route {route}. The current implementation was built by a developer and has not been through a design process. Approach this as a fresh design problem: you have the data model and user context above — decide the optimal information architecture, visual hierarchy, and interaction patterns from scratch. Support all data fields in the model (see section 2) but you decide how to present them. Reference the design tokens and app patterns above for visual consistency with the rest of the app.
 
-**If "redesign" + external design system:**
-> Redesign {feature_name} at route {route}. The current implementation was built by a developer using placeholder tokens from a different project — it has not been through a design process. Approach this as a fresh design problem: apply the {design_system_name} design system and decide the optimal information architecture, visual hierarchy, and interaction patterns from scratch. Support all data fields in the model (see section 2) but you decide how to present them. Ignore the existing CSS tokens in the codebase — {design_system_name} is the intended design language.
+**If "new" + external:**
+> Design the UI for {feature_name} at route {route}. Apply the {design_system_name} design system — use its tokens, typography, component patterns, and visual language. Create the best possible design for this user's workflow. The structural constraints in section 4 and the hard constraints in section 5 are the only limits. Everything else is yours to decide.
+
+**If "redesign" + external:**
+> Redesign {feature_name} at route {route}. Apply the {design_system_name} design system and decide the optimal information architecture and interaction patterns from scratch. Support all data fields in the model (see section 2) but you decide how to present them. Ignore the existing CSS tokens in the codebase — {design_system_name} is the intended design language.
 
 ---
 
@@ -253,9 +291,14 @@ Before writing the file, verify:
 - [ ] Data shape includes ALL fields the UI could render (check the TypeScript interface)
 - [ ] **No field importance ranking** — fields are presented neutrally without "primary" or "secondary" labels
 - [ ] **No current layout description** — the brief does not describe what sections, components, or groupings currently exist on the page
-- [ ] **Design system check:** If `{design_system}` = "external": section 4 uses Variant A (no inline tokens, names the external system), implementation files in section 8 exclude CSS/style files. If "existing": section 4 uses Variant B with real token values from the codebase.
-- [ ] Reference pages are real routes that exist in the app (and are NOT the target feature's page) — or N/A if external design system
-- [ ] The "Design Ask" explicitly grants creative freedom over information architecture
+- [ ] **Design system check:**
+  - If `{design_system}` = "branded": section 4 uses Variant A with FULL brand identity content (personality, typography with exact scale, colors with exact values, component patterns with Tailwind classes, hard failures list, AI sensitivity table). The brand identity content must be comprehensive — not summarized or abbreviated.
+  - If `{design_system}` = "external": section 4 uses Variant B (no inline tokens, names the external system)
+  - If `{design_system}` = "existing": section 4 uses Variant C with real token values from the codebase
+- [ ] **Positive before negative** — in Variant A, the visual personality and component patterns (positive anchors) come BEFORE the hard failures and anti-patterns (negative constraints). This order is critical — Claude Design's priors are strong, and positive references override them more effectively than prohibitions.
+- [ ] Reference pages are real routes that exist in the app (and are NOT the target feature's page)
+- [ ] The "Design Ask" explicitly grants creative freedom over information architecture while requiring adherence to the visual identity
+- [ ] **Hard failures list is present** — if brand identity exists, its hard failures are included verbatim
 - [ ] File paths are correct and relative to repo root
 - [ ] Constraints include data density estimate (how many items in a typical list?)
 
@@ -286,9 +329,11 @@ Show the user:
 ## SUCCESS METRICS
 
 - Brief is written to `{output_path}`
-- Claude Design can start working without asking clarifying questions about data shape or constraints
+- Claude Design can start working without asking clarifying questions about data shape, constraints, or visual direction
 - **Brief does NOT describe the current page structure** — no component names, section headings, or layout descriptions from the existing implementation
 - **Data fields are presented neutrally** — no importance ranking that would bias the designer's hierarchy choices
 - Brief references file paths instead of inlining entire files
-- **If existing design system:** tokens are real values extracted from the codebase; existing patterns are described from OTHER pages
-- **If external design system:** NO inline tokens from the codebase; brief explicitly names the external system and tells the designer to apply it; CSS/style files are excluded from implementation files table
+- **If branded:** section 4 contains the FULL brand identity content — personality, typography with exact scale, colors with values, component patterns with classes, reference pages, hard failures, and AI sensitivity. The designer has everything needed to produce work indistinguishable from the reference pages.
+- **If existing:** tokens are real values extracted from the codebase; existing patterns are described from OTHER pages; generic anti-pattern list is included
+- **If external:** NO inline tokens from the codebase; brief names the external system; CSS/style files excluded from implementation files table
+- **Positive anchors precede negative constraints** — the brief establishes what good looks like BEFORE listing what to avoid

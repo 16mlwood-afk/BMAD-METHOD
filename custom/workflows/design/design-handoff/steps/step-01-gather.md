@@ -32,6 +32,26 @@ git remote get-url origin
 
 Convert SSH URLs to HTTPS format if needed (e.g., `git@github.com:org/repo.git` → `https://github.com/org/repo`). Strip the trailing `.git`.
 
+### 1b. Load Brand Identity
+
+Check if the project has a brand identity document:
+
+```bash
+ls {planning_artifacts}/brand-identity.md 2>/dev/null
+```
+
+**If found:**
+- Read the entire file and store as `{brand_identity}`
+- Set `{brand_identity_path}` to the absolute path
+- Set `{design_system}` = "branded"
+- Report: "Brand identity loaded — design will be anchored to project visual language."
+
+**If not found:**
+- Set `{brand_identity}` = empty
+- Set `{brand_identity_path}` = empty
+- Report: "No brand identity document. Will extract tokens from codebase."
+- Consider running the brand identity template workflow to create one (suggest to user if not in autonomous mode)
+
 ### 2. Identify the Feature
 
 Determine `{feature_name}` and `{feature_scope}` from user input or recent git history:
@@ -110,5 +130,7 @@ Confirm the following state variables are populated:
 - `{api_surface}` ✓
 - `{implementation_files}` ✓
 - `{user_context}` ✓
+- `{brand_identity}` ✓ (may be empty if no brand identity document exists)
+- `{design_system}` ✓ ("branded", "existing", or "external")
 
 Then load and follow: `{project-root}/_bmad/bmm/workflows/design/design-handoff/steps/step-02-audit-design.md`
