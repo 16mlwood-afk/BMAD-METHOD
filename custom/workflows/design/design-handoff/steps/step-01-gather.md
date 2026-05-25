@@ -31,18 +31,21 @@ git remote get-url origin
 
 Convert SSH URLs to HTTPS. Strip trailing `.git`.
 
-### 1b. Load Brand Identity
+### 1b. Load Project Design Policy
+
+Check both possible locations for a project-level design system declaration. `docs/design-policy.md` is the canonical location; `planning-artifacts/brand-identity.md` is the legacy slot. Prefer the first if both exist.
 
 ```bash
+ls {project-root}/docs/design-policy.md 2>/dev/null
 ls {planning_artifacts}/brand-identity.md 2>/dev/null
 ```
 
-**If found:**
-- Read the entire file → `{brand_identity}`
-- Set `{brand_identity_path}` to the absolute path
+**If either is found:**
+- Read the entire file → `{brand_identity}` (variable name retained for backward compatibility)
+- Set `{brand_identity_path}` to the absolute path of whichever file was loaded
 - Set `{design_system}` = "branded"
 
-**If not found:**
+**If neither is found:**
 - Set `{brand_identity}` = empty, `{brand_identity_path}` = empty
 - Set `{design_system}` = "existing" (may be overridden to "external" by user input)
 
