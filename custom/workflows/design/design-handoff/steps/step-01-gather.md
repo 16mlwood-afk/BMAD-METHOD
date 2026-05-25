@@ -110,7 +110,18 @@ Data volume: [typical count — "usually 10-50 items", "1,400+ records per quart
 
 Do NOT include "Main component", "Child components", "Current sections", "Current tabs", or "Key interactions." Do NOT phrase user goals as UI actions.
 
-### 5. Identify User Context
+### 5. Determine Page Mode
+
+Set `{page_mode}` based on the feature's primary task:
+
+- **"operational"** — the user processes individual rows, reviews items, takes actions (approve, reject, edit, file, mark). The page is a worklist. Most pages are operational.
+- **"analytical"** — the user is trying to understand patterns, trends, comparisons, or anomalies across the dataset. The page is an analysis tool.
+
+Signals for analytical: the feature's user goals center on "understand", "compare", "spot trends", "review performance", "analyze", or the data has time-series dimensions and the user's job is pattern discovery rather than row processing.
+
+If unclear, default to "operational." A page can have analytical elements (summary stats, a chart) while still being operational if the primary task is processing rows.
+
+### 6. Identify User Context
 
 Set `{user_context}`:
 
@@ -134,6 +145,7 @@ Confirm populated:
 - `{data_shape}` ✓
 - `{api_surface}` ✓
 - `{implementation_files}` ✓
+- `{page_mode}` ✓ ("operational" or "analytical")
 - `{user_context}` ✓
 - `{brand_identity}` ✓ (may be empty)
 - `{design_system}` ✓ ("branded", "existing", or "external")
