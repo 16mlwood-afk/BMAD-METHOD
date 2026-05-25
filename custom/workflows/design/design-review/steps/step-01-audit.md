@@ -16,6 +16,7 @@ thisStepFile: './step-01-audit.md'
 
 - `{target_url}` — URL under review
 - `{tab_id}` — Chrome tab ID
+- `{brand_identity}` — Project brand identity (if loaded). When present, evaluate against its specific typography, colors, component patterns, and hard failures instead of generic design-standards.md.
 
 ---
 
@@ -95,12 +96,18 @@ Scan the rendered text (from step 2) for repeated values — note which ones app
 
 ### 5. Compare
 
-With measurements + source in hand, compare the page under review against the peers. Focus on:
+With measurements + source in hand, compare the page under review against the peers AND the brand identity (if loaded). Focus on:
 
 - **Hierarchy:** Do the top 3 visually heaviest elements match the page's primary decision? Or is weight spent on low-value chrome (breadcrumbs, meta, labels)?
 - **Information architecture:** Are related concepts grouped? Is any data duplicated across regions (from step 3)? Is there a region that answers no user question?
 - **Density:** `scrollWidth` vs `clientWidth` — is the page leaking horizontal overflow? Are cards nested (card-in-card)? Is a 12-col grid rendered with only 2–3 fields per row (dead space)? Are KPI tiles showing values that are mostly `0` or `null`?
 - **Peer gaps:** What pattern does each peer use — sticky header, two-column split, inline meta row, pill nav — that this page doesn't? Name the pattern and the peer.
+- **Brand identity alignment (when `{brand_identity}` exists):** Does the page match the brand's stated visual language? Check:
+  - Typography: body text size matches the brand scale (e.g., 13px not 14px), heading tracking matches, monospace used only where specified
+  - Colors: background, badge pattern, semantic colors match the brand's exact values
+  - Components: cards, buttons, badges match the brand's exact patterns (Tailwind classes)
+  - Hard failures: none of the brand identity's section 8 items are present
+  - Reference page alignment: would this page look at home alongside the brand's listed gold-standard pages?
 
 ### 6. Deliver
 

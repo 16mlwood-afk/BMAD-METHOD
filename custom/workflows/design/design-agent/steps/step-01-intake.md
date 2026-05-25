@@ -26,6 +26,7 @@ From workflow initialization:
 
 - `{baseline_commit}` - Git HEAD at workflow start
 - `{design_standards}` - Loaded design standards reference
+- `{brand_identity}` - Project brand identity (if loaded). When present, supersedes design_standards on project-specific values (typography, colors, components, hard failures).
 - `{project_context}` - Loaded if exists
 
 ---

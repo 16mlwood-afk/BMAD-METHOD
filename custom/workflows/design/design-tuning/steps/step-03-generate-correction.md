@@ -131,13 +131,32 @@ All constraints from the design brief are satisfied. No corporate guardrail viol
 
 Update the state file with `status: approved`.
 
+### 5b. Brand Identity Feedback (on approval only)
+
+When a design is approved AND `{brand_identity_path}` exists, evaluate whether the brand identity should be updated:
+
+**Check for new reference page candidates:**
+If the approved design is notably well-executed, suggest adding it to the brand identity's section 6 (Reference Pages):
+> "Consider adding {feature_name} at {route} to the brand identity's reference pages — its {specific quality} sets a new bar."
+
+**Check for new anti-patterns discovered:**
+If any violation persisted for 3+ iterations before being fixed, it's a pattern Claude Design is strongly biased toward. Suggest adding it to the brand identity's section 9 (AI Fingerprint Sensitivity):
+> "Claude Design repeatedly produced {pattern} despite explicit prohibition. Consider adding this to the brand identity's AI sensitivity table."
+
+**Check for brand identity drift:**
+If the approved design intentionally deviated from any brand identity value (e.g., used a different badge pattern that looked better), flag it:
+> "The approved design uses {new pattern} instead of the brand identity's stated {old pattern}. If this is intentional, update the brand identity to reflect the new direction."
+
+Output these suggestions in a `**Brand Identity Updates**` section after the approval message. Do NOT modify the brand identity file directly — surface the suggestions for the user to review.
+
 ### 6. Present to User
 
 Display to the user:
 
 1. **Summary line:** "Iteration {N}: {PASS|FAIL} — {X} violations ({Y} hard failures), {Z} fixed from last round"
 2. **The full correction message** inside a clearly marked block — ready to copy
-3. **Next step instruction:**
+3. **Brand identity update suggestions** (if any — approval only)
+4. **Next step instruction:**
    - If FAIL: "Paste the message above into Claude Design. Drop the next screenshot here when ready."
    - If PASS: "Design approved. Run the design-agent or quick-dev workflow to implement."
 

@@ -1,6 +1,6 @@
 ---
 name: design-standards
-description: 'Visual taste rules and anti-patterns for evaluating UI quality. Loaded as reference during design review.'
+description: 'Shared visual taste rules, AI fingerprint detection, functional UX standards, and anti-patterns. Referenced by design-review, design-agent, and design-tuning workflows. Superseded by brand-identity.md on project-specific values when it exists.'
 ---
 
 # Design Standards

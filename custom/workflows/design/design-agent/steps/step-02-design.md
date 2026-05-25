@@ -31,6 +31,7 @@ From step-01:
 - `{context_answers}` - Who, what, where, register, breakpoints
 - `{open_questions}` - Gaps flagged for dev team
 - `{design_standards}` - Loaded design standards reference
+- `{brand_identity}` - Project brand identity (if loaded). Use this as the primary reference for specific values (exact Tailwind classes, exact px sizes, exact colors) when it exists.
 
 ---
 
@@ -39,6 +40,8 @@ From step-01:
 ### 1. AI Fingerprint Scan
 
 Check the screenshot against the P1 and P2 fingerprint lists in `{design_standards}`.
+
+**When `{brand_identity}` exists:** Also check against its section 8 (Hard Failures) and section 9 (AI Fingerprint Sensitivity). The brand identity's hard failures are non-negotiable — flag them even if they look intentional.
 
 **First rule:** Check if the pattern is already used consistently across the project. If it's the established design language, skip it — ripping it out would create worse inconsistency.
 
@@ -66,14 +69,16 @@ For each area of the page, decide what changes to recommend. Structure each deci
 **Rationale:** {why this is better — reference design standards}
 ```
 
-Categories to evaluate (from `{design_standards}`):
+Categories to evaluate (from `{brand_identity}` when it exists, falling back to `{design_standards}`):
 
-- **Color:** Palette cohesion, accent usage, status colors
-- **Typography:** Font sizes, weights, line-heights, hierarchy
-- **Spacing:** Padding, margins, gaps — consistent multiples of 4 or 8
-- **Borders/Shadows:** Weight, color, necessity
+- **Color:** Palette cohesion, accent usage, status colors — use brand identity's exact values when available
+- **Typography:** Font sizes, weights, line-heights, hierarchy — use brand identity's exact type scale when available
+- **Spacing:** Padding, margins, gaps — use brand identity's spacing rules when available
+- **Borders/Shadows:** Weight, color, necessity — use brand identity's radius and shadow rules
 - **Layout:** Information hierarchy, grouping, whitespace usage
-- **Components:** Badge styling, button treatments, card patterns
+- **Components:** Badge styling, button treatments, card patterns — use brand identity's exact component patterns (Tailwind classes) when available
+
+**When brand identity exists:** Every design decision should produce exact values from the brand identity (e.g., "Change to `text-ds-base` (13px)" not "reduce font size"). This eliminates ambiguity in the handoff to developers.
 
 Store all decisions as `{design_decisions}`.
 
