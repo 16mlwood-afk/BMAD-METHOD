@@ -112,14 +112,19 @@ Do NOT include "Main component", "Child components", "Current sections", "Curren
 
 ### 5. Determine Page Mode
 
-Set `{page_mode}` based on the feature's primary task:
+Set `{page_mode}` based on the feature's **dominant user task**:
 
-- **"operational"** — the user processes individual rows, reviews items, takes actions (approve, reject, edit, file, mark). The page is a worklist. Most pages are operational.
-- **"analytical"** — the user is trying to understand patterns, trends, comparisons, or anomalies across the dataset. The page is an analysis tool.
+- **"operational"** — the user processes, reviews, approves, reconciles, files, or resolves records. The page is a worklist. The design should prioritize throughput, scanability, and status visibility. Most pages are operational.
+- **"analytical"** — the user discovers trends, compares segments, diagnoses anomalies, explains changes, or moves from summary insight to supporting evidence. The page is an analysis tool.
 
-Signals for analytical: the feature's user goals center on "understand", "compare", "spot trends", "review performance", "analyze", or the data has time-series dimensions and the user's job is pattern discovery rather than row processing.
+**Signals for analytical:** user goals center on "understand", "compare", "spot trends", "review performance", "analyze", "diagnose", or the data has time-series dimensions and the user's job is pattern discovery rather than row processing.
 
-If unclear, default to "operational." A page can have analytical elements (summary stats, a chart) while still being operational if the primary task is processing rows.
+**Hybrid handling:** Some pages mix both modes.
+- If analysis exists to support immediate row-level action (e.g., a summary chart above a worklist), keep the page in **operational** mode.
+- If row-level detail exists mainly to verify or explain summarized behavior (e.g., a trend chart with a drill-down table), keep the page in **analytical** mode.
+- The dominant user task determines the mode — not the presence of a chart or a table.
+
+If unclear, default to "operational."
 
 ### 6. Identify User Context
 
