@@ -187,27 +187,34 @@ This product should feel like a high-trust finance operations tool — not a gen
 
 ---
 
-{If `{page_mode}` = "analytical", include this section. Omit entirely for operational pages.}
+## 4a. Page Mode
 
-## 4a. Analytics View Addendum
+{Include ONE of the following based on `{page_mode}`:}
 
-This page is analytical rather than operational. The user is trying to understand patterns, trends, and anomalies across the dataset — not process individual rows.
+**--- If `{page_mode}` = "operational" ---**
+
+This is an operational page. The design should optimize for row-level work, exception handling, and workflow progress. Prioritize dense scanning, explicit state visibility, and fast narrowing of large record sets. The page should feel like a high-trust finance operations tool: Stripe-style table discipline, Ramp-style status clarity, Linear-style filter density, and Mercury-style calm restraint.
+
+**Composition:** Use table-first composition for workflow, review, and exception handling pages.
+
+**--- If `{page_mode}` = "analytical" ---**
+
+This is an analytical page. The design should help the user understand patterns, compare segments, detect anomalies, and move from summary insight to supporting evidence.
 
 **Design principles:**
-- Keep the same corporate visual language: Stripe discipline, Ramp status clarity, Linear filter density, Mercury calm.
-- Use the same restrained palette, compact filter chips, and high-trust fintech tone.
-- Avoid generic BI-dashboard styling, KPI-card walls, and decorative chart clutter.
-- Make the analysis feel evidence-based and precise, not promotional or flashy.
+- Keep the same corporate visual system as the rest of the product: high-trust, restrained, precise, and data-first.
+- The page should feel evidence-based and operationally credible, not promotional, decorative, or BI-template-driven.
+- Filters should remain compact and persistent so the user can understand the scope of the analysis at all times.
+- Charts may lead the page when they genuinely help the user see patterns faster, but there must always be a clear path to underlying records or evidence.
+- Tables are supporting evidence on analytical pages unless row-level processing is the dominant task.
 
-**Interaction model:**
-- Filters define the analytical scope and should remain compact and persistent.
-- Charts may lead the page when the task is pattern discovery.
-- Tables should still exist for drill-down and verification.
-- The user should be able to move from overview to evidence without losing context.
-
-**Composition:** Use chart-led composition for trend analysis, comparisons, and performance review. Never switch into decorative dashboard mode, even on analytics pages.
+**Composition:** Use chart-led composition for analytical pages. Even on analytical pages, avoid KPI-card walls, decorative dashboards, and disconnected widgets.
 
 **Evidence rule:** Analytics pages may be chart-led, but they must still preserve a clear path to underlying records or evidence. Every chart, metric, or summary should let the user drill into the rows behind it. An analytical page that cannot show its working is a dashboard — and dashboards are not what this product does.
+
+**--- In both modes ---**
+
+Keep the same corporate visual system: Stripe table discipline, Ramp status clarity, Linear filter density, Mercury calm.
 
 ---
 
@@ -273,52 +280,61 @@ Additionally, avoid all standard AI design tool fingerprints:
 
 ## 6. Design Ask
 
-{Write the specific ask. Frame as open-ended design problems with 3-5 feature-specific questions the design must answer.}
+{Write the ask using the mode-specific pattern below, then append 3-5 feature-specific questions.}
 
-**For all variants — structure:**
+**Structure:**
 
-> {One sentence: scope directive — "Design" or "Redesign" + feature name + route + visual identity reference.}
+> {Mode-specific framing sentence (see below).}
+> {Scope directive (see below).}
 >
 > Questions your design should answer:
-> - {feature-specific question derived from user_context and data_shape}
-> - {feature-specific question about the core workflow challenge}
-> - {feature-specific question about data volume / density}
-> - {feature-specific question about the key interaction pattern}
+> {3-5 feature-specific questions derived from user goals + data shape}
+
+**Mode-specific framing:**
+
+If `{page_mode}` = **operational:**
+> Design this page for a user whose main job is to process work accurately and efficiently.
+
+If `{page_mode}` = **analytical:**
+> Design this page for a user whose main job is to understand what changed, why it changed, and where to investigate further.
+
+**Scope directives (append after the framing sentence):**
+
+- **new + branded:** "Section 4 defines this app's visual identity — match it exactly. Information architecture and interaction design are yours."
+- **redesign + branded:** "The current implementation was developer-built without a design process. Start fresh from the data model and user context. Your design must be indistinguishable from the reference pages in section 4."
+- **new + existing:** "Match the visual direction in section 4. Respect the hard constraints in section 5. Everything else is yours."
+- **redesign + existing:** "Start fresh from the data model and user context. Match the visual direction and constraints above."
+- **new + external:** "Apply **{design_system_name}**."
+- **redesign + external:** "Apply **{design_system_name}**. Ignore existing CSS tokens in the repo."
+
+---
 
 **Hard rule: questions must be derived from the data model and user goals only — never from current UI sections, labels, or grouping structure.** If a question names the current grouping logic, the current tabs, the current panels, the current summary blocks, or the current page breakdown, it is leaking. If it names the job to be done, it is safe.
 
-**Guidance for writing questions:**
+**Page-mode rule for questions:**
+- Operational questions should be about processing, review, exception handling, and workflow progress.
+- Analytical questions should be about trend detection, comparison, anomaly diagnosis, and drill-to-evidence.
+- Questions must not mention current tabs, panels, cards, sections, or grouping structures from the existing implementation.
 
-Questions should emerge from the intersection of user goals (section 1), data shape (section 2), and data volume. They must NOT mirror the current UI's solutions.
+**Good questions for operational pages:**
+- "How does the user quickly find items needing action among a dense set of records?"
+- "How does the interface make workflow state and exceptions immediately understandable?"
+- "How does the design support both precise row-level review and efficient bulk throughput?"
+- "How does filtering help the user narrow the work queue without clutter or loss of context?"
+- "How does the page remain calm and trustworthy while supporting operational urgency?"
 
-Good questions for **operational** pages:
-- "How does the design help the user scan a large set of records and find items needing attention quickly?"
-- "How does the interface let the user understand status, progress, and exceptions at a glance?"
-- "How should the design support reviewing and resolving issues without losing context?"
-- "How does the page stay calm and trustworthy while handling dense operational data?"
-- "The user needs to switch among ~16 time periods, some empty — how is that surfaced?"
-- "Rows often need small edits before they can be filed — how does the design handle inline correction without clutter?"
+**Good questions for analytical pages:**
+- "How does the page help the user spot trends, changes, or anomalies quickly?"
+- "How does the interface support comparison across time periods, segments, categories, or entities?"
+- "How does the user move from summary insight to underlying evidence without losing context?"
+- "How does filtering define the scope of the analysis without turning the page into a control panel?"
+- "How does the page stay aligned with the same corporate visual system while still feeling analytical?"
 
-Good questions for **analytical** pages:
-- "How should the page help the user spot trends and anomalies quickly?"
-- "How should the interface support comparison across time, categories, or segments?"
-- "How should the user drill from overview data into the underlying records?"
-- "How should the layout stay calm and corporate while still feeling analytical?"
-
-Bad questions name the current UI's structure (these are disguised layout instructions — do NOT use):
+**Bad questions** name the current UI's structure (disguised layout instructions — do NOT use):
 - "How should the per-country view work?" ← names the current grouping
 - "How should the quarter tabs behave?" ← names the current tab structure
 - "Where should the sidebar grouping be arranged?" ← names the current panel layout
 - "How should the bulk action toolbar work?" ← presupposes a toolbar
-
-**Scope directives by variant:**
-
-- **new + branded:** "Design the UI for **{feature_name}** at `{route}`. Section 4 defines this app's visual identity — match it exactly. Information architecture and interaction design are yours."
-- **redesign + branded:** "Redesign **{feature_name}** at `{route}`. The current implementation was developer-built without a design process. Start fresh from the data model and user context. Your design must be indistinguishable from the reference pages in section 4."
-- **new + existing:** "Design the UI for **{feature_name}** at `{route}`. Match the visual direction in section 4. Respect the hard constraints in section 5. Everything else is yours."
-- **redesign + existing:** "Redesign **{feature_name}** at `{route}`. Start fresh from the data model and user context. Match the visual direction and constraints above."
-- **new + external:** "Design the UI for **{feature_name}** at `{route}` using **{design_system_name}**."
-- **redesign + external:** "Redesign **{feature_name}** at `{route}` using **{design_system_name}**. Ignore existing CSS tokens in the repo."
 
 ---
 
