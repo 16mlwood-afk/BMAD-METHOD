@@ -261,19 +261,24 @@ Additionally, avoid all standard AI design tool fingerprints:
 > - {feature-specific question about data volume / density}
 > - {feature-specific question about the key interaction pattern}
 
+**Hard rule: questions must be derived from the data model and user goals only — never from current UI sections, labels, or grouping structure.** If a question names the current grouping logic, the current tabs, the current panels, the current summary blocks, or the current page breakdown, it is leaking. If it names the job to be done, it is safe.
+
 **Guidance for writing questions:**
 
 Questions should emerge from the intersection of user goals (section 1), data shape (section 2), and data volume. They must NOT mirror the current UI's solutions.
 
-Examples of good questions:
-- "How does the user find the items that need attention among {volume}?"
-- "How does the design support both individual-item precision and bulk throughput?"
+Good questions name the user's problem:
+- "How does the design help the user scan a large set of records and find items needing attention quickly?"
+- "How does the interface let the user understand status, progress, and exceptions at a glance?"
+- "How should the design support reviewing and resolving issues without losing context?"
+- "How does the page stay calm and trustworthy while handling dense operational data?"
 - "The user needs to switch among ~16 time periods, some empty — how is that surfaced?"
 - "Rows often need small edits before they can be filed — how does the design handle inline correction without clutter?"
 
-Examples of bad questions (these are disguised UI instructions — do NOT use):
-- "How should the country grouping be displayed?" ← presupposes grouping
-- "Where should the quarter picker go?" ← presupposes a picker
+Bad questions name the current UI's structure (these are disguised layout instructions — do NOT use):
+- "How should the per-country view work?" ← names the current grouping
+- "How should the quarter tabs behave?" ← names the current tab structure
+- "Where should the sidebar grouping be arranged?" ← names the current panel layout
 - "How should the bulk action toolbar work?" ← presupposes a toolbar
 
 **Scope directives by variant:**
