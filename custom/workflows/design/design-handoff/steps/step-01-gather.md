@@ -11,11 +11,10 @@ description: 'Gather feature purpose, data model, API surface, and user context 
 
 ## RULES
 
-- **NEVER describe the current page layout, component structure, or information grouping.** The current UI was built by a developer, not a designer. Describing it anchors the designer to implementation choices instead of letting them create their own vision.
-- DO NOT read component JSX to summarize what sections the page currently shows — that's the bias vector. Read component files ONLY to extract data types, API calls, and route paths.
+- **NEVER describe the current page layout, component structure, or information grouping.** The current UI was built by a developer. Describing it anchors the designer to implementation choices.
+- Read component files ONLY to extract data types, API calls, and route paths — NOT to summarize what sections the page shows.
 - Focus on WHAT DATA is available and WHO needs it — not HOW it is currently presented.
-- Capture the data shape precisely (TypeScript interfaces / Python models) — designers need to know what fields exist.
-- Present all data fields neutrally. Do NOT rank fields as "prominent" or "secondary" — that's a design decision.
+- Present all data fields neutrally. Do NOT rank fields as "prominent" or "secondary."
 - YOU MUST ALWAYS SPEAK OUTPUT in your agent communication style with the config `{communication_language}`
 
 ---
@@ -24,42 +23,36 @@ description: 'Gather feature purpose, data model, API surface, and user context 
 
 ### 1. Resolve Repository URL
 
-Capture `{github_repo_url}` — Claude Design needs this to connect to the repo:
+Capture `{github_repo_url}`:
 
 ```bash
 git remote get-url origin
 ```
 
-Convert SSH URLs to HTTPS format if needed (e.g., `git@github.com:org/repo.git` → `https://github.com/org/repo`). Strip the trailing `.git`.
+Convert SSH URLs to HTTPS. Strip trailing `.git`.
 
 ### 1b. Load Brand Identity
-
-Check if the project has a brand identity document:
 
 ```bash
 ls {planning_artifacts}/brand-identity.md 2>/dev/null
 ```
 
 **If found:**
-- Read the entire file and store as `{brand_identity}`
+- Read the entire file → `{brand_identity}`
 - Set `{brand_identity_path}` to the absolute path
 - Set `{design_system}` = "branded"
-- Report: "Brand identity loaded — design will be anchored to project visual language."
 
 **If not found:**
-- Set `{brand_identity}` = empty
-- Set `{brand_identity_path}` = empty
-- Report: "No brand identity document. Will extract tokens from codebase."
-- Consider running the brand identity template workflow to create one (suggest to user if not in autonomous mode)
+- Set `{brand_identity}` = empty, `{brand_identity_path}` = empty
+- Set `{design_system}` = "existing" (may be overridden to "external" by user input)
 
 ### 2. Identify the Feature
 
 Determine `{feature_name}` and `{feature_scope}` from user input or recent git history:
 
 ```bash
-# If no explicit input, check recent commits
 git log --oneline -10
-git diff --name-only HEAD~3..HEAD  # files changed recently
+git diff --name-only HEAD~3..HEAD
 ```
 
 Set `{feature_scope}`:
@@ -68,60 +61,72 @@ Set `{feature_scope}`:
 
 ### 3. Map the Data Surface
 
-For the identified feature, collect:
-
 **Route:**
 - What URL path does this feature live at?
 - Note the route path — NOT the component that renders at it
 
-**Data Model (CRITICAL):**
-- Find the TypeScript interface(s) or Python model(s) that define what data the UI can render
-- Capture the FULL interface definition as `{data_shape}`
-- Note which fields are nullable (need empty state handling), which are arrays (need list/collection handling), which are computed
-- **Do NOT annotate which fields are "important" or "primary"** — present them all equally
+**Data Model — Procedural Capture (anti-bias):**
+
+Follow these steps in order. The goal is to capture domain entities from the source of truth (DB schema), not from the page server's UI-shaped response.
+
+1. **Open the DB schema** (`src/lib/server/db/schema.ts` or equivalent). Find the tables this feature reads from.
+2. **For each entity**, list its columns: name, type, nullability. These are the primitive fields.
+3. **Stop. Do NOT open `+page.server.ts` to get the data shape.** The page server denormalizes, groups, pre-computes, and adds rendering hints — all of which bias the designer. If you need to know which entities the feature uses, check the page server's imports or queries, but do NOT copy its return type.
+4. **Flatten any nested structures.** If the schema has a foreign key (e.g., `supplier_country` on an invoice), that's a flat field on the row — not a grouping dimension. Record it as a field.
+5. **Drop anything not in the schema:**
+   - Pre-computed derivations (`daysLeft`, `totalNet`, `filingProgress`, etc.) — keep only the inputs (deadline date, money amount, status enum)
+   - Rendering hints (`flag`, `badgeColor`, emoji fields) — keep only the underlying data (`countryCode`, status enum)
+   - UI-control enums (`'all' | 'not_filed' | 'ready'`) — "all" is a filter affordance, not data. Keep only the row-level status enum.
+   - Precomputed rollups (`domesticCount`, `countryTotal`, `validCount`) — the designer decides which aggregations matter.
+6. **Note which primitive fields are nullable** — these need empty-state treatment.
+
+Capture `{data_shape}` in **domain-entity table form** (see step-03 template). If you find yourself copy-pasting `interface PageData { ... }`, you've gone off track.
 
 **API Surface:**
-- What endpoints does the frontend call? List as `{api_surface}`
+- What endpoints does the frontend call? → `{api_surface}`
 - What does each response look like? (reference the data shape)
 - What mutations are available? (POST/PUT/DELETE endpoints)
 
 **Implementation Files:**
-- List relevant file paths as `{implementation_files}` — these are for the designer's reference if they want to dig into technical details, NOT for understanding the current layout
+- List relevant file paths → `{implementation_files}`
 - Include: type definitions, API route handlers, the main page component path, CSS/style files
+- These are for technical reference, NOT layout reference
 
 ### 4. Capture Feature Purpose
 
-Write `{feature_purpose}` — what the feature DOES, not how it LOOKS:
+Write `{feature_purpose}`:
 
 ```
 Feature: {feature_name}
 Route: /path
 Scope: new | redesign
 Purpose: [1-2 sentences: what problem does this solve for the user?]
-Data source: GET /api/endpoint → TypeInterface
-Available mutations: [list of actions the user can take — e.g., "create", "delete", "filter", "export"]
-Data volume: [typical count — "usually 10-50 items", "single detail view", etc.]
+Data source: GET /api/endpoint → domain entities (see {data_shape})
+User goals: [domain outcomes, NOT UI clicks.
+  GOOD: "spot countries near deadline", "answer 'what's blocking filing today?'"
+  BAD:  "click bulk-mark filed", "switch the active quarter"]
+Data volume: [typical count — "usually 10-50 items", "1,400+ records per quarter"]
 ```
 
-**WARNING:** Do NOT include "Main component", "Child components", "Current sections", or "Key interactions" — these describe the current implementation, not the requirements. The designer decides what components, sections, and interaction patterns to use.
+Do NOT include "Main component", "Child components", "Current sections", "Current tabs", or "Key interactions." Do NOT phrase user goals as UI actions.
 
 ### 5. Identify User Context
 
-Set `{user_context}` — WHO uses this and WHY:
+Set `{user_context}`:
 
-- What role uses this page? (e.g., "wholesale buyer sourcing distributors")
-- What's the job-to-be-done? (e.g., "track outreach attempts, know who to follow up with")
+- What role uses this page?
+- What's the job-to-be-done?
 - How often? (daily tool vs. occasional reference)
 - What's the emotional state? (urgent task vs. exploratory browsing)
 
-If this can't be determined from code, ask the user ONE question:
+If undetermined from code, ask the user ONE question:
 > "Who uses this and what are they trying to accomplish?"
 
 ---
 
 ## COMPLETION
 
-Confirm the following state variables are populated:
+Confirm populated:
 - `{github_repo_url}` ✓
 - `{feature_name}` ✓
 - `{feature_scope}` ✓
@@ -130,7 +135,7 @@ Confirm the following state variables are populated:
 - `{api_surface}` ✓
 - `{implementation_files}` ✓
 - `{user_context}` ✓
-- `{brand_identity}` ✓ (may be empty if no brand identity document exists)
+- `{brand_identity}` ✓ (may be empty)
 - `{design_system}` ✓ ("branded", "existing", or "external")
 
 Then load and follow: `{project-root}/_bmad/bmm/workflows/design/design-handoff/steps/step-02-audit-design.md`

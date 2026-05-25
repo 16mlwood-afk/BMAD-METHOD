@@ -1,22 +1,22 @@
 ---
 name: 'step-03-generate-brief'
-description: 'Generate an unbiased Claude Design brief — presents data and purpose without describing current layout'
+description: 'Generate a bias-free Claude Design brief — domain data in entity-table form, visual direction as theme not layout, design ask as open questions'
 ---
 
 # Step 3: Generate Design Brief
 
-**Goal:** Produce the final design brief as a markdown file that Claude Design can read directly from the repo. The brief must present raw materials (data, purpose, constraints) without describing the current UI's structure.
+**Goal:** Write the final brief to disk. The brief gives Claude Design the business problem, domain data, visual direction, and hard constraints — nothing about the current page structure. It is a creative brief, not a reconstruction spec.
 
 ---
 
 ## RULES
 
-- The brief must be self-contained enough that Claude Design can start working immediately
-- Reference file paths (Claude Design has repo access) but inline the critical context
-- **NEVER describe the current page layout, component tree, section organization, or visual hierarchy in the brief.** These are implementation choices that bias the designer.
-- Present ALL data fields neutrally — do NOT rank them as "prominent" vs "secondary"
-- Use the template below EXACTLY — Claude Design will learn to expect this structure
-- Write to `{implementation_artifacts}` path from config (typically `_bmad-output/implementation-artifacts/`)
+1. **Self-contained.** Claude Design must be able to start without clarifying questions.
+2. **No current UI.** No layout descriptions, component names, section headings, tab lists, or grouping structures from the existing page — in any section.
+3. **Section 2 = domain-entity tables** walked up from the DB schema. Not a TypeScript interface. Not the page server's return type. No derived fields, rendering hints, grouped collections, or UI-control enums.
+4. **Section 4 = visual direction as theme.** Describe the desired aesthetic and constraints, not the current UI structure. Name reference products (Stripe, Ramp, Linear, Mercury, etc.) and state what to borrow from each.
+5. **Section 6 = questions and outcomes.** Frame user problems the design must solve. Never prescribe UI primitives ("must group by X", "must contain a Y picker").
+6. **Reconstructability test.** Read the finished brief. If a developer could rebuild the current page from it, it's leaking.
 - YOU MUST ALWAYS SPEAK OUTPUT in your agent communication style with the config `{communication_language}`
 
 ---
@@ -37,18 +37,16 @@ From steps 01–02:
 
 ```
 {output_path} = {implementation_artifacts}/design-brief-{feature-slug}-{date}.md
-{output_path_relative_to_repo_root} = path relative to git repo root (e.g., _bmad-output/implementation-artifacts/design-brief-{feature-slug}-{date}.md)
+{output_path_relative_to_repo_root} = path relative to git repo root
 ```
-
-Compute the relative path by stripping the repo root from the absolute path. This is used in the brief header and handoff instructions so Claude Design can locate the file via GitHub.
 
 ### 2. Generate the Brief
 
-Write the file using this template:
+Write the file using this template. The section order is intentional — Claude Design should understand the business problem first, then the visual system, then the non-negotiables.
 
 ---
 
-```markdown
+````markdown
 ---
 type: design-brief
 feature: {feature_name}
@@ -62,45 +60,56 @@ status: ready-for-design
 
 ## For Claude Design
 
-> **IMPORTANT — Repository context.** This brief lives in the GitHub repository **{github_repo_url}** (branch: `main`). You must connect to THIS specific repository to read the referenced files. If you are currently working in a different project, switch to this repo first.
+> **Repository:** **{github_repo_url}** (branch: `main`). Connect to THIS repository to read referenced files.
 >
-> **Direct link to this brief:** `{github_repo_url}/blob/main/{output_path_relative_to_repo_root}`
->
-> All file paths below are relative to this repo's root — you can read any of them directly once connected.
+> **This brief:** `{github_repo_url}/blob/main/{output_path_relative_to_repo_root}`
 
-This brief was auto-generated from the codebase after implementation. **Important:** The current UI was built by a developer, not a designer. This brief intentionally does NOT describe the current layout or visual structure — you have full creative freedom to design from scratch based on the data, purpose, and constraints below.
+This brief was generated from the codebase after implementation. It intentionally omits the current layout — you have full creative freedom to design from the data, purpose, and constraints below.
 
-**Scope:** {feature_scope — "new" means design from scratch, "redesign" means rethink the existing UI}
+**Scope:** {feature_scope — "new" = design from scratch, "redesign" = rethink existing}
 
 ---
 
 ## 1. Feature Purpose
 
-**What this feature does:** {feature_purpose — what problem it solves, NOT what the page currently looks like}
+**What this feature does:** {feature_purpose — the problem it solves, NOT what the page looks like}
 
-**Route:** {route path}
+**Route:** `{route path}`
 
-**Available user actions:** {list of mutations/actions from api_surface — e.g., "create", "delete", "filter", "export"}
+**What the user needs to accomplish:**
+{user_goals — domain outcomes, NOT UI actions. "Spot invoices near deadline" not "click the overdue tab."}
 
-**Typical data volume:** {how many items, how much data — e.g., "usually 10-50 items", "single detail view with nested collections"}
+**Typical data volume:** {counts in domain terms}
 
 ---
 
-## 2. Available Data
+## 2. Domain Data
 
-The UI has access to this data shape. All fields are listed neutrally — you decide what deserves prominence, grouping, and hierarchy.
+Fields are in domain language. Grouping, derivation, and presentation are design decisions — not prescribed here.
 
-\`\`\`typescript
-{data_shape — full TypeScript interface(s), NO annotations about importance}
-\`\`\`
+### {EntityName}
+{one-line purpose}
 
-**Fields requiring design consideration:**
-- Nullable fields (need empty/missing state): {list nullable fields}
-- Array fields (need collection/list treatment): {list array fields}
-- Computed/derived fields: {list if any}
+| Field | Type | Nullable | Notes |
+|---|---|---|---|
+| ... | ... | ... | {only genuine notes: units, value domains, FK targets} |
+
+{Repeat per entity. Minimal set — only entities this feature touches.}
+
+**Volumes:** {real-world counts in domain terms}
+
+**Relationships:** {plain-English facts about how entities relate — NOT grouping structures}
+
+**Derivation inputs:** {raw fields the designer can derive from — NOT pre-computed outputs}
+- {e.g., "deadline date per country — the design can derive urgency however it sees fit"}
+- {e.g., "row-level status enum — the design can derive progress rollups however it sees fit"}
+- {e.g., "row-level net + vat amounts in a currency — the design can derive totals however it sees fit"}
+
+**Nullable fields needing empty-state treatment:** {list}
 
 ### API Surface
-{api_surface — endpoints, methods, brief response shape descriptions}
+
+{api_surface — endpoints, methods, brief response descriptions. Implementation reference only.}
 
 ---
 
@@ -108,199 +117,214 @@ The UI has access to this data shape. All fields are listed neutrally — you de
 
 {user_context — role, job-to-be-done, frequency, emotional state}
 
-**Design implication:** {One sentence connecting user context to design priority — e.g., "This is a daily-driver tool so density and keyboard shortcuts matter more than first-impression polish."}
+**Design implication:** {one sentence connecting user context to design priority}
 
 ---
 
-## 4. Visual Identity & Design Constraints
+## 4. Visual Direction
 
-{Use ONE of the following THREE variants based on `{design_system}`:}
+{Use ONE of the following variants based on `{design_system}`:}
 
-**--- VARIANT A: If `{design_system}` = "branded" (brand identity document exists) ---**
+**--- VARIANT A: `{design_system}` = "branded" (brand identity document exists) ---**
 
-> **CRITICAL — This project has an established visual identity.** The sections below define what this app looks and feels like. These are not suggestions — they are the visual language you must work within. Your creative freedom is in information architecture, layout, and interaction design. The visual system (colors, typography, component patterns, spacing) is fixed.
+> This project has an established visual identity. The sections below define its visual language. Your creative freedom is in information architecture, layout, and interaction design. The visual system is fixed.
 
 ### Visual Personality
 
-{Copy section 1 from the brand identity document verbatim — the personality statement, register, density, and "what it's NOT"}
+{Copy section 1 from brand identity verbatim — personality statement, register, density, "what it's NOT"}
 
 ### Typography
 
-{Copy section 2 from the brand identity — font families, type scale table, typography rules}
+{Copy section 2 from brand identity — font families, type scale, rules}
 
 ### Color System
 
-{Copy section 3 from the brand identity — core palette table, semantic colors table, badge pattern, domain colors if relevant to this feature}
+{Copy section 3 from brand identity — core palette, semantic colors, badge pattern, domain colors}
 
 ### Component Patterns
 
-{Copy section 4 from the brand identity — how cards, tables, badges, buttons, status indicators, and navigation actually look in this app. Include exact Tailwind classes.}
+{Copy section 4 from brand identity — tables, badges, buttons, status indicators with exact Tailwind classes}
 
 ### Spacing & Layout
 
-{Copy section 5 from the brand identity — container, padding, gaps, border radius}
+{Copy section 5 from brand identity — container, padding, gaps, border radius}
 
 ### Reference Pages
 
-{Copy section 6 from the brand identity — internal pages that represent the gold standard, with routes and why they're good}
+{Copy section 6 from brand identity — internal gold-standard pages with routes and why}
 
 ### External Influences
 
-{Copy section 7 from the brand identity — named products and what to borrow/avoid from each}
+{Copy section 7 from brand identity — named products and what to borrow/avoid}
 
-### Hard Failures — Non-Negotiable
+**--- VARIANT B: `{design_system}` = "external" ---**
 
-A design that includes ANY of these fails review. These are specific to this project:
+> This page uses the **{design_system_name}** design system. Apply its tokens, typography, spacing, and component patterns. Do NOT use the CSS tokens in the codebase — those are developer placeholders.
 
-{Copy section 8 from the brand identity — the numbered hard failure list}
+**Structural constraints (still apply):**
+- App shell: {fixed shell elements}
+- Navigation: {where this page lives}
 
-### AI Fingerprint Sensitivity
+**--- VARIANT C: `{design_system}` = "existing" (no brand identity, no external system) ---**
 
-These are patterns this project is specifically sensitive to:
+This product should feel like a high-trust finance operations tool — not a generic SaaS dashboard.
 
-{Copy section 9 from the brand identity — the sensitivity table}
+**Visual language:** Match the discipline of Stripe's data tables, the status clarity of Ramp's approval states, the filter density of Linear, and the calm restraint of Mercury. Optimize for dense tables, compact filters, and small pill badges. Use a mostly neutral palette, one accent color, and status color only for small badges.
 
-**Additionally, avoid ALL standard AI design tool fingerprints:**
-- Bento grid layouts — use uniform grids, tables, or lists
-- Hero sections on internal pages — content starts immediately
-- Dashboard metric card grids as page openers
-- Purple/violet as primary accent (unless the brand identity assigns it to a specific domain concept)
-- Gradient text, gradient backgrounds, glassmorphism — flat solid colors only
-- Oversized border-radius (>10px on containers)
-- Heavy card shadows — `shadow-sm` maximum
-- Animated number counters — render data immediately
-- Chatty empty states with illustrations — plain text only
-- Icons on every label and heading — icons only where they add recognition speed
+### Tokens (from `{path}`)
 
-**Self-test:** Show this design to someone who doesn't know AI was involved. If they would suspect it, the design fails.
+**Colors:** {CSS variables with values}
+**Typography:** {font families, key sizes}
+**Spacing & Borders:** {spacing scale, border radius, border colors}
 
-**--- VARIANT B: If `{design_system}` = "external" ---**
+### Patterns from Other Pages
 
-> **This page should use the {design_system_name} design system.** Do NOT use the CSS tokens currently in the codebase — those are developer placeholders and are not this product's intended design language. Apply {design_system_name}'s tokens, typography, spacing, component patterns, and visual language.
-
-**Structural constraints from the codebase (still apply regardless of design system):**
-- App shell structure: {describe the fixed shell elements}
-- Navigation position: {where this page lives in the app shell}
-
-**--- VARIANT C: If `{design_system}` = "existing" (no brand identity, no external system) ---**
-
-### Tokens (from `{path to tokens file}`)
-
-**Colors:**
-{List the key CSS variables with their values}
-
-**Typography:**
-{Font families, key sizes}
-
-**Spacing & Borders:**
-{Spacing scale, border radius, border colors}
-
-### Existing Patterns in Other Pages
-
-{existing_patterns — patterns from OTHER pages in the app, NOT the target feature}
+{existing_patterns — from OTHER pages in the app, NOT the target feature}
 
 ### Reference Pages
 
-{reference_pages — pages to look at for visual language consistency}
-
-### Design Guardrails
-
-This is a professional tool. The design MUST follow these rules:
-
-**Aesthetic:**
-- Pure white or cool neutral gray backgrounds — never cream, off-white, or warm tints
-- One neutral sans-serif family — no personality typography
-- Monospace fonts for data only (IDs, codes, tabular numbers) — never decorative
-- Color used sparingly and functionally
-
-**Anti-patterns (hard failures):**
-1. Bento grid layouts — use uniform grids, tables, or lists
-2. Hero sections on internal pages — content starts immediately
-3. Dashboard metric card grids as page openers
-4. Purple/violet as primary accent
-5. Gradient text, gradient backgrounds, glassmorphism
-6. Oversized border-radius (16px+)
-7. Heavy card shadows
-8. Colored card fills for status (green card = good, red card = bad) — use badges or left-border accents
-9. Chatty empty states with illustrations
-10. Marketing copy or enthusiastic language
-11. Animated number counters
-12. More than 4 distinct badge/status colors
-
-**Self-test:** If someone would guess the design is AI-generated, it fails.
+{reference_pages — internal pages to reference for visual consistency}
 
 ---
 
-## 5. Constraints
+## 5. Hard Constraints
+
+{Use ONE of the following variants based on `{design_system}`:}
+
+**--- If `{design_system}` = "branded" ---**
+
+A design containing ANY of these fails review:
+
+{Copy section 8 from brand identity — numbered hard failure list, verbatim}
+
+**AI fingerprint sensitivity:**
+
+{Copy section 9 from brand identity — sensitivity table, verbatim}
+
+Additionally, avoid all standard AI design tool fingerprints:
+- Bento grid layouts
+- Hero sections on internal pages
+- Dashboard metric card grids as page openers
+- Purple/violet as primary accent (unless brand identity assigns it)
+- Gradient text, gradient backgrounds, glassmorphism
+- Oversized border-radius (>10px on containers)
+- Heavy card shadows — `shadow-sm` maximum
+- Animated number counters
+- Chatty empty states with illustrations
+- Icons on every label and heading
+
+**Self-test:** If someone would guess AI was involved, the design fails.
+
+**--- If `{design_system}` = "external" ---**
 
 {constraints — responsive, data density, accessibility, performance, navigation position}
+
+**--- If `{design_system}` = "existing" ---**
+
+**Non-negotiable anti-patterns:**
+1. No sidebar navigation — content uses the full width
+2. No hero cards or stat cards as page openers — content starts immediately
+3. No bento grid layouts — use uniform tables or lists
+4. No centered card-on-gray-background pattern
+5. No branding invention (logos, taglines, product names in the UI)
+6. No more than 4 distinct badge/status colors
+7. No monochrome decorative icons
+8. No dashboard stat card grids
+9. No gradient text, gradient backgrounds, or glassmorphism
+10. No oversized border-radius (16px+)
+11. No colored card fills for status — use badges or left-border accents
+12. No marketing copy or enthusiastic language
+
+**Aesthetic rules:**
+- Pure white or cool neutral gray backgrounds
+- One neutral sans-serif family
+- Monospace for data only (IDs, codes, tabular numbers)
+- Color used sparingly and functionally
+
+{constraints — responsive breakpoints, data density, accessibility, performance, navigation position}
+
+**Self-test:** If someone would guess AI-generated, it fails.
 
 ---
 
 ## 6. Design Ask
 
-{Based on feature_scope and design_system, write the specific ask:}
+{Write the specific ask. Frame as open-ended design problems with 3-5 feature-specific questions the design must answer.}
 
-**If "new" + branded:**
-> Design the UI for {feature_name} at route {route}. You have the full data model and user context above. Create the best possible design for this user's workflow — decide what information to foreground, how to group data, what interactions to prioritize, and what layout pattern to use. Section 4 defines this app's visual identity — use its exact typography, colors, component patterns, and spacing. The identity and constraints are fixed; information architecture and interaction design are yours.
+**For all variants — structure:**
 
-**If "redesign" + branded:**
-> Redesign {feature_name} at route {route}. The current implementation was built by a developer and has not been through a design process. Approach this as a fresh design problem: decide the optimal information architecture, visual hierarchy, and interaction patterns from scratch. Support all data fields in the model (see section 2) but you decide how to present them. Section 4 defines this app's visual identity — your design must be indistinguishable from the reference pages listed there. Match their register, density, and component language exactly.
+> {One sentence: scope directive — "Design" or "Redesign" + feature name + route + visual identity reference.}
+>
+> Questions your design should answer:
+> - {feature-specific question derived from user_context and data_shape}
+> - {feature-specific question about the core workflow challenge}
+> - {feature-specific question about data volume / density}
+> - {feature-specific question about the key interaction pattern}
 
-**If "new" + existing:**
-> Design the UI for {feature_name} at route {route}. You have the full data model and user context above. Create the best possible design for this user's workflow — decide what information to foreground, how to group data, what interactions to prioritize, and what layout pattern to use. The design tokens and app patterns above establish the visual language; the constraints are the only hard limits. Everything else is yours to decide.
+**Guidance for writing questions:**
 
-**If "redesign" + existing:**
-> Redesign {feature_name} at route {route}. The current implementation was built by a developer and has not been through a design process. Approach this as a fresh design problem: you have the data model and user context above — decide the optimal information architecture, visual hierarchy, and interaction patterns from scratch. Support all data fields in the model (see section 2) but you decide how to present them. Reference the design tokens and app patterns above for visual consistency with the rest of the app.
+Questions should emerge from the intersection of user goals (section 1), data shape (section 2), and data volume. They must NOT mirror the current UI's solutions.
 
-**If "new" + external:**
-> Design the UI for {feature_name} at route {route}. Apply the {design_system_name} design system — use its tokens, typography, component patterns, and visual language. Create the best possible design for this user's workflow. The structural constraints in section 4 and the hard constraints in section 5 are the only limits. Everything else is yours to decide.
+Examples of good questions:
+- "How does the user find the items that need attention among {volume}?"
+- "How does the design support both individual-item precision and bulk throughput?"
+- "The user needs to switch among ~16 time periods, some empty — how is that surfaced?"
+- "Rows often need small edits before they can be filed — how does the design handle inline correction without clutter?"
 
-**If "redesign" + external:**
-> Redesign {feature_name} at route {route}. Apply the {design_system_name} design system and decide the optimal information architecture and interaction patterns from scratch. Support all data fields in the model (see section 2) but you decide how to present them. Ignore the existing CSS tokens in the codebase — {design_system_name} is the intended design language.
+Examples of bad questions (these are disguised UI instructions — do NOT use):
+- "How should the country grouping be displayed?" ← presupposes grouping
+- "Where should the quarter picker go?" ← presupposes a picker
+- "How should the bulk action toolbar work?" ← presupposes a toolbar
+
+**Scope directives by variant:**
+
+- **new + branded:** "Design the UI for **{feature_name}** at `{route}`. Section 4 defines this app's visual identity — match it exactly. Information architecture and interaction design are yours."
+- **redesign + branded:** "Redesign **{feature_name}** at `{route}`. The current implementation was developer-built without a design process. Start fresh from the data model and user context. Your design must be indistinguishable from the reference pages in section 4."
+- **new + existing:** "Design the UI for **{feature_name}** at `{route}`. Match the visual direction in section 4. Respect the hard constraints in section 5. Everything else is yours."
+- **redesign + existing:** "Redesign **{feature_name}** at `{route}`. Start fresh from the data model and user context. Match the visual direction and constraints above."
+- **new + external:** "Design the UI for **{feature_name}** at `{route}` using **{design_system_name}**."
+- **redesign + external:** "Redesign **{feature_name}** at `{route}` using **{design_system_name}**. Ignore existing CSS tokens in the repo."
 
 ---
 
 ## 7. Deliverable Format
 
-Please produce:
-1. **Visual designs** for the page at desktop width (1280px)
-2. **Component specs** for any new UI patterns not already in the app
-3. **Interaction notes** for hover states, transitions, empty states, loading states
-4. **Information architecture rationale** — brief explanation of why you grouped and prioritized information the way you did
+1. **Visual designs** at desktop width (1280px)
+2. **Component specs** for new UI patterns
+3. **Interaction notes** — hover states, transitions, empty states, loading states
+4. **Information architecture rationale** — why you grouped and prioritized information this way
 
 ---
 
 ## 8. Implementation Files (Reference Only)
 
-These files contain the current implementation. Browse them for technical context (data types, API contracts) if needed, but do NOT use them as layout or design references — the current structure is a developer implementation, not a design decision.
+Technical context only — NOT layout or design references.
 
-{If `{design_system}` = "external": Do NOT list CSS/style files here — they contain tokens from a different design system and will confuse the designer. Only list type definitions and API route handlers.}
+{If `{design_system}` = "external": omit CSS/style files.}
 
 | File | What it contains |
 |------|-----------------|
-{Table of 3-5 key files — e.g., type definitions, API route handlers. If design_system = "existing", include CSS tokens. If "external", OMIT CSS/style files.}
-```
+| {3-5 key files} | {type definitions, API handlers, CSS tokens if applicable} |
+````
 
 ---
 
 ### 3. Self-Review
 
-Before writing the file, verify:
+Before writing, verify:
 
-- [ ] Data shape includes ALL fields the UI could render (check the TypeScript interface)
-- [ ] **No field importance ranking** — fields are presented neutrally without "primary" or "secondary" labels
-- [ ] **No current layout description** — the brief does not describe what sections, components, or groupings currently exist on the page
-- [ ] **Design system check:**
-  - If `{design_system}` = "branded": section 4 uses Variant A with FULL brand identity content (personality, typography with exact scale, colors with exact values, component patterns with Tailwind classes, hard failures list, AI sensitivity table). The brand identity content must be comprehensive — not summarized or abbreviated.
-  - If `{design_system}` = "external": section 4 uses Variant B (no inline tokens, names the external system)
-  - If `{design_system}` = "existing": section 4 uses Variant C with real token values from the codebase
-- [ ] **Positive before negative** — in Variant A, the visual personality and component patterns (positive anchors) come BEFORE the hard failures and anti-patterns (negative constraints). This order is critical — Claude Design's priors are strong, and positive references override them more effectively than prohibitions.
-- [ ] Reference pages are real routes that exist in the app (and are NOT the target feature's page)
-- [ ] The "Design Ask" explicitly grants creative freedom over information architecture while requiring adherence to the visual identity
-- [ ] **Hard failures list is present** — if brand identity exists, its hard failures are included verbatim
-- [ ] File paths are correct and relative to repo root
-- [ ] Constraints include data density estimate (how many items in a typical list?)
+- [ ] **No current UI anywhere.** The brief does not describe what sections, components, tabs, or groupings currently exist on the page. No phrases like "the current page has", "the left panel shows", "the table is currently placed under", "this section is a card grid."
+- [ ] **Section 2 is entity tables from the DB schema.** No `interface PageData {...}`, no ```typescript blocks, no nested/grouped collections, no derived fields, no rendering hints, no UI-control enums.
+- [ ] **Section 1 goals are outcomes, not UI actions.** No "click X" or "switch the Y tab."
+- [ ] **Section 4 describes the desired aesthetic, not the current layout.** Named reference products (Stripe, Ramp, etc.) describe a *direction*, not the existing implementation.
+- [ ] **Section 6 is questions, not primitives.** No "must group by", "must contain", "must have." Questions emerge from user goals + data shape, not from the current UI's solutions.
+- [ ] **Reconstructability test.** A developer could NOT rebuild the current page from this brief.
+- [ ] **Design system variant is correct and complete:**
+  - branded = full brand identity content (personality, typography, colors, components, spacing, reference pages, hard failures, AI sensitivity)
+  - existing = visual direction statement + real tokens + anti-pattern list
+  - external = names the system, no repo tokens
+- [ ] **Positive before negative** — visual direction and reference products come BEFORE hard failures and anti-patterns.
+- [ ] **File paths are correct** and relative to repo root.
 
 ### 4. Write the Brief
 
@@ -308,32 +332,27 @@ Write the file to `{output_path}`.
 
 ### 5. Present to User
 
-Show the user:
+Show:
 1. Where the file was written
-2. A 3-line summary of what's in the brief
-3. The copy-paste prompt for Claude Design (including the full GitHub URL so Claude Design connects to the right repo):
+2. A 3-line summary
+3. Copy-paste prompt for Claude Design:
 
 > **To hand off to Claude Design:**
-> Copy-paste this prompt into Claude Design:
 >
-> **If `{design_system}` = "existing":**
-> "Connect to the GitHub repository **{github_repo_url}** and read the file `{output_path_relative_to_repo_root}` on the `main` branch. This is a design brief for {feature_name}. Design the UI following the brief exactly."
+> "Connect to **{github_repo_url}** and read `{output_path_relative_to_repo_root}` on `main`. This is a design brief for {feature_name}. Design the UI following the brief exactly."
 >
-> **If `{design_system}` = "external":**
-> "Connect to the GitHub repository **{github_repo_url}** and read the file `{output_path_relative_to_repo_root}` on the `main` branch. This is a design brief for {feature_name}. Apply the {design_system_name} design system you created — use its tokens, typography, and component patterns. Ignore any CSS tokens in the repo's style files (they are developer placeholders from another project). Design the UI following the brief."
->
-> **Why the full repo URL matters:** Claude Design may have a different project open. Without the explicit repo URL, it will look for the file in whatever project is currently active — and fail.
+> {If external, append: "Apply the {design_system_name} design system — ignore CSS tokens in the repo's style files."}
 
 ---
 
 ## SUCCESS METRICS
 
-- Brief is written to `{output_path}`
-- Claude Design can start working without asking clarifying questions about data shape, constraints, or visual direction
-- **Brief does NOT describe the current page structure** — no component names, section headings, or layout descriptions from the existing implementation
-- **Data fields are presented neutrally** — no importance ranking that would bias the designer's hierarchy choices
-- Brief references file paths instead of inlining entire files
-- **If branded:** section 4 contains the FULL brand identity content — personality, typography with exact scale, colors with values, component patterns with classes, reference pages, hard failures, and AI sensitivity. The designer has everything needed to produce work indistinguishable from the reference pages.
-- **If existing:** tokens are real values extracted from the codebase; existing patterns are described from OTHER pages; generic anti-pattern list is included
-- **If external:** NO inline tokens from the codebase; brief names the external system; CSS/style files excluded from implementation files table
-- **Positive anchors precede negative constraints** — the brief establishes what good looks like BEFORE listing what to avoid
+- Brief written to `{output_path}`
+- Claude Design can start without clarifying questions
+- **Zero implementation echoes** — no layout, component, section, or tab references from the current page
+- **Section 2** is domain-entity tables from the schema — not TS interfaces, not page server shapes
+- **Section 4** describes the desired aesthetic (theme, reference products, tokens) — not the current structure
+- **Section 6** poses open design problems as questions — not UI-primitive instructions
+- **Reconstructability test passes** — the brief constrains the designer to solving the user's problem, not reproducing this specific UI
+- Visual identity is complete for the variant (branded/existing/external)
+- Positive anchors precede negative constraints
