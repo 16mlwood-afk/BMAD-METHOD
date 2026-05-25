@@ -16,7 +16,9 @@ quick_dev_workflow: '{project-root}/_bmad/bmm/workflows/implement/quick-dev/work
 
 **Key Insight:** Claude Design can read files from the repo (GitHub is linked). The brief should reference file paths for deep context rather than inlining everything. But it MUST inline enough for Claude Design to start working immediately — don't require it to read 20 files before understanding the ask.
 
-**Anti-Bias Principle — CRITICAL:** The current UI was built by a developer, not a designer. Its layout, information grouping, visual hierarchy, and component structure are *implementation choices*, not design requirements. The brief must **never** describe what the current page looks like or how information is currently organized. Instead, give the designer the raw materials — data model, user purpose, constraints, design tokens — and let them create their own vision. Feeding the designer "this page contains sections X, Y, Z" paves the road and kills creative exploration.
+**Anti-Bias Principle — CRITICAL:** The current UI was built by a developer, not a designer. Its layout, information grouping, visual hierarchy, and component structure are *implementation choices*, not design requirements. The brief must **never** describe what the current page looks like or how information is currently organized. Instead, give the designer the raw materials — data model, user purpose, constraints, visual direction — and let them create their own vision. The brief describes the desired aesthetic (theme, reference products, tokens), not the current structure.
+
+**Brief Section Order:** The template follows this sequence for optimal handoff to Claude Design: Feature purpose → Domain data → User context → Visual direction → Hard constraints → Design ask. This order lets the designer understand the business problem before encountering visual constraints.
 
 ---
 
@@ -33,12 +35,12 @@ This uses **step-file architecture** for focused execution:
 - `{feature_name}` - Name of the feature being handed off
 - `{feature_scope}` - "new" (design from scratch) or "redesign" (improve existing)
 - `{feature_purpose}` - What the feature does and why it exists — NOT how it is currently laid out
-- `{data_shape}` - TypeScript interfaces or Python models that define what data is available to the UI — presented neutrally without ranking field importance
+- `{data_shape}` - Domain entities and their primitive fields, in domain language — NOT the page server's return type. Captured by walking up from DB schema, not down from the UI response. See step-01 for procedural capture rules.
 - `{api_surface}` - Endpoints and response shapes the frontend can call
 - `{implementation_files}` - File paths for implementation reference only (designer may browse for technical context, not for layout inspiration)
 - `{brand_identity_path}` - Path to the project's brand identity document (if it exists)
 - `{brand_identity}` - Contents of the brand identity document — provides positive visual anchors, design tokens, component patterns, reference pages, and hard failures. When present, this is the PRIMARY source for design system context — it supersedes token extraction and generic guardrails.
-- `{design_system}` - "branded" (brand identity exists) or "existing" (extract tokens from code) or "external" (external design system — e.g., created in Claude Design). When "branded", sections 4 and 4a of the brief are replaced with brand identity content. When "external", section 4 is a note telling the designer to apply their own system.
+- `{design_system}` - "branded" (brand identity exists) or "existing" (extract tokens from code) or "external" (external design system — e.g., created in Claude Design). Controls which variant of section 4 (Visual Direction) and section 5 (Hard Constraints) the brief uses.
 - `{design_system_name}` - If external: the name of the design system (e.g., "Meridian"). Empty otherwise.
 - `{design_tokens}` - Design tokens — from brand identity (preferred) or extracted from codebase
 - `{existing_patterns}` - Component patterns — from brand identity (preferred) or observed in other pages
