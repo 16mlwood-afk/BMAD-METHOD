@@ -90,18 +90,23 @@ If the input is ambiguous, ask ONE clarifying question maximum, then proceed.
 
 ### Brand Identity & Design System Detection
 
-**Step 1 — Check for brand identity (highest priority):**
+**Step 1 — Check for a project design policy (highest priority):**
+
+Projects may declare visual direction, layout principles, status systems, and hard failures in one of two locations. Check both, in order:
 
 ```bash
+ls {project-root}/docs/design-policy.md 2>/dev/null
 ls {planning_artifacts}/brand-identity.md 2>/dev/null
 ```
 
-If the file exists:
+If `{project-root}/docs/design-policy.md` exists, prefer it. Otherwise fall back to `{planning_artifacts}/brand-identity.md`. Both files play the same role — they describe the project's design system. `design-policy.md` is the canonical name; `brand-identity.md` is the legacy slot.
+
+If either file exists:
 - Read it and store as `{brand_identity}`
 - Set `{brand_identity_path}` to the file path
 - Set `{design_system}` = "branded"
-- Extract `{design_tokens}`, `{existing_patterns}`, `{reference_pages}`, and `{hard_failures}` directly from the brand identity document
-- **Skip design system questions entirely** — the brand identity IS the design system
+- Extract `{design_tokens}`, `{existing_patterns}`, `{reference_pages}`, and `{hard_failures}` directly from the document
+- **Skip design system questions entirely** — the project policy IS the design system
 
 **Step 2 — If no brand identity, check for external directive:**
 
