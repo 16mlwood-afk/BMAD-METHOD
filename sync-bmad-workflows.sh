@@ -53,6 +53,16 @@ SYNC_DIRS=(
   "4-implementation/code-review"
 )
 
+# Legacy subpaths that have been moved or removed in the canonical source.
+# Listed as <sync-dir>/<leaf-name>. The sync workflow:
+#   1. Treats these as already-migrated for the local-only block check
+#      (otherwise every project that still has the legacy copy would block).
+#   2. Removes them from each target during the migration step before rsync
+#      writes the new canonical location.
+LEGACY_SUBPATHS_TO_REMOVE=(
+  "design/apply-design-policy-change"  # moved to meta/apply-design-policy-change
+)
+
 JQ_MERGE='
   input as $base | input as $template |
   ($template.hooks | [.. | .statusMessage? // empty]) as $bmad_msgs |
@@ -604,6 +614,16 @@ while IFS= read -r target || [[ -n "$target" ]]; do
       [[ ! -d "$src_path" ]] && { has_local_only=true; continue; }
 
       local_only=$(diff -rq --exclude='.DS_Store' "$dst_path" "$src_path" 2>/dev/null | grep "^Only in $dst_path" || true)
+
+      # Strip lines for known-legacy subpaths — the migration step will clean them up.
+      for legacy in "${LEGACY_SUBPATHS_TO_REMOVE[@]}"; do
+        legacy_parent="${legacy%%/*}"
+        legacy_leaf="${legacy##*/}"
+        if [[ "$dir" == "$legacy_parent" ]]; then
+          local_only=$(echo "$local_only" | grep -v ": $legacy_leaf\$" || true)
+        fi
+      done
+
       if [[ -n "$local_only" ]]; then
         has_local_only=true
       fi
@@ -626,6 +646,15 @@ while IFS= read -r target || [[ -n "$target" ]]; do
       if [[ -d "$old_path" ]]; then
         rm -rf "$old_path"
         echo "  OK    removed legacy $legacy_dir/ (migrated to implement/verify/design/meta)"
+      fi
+    done
+
+    # Migration: remove legacy subpaths (workflows moved between subdirs in the source)
+    for legacy_path in "${LEGACY_SUBPATHS_TO_REMOVE[@]}"; do
+      old_path="$target/$legacy_path"
+      if [[ -d "$old_path" ]]; then
+        rm -rf "$old_path"
+        echo "  OK    removed legacy $legacy_path/ (moved in source — sync will write the canonical copy)"
       fi
     done
 
