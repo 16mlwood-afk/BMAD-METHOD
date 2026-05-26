@@ -54,6 +54,7 @@ scope: {feature_scope}
 date: {date}
 author: {user_name} via design-handoff workflow
 status: ready-for-design
+design_policy_version: {policy_version or "none"}
 ---
 
 # Design Brief: {feature_name}
