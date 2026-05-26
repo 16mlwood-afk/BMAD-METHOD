@@ -143,7 +143,7 @@ When in doubt, ask — do not remove.
 
 ### 4. Self-Review
 
-Final gate: "Would a designer at Linear or Stripe ship this?"
+Final gate: would this pass a senior design review at a top-tier product company, AND does it satisfy the quality bar named in the project's `docs/design-policy.md` (if present — match the reference products and visual anchors it specifies)?
 
 If no — iterate before presenting. Fix the weakest part, then re-check.
 
@@ -168,7 +168,7 @@ If the user wants to iterate:
 - Cross-check completed — every inventory element accounted for
 - Quality checklist passed — all items green
 - Final spec includes: disclaimer, changes with rationale, omissions list, open questions, implementation mapping, tokens
-- Self-review passed — Linear/Stripe quality bar met
+- Self-review passed — senior-designer quality bar met (and project design-policy bar, if one is defined)
 
 ## FAILURE MODES
 

@@ -67,11 +67,24 @@ For each brief found:
 
 ### 5. Identify affected pages
 
-From `{affected_briefs}`, extract the `feature` or route each brief covers. Also scan the routes directory:
+From `{affected_briefs}`, extract the `feature` or route each brief covers. Also scan the project's routes/pages directory. Common patterns by framework:
 
 ```bash
-find {project-root}/src/routes -maxdepth 2 -name "+page.svelte" -o -name "+page.ts" 2>/dev/null | head -30
+# SvelteKit
+find {project-root}/src/routes -maxdepth 3 \( -name "+page.svelte" -o -name "+page.ts" \) 2>/dev/null | head -30
+# Next.js (app router)
+find {project-root}/app -maxdepth 3 \( -name "page.tsx" -o -name "page.jsx" -o -name "page.ts" \) 2>/dev/null | head -30
+# Next.js (pages router)
+find {project-root}/pages -maxdepth 3 \( -name "*.tsx" -o -name "*.jsx" \) 2>/dev/null | head -30
+# Remix / React Router
+find {project-root}/app/routes -maxdepth 3 -type f 2>/dev/null | head -30
+# Rails
+find {project-root}/app/views -maxdepth 3 -type f 2>/dev/null | head -30
+# Django
+find {project-root} -maxdepth 4 -path '*/templates/*.html' 2>/dev/null | head -30
 ```
+
+Run only the one matching this project's framework — detect it from `package.json`, `Gemfile`, `requirements.txt`, etc.
 
 Build `{affected_pages}` — a list of:
 

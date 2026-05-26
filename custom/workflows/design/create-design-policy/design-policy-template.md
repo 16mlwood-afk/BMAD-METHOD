@@ -171,7 +171,7 @@ When a downstream workflow needs a design decision, it resolves from the most sp
 |----------|--------|-----------------|--------------|
 | 1 | **This policy** (`design-policy.md`) | Strategic direction, page modes, hard failures, tone | Always — this is the project's visual constitution |
 | 2 | **Brand identity** (`brand-identity.md`) | Concrete tokens, hex values, Tailwind classes, component specs | When the policy doesn't specify a concrete value (e.g., exact border-radius) |
-| 3 | **Code tokens** (tailwind.config, CSS vars, status.ts) | Current implementation values | When neither policy nor brand identity addresses the specific token |
+| 3 | **Code tokens** (utility-CSS config, CSS variables, theme/status helper files) | Current implementation values | When neither policy nor brand identity addresses the specific token |
 | 4 | **Design standards** (`shared/design-standards.md`) | Generic anti-patterns, AI fingerprint rules | Fallback defaults — overridden by anything project-specific above |
 
 **Conflict rule:** If brand identity contradicts this policy, the policy wins and brand identity should be updated to match. If code tokens contradict both, the code is design debt to be resolved.
