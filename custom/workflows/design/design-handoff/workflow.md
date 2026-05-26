@@ -52,6 +52,12 @@ This uses **step-file architecture** for focused execution:
 - `{github_repo_url}` - GitHub HTTPS URL for the repository (no trailing `.git`)
 - `{output_path}` - Absolute path where the brief is written on disk
 - `{output_path_relative_to_repo_root}` - Brief path relative to the repo root (for GitHub URLs and Claude Design references)
+- `{handoff_mode}` - `"fresh-design"` (default) or `"refine-screen"`. Refine-screen mode is triggered by the design-pm prompt-expansion or by the user passing `--refine-screen` / `--refine`. In refine-screen mode the workflow consumes a `screen-review` artifact (auto-running `design-review --artifact` first if none exists) and produces a tightly-scoped refinement brief instead of an open creative brief.
+- `{review_artifact_path}` - Absolute path to the consumed `screen-review-*.md` artifact (only set in refine-screen mode)
+- `{refine_focus}` - Top 3 issues parsed from the artifact (used to bound the brief's Design Ask in refine-screen mode)
+- `{required_variants}` - Edge states parsed from the artifact (required design variants in refine-screen mode)
+- `{peer_steals}` - Peer-pattern transplants parsed from the artifact (used as visual references in refine-screen mode)
+- `{already_fine}` - Things the artifact says NOT to break (folded into hard constraints in refine-screen mode)
 
 ---
 
@@ -119,6 +125,47 @@ If either file exists:
 Set `{design_system}` = "existing" — tokens will be extracted from the codebase in step 02.
 
 **Why brand identity first:** A brand identity document captures the project's ACTUAL visual language — not raw CSS tokens, not generic anti-patterns, but the specific decisions that make this app look like this app. When one exists, it provides both positive anchors (what we look like) and negative constraints (what we never do), which are far more effective than generic guardrails. Without it, Claude Design fills the vacuum with its strongest priors (generic SaaS templates).
+
+### Refine-Screen Detection & Artifact Loading
+
+The workflow handles two modes:
+
+- **`fresh-design`** (default) — new page, new feature, structural redesign. The brief is open and creative. The rest of this section does not apply.
+- **`refine-screen`** — iteration on an existing baseline screen. The brief is tightly scoped to the diagnostic from a `design-review` artifact. NO USER COMPLAINTS ARE COLLECTED — the diagnostic is automated.
+
+**Detect mode** in this order:
+
+1. If the user's invocation or prompt-expansion contains the literal `--refine-screen`, `--refine`, or starts with "refine"/"iterate"/"tighten"/"polish"/"second pass on" → `{handoff_mode}` = `"refine-screen"`.
+2. If `design-pm` set `{handoff_mode}` in state when routing → honor it.
+3. Otherwise → `{handoff_mode}` = `"fresh-design"`.
+
+**If `{handoff_mode}` = `"refine-screen"`, run artifact loading BEFORE step-01:**
+
+1. **Resolve target slug.** From the user's input identify the target route or feature slug. Same kebab-case rule as `design-review`: pathname → strip slashes → replace `/` with `-` → lowercase. Examples: `/reclaim/avask` → `reclaim-avask`; "iterate AVASK" + the AVASK page in context → `reclaim-avask`.
+
+2. **Search for an existing artifact:**
+
+   ```bash
+   ls -t {implementation_artifacts}/screen-review-{target_slug}-*.md 2>/dev/null | head -1
+   ```
+
+   Pick the most recent. Also accept matches where the slug is a prefix (e.g., `reclaim-avask-v2-...md`).
+
+3. **Branch on result:**
+
+   - **Artifact found AND less than 24 hours old:** Load it. Set `{review_artifact_path}` to its absolute path. Parse the YAML frontmatter into state, then parse the body's Top 3 → `{refine_focus}`, Edge States → `{required_variants}`, Peer Steals → `{peer_steals}`, Already Fine → `{already_fine}`. Proceed to step-01.
+
+   - **Artifact found but older than 24 hours:** The screen may have changed. Surface to the user: "Found a screen-review artifact from {age}. Use it as-is, or re-run design-review --artifact?" In autonomous mode, prefer fresh — re-run design-review.
+
+   - **No artifact found AND `autonomous_mode` = true:** Auto-invoke `design-review` with `{output_mode}` = `"artifact"` and the same `{target_url}` / target context. Load the resulting artifact and proceed.
+
+   - **No artifact found AND `autonomous_mode` = false:** Stop. Tell the user: "Refine-screen mode requires a screen-review artifact. Run `/bmad:bmm:workflows:design-review --artifact` on the target page first, then retry this workflow." Do NOT fall back to asking the user for complaints — the whole point of refine-screen mode is that the diagnostic is automated.
+
+4. **Skip the "ask user what's wrong" prompt in step-01.** The artifact replaces it. The user-context question in step-01 still applies (who uses this, how often) since the artifact doesn't cover that.
+
+5. **In step-03, the Design Ask section is rewritten** to the refine-screen variant — see step-03 for the bounded refinement template.
+
+**Refine-screen rule:** The brief produced in this mode must be BOUNDED. It addresses the artifact's top 3 issues and requires variants for the artifact's edge states. It does NOT redesign the IA, does NOT introduce new components unless required to land one of the top 3, and does NOT propose a "get radical" alternative. Open creative freedom belongs in `fresh-design`.
 
 ---
 

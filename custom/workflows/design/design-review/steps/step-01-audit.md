@@ -17,6 +17,7 @@ thisStepFile: './step-01-audit.md'
 - `{target_url}` — URL under review
 - `{tab_id}` — Chrome tab ID
 - `{brand_identity}` — Project brand identity (if loaded). When present, evaluate against its specific typography, colors, component patterns, and hard failures instead of generic design-standards.md.
+- `{output_mode}` — `"interactive"` (default) or `"artifact"`. When `"artifact"`, step 7 below writes a structured screen-review file in addition to the chat output.
 
 ---
 
@@ -109,7 +110,7 @@ With measurements + source in hand, compare the page under review against the pe
   - Hard failures: none of the brand identity's section 8 items are present
   - Reference page alignment: would this page look at home alongside the brand's listed gold-standard pages?
 
-### 6. Deliver
+### 6. Deliver (interactive)
 
 Produce the review in exactly the structure defined in `workflow.md`. Template:
 
@@ -168,6 +169,36 @@ Only include regions that have actual fixes. Each bullet: `file_path:line` + cla
 ## Get radical (optional)
 
 One paragraph. Omit entirely if the current layout is the right shape.
+
+---
+
+### 7. Emit Artifact (only when `{output_mode}` = "artifact")
+
+If `{output_mode}` is not `"artifact"`, skip this step entirely.
+
+Otherwise, write a structured screen-review file that downstream workflows (specifically `design-handoff` in refine-screen mode) will consume.
+
+**Derive filename inputs:**
+
+- `{target_slug}` — kebab-case slug from `{target_url}`'s pathname. Strip leading/trailing slashes, replace `/` with `-`, lowercase. Example: `https://app.example.com/reclaim/avask` → `reclaim-avask`. If the path is empty or `/`, fall back to the page's `<title>` slugified.
+- `{date}` — current date in `YYYY-MM-DD` format from the project config / system time.
+- `{implementation_artifacts}` — resolve from `{main_config}`. Common value: `{project-root}/_bmad-output/implementation-artifacts/`. If the directory doesn't exist, create it.
+
+**Compute output path:**
+
+```
+{artifact_path} = {implementation_artifacts}/screen-review-{target_slug}-{date}.md
+```
+
+If a file at this exact path already exists, append `-v{N}` (starting at v2) so the prior artifact isn't overwritten — downstream consumers pick the most recent timestamp regardless.
+
+**Write the artifact** exactly in the format specified in `workflow.md` under "Artifact output". The body is the same Top 3 / Edge States / Peer Steals / Already Fine / Measurement Evidence content you produced for the interactive deliverable — restructured to the artifact's stable headings and with the YAML frontmatter populated from state. Severity per issue must be one of `high | medium | low` (not invented levels).
+
+**Edge states — special rule for artifact mode.** The interactive review doesn't require an explicit edge-states section; the artifact does. In artifact mode you MUST list at least 2 edge states the design needs explicit variants for. Derive them from real data conditions visible on the page (e.g., "country with 0 rows", "country fully filed", "row with missing buyer VAT"), not from generic "loading / error / empty" templates. If you can't name 2 from the data, that's a sign you didn't measure enough in step 3 — go back and look.
+
+**Confirm the file is on disk** by listing it back to the user along with the chat-rendered interactive review:
+
+> Artifact written to `{artifact_path}` — `design-handoff` (refine-screen) will pick this up automatically.
 
 ---
 

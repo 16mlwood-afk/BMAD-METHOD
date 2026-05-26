@@ -28,6 +28,8 @@ From steps 01–02:
 - `{data_shape}`, `{api_surface}`, `{implementation_files}`, `{user_context}`
 - `{design_system}`, `{brand_identity}`, `{brand_identity_path}`
 - `{design_tokens}`, `{existing_patterns}`, `{reference_pages}`, `{hard_failures}`, `{constraints}`
+- `{handoff_mode}` — `"fresh-design"` or `"refine-screen"`
+- If refine-screen: `{review_artifact_path}`, `{refine_focus}`, `{required_variants}`, `{peer_steals}`, `{already_fine}`
 
 ---
 
@@ -38,6 +40,12 @@ From steps 01–02:
 ```
 {output_path} = {implementation_artifacts}/design-brief-{feature-slug}-{date}.md
 {output_path_relative_to_repo_root} = path relative to git repo root
+```
+
+If `{handoff_mode}` = `"refine-screen"`, use the slug `refine-{feature-slug}` instead of `{feature-slug}` so the refinement brief is visually distinct from any fresh-design brief on the same feature:
+
+```
+{output_path} = {implementation_artifacts}/design-brief-refine-{feature-slug}-{date}.md
 ```
 
 ### 2. Generate the Brief
@@ -214,6 +222,72 @@ This is an analytical page. The design should help the user understand patterns,
 
 ---
 
+## 4b. Analytics Structure (if present)
+
+{Include this section ONLY if the feature has an analytics band, summary strip, or supporting chart layer above/beside the primary worklist. Skip entirely for pure data-entry, list-only, or detail pages with no analytics surface. Defines what each analytics layer is FOR so the designer does not improvise.}
+
+### A. Reading passes
+
+The analytics surface should be designed as a sequence of three reading passes, each with a stated job:
+
+**Pass 1 — headline**
+
+- **Job (1 sentence):** {e.g., "Tell the user total VAT at stake for this period and movement vs prior period in one inline sentence."}
+- **Metrics allowed:** {e.g., "total VAT at stake, delta vs prior period (absolute + percentage)."}
+
+**Pass 2 — trend strip**
+
+- **Job (1 sentence):** {e.g., "Show within-source drift over the last 4 completed quarters; detect which source moved."}
+- **Primary question this strip answers:** {e.g., "Which sources changed meaningfully this period?"}
+- **Comparison type (pick one):**
+  - absolute magnitude across sources
+  - within-series pattern / drift only
+- **Small-multiples axis rule:**
+  - shared Y-axis across panels
+  - per-source Y-axis (pattern-only; absolute comparison deferred to table)
+- **Panel ordering rule:** {e.g., "Order panels by current-period total descending," or "fixed domain order: DE, FR, ES, …"}
+
+**Pass 3 — evidence table**
+
+- **Job (1 sentence):** {e.g., "Let the user compare sources by amount and drill into underlying records."}
+- **What must be visible in the table that is not in the strip:** {e.g., "exact amounts per source × period, filing states, drill affordances."}
+
+### B. Drill behaviour
+
+Define exactly what each interactive element does. Every analytics element must have a defined drill target — no ornamental elements.
+
+- **Headline summary:** {e.g., "click opens the current period in `/route` with all sources."}
+- **Trend strip tile (sparkline card):**
+  - Tile click: {e.g., `/route?country=DE&period=Q1 2026`}
+  - Value click: {e.g., same as tile click}
+  - Delta click: {e.g., side-by-side view of current vs prior period for that source}
+- **Table cells:**
+  - Value cell (amount): {e.g., drill to `/route` filtered to that source × period}
+  - Label cell (source name): {e.g., `/route` filtered to that source across all periods}
+  - Delta cell: {e.g., comparison view of the two periods being compared}
+  - "No activity" / inactive cell: {e.g., open onboarding doc or show one-line tooltip}
+
+### C. Palette & status rules
+
+Specify whether the operational status palette extends into the analytics surface:
+
+- **Can the analytics strip use status colors?**
+  - No — status palette is reserved for operational states only.
+  - Yes, but only for: {describe scope}.
+- **How are movement directions encoded?** {e.g., "Arrow glyph + typographic color (red = higher spend, green = lower spend). No colored pills, no tinted backgrounds for deltas."}
+- **Category encoding:** {e.g., "Sources are differentiated by label and panel position, never by hue."}
+
+### D. Prohibited analytics patterns (page-specific)
+
+Re-state or add any analytics-specific bans for this page beyond the global hard constraints in section 5:
+
+- {e.g., "No stat-card row above the table."}
+- {e.g., "No single multi-series line chart; each source must have its own small multiple."}
+- {e.g., "No stacked columns; they hide small sources behind large ones."}
+- {e.g., "No KPI cards or dashboard tiles in the analytics band."}
+
+---
+
 ## 5. Hard Constraints
 
 {Use ONE of the following variants based on `{design_system}`:}
@@ -272,6 +346,52 @@ Additionally, avoid all standard AI design tool fingerprints:
 ---
 
 ## 6. Design Ask
+
+{Use ONE of the following based on `{handoff_mode}`.}
+
+**--- VARIANT REFINE: `{handoff_mode}` = "refine-screen" ---**
+
+> This is a refinement, not a redesign. The information architecture and task model are stable. Address exactly the three issues below and produce variants for the listed edge states. Do not propose new IA, new components, or alternate layouts unless required to land one of the three fixes. The page should remain recognizable.
+
+**Source diagnostic:** `{review_artifact_path}` — generated by `design-review --artifact` on `{date}`. This is the ground truth; do not invent additional issues.
+
+### Fixes (address all three; in priority order)
+
+{For each item in `{refine_focus}`:}
+
+**{N}. {short-name}** *(severity: {high|medium|low})*
+
+- Location: `{file:line}`
+- Question this fix unblocks: {question_blocked from artifact}
+- Direction: {before_class} → {after_class}
+- {why this is the top fix — one sentence from artifact}
+
+### Required edge-state variants
+
+{For each item in `{required_variants}`:}
+
+- **{state}** — design implication: {why this needs explicit treatment}
+
+### Peer patterns to port
+
+{For each item in `{peer_steals}`:}
+
+- From `{peer_path}`: {pattern} — port by {action}.
+
+### Do NOT break
+
+The audit found these aspects already work. The refinement must preserve them:
+
+{Bullet list from `{already_fine}`}
+
+### Scope guardrails (refine-screen)
+
+- Do NOT redesign the IA, the task model, or the navigation. Those are out of scope for this round.
+- Do NOT propose new components unless one of the three fixes genuinely requires it.
+- Do NOT add a "get radical" alternative — see step-01 of `design-review` for that conversation; refine-screen is bounded by design.
+- DO produce the edge-state variants — they are required, not optional.
+
+**--- VARIANT FRESH: `{handoff_mode}` = "fresh-design" (or unset) ---**
 
 {Write the ask using the mode-specific pattern below, then append 3-5 feature-specific questions.}
 
@@ -357,18 +477,21 @@ Technical context only — NOT layout or design references.
 
 Before writing, verify:
 
-- [ ] **No current UI anywhere.** The brief does not describe what sections, components, tabs, or groupings currently exist on the page. No phrases like "the current page has", "the left panel shows", "the table is currently placed under", "this section is a card grid."
+- [ ] **No current UI anywhere.** The brief does not describe what sections, components, tabs, or groupings currently exist on the page. No phrases like "the current page has", "the left panel shows", "the table is currently placed under", "this section is a card grid." *(Refine-screen exception: section 6 cites the artifact's specific `file:line` references — that's expected, because the artifact IS the diagnostic.)*
 - [ ] **Section 2 is entity tables from the DB schema.** No `interface PageData {...}`, no ```typescript blocks, no nested/grouped collections, no derived fields, no rendering hints, no UI-control enums.
 - [ ] **Section 1 goals are outcomes, not UI actions.** No "click X" or "switch the Y tab."
 - [ ] **Section 4 describes the desired aesthetic, not the current layout.** Reference products (where named by the project policy) describe a *direction*, not the existing implementation.
-- [ ] **Section 6 is questions, not primitives.** No "must group by", "must contain", "must have." Questions emerge from user goals + data shape, not from the current UI's solutions.
-- [ ] **Reconstructability test.** A developer could NOT rebuild the current page from this brief.
+- [ ] **Section 6 variant is correct.** If `{handoff_mode}` = "refine-screen", section 6 uses the REFINE variant — fixes from `{refine_focus}`, variants from `{required_variants}`, peer steals from `{peer_steals}`, "do not break" from `{already_fine}`. If `{handoff_mode}` = "fresh-design", section 6 uses the FRESH variant — framing + scope directive + open questions, no diagnostic fixes.
+- [ ] **Refine-screen scope is bounded.** The brief addresses exactly 3 fixes (not 4, not 2). It lists at least 2 edge-state variants. It does NOT instruct the designer to redesign the IA, replace components wholesale, or "get radical."
+- [ ] **Fresh-design section 6 is questions, not primitives.** No "must group by", "must contain", "must have." Questions emerge from user goals + data shape, not from the current UI's solutions.
+- [ ] **Reconstructability test (fresh-design only).** A developer could NOT rebuild the current page from this brief. Does not apply in refine-screen mode — that mode intentionally references the current page.
 - [ ] **Design system variant is correct and complete:**
   - branded = full brand identity content (personality, typography, colors, components, spacing, reference pages, hard failures, AI sensitivity)
   - existing = visual direction statement + real tokens + anti-pattern list
   - external = names the system, no repo tokens
 - [ ] **Positive before negative** — visual direction and reference products come BEFORE hard failures and anti-patterns.
 - [ ] **Page mode is correct.** If `{page_mode}` = "analytical", section 4a (Analytics View Addendum) is present. If "operational", section 4a is omitted entirely.
+- [ ] **Section 4b is correct.** Section 4b (Analytics Structure) is present iff the feature has an analytics band / summary strip / supporting chart layer above or beside the primary worklist. When present, all four subsections (A reading passes, B drill behaviour, C palette & status rules, D prohibited patterns) are filled with feature-specific values — no template placeholders remain. Every analytics element named in A or B has a stated drill target in B (no ornamental elements). When the feature has no analytics surface, section 4b is omitted entirely.
 - [ ] **File paths are correct** and relative to repo root.
 
 ### 4. Write the Brief
@@ -401,3 +524,4 @@ Show:
 - **Reconstructability test passes** — the brief constrains the designer to solving the user's problem, not reproducing this specific UI
 - Visual identity is complete for the variant (branded/existing/external)
 - Positive anchors precede negative constraints
+- **Analytics structure (section 4b) is filled when an analytics band exists** — reading passes have stated jobs, every interactive element has a defined drill target, palette rules and prohibited patterns are explicit. The designer cannot improvise the analytics layer.
