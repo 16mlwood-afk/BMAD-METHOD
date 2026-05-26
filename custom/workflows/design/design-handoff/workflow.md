@@ -22,6 +22,22 @@ quick_dev_workflow: '{project-root}/_bmad/bmm/workflows/implement/quick-dev/work
 
 ---
 
+## SOURCE-OF-TRUTH PRECEDENCE — CRITICAL
+
+When this workflow encounters conflicting guidance, the order of authority is:
+
+1. **Project design policy** — `{project-root}/docs/design-policy.md` (canonical) or `{planning_artifacts}/brand-identity.md` (legacy slot). Hard failures, status rules, layout principles, and reference patterns are defined here.
+2. **Shared BMAD design standards** — `{project-root}/_bmad/bmm/workflows/design/shared/design-standards.md`. Universal anti-AI-slop guardrails that the project policy can override but not contradict.
+3. **Generated design briefs** — `{implementation_artifacts}/design-brief-*.md`. Derivative of (1) and (2). Briefs MAY restate, focus, or summarize the policy for one feature. Briefs MUST NOT introduce carve-outs, softenings, exceptions, parentheticals, or anti-patterns the policy does not contain.
+4. **Review/refinement artifacts** — `{implementation_artifacts}/screen-review-*.md`, design-tuning state files. Derivative of (3). Cannot contradict higher levels.
+
+**Implications for this workflow:**
+- When step-03 generates the brief, sections quoted from the policy (visual identity, hard failures, AI sensitivity, component patterns) must appear **verbatim** — no inserted exceptions, no editorializing parentheticals, no "the codebase already does X so the designer may also" softenings.
+- If the brief author (you) believes the policy is wrong or incomplete, surface that to the user as a `modify-design-policy` candidate. Do NOT route around the policy by patching the brief.
+- A brief that fails the precedence check propagates the drift into every downstream design-review and design-tuning run, because those workflows treat the brief as authoritative for the feature. Catching drift here is the cheapest fix.
+
+---
+
 ## WORKFLOW ARCHITECTURE
 
 This uses **step-file architecture** for focused execution:

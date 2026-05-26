@@ -194,6 +194,14 @@ If a file at this exact path already exists, append `-v{N}` (starting at v2) so 
 
 **Write the artifact** exactly in the format specified in `workflow.md` under "Artifact output". The body uses the artifact's stable headings — `## Violations`, `## Keepers`, `## Edge States to Test`, `## Peer Steals`, `## Measurement Evidence` — with YAML frontmatter populated from state. Severity per violation must be one of `hard failure | major | minor` (not invented levels, not the chat review's looser language). Violations carry stable V1, V2, … IDs and are ordered by severity (hard failure → major → minor). The interactive chat review's "Top 3" maps to the artifact's first three violations; the artifact emits every violation you'd act on — do not truncate to 3.
 
+**Rule-citation precedence (artifact mode).** Every violation's `Rule violated:` field must cite the policy section directly — never just a brief or peer page — so downstream consumers can re-resolve it against the canonical source. The acceptable forms, in order of preference:
+
+1. **Policy citation:** `{brand_identity_path} §<N> (<section name>): "<verbatim rule text>"`. Example: `docs/design-policy.md §5 (Hard Failures): "Emoji as UI icons. Use Lucide icons or no icon at all."`
+2. **Shared design-standards citation** when the policy is silent on a category the standards cover: `_bmad/bmm/workflows/design/shared/design-standards.md: "<rule>"`.
+3. **Brief-only citation** as a last resort when no policy or standards rule exists: `Brief §<N>: "<rule>"`. Use sparingly — if the rule is brief-only, mark severity as `minor` unless the brief is the only source the project has.
+
+Do not cite a peer page as the rule violated; peer pages may inform peer-steals but are not authority. If a peer page demonstrates the policy's intended pattern, cite the policy and reference the peer in the `Required correction:` field.
+
 **Edge states — special rule for artifact mode.** The interactive review doesn't require an explicit edge-states section; the artifact does. In artifact mode you MUST list at least 2 edge states the design needs explicit variants for. Derive them from real data conditions visible on the page (e.g., "country with 0 rows", "country fully filed", "row with missing buyer VAT"), not from generic "loading / error / empty" templates. If you can't name 2 from the data, that's a sign you didn't measure enough in step 3 — go back and look.
 
 **Confirm the file is on disk** by listing it back to the user along with the chat-rendered interactive review:

@@ -20,7 +20,10 @@ description: 'Generate a paste-ready correction message for Claude Design and pe
 
 From steps 01–02:
 - `{feature_name}`, `{brief_path}`, `{iteration_number}`
+- `{brand_identity_path}`, `{policy_constraints}` — policy loaded directly in step-01
 - `{brief_constraints}`, `{corporate_guardrails}`, `{visual_references}`
+- `{brief_drift}` — list of drift items found by step-02 contradiction scan (may be empty)
+- `{policy_overrides_brief}` — boolean set by step-02 when brief drifted from policy
 - `{current_violations}`, `{fixed_violations}`, `{kept_elements}`
 - `{previous_violations}`
 
@@ -155,8 +158,15 @@ Display to the user:
 
 1. **Summary line:** "Iteration {N}: {PASS|FAIL} — {X} violations ({Y} hard failures), {Z} fixed from last round"
 2. **The full correction message** inside a clearly marked block — ready to copy
-3. **Brand identity update suggestions** (if any — approval only)
-4. **Next step instruction:**
+3. **Brief drift report** (if `{policy_overrides_brief}` = true). For each item in `{brief_drift}`, print:
+   > **Brief drift detected — policy wins.** The brief at `{brief_path}` softens a rule from `{brand_identity_path}`. This run evaluated against the policy, not the brief.
+   > - Rule: `{rule}`
+   > - Policy says: `{policy_text}`
+   > - Brief says: `{brief_text}` *(drift type: {drift_type})*
+   >
+   > Fix the brief (edit the bullet to match the policy verbatim) OR if the policy itself should change, run `modify-design-policy`. Do not leave the brief drifted — every downstream review and tuning run will re-detect this.
+4. **Brand identity update suggestions** (if any — approval only)
+5. **Next step instruction:**
    - If FAIL: "Paste the message above into Claude Design. Drop the next screenshot here when ready."
    - If PASS: "Design approved. Run the design-implement workflow to bring the approved design into the codebase. For a single, isolated component change, quick-dev may be sufficient."
 

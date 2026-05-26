@@ -31,45 +31,54 @@ Read the full brief. Extract and store:
 - `{feature_name}` — from the brief's frontmatter `feature:` field
 - `{brief_path}` — absolute path to the brief file
 
-### 1b. Load Brand Identity
+### 1b. Load Project Design Policy (canonical source)
 
-Check if the project has a brand identity document:
+Check both possible locations for a project-level design system declaration, in order. `docs/design-policy.md` is the canonical location; `{planning_artifacts}/brand-identity.md` is the legacy slot. Prefer the first if both exist:
 
 ```bash
+ls {project-root}/docs/design-policy.md 2>/dev/null
 ls {implementation_artifacts}/../planning-artifacts/brand-identity.md 2>/dev/null
 ```
 
-**If found:**
-- Read the entire file and store as `{brand_identity}`
-- Set `{brand_identity_path}` to the absolute path
-- Extract `{hard_failures}` from section 8 (Hard Failures)
-- Extract `{visual_references}` from section 7 (External Influences) — these persist across iterations and don't need user re-input
-- Report: "Brand identity loaded — evaluating against project visual language."
+**If either is found:**
+- Read the entire file and store as `{brand_identity}` (variable name retained for backward compatibility with downstream templates)
+- Set `{brand_identity_path}` to the absolute path of whichever file was loaded
+- Extract `{hard_failures}` from the policy's hard-failures section (numbered list in §5 of `docs/design-policy.md` or §8 of legacy `brand-identity.md`)
+- Extract `{policy_constraints}` — the full set of testable rules from the policy (status palette, color count limits, badge shapes, layout principles, page-mode rules, detail-view rules). This is the source-of-truth set against which any brief-derived constraint will be contradiction-scanned in step-02.
+- Extract `{visual_references}` from the policy's external-influences / reference-products section — these persist across iterations and don't need user re-input
+- Report: "Project design policy loaded from `{brand_identity_path}` — evaluating against project visual language. Brief is derivative; policy wins on conflict."
 
-**If not found:**
-- Set `{brand_identity}` = empty
-- Report: "No brand identity document. Evaluating against brief constraints and generic guardrails."
+**If neither is found:**
+- Set `{brand_identity}` = empty, `{brand_identity_path}` = empty, `{policy_constraints}` = empty
+- Report: "No project design policy. Evaluating against brief constraints and generic guardrails. Consider running `create-design-policy` to make future runs deterministic."
 
-### 2. Extract Constraints from the Brief
+### 2. Extract Constraints from the Brief (derivative — not authoritative)
 
-Parse the brief and extract constraints. The approach depends on whether a brand identity exists:
+Parse the brief and extract its stated constraints. **The brief is derivative of the policy loaded in step 1b.** Step-02 will contradiction-scan brief-derived constraints against `{policy_constraints}`; on conflict, policy wins.
 
-**If brand identity exists:**
+**If a project design policy exists (`{brand_identity}` populated):**
 
-The brief's section 4 (Visual Identity & Design Constraints) was generated FROM the brand identity — but the brand identity document itself is the authoritative source. Use it for:
-- Component patterns (section 4 of brand identity) — exact Tailwind classes for cards, badges, buttons, tables
-- Typography rules (section 2) — exact type scale with sizes
-- Color values (section 3) — exact palette
-- Hard failures (section 8) — numbered non-negotiable list
-- AI sensitivity (section 9) — project-specific fingerprint concerns
+The brief's section 4 (Visual Identity) and section 5 (Hard Constraints) were generated from the policy — but **the policy file itself is the authoritative source for everything covered there.** The brief may legitimately:
+- Restate, focus, or summarize the policy for one feature.
+- Add feature-specific constraints the policy doesn't cover (responsive targets for this page, data density expectations, navigation position, interaction model).
+
+The brief MAY NOT:
+- Introduce parentheticals or carve-outs that soften policy hard rules.
+- Permit something the policy bans.
+- Drop a hard-failure bullet the policy declares.
+
+When the brief and policy disagree, the policy text is what step-02 evaluates against. Drift is logged, not honored.
 
 Extract `{brief_constraints}` from:
-- Section 5 (Constraints) — responsive targets, data density, navigation position
-- Section 6 (Design Ask) — the specific design directive and scope
+- Section 5 (Hard Constraints) — capture the brief's full bullet list; step-02 will diff this against `{hard_failures}` from policy.
+- Section 5's feature-specific tail — responsive targets, data density, navigation position, interaction model (these are net-new from the brief; no policy version to compare).
+- Section 6 (Design Ask) — the specific design directive and scope.
 
-Set `{corporate_guardrails}` from the brand identity's hard failures + AI sensitivity table + the standard AI fingerprint list.
+Set `{corporate_guardrails}` from `{hard_failures}` (loaded from policy in step 1b) + the AI fingerprint sensitivity section of the policy + the standard AI fingerprint list. **Do NOT pull `{corporate_guardrails}` from the brief; the brief may have softened items.**
 
-**If no brand identity:**
+**If no project design policy exists (`{brand_identity}` empty):**
+
+The brief is the only available source — there is nothing to contradiction-scan against. Be aware that brief-stated hard rules are unverifiable in this mode.
 
 Extract `{brief_constraints}` from:
 - Section 5 (Constraints) — responsive targets, data density, navigation position, interaction model
@@ -123,9 +132,13 @@ Resolve `{state_file_path}`:
 Confirm at least these are populated:
 - `{brief_path}` ✓ (required — cannot proceed without a brief)
 - `{feature_name}` ✓
+- `{brand_identity_path}` ✓ (path or explicit empty — must be a deliberate value, not unchecked)
+- `{policy_constraints}` ✓ (populated if policy loaded; empty otherwise — must be a deliberate value)
 - `{brief_constraints}` ✓
 - `{corporate_guardrails}` ✓ (may be empty if not a corporate project — that's OK)
 - `{iteration_number}` ✓
+
+**If `{brand_identity_path}` is empty in a project that appears to have a policy file you didn't find, STOP and report which paths you checked.** Silent fallback to brief-only mode is the loader-drift bug this workflow exists to prevent — surface it instead of swallowing it.
 
 ---
 

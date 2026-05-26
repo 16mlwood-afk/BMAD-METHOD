@@ -58,7 +58,20 @@ This uses **step-file architecture** for focused execution:
 - **NEVER suggest layout or design ideas of your own.** You are a constraint enforcer, not a designer. Flag what violates the brief — don't propose alternatives unless the brief or visual references provide them.
 - **Be specific.** "Badge colors exceed the 4-color limit" not "the colors feel wrong."
 - **Track across iterations.** The value of this workflow is knowing what got fixed and what persists — without that, it's just a review.
-- **The brief is authoritative.** If the brief allows something, don't flag it. If the brief prohibits something, always flag it — even if it looks good.
+- **Policy is authoritative; the brief is derivative.** If the brief explicitly allows something but the project design policy prohibits it, the policy wins — flag the violation. If the brief explicitly prohibits something the policy permits, the brief wins for this feature (the brief may narrow but not loosen). When in doubt, cite the policy.
+
+---
+
+## SOURCE-OF-TRUTH PRECEDENCE — CRITICAL
+
+When this workflow encounters conflicting guidance, the order of authority is:
+
+1. **Project design policy** — `{project-root}/docs/design-policy.md` (canonical) or `{planning_artifacts}/brand-identity.md` (legacy slot). Loaded directly in step-01, NOT inherited transitively through the brief.
+2. **Shared BMAD design standards** — `{project-root}/_bmad/bmm/workflows/design/shared/design-standards.md`. Universal anti-AI-slop guardrails the policy can override but not contradict.
+3. **Generated design brief** — `{brief_path}`. Derivative of (1) and (2). May restate, focus, or narrow the policy for one feature. May NOT introduce exceptions, softenings, or carve-outs the policy does not contain.
+4. **Previous iteration state** — `{state_file_path}`. Derivative of (3). Cannot contradict higher levels.
+
+**Brief drift is real.** Generated briefs sometimes insert editorializing parentheticals into hard rules ("Use Lucide icons or no icon at all. (But the codebase uses flag emoji so the designer may …)"). If design-tuning treats the brief as authoritative, that false exception propagates into correction messages and is then "fixed" in the wrong direction. Step-01 loads the policy directly to break that chain. Step-02 runs a contradiction scan between brief-derived constraints and policy-derived constraints; on conflict, policy wins and the drift is recorded.
 
 ---
 

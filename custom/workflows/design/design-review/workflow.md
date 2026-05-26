@@ -37,15 +37,35 @@ Single step: `steps/step-01-audit.md`. No fix phase. No verify phase.
 
 - `installed_path` = `{project-root}/_bmad/bmm/workflows/design/design-review`
 - `design_standards` = `{project-root}/_bmad/bmm/workflows/design/shared/design-standards.md` (shared reference — superseded by brand identity on project-specific values)
-- `brand_identity` = `{project-root}/_bmad-output/planning-artifacts/brand-identity.md` (load if exists)
+- `design_policy` = `{project-root}/docs/design-policy.md` (canonical project policy slot)
+- `brand_identity_legacy` = `{project-root}/_bmad-output/planning-artifacts/brand-identity.md` (legacy slot; some older projects still use this)
 
-### Brand Identity Loading
+### Project Policy Loading
+
+Check both possible locations, in order. `docs/design-policy.md` is the canonical location; `{planning_artifacts}/brand-identity.md` is the legacy slot. Prefer the first if both exist:
 
 ```bash
+ls {project-root}/docs/design-policy.md 2>/dev/null
 ls {project-root}/_bmad-output/planning-artifacts/brand-identity.md 2>/dev/null
 ```
 
-If found, read and store as `{brand_identity}`. The brand identity provides project-specific visual standards (exact typography, exact colors, exact component patterns) that are more authoritative than the generic `design-standards.md`. When both exist, the brand identity wins on specifics — use `design-standards.md` only for categories the brand identity doesn't cover (functional UX, accessibility, severity levels).
+If either is found, read and store as `{brand_identity}` (variable name retained for backward compatibility with downstream templates). Set `{brand_identity_path}` to the absolute path of whichever file was loaded.
+
+The project policy provides project-specific visual standards (exact typography, exact colors, exact component patterns) that are more authoritative than the generic `design-standards.md`. When both exist, the policy wins on specifics — use `design-standards.md` only for categories the policy doesn't cover (functional UX, accessibility, severity levels).
+
+**If `{project-root}/docs/design-policy.md` should exist for this project but the bash check returned nothing, STOP and report the path you tried. Silent fallback to "no policy" mode is the loader-drift bug this section exists to prevent — surface it instead of swallowing it.**
+
+---
+
+## SOURCE-OF-TRUTH PRECEDENCE — CRITICAL
+
+When this workflow audits a page or emits a screen-review artifact, the order of authority is:
+
+1. **Project design policy** — `docs/design-policy.md` (canonical) or `planning-artifacts/brand-identity.md` (legacy). Loaded directly above. Hard failures, status rules, layout principles defined here.
+2. **Shared BMAD design standards** — `_bmad/bmm/workflows/design/shared/design-standards.md`. Universal anti-AI-slop guardrails.
+3. **The audited page itself.** What the page does is evidence to compare against (1) and (2); the page is never authoritative for what it *should* do.
+
+**Implication for artifact mode:** Every violation block's `Rule violated:` field must cite the policy section directly (e.g., `docs/design-policy.md §5 (Hard Failures): "Emoji as UI icons"`) — not a brief section, and not a peer page. Briefs and peer pages may inform peer-steals or context, but the rule itself originates in the policy. This guarantees downstream consumers (e.g., `design-handoff` in refine-screen mode) can re-resolve each rule against the canonical source.
 
 ### Prerequisites
 
