@@ -1,0 +1,224 @@
+---
+name: design-artifact-loop
+description: 'Artifact-first design workflow that replaces Claude Design. Reads a canonical markdown brief or screen-review on main, locks one mode (design-from-brief | refine-screen | review-only | policy-lift), and produces the screen-review, design-handoff, or design-response artifact needed for implementation. Use when the user hands off a design-brief or screen-review artifact, or types "design-artifact-loop".'
+main_config: '{project-root}/_bmad/bmm/config.yaml'
+
+# Related workflows
+design_handoff_workflow: '{project-root}/_bmad/bmm/workflows/design/design-handoff/workflow.md'
+design_review_workflow: '{project-root}/_bmad/bmm/workflows/design/design-review/workflow.md'
+design_tuning_workflow: '{project-root}/_bmad/bmm/workflows/design/design-tuning/workflow.md'
+---
+
+# Design Artifact Loop
+
+**Goal:** Drop-in replacement for the historical "Hand off to Claude Design" step. Accept the same handoff block, treat the referenced markdown artifact on `main` as the source of truth, lock one of four modes, and produce the implementation-ready review / handoff / response artifact bounded to that mode.
+
+**Your Role:** You are an artifact-first design agent. You do not browse Dribbble, infer from the running app, or "vibe" the page. You read the artifact, restate the context block back to the user verbatim, defer domain rules to sister skills (`design-policy-canonical`, `operational-analytics-band`, `operational-finance-ui`), and emit a single mode-locked output file. Mode never silently morphs mid-run.
+
+**Key Insight:** The historical Claude Design workflow leaked because the consumer (Claude Design) imported visual priors from its training data and rewrote IA on a screenshot-led refinement. This workflow exists to keep the brief authoritative, keep refinement bounded, and keep reviews evidence-cited. The replacement is not just about hosting — it is about *bias control* on the consumer side of the brief.
+
+---
+
+## SOURCE-OF-TRUTH PRECEDENCE — CRITICAL
+
+When this workflow encounters conflicting guidance, the order of authority is:
+
+1. **The referenced artifact on `main`** — `design-brief-*.md` or `screen-review-*.md` resolved from the handoff block. This is the canonical input. If the human summary in the handoff block conflicts with the file, the file wins.
+2. **Project design policy** — `{project-root}/docs/design-policy.md` (canonical) or `{planning_artifacts}/brand-identity.md` (legacy slot). Hard failures, status rules, layout principles, palette, typography.
+3. **Canonical sister skills** — `design-policy-canonical` (page mode, palette, typography, layout, components), `operational-analytics-band` (analytics-row / trend-band structure and anti-card rules), `operational-finance-ui` (work-surface-first layouts, control selection, dense finance table ergonomics). Invoked within their scope; their rules are not restated here.
+4. **Shared BMAD design standards** — `{project-root}/_bmad/bmm/workflows/design/shared/design-standards.md`. Universal anti-AI-slop guardrails.
+5. **Screenshot evidence** — pixels you can cite. Evidence for *current visual state only* — never authoritative for what the screen *should* do.
+6. **Human summary text in the handoff block** — convenience only. If it conflicts with the file, the file wins.
+7. **Existing implementation** — observed file structure / component code. In brief-led modes, do not infer from current implementation unless the brief explicitly asks for comparison.
+
+**Implication:** A screen-review violation's `Rule violated:` field must cite (1) or (2), never (5) or (6). A design-handoff's exact-change list must come from the brief or from a violation tied back to (2); never from the agent's own preferences. Briefs may narrow the policy for a feature but may not loosen or carve out exceptions.
+
+---
+
+## WORKFLOW ARCHITECTURE
+
+This uses **step-file architecture**:
+
+- Step 1 is conditionally interactive — only halts if the mode is genuinely ambiguous from the handoff block. Otherwise autonomous.
+- Steps 2–4 are fully autonomous — no menus, no halting.
+- State persists via variables (see below).
+- The mode is **locked** after step 1 and may not silently change. If the user authorizes scope expansion mid-run, the current run terminates and a new run is restated under the new mode.
+
+### State Variables
+
+- `{repo_url}` — GitHub HTTPS URL from the handoff block (no trailing `.git`)
+- `{artifact_path}` — Repo-relative path to the canonical artifact on `main` (e.g., `_bmad/bmm/implementation-artifacts/design-brief-foo-2026-05-26.md`)
+- `{artifact_abs_path}` — Absolute path on the local filesystem
+- `{artifact_type}` — `design-brief` | `screen-review` | `policy-delta` | `unknown` (parsed from artifact frontmatter or filename prefix)
+- `{artifact_content}` — Full contents of the canonical artifact
+- `{user_summary}` — 1–3 line human summary from the handoff block (convenience only; non-authoritative)
+- `{user_instruction}` — Direct instruction text from the handoff block ("Design the UI following the brief exactly", "Iterate on AVASK", etc.)
+- `{screenshot_paths}` — Optional screenshot paths from the handoff block
+- `{mode}` — `design-from-brief` | `refine-screen` | `review-only` | `policy-lift` (locked after step 1)
+- `{target_label}` — Free-text human label (e.g., "AVASK VAT reclaim", "Invoice review queue")
+- `{target_route}` — Pathname (e.g., `/reclaim/avask`)
+- `{target_slug}` — Kebab-case slug derived from the route (e.g., `reclaim-avask`)
+- `{user_role}` — Who uses this surface (from artifact or context block)
+- `{frequency}` — How often (e.g., "quarterly, 4–8 days per quarter")
+- `{stakes}` — Consequence of error (e.g., "€233k at stake this quarter")
+- `{out_of_scope}` — Explicit boundaries lifted from the artifact or stated by the user
+- `{policy_path}` — Resolved path to `docs/design-policy.md` or `{planning_artifacts}/brand-identity.md`
+- `{policy_content}` — Loaded policy contents (load once in step 2; never re-state inline)
+- `{sister_skills_invoked}` — List of sister skills consulted during the run (logged in the output for audit)
+- `{output_kind}` — `screen-review` | `design-handoff` | `design-response` (decided in step 3 from `{mode}` + artifact type)
+- `{output_paths}` — Absolute paths of files written (one or more)
+- `{tuning_state_path}` — Absolute path to `design-tuning-state-{target_slug}.md` if iteration chain is active
+
+### Step Processing Rules
+
+1. **READ COMPLETELY** — read each step file before taking action
+2. **FOLLOW SEQUENCE** — execute numbered sections in order
+3. **STEP 1 IS CONDITIONALLY INTERACTIVE** — halt ONLY to disambiguate mode; never to "check in" or present menus
+4. **STEPS 2–4 ARE AUTONOMOUS** — never halt, never present menus, never wait for input
+5. **MODE LOCK IS NON-NEGOTIABLE** — once `{mode}` is set in step 1, every later step rejects work that would violate the mode's scope rules (see §"Definitions and refinement boundaries" below)
+6. **SAVE STATE** — carry variables between steps
+
+### Critical Rules
+
+- **No IA redesign in `refine-screen`.** No route changes, no new multi-step flows, no wholesale replacement of a major component (primary work surface / primary action area / main filter row). Component-level swaps are permitted only when a top screen-review issue requires them.
+- **No invented hidden flows.** A screenshot suggests problems; it does not prove them. Possible issues are labeled as such, not promoted to confirmed failures.
+- **Verbatim policy copy.** When quoting `docs/design-policy.md`, reproduce text byte-for-byte. No editorializing parentheticals, no softenings, no "the codebase already does X so the designer may too." If you believe the policy is wrong, surface it as a `modify-design-policy` candidate; do NOT patch the output to route around it.
+- **No restating sister-skill rules inline.** Defer to `design-policy-canonical` / `operational-analytics-band` / `operational-finance-ui`. Log which were invoked in the output's "Sources consulted" line.
+- **YOU MUST ALWAYS SPEAK OUTPUT** in your agent communication style with the config `{communication_language}`.
+
+---
+
+## INITIALIZATION
+
+### Configuration Loading
+
+Load config from `{main_config}` and resolve:
+
+- `user_name`, `communication_language`
+- `autonomous_mode`, `autonomous_rules`
+- `planning_artifacts` and `implementation_artifacts` paths
+- `date` as system-generated current datetime
+
+### Paths
+
+- `{installed_path}` = `{project-root}/_bmad/bmm/workflows/design/design-artifact-loop`
+- `{output_dir}` = `{implementation_artifacts}` — all output artifacts are written here, alongside briefs and screen-reviews from peer workflows
+- `{policy_canonical}` = `{project-root}/docs/design-policy.md`
+- `{policy_legacy}` = `{planning_artifacts}/brand-identity.md`
+
+### Policy Loading
+
+Check both possible locations, in order. `docs/design-policy.md` is canonical; `{planning_artifacts}/brand-identity.md` is the legacy slot. Prefer the first if both exist:
+
+```bash
+ls {project-root}/docs/design-policy.md 2>/dev/null
+ls {planning_artifacts}/brand-identity.md 2>/dev/null
+```
+
+Store the resolved path as `{policy_path}` and the contents as `{policy_content}`. Step 2 references both.
+
+**If the canonical path should exist for this project but the check returned nothing, STOP and report the path you tried.** Silent fallback to "no policy" mode is a loader-drift bug — surface it instead of swallowing it.
+
+### Input
+
+The handoff block accepted by this workflow has this canonical shape:
+
+```text
+Brief written, PR opened (#NNN), squash-merged to main (HASH), worktree cleaned.
+
+File: _bmad/bmm/implementation-artifacts/design-brief-{slug}-{date}.md
+(on GitHub https://github.com/ORG/REPO/blob/main/_bmad/bmm/implementation-artifacts/design-brief-{slug}-{date}.md)
+
+Summary (3 lines):
+- ...
+- ...
+- ...
+
+Hand off to design-artifact-loop:
+Connect to https://github.com/ORG/REPO and read
+_bmad/bmm/implementation-artifacts/design-brief-{slug}-{date}.md on main.
+This is a design brief for {target}. Design the UI following the brief exactly.
+```
+
+The block may also reference a `screen-review-*.md` artifact for refinement flows, or carry an optional screenshot. The referenced markdown file on `main` is canonical; the summary lines are convenience.
+
+### Autonomous Mode Override
+
+If `autonomous_mode` is `true` in config:
+
+- Step 1 must not halt for mode disambiguation. Apply the mode-detection rules deterministically; on a tie, prefer in order: `design-from-brief` → `refine-screen` → `review-only` → `policy-lift`.
+- Never ask "do you want X or Y?" — pick the higher-priority mode and proceed. The first sentence of the output's context block must state the chosen mode and why it was chosen.
+
+---
+
+## DEFINITIONS AND REFINEMENT BOUNDARIES
+
+### IA vs visual hierarchy
+
+**IA** = navigation, route hierarchy, page-to-page flow, and the conceptual model of how content is divided across screens.
+
+**Visual hierarchy** = which element draws the eye, density, prominence, spacing, ordering, and emphasis within a single page. Visual hierarchy is NOT IA.
+
+### Major component
+
+A **major component** is the primary work surface (table / worklist), the primary action area, or the main filter row. A swap is "major" if it changes what data or actions the area exposes.
+
+### Mode scope (enforced by step 3)
+
+| Action | `design-from-brief` | `refine-screen` | `review-only` | `policy-lift` |
+|---|---|---|---|---|
+| Propose new screen structure | yes | no | no | no |
+| Hierarchy / spacing / density fixes | yes | yes | no (label as issue) | yes |
+| Control swaps at component level | yes | yes (only if a top issue requires it) | no | yes (only if policy requires) |
+| Wholesale swap of a major component | yes (if brief asks) | **no** | no | no |
+| Route changes | yes (if brief asks) | **no** | no | no |
+| New multi-step flows | yes (if brief asks) | **no** | no | no |
+| Speculative redesign beyond evidence | **no** | **no** | **no** | **no** |
+| Cite visible evidence only | n/a | required | required | n/a |
+| Compare against named policy delta | optional | optional | optional | **required** |
+
+Step 3 enforces this matrix. If the work product crosses a "no" cell, step 3 rejects the output and returns to step 2 with a scoping diagnostic.
+
+---
+
+## OUTPUT ARTIFACTS
+
+This workflow produces ONE of the following per run (plus an optional tuning state file):
+
+### A. `screen-review-{target_slug}-{date}.md`
+Modes: `review-only`, `refine-screen` (when no recent review exists).
+Template: `templates/screen-review.md`.
+Required sections: header (mode, target, date), context block, verdict (`FAIL` / `PASS WITH ISSUES` / `PASS`), top issues (ranked V1, V2, … with severity + rule-cited evidence), edge states, what to keep, out-of-scope reminder, sources consulted.
+Filename convention matches the existing `design-review` artifact contract so downstream `design-handoff` (refine-screen mode) can read it without modification.
+
+### B. `design-handoff-{target_slug}-{date}.md`
+Modes: `refine-screen` (after a screen-review exists), `policy-lift`, `design-from-brief` (when the brief asks for immediate implementation rather than concept direction).
+Template: `templates/design-handoff.md`.
+Required sections: header (mode, target, date), context block, source artifacts consulted, design objective, exact changes to make, what NOT to change, component / route targets, edge states to preserve or add, implementation notes, sources consulted.
+
+### C. `design-response-{target_slug}-{date}.md`
+Modes: `design-from-brief` (when output is concept direction rather than immediate implementation).
+Template: `templates/design-response.md`.
+Required sections: brief summary, proposed screen structure, answers to the brief's open design questions, rationale tied back to brief sections, implementation handoff note.
+
+### D. `design-tuning-state-{target_slug}.md` (optional, persistent)
+Tracks: previous failures, fixed issues, current open issues, final accepted direction. Created on first iteration; appended on each subsequent run against the same `{target_slug}`. Compatible with the existing `design-tuning` workflow's state-file conventions.
+
+---
+
+## EXECUTION
+
+Read fully and follow: `{project-root}/_bmad/bmm/workflows/design/design-artifact-loop/steps/step-01-receive-and-lock-mode.md` to begin.
+
+---
+
+## SUCCESS CRITERIA
+
+This workflow succeeds when:
+
+- The mode is explicit, stated in the output's context block, and does not drift across the run.
+- The canonical markdown artifact on `main` remained the source of truth — no rule was sourced from the screenshot or the human summary alone.
+- Screen reviews cite visible evidence with file path or class name; possible issues are labeled as such, not promoted to confirmed failures.
+- Handoff files are implementation-ready — every "exact change" item is concrete enough to execute without reinterpretation.
+- Refinement did not expand into IA redesign, route changes, or wholesale major-component swaps.
+- The next agent in the chain (a design-tuning iteration, a quick-dev implementation, or a re-review) can work from the artifact alone without re-prompting the user.
