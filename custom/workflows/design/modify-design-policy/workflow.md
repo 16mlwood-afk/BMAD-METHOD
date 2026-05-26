@@ -5,7 +5,7 @@ main_config: '{project-root}/_bmad/bmm/config.yaml'
 
 # Related workflows
 create_design_policy_workflow: '{project-root}/_bmad/bmm/workflows/design/create-design-policy/workflow.md'
-apply_design_policy_change_workflow: '{project-root}/_bmad/bmm/workflows/design/apply-design-policy-change/workflow.md'
+apply_design_policy_change_workflow: '{project-root}/_bmad/bmm/workflows/meta/apply-design-policy-change/workflow.md'
 design_standards: '{project-root}/_bmad/bmm/workflows/design/shared/design-standards.md'
 ---
 

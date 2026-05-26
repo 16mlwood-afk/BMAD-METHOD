@@ -105,6 +105,6 @@ Proceeding to diff the policy changes."
 
 ## NEXT STEP:
 
-Proceed to `{project-root}/_bmad/bmm/workflows/design/apply-design-policy-change/steps/step-02-diff-policy.md`.
+Proceed to `{project-root}/_bmad/bmm/workflows/meta/apply-design-policy-change/steps/step-02-diff-policy.md`.
 
 In autonomous mode: proceed immediately.

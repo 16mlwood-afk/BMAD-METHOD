@@ -158,7 +158,7 @@ Display to the user:
 3. **Brand identity update suggestions** (if any — approval only)
 4. **Next step instruction:**
    - If FAIL: "Paste the message above into Claude Design. Drop the next screenshot here when ready."
-   - If PASS: "Design approved. Run the design-agent or quick-dev workflow to implement."
+   - If PASS: "Design approved. Run the design-implement workflow to bring the approved design into the codebase. For a single, isolated component change, quick-dev may be sufficient."
 
 ---
 

@@ -4,7 +4,7 @@ description: 'Post-workflow dispatcher — reads handoff artifacts, identifies f
 main_config: '{project-root}/_bmad/bmm/config.yaml'
 ---
 
-# Orchestrate Workflows
+# Dispatch Followups Workflow
 
 **Goal:** After any workflow completes (or on demand), analyze what was done, identify likely gaps and follow-up needs, and **auto-execute** the critical and recommended follow-up workflows. Optional follow-ups are presented as copy-pasteable prompts for the user to run if desired.
 
@@ -71,7 +71,7 @@ If the input is ambiguous, infer from context. Do not ask.
 
 ### Worktree Requirement
 
-The orchestration phase (steps 1-3) is read-only. Step 4 spawns Agent sub-agents that may edit files — those agents use `isolation: "worktree"` when their target workflow edits code (wire-check, quick-dev, etc.). The orchestration session itself does not need a worktree beyond what it entered at session start.
+The dispatch phase (steps 1-3) is read-only. Step 4 spawns Agent sub-agents that may edit files — those agents use `isolation: "worktree"` when their target workflow edits code (wire-check, quick-dev, etc.). The dispatch session itself does not need a worktree beyond what it entered at session start.
 
 ### Paths
 

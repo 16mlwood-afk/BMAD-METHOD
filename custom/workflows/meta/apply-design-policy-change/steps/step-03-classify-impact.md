@@ -106,6 +106,6 @@ Proceeding to define actions for each page."
 
 ## NEXT STEP:
 
-Proceed to `{project-root}/_bmad/bmm/workflows/design/apply-design-policy-change/steps/step-04-decide-actions.md`.
+Proceed to `{project-root}/_bmad/bmm/workflows/meta/apply-design-policy-change/steps/step-04-decide-actions.md`.
 
 In autonomous mode: proceed immediately.

@@ -137,19 +137,19 @@ For each entry in the copy-paste group (optional tier), generate a prompt block 
 5. **For context-dependent workflows** (code-review): include the PR number or branch name
 6. **Never include session-specific context** — no "the changes we just made" or "as discussed"
 
-### 5. Write Orchestration Report
+### 5. Write Dispatch Report
 
 Write a report to `{implementation_artifacts}/`:
 
 ```markdown
 ---
-title: 'Orchestration: Follow-ups for {source description}'
+title: 'Dispatch: Follow-ups for {source description}'
 created: '{date}'
 source_handoff: '{handoff_path or "git state"}'
-type: orchestration
+type: dispatch
 ---
 
-# Workflow Orchestration Report
+# Workflow Dispatch Report
 
 **Source:** {what triggered this analysis}
 **Work scope:** {work_scope}
@@ -182,7 +182,7 @@ type: orchestration
 - {workflow_name}: {why excluded}
 ```
 
-**File naming:** `orchestration-{slug}-{date}.md`
+**File naming:** `dispatch-{slug}-{date}.md`
 
 ### 6. Present Summary to User
 
@@ -191,7 +191,7 @@ Display a concise execution summary — this is the primary output.
 **Output format:**
 
 ```
-## Orchestration Complete
+## Dispatch Complete
 
 Based on {work_scope} changes across {file count} files ({category summary}):
 

@@ -81,4 +81,4 @@ The user may provide:
 
 ## EXECUTION
 
-Read fully and follow: `{project-root}/_bmad/bmm/workflows/design/apply-design-policy-change/steps/step-01-detect-versions.md` to begin the workflow.
+Read fully and follow: `{project-root}/_bmad/bmm/workflows/meta/apply-design-policy-change/steps/step-01-detect-versions.md` to begin the workflow.

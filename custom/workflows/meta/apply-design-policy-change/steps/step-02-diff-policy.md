@@ -63,6 +63,6 @@ Section 9 (Page Mode Rules): unchanged | minor | major
 
 ## NEXT STEP:
 
-Proceed to `{project-root}/_bmad/bmm/workflows/design/apply-design-policy-change/steps/step-03-classify-impact.md`.
+Proceed to `{project-root}/_bmad/bmm/workflows/meta/apply-design-policy-change/steps/step-03-classify-impact.md`.
 
 In autonomous mode: proceed immediately.
