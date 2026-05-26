@@ -28,6 +28,7 @@ From steps 01–02:
 - `{data_shape}`, `{api_surface}`, `{implementation_files}`, `{user_context}`
 - `{design_system}`, `{brand_identity}`, `{brand_identity_path}`
 - `{design_tokens}`, `{existing_patterns}`, `{reference_pages}`, `{hard_failures}`, `{constraints}`
+- `{page_mode}`, `{has_analytics_band}`
 - `{handoff_mode}` — `"fresh-design"` or `"refine-screen"`
 - If refine-screen: `{review_artifact_path}`, `{refine_focus}`, `{required_variants}`, `{peer_steals}`, `{already_fine}`
 

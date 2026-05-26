@@ -129,6 +129,24 @@ Set `{page_mode}` based on the feature's **dominant user task**:
 
 If unclear, default to "operational."
 
+### 5b. Detect Analytics Band
+
+Set `{has_analytics_band}` to `true` or `false` based on whether the feature currently has — OR is intended to have — an analytics surface above or beside the primary worklist. This is independent of `{page_mode}`: operational pages can have an analytics band (summary strip above the table), and analytical pages are by definition analytics-led.
+
+**Signals for `true`:**
+- The current page has a coverage strip, trend strip, summary metrics, supporting charts, sparklines, small-multiples, or a per-segment readiness gauge above or beside the table.
+- The page server returns aggregate counts or period totals that are rendered separately from the row data.
+- The brief's user goals include "see how X compares across Y", "spot which segment moved", or "know totals at a glance" — patterns that need a visible aggregate layer.
+- `{page_mode}` = "analytical" (always `true`).
+
+**Signals for `false`:**
+- Pure data-entry forms, single-record detail views, settings pages, or list-only pages with no aggregate layer.
+- The feature surfaces no period-over-period comparison, no per-segment rollup, and no summary metrics distinct from the row data.
+
+If `true`, section 4b (Analytics Structure) MUST be filled in step 3 with feature-specific reading-pass jobs, drill targets, palette rules, and prohibited patterns. If `false`, section 4b is omitted entirely from the brief.
+
+If unclear, default to `false`. A brief with a missing analytics section is recoverable; a brief with a placeholder analytics section the designer must ignore is worse than no section.
+
 ### 6. Identify User Context
 
 Set `{user_context}`:
@@ -154,6 +172,7 @@ Confirm populated:
 - `{api_surface}` ✓
 - `{implementation_files}` ✓
 - `{page_mode}` ✓ ("operational" or "analytical")
+- `{has_analytics_band}` ✓ (`true` or `false`)
 - `{user_context}` ✓
 - `{brand_identity}` ✓ (may be empty)
 - `{design_system}` ✓ ("branded", "existing", or "external")
