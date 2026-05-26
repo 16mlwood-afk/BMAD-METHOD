@@ -41,15 +41,18 @@ Set `{output_kind}` per the mode dispatch table:
 
 If `{evidence_set}.evidence_gaps` contains "no visual evidence" AND `{mode}` = `review-only`, the output is still a `screen-review` but the verdict is `INDETERMINATE` and only directional issues may be raised (no per-pixel corrections).
 
-### 2. Invoke Sister Skills On Demand
+### 2. Invoke the Routing Plan (Required Skills First)
+
+The routing plan was built in step 2 per workflow.md → "Frontend skill routing". Invoke required skills for `{mode}` BEFORE generating any output. A run that emits a `design-handoff` or `design-response` with an empty "Skill routing used" block while having produced UI-facing guidance is a Gate-4 failure and must rewind.
 
 For each entry in `{evidence_set}.sister_skills`, invoke the named skill via the Skill tool at the moment its scope is needed:
 
 - `design-policy-canonical` — invoke whenever choosing or proposing a component, color, typographic size, or layout primitive. Pass the local question (e.g., "Is a card row appropriate for the analytics surface on /reclaim/avask given the policy?"). The skill returns the policy-canonical answer; quote its rule reference in the output, not its prose.
-- `operational-analytics-band` — invoke before writing or critiquing any analytics-row / trend-band content. The skill enforces anti-card rules; consult it before proposing strips, microcharts, or counters.
 - `operational-finance-ui` — invoke before proposing any change to a table, control row, or status treatment on an operational finance surface. Pass the artifact's current proposal and the local question.
+- `operational-analytics-band` — invoke before writing or critiquing any analytics-row / trend-band content. The skill enforces anti-card rules; consult it before proposing strips, microcharts, or counters.
+- Frontend / webapp skill (`website-building` or project-equivalent) — invoke for page composition, spacing, hierarchy, component treatment, and web UI conventions when the output will carry concrete UI fix guidance.
 
-Record each invocation in the output's "Sources consulted" line (skill name + one-line summary of what was decided). If a sister skill's answer contradicts the brief, the policy wins (workflow.md → Source-of-truth precedence) — surface the contradiction in the output's `out_of_scope` block and recommend `modify-design-policy` if appropriate.
+Record each invocation in `{skill_routing_used}` — a bullet list that populates both the "Sources consulted" footer (screen-review, design-response) and the dedicated "Skill routing used" block (design-handoff). If a sister skill's answer contradicts the brief, the policy wins (workflow.md → Source-of-truth precedence) — surface the contradiction in the output's `out_of_scope` block and recommend `modify-design-policy` if appropriate.
 
 ### 3. Generate the Output
 
@@ -68,6 +71,31 @@ Each template has `{{double_brace_placeholders}}` that map to state variables. T
 - `design-standards.md — {category}` — only when no policy or brief covers the rule
 
 Never cite `{user_summary}` or `{user_instruction}` as authority. They are conversational scaffolding.
+
+### 3a. Gate 3 — Review Sufficiency (`review-only` and `refine-screen`)
+
+Before finalizing a `screen-review` output, confirm all four:
+
+- Top issues are ranked (V1 = most damaging by trust/comprehension/next-action impact).
+- Edge states are named (at least one, even if just "all-zero state" or "all-action-required state").
+- Each confirmed issue cites visible evidence (a class name, file:line, screenshot region) OR a cited brief / policy rule.
+- "What to keep" is present if the screen has any acceptable solved areas.
+
+If any of these is missing, do NOT emit the file — return to evidence assembly. In the synthesized-review-then-handoff case (`refine-screen` mode without a pre-existing review), this gate applies to the synthesized review BEFORE the handoff section is built.
+
+### 3b. Dissent / Sanity-Check Pass (every `screen-review`)
+
+Before issuing the final verdict, walk the five challenge questions from workflow.md → "Dissent / sanity-check pass":
+
+1. Is the top-ranked issue truly the most damaging issue for trust, comprehension, or next-action clarity?
+2. Is there a visible legibility or credibility problem that is easier to miss because the broader layout improved?
+3. Am I passing a screen because it feels directionally better, rather than because the visible issues are actually resolved?
+4. Did a decorative asymmetry, weak label, or low-contrast micro-element escape review because it seemed "small"?
+5. Would a skeptical reviewer disagree with this `PASS` verdict based on the screenshot alone?
+
+If the challenge pass surfaces a more serious missed issue, re-rank the V-list (renumbering only NEW additions; existing V-IDs are stable across iterations) and DEMOTE the verdict as needed. The dissent pass may demote `PASS` → `PASS WITH ISSUES` → `FAIL`. It may NOT upgrade a verdict.
+
+Record the outcome in the output footer as `Dissent pass: completed; no re-ranking` or `Dissent pass: completed; verdict demoted from {X} to {Y} because {one-sentence reason}`.
 
 ### 4. Enforce the Mode-Scope Matrix
 
@@ -98,25 +126,29 @@ This run produced no artifact.
 
 Do NOT silently emit a partial artifact that breaks the mode contract.
 
-### 5. Add the Context Block to Every Output
+### 4a. Gate 4 — Handoff Readiness (before any `design-handoff` is emitted)
 
-Every output file MUST contain a `## Context Block` section near the top, restated from the evidence set. Format:
+Before staging a `design-handoff` output, confirm all five:
 
-```markdown
-## Context Block
+- Every "Changes to make" item is specific enough to implement (file or component + region or token + exact change + citation). Vague items ("tighten this area", "improve hierarchy") are rejected.
+- Out-of-scope boundaries are explicit in the "What not to change" block.
+- Sister-skill ownership is respected — palette/typography/layout decisions cite `design-policy-canonical` (or the policy it interprets); analytics-band decisions cite `operational-analytics-band`; finance-UI control/table/status decisions cite `operational-finance-ui`.
+- Route / component targets are named where possible — at least one component file path or route path.
+- No IA redesign leaked into `refine-screen` (cross-check against the Mode Scope matrix in step 4).
+- The "Skill routing used" block is non-empty if the output carries any UI-facing guidance.
 
-- **Mode:** {mode}
-- **Target:** {target_label} ({target_route} / slug `{target_slug}`)
-- **Source artifact:** [`{artifact_path}`]({github_blob_url})
-- **User / role:** {user_role}
-- **Frequency:** {frequency}
-- **Stakes:** {stakes}
-- **Out of scope:** {out_of_scope}
-- **Sources consulted:** docs/design-policy.md{ if loaded }, sister skills: {comma-separated names}{ if any }, screenshots: {N} file(s){ if any }
-- **Evidence gaps:** {comma-separated list, or "none"}
-```
+If any check fails, rewind to step 2 evidence assembly OR to section 2 of this step (re-invoke missing skills). Do NOT emit a partial handoff.
 
-Where `{github_blob_url}` = `{repo_url}/blob/main/{artifact_path}` if `{repo_url}` was provided in the handoff, otherwise the bare repo-relative path.
+### 5. Populate the Output From the Locked Schema
+
+The output structure is the locked schema in workflow.md → "Output schemas" and `templates/{kind}.md`. Do NOT add free-form sections; do NOT rename fields; do NOT invent new headings. Fixed vocabulary applies:
+
+- Verdict: `FAIL` | `PASS WITH ISSUES` | `PASS` (or `INDETERMINATE` for review-only with no visual evidence)
+- Severity per V-block: `hard failure` | `issue` | `polish` — no `major`/`minor`/`p0`/`p1`/etc.
+
+Each template carries its own `## Context` block — populate it from the evidence set's `context_block`. Where the template's footer expects "Sources consulted", "Evidence gaps", or "Dissent pass" lines, populate those from `{skill_routing_used}`, `{evidence_set}.evidence_gaps`, and the result of the dissent pass (section 3b above) respectively.
+
+For `design-handoff` outputs, the dedicated `## Skill routing used` block is REQUIRED non-empty whenever the run produced UI-facing guidance — this is the Gate 4 cross-check.
 
 ### 6. Stage the Output for Step 4
 

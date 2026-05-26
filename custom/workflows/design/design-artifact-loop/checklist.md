@@ -8,43 +8,56 @@ Mode-locked sections only apply to their named mode; ignore unrelated sections.
 
 ## Universal (all modes)
 
-- [ ] **Context block present.** The output's top section is the `## Context Block` with the eight required fields (Mode, Target, Source artifact, User/role, Frequency, Stakes, Out of scope, Sources consulted) and Evidence gaps.
-- [ ] **Mode is named explicitly.** The first line under "Context Block" states `Mode: {mode}` matching the workflow's locked value.
-- [ ] **Source artifact path resolves.** The `Source artifact:` line points to a real file at `{project-root}/{artifact_path}`.
-- [ ] **All citations are real.** Every `Rule violated:`, `Source:`, or "Required correction" entry cites a section that exists in `docs/design-policy.md`, the canonical source artifact, or `design-standards.md`. No citations to `{user_summary}`, `{user_instruction}`, or "the screenshot."
-- [ ] **No sister-skill prose inlined.** Sister skills are named in `Sources consulted` only — their bodies are not paraphrased into the output.
+- [ ] **Mode header matches lock.** The output's top metadata line states `Mode: {mode}` matching the workflow's locked value.
+- [ ] **Context block present and populated.** The `## Context` section has User, Frequency, Stakes, Source of truth / Source artifacts, Out of scope. Missing fields are rendered as `(not specified)` — never invented.
+- [ ] **Source artifact path resolves.** The Source of truth / Source artifacts entry points to a real file at `{project-root}/{artifact_path}`.
+- [ ] **All citations are real.** Every "Evidence", "Required correction" rule reference, or "Changes to make" citation points to a section that exists in `docs/design-policy.md`, the canonical source artifact, or `design-standards.md`. No citations to `{user_summary}`, `{user_instruction}`, or "the screenshot" alone.
+- [ ] **Fixed vocabulary respected.** Verdict ∈ `{FAIL, PASS WITH ISSUES, PASS, INDETERMINATE}`. Severity ∈ `{hard failure, issue, polish}`. No alternative labels.
+- [ ] **No sister-skill prose inlined.** Skills are named (in Skill routing used / Sources consulted); their bodies are not paraphrased.
 - [ ] **No invented hidden flows.** Where a screenshot suggests a problem but does not prove it, the issue is labeled "possible" rather than promoted to a confirmed failure.
 
-## `screen-review` outputs
+## `screen-review` outputs (Gate 3 + Dissent pass)
 
-- [ ] **Verdict is one of:** `FAIL` | `PASS WITH ISSUES` | `PASS` | `INDETERMINATE`. `INDETERMINATE` appears only when Evidence Gaps include "no visual evidence."
-- [ ] **Violations are ordered by severity.** hard failure → major → minor; within a severity, ordered by impact on comprehension, trust, and task flow.
-- [ ] **V-IDs are stable across iterations.** If a prior screen-review of the same target exists, this output reuses the same V-IDs for unresolved issues; new issues get the next available V-ID.
-- [ ] **Each violation block has every required field.** `Severity`, `Rule violated`, `Observed failure`, `Required correction`. `Do not change` is optional.
-- [ ] **Anti-AI checklist is filled in.** All three checks have rationale on the same line. If any check is `[ ]`, a matching `hard failure` violation block exists above.
-- [ ] **No "Exact changes to make" section.** Reviews state issues; they do not prescribe corrections at the implementation level. That's `refine-screen`'s job.
+- [ ] **Top issues ranked V1 → V3 (V1 = most damaging).** V-IDs are stable across iterations of the same target; never re-numbered.
+- [ ] **Each V-block has Evidence, Why it matters, Required correction.** No block is missing any of the three.
+- [ ] **Severity in V-block parens** is `hard failure` | `issue` | `polish`.
+- [ ] **Edge states named** (at least one — "all-zero state" / "all-action-required state" / etc.).
+- [ ] **What to keep** is present if the screen has acceptable solved areas.
+- [ ] **Out-of-scope reminder** present — boundaries that survive into the next refinement run.
+- [ ] **Dissent pass footer present.** Format: `Dissent pass: completed; no re-ranking` OR `Dissent pass: completed; verdict demoted from {X} to {Y} because {reason}`. The pass may demote a verdict but may not upgrade.
+- [ ] **No "Changes to make" section.** Reviews state issues; they do NOT prescribe corrections at the implementation level.
 - [ ] **No "Get radical" or "Alternative layout" section.** Reviews are bounded.
 
-## `design-handoff` outputs
+## `design-handoff` outputs (Gate 4)
 
-- [ ] **Design Objective is bounded to mode.** One or two sentences; no "and while we're at it" expansions.
-- [ ] **Every Exact Change item is concrete.** Names a file / component / region / token AND the change AND the citation. No "tighten this area" or "improve hierarchy" without a specific replacement.
-- [ ] **Refine-screen mode only:** every Exact Change item ties back to a V-ID in the source screen-review.
-- [ ] **Policy-lift mode only:** every Exact Change item cites a line in the policy delta.
-- [ ] **What NOT to Change section present and non-empty.** Lifted from screen-review Keepers (when applicable) and explicit out-of-scope items.
-- [ ] **Component / Route Targets section present.** Names the files or routes the implementer will touch.
-- [ ] **Edge States section present.** Even if "no edge states required," that fact is stated explicitly.
-- [ ] **No Route Changes section.** (Refine-screen mode forbids it.)
-- [ ] **No Multi-step Flow section.** (Refine-screen mode forbids it.)
-- [ ] **No wholesale primary-component replacement.** In refine-screen mode, no Exact Change rewrites the primary work surface, primary action area, or main filter row in full.
+- [ ] **Objective is one paragraph bounded to mode.** No "and while we're at it" expansions.
+- [ ] **Every "Changes to make" item is concrete.** Names a file / component / region / token AND the change AND the citation.
+- [ ] **`refine-screen` mode:** every "Changes to make" item ties back to a V-ID in the source screen-review.
+- [ ] **`policy-lift` mode:** every "Changes to make" item cites a line in the policy delta.
+- [ ] **What not to change is present and non-empty.** Lifted from screen-review "What to keep" and explicit out-of-scope items.
+- [ ] **Component / route targets are named** — at least one route AND at least one component path.
+- [ ] **Edge states section present.** Even if "no edge states required," state it explicitly.
+- [ ] **`## Skill routing used` block present and non-empty** when the output carries UI-facing guidance. Lists the actual skills invoked during step 3 (at minimum: `design-policy-canonical`; plus surface skills per the routing rules).
+- [ ] **No route-change section in `refine-screen`.**
+- [ ] **No multi-step-flow section in `refine-screen`.**
+- [ ] **No wholesale primary-component replacement in `refine-screen`.**
 
-## `design-response` outputs
+## `design-response` outputs (Gate 4 + frontend routing)
 
-- [ ] **Brief Summary block restates the brief faithfully.** No new constraints or anti-patterns introduced.
-- [ ] **Proposed Screen Structure uses domain language.** No "hero / cards / cta" template-default vocabulary.
+- [ ] **Brief summary restates the brief faithfully** — no new constraints or anti-patterns introduced.
+- [ ] **Proposed screen structure uses domain language.** No "hero / cards / cta" template defaults.
 - [ ] **Every open question from the brief is answered or marked OPEN.** No silent omissions.
-- [ ] **Rationale ties back to brief sections explicitly.** Each major proposal cites Section 1 / 2 / 3 / 4 / 5 of the brief.
-- [ ] **Implementation Handoff Note tells the next run what to do.** No vague "design it later" — a specific instruction for the second-pass invocation.
+- [ ] **Constraints honored ties proposal choices back to brief / policy.**
+- [ ] **Handoff note tells the next run what to do** — specific instruction for the second-pass invocation, not vague "design it later."
+- [ ] **Sources consulted footer non-empty** with at least `design-policy-canonical` + `operational-finance-ui` + the frontend / webapp skill (per `design-from-brief` always-invoke rule).
+
+## Approval gates (run order)
+
+- [ ] **Gate 1 — Input validity** cleared (step 1): artifact exists on `main`, mode known, screenshots present if screenshot-led.
+- [ ] **Gate 2 — Context sufficiency** cleared (step 1): all five context fields populated or explicitly marked missing.
+- [ ] **Gate 3 — Review sufficiency** cleared (step 3, for review-only / refine-screen).
+- [ ] **Gate 4 — Handoff readiness** cleared (step 3, before any `design-handoff` is emitted).
+- [ ] **Gate 5 — Post-implementation acceptance** named in the step-4 handoff summary as the next agent's responsibility.
 
 ## Mode-scope (final cross-check)
 

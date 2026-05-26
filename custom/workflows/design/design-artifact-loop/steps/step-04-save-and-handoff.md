@@ -112,6 +112,8 @@ Next agent (paste this):
 
 Hand off to {next_workflow}:
 {one-line directive built from the output content — e.g., "Implement the changes in design-handoff-refine-reclaim-avask-2026-05-26.md" or "Re-review after implementation"}
+
+Gate 5 reminder: after implementation, post-implementation acceptance requires a screenshot review (design-artifact-loop in review-only or refine-screen mode, or design-review). The next verdict must be one of: FAIL | PASS WITH ISSUES | PASS. No implementation is considered accepted without this verification.
 ```
 
 Where `{next_workflow}` is decided from the table below:

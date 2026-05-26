@@ -206,6 +206,238 @@ Tracks: previous failures, fixed issues, current open issues, final accepted dir
 
 ---
 
+## FRONTEND SKILL ROUTING
+
+When this workflow produces any UI proposal, refinement plan, layout recommendation, or implementation-facing design handoff, it must invoke the relevant frontend/design skills BEFORE generating output. Artifact orchestration alone is not sufficient — improvising visual decisions from workflow prose is the failure mode this section exists to prevent.
+
+### Routing rules
+
+#### In `design-from-brief`
+Always invoke:
+- `design-policy-canonical`
+- `operational-finance-ui` for dense worklists, tables, filters, status hierarchies, and operational screen structure
+- frontend / webapp design skill (`website-building` or project-equivalent) for page composition, spacing, hierarchy, component treatment, and web UI conventions
+
+Conditionally invoke:
+- `operational-analytics-band` when the screen includes KPI strips, analytics rows, trend bands, or quarter-by-quarter summary bands
+
+#### In `refine-screen`
+Always invoke:
+- `design-policy-canonical`
+- `operational-finance-ui` when the screen is a table-, queue-, or operations-led finance UI
+
+Conditionally invoke:
+- `operational-analytics-band` when reviewing or changing an analytics band / KPI row
+- frontend / webapp design skill (`website-building` or project-equivalent) when concrete visual, layout, spacing, control, or component changes are being proposed
+
+#### In `review-only`
+Frontend / webapp design skill is optional unless the review includes concrete correction guidance. If the output contains specific UI fix directions, load the relevant frontend skill first.
+
+#### In `policy-lift`
+Always invoke:
+- `design-policy-canonical` (the policy is the source of the lift)
+- Whichever surface skill matches the target (`operational-finance-ui`, `operational-analytics-band`) so the lift is interpreted against the right component vocabulary
+
+### Routing rule
+
+If the workflow is producing UI-facing guidance, it MUST route through the relevant frontend / design skills rather than improvise design decisions from workflow prose alone. A run that emits a `design-handoff` or `design-response` with no entries under "Skill routing used" is a failed routing pass and step 3 must rewind to load the missing skills before continuing.
+
+---
+
+## APPROVAL GATES
+
+The workflow must pass these gates in order. Each gate is a hard checkpoint; failure halts the run and surfaces a specific diagnostic to the user. Step 1 owns gates 1–2; step 2 owns gate 3 setup; step 3 owns gates 3 and 4; gate 5 is for the next agent in the chain (post-implementation review).
+
+### Gate 1 — input validity (step 1)
+Confirm:
+- referenced artifact exists on `main`
+- target route / slug is known or explicitly unknown
+- mode is explicit or can be unambiguously inferred (otherwise halt per the step-1 disambiguation rule)
+- screenshots are present if the task is screenshot-led refinement
+
+If this gate fails, stop and request the missing input. Do NOT guess paths or fall back to "the most recent brief."
+
+### Gate 2 — context sufficiency (step 1)
+Confirm the context block includes:
+- user / role
+- frequency of use
+- stakes / consequence of failure
+- source-of-truth artifact
+- explicit out-of-scope boundary
+
+If any of these are missing, ask once before proceeding, UNLESS a workflow default already defines them (e.g., out-of-scope is implicit in `refine-screen`'s mode-scope matrix). Missing context is recorded as an evidence gap in the output, never silently invented.
+
+### Gate 3 — review sufficiency (step 3, for `review-only` and `refine-screen`)
+Confirm:
+- top issues are ranked
+- edge states are named
+- each confirmed issue is tied to visible evidence or a cited brief / policy rule
+- "What to keep" is present if the screen has acceptable solved areas
+
+Do NOT emit `design-handoff-*` until `screen-review-*` passes this gate. In the synthesized-review-then-handoff case, the synthesized review is gated before the handoff section is built.
+
+### Gate 4 — handoff readiness (step 3, before emitting `design-handoff-*`)
+Confirm:
+- exact changes are specific enough to implement (file / region / token + change + citation)
+- out-of-scope boundaries are explicit
+- sister-skill ownership is respected (per Source-of-Truth Precedence)
+- route / component targets are named where possible
+- no IA redesign has leaked into refine mode (cross-checked against the Mode Scope matrix)
+
+### Gate 5 — post-implementation acceptance (next agent in the chain)
+After implementation, the next screenshot review (via `design-artifact-loop` in `review-only` or `refine-screen` mode, or via `design-review`) must end with one of the fixed verdicts: `FAIL` | `PASS WITH ISSUES` | `PASS`. No implementation is considered accepted without a post-implementation screenshot review or equivalent visual verification artifact.
+
+The handoff summary in step 4 names this gate explicitly so the next agent knows it is expected.
+
+---
+
+## OUTPUT SCHEMAS
+
+The templates in `templates/` are the canonical, locked schemas for this workflow. They are intentionally simpler than the richer `screen-review --artifact` schema emitted by `design-review` — this workflow trades machine-parseability for cross-run consistency. **Verdict vocabulary is fixed. Severity vocabulary is fixed. Do not invent alternative labels.**
+
+### Schema: `screen-review-{slug}-{date}.md`
+
+```md
+# Screen Review — {screen name}
+
+- Mode: {mode}
+- Route: `{route}`
+- Slug: `{slug}`
+- Date: {date}
+- Verdict: {FAIL | PASS WITH ISSUES | PASS}
+
+## Context
+- User:
+- Frequency:
+- Stakes:
+- Source of truth:
+- Out of scope:
+
+## Top issues
+### V1. {short issue name} ({hard failure | issue | polish})
+- Evidence:
+- Why it matters:
+- Required correction:
+
+### V2. ...
+
+### V3. ...
+
+## Edge states
+- {state}
+- {state}
+- {state}
+
+## What to keep
+- {approved element}
+- {approved element}
+
+## Out-of-scope reminder
+- {explicit boundary}
+```
+
+### Schema: `design-handoff-{slug}-{date}.md`
+
+```md
+# Design Handoff — {screen name}
+
+- Mode: {mode}
+- Route: `{route}`
+- Slug: `{slug}`
+- Date: {date}
+
+## Context
+- User:
+- Frequency:
+- Stakes:
+- Source artifacts:
+- Out of scope:
+
+## Objective
+{one paragraph}
+
+## Changes to make
+1. ...
+2. ...
+3. ...
+
+## What not to change
+- ...
+- ...
+
+## Edge states
+- ...
+- ...
+
+## Component / route targets
+- Route:
+- Components:
+
+## Skill routing used
+- design-policy-canonical
+- operational-finance-ui
+- operational-analytics-band (if applicable)
+- frontend / webapp skill (if applicable)
+
+## Implementation notes
+- ...
+```
+
+### Schema: `design-response-{slug}-{date}.md`
+
+```md
+# Design Response — {screen name}
+
+- Mode: design-from-brief
+- Route: `{route}`
+- Slug: `{slug}`
+- Date: {date}
+
+## Brief summary
+{one paragraph}
+
+## Proposed screen structure
+- ...
+- ...
+- ...
+
+## Answers to design ask
+1. ...
+2. ...
+3. ...
+
+## Constraints honored
+- ...
+- ...
+
+## Handoff note
+{implementation-facing note}
+```
+
+**Fixed vocabulary:**
+- Verdict: `FAIL` | `PASS WITH ISSUES` | `PASS` (and `INDETERMINATE` for `review-only` runs with no visual evidence — used sparingly, never as a default).
+- Severity (per V-numbered issue): `hard failure` | `issue` | `polish`. No `major`/`minor`/`p0`/`p1` or other parallel vocabularies.
+
+---
+
+## DISSENT / SANITY-CHECK PASS
+
+Before finalizing any `screen-review-*`, run one explicit challenge pass. This exists to catch false-positive `PASS` outcomes caused by improvement bias — when a screen looks directionally better than the previous iteration, reviewers tend to under-weight remaining problems.
+
+### Challenge questions
+
+- Is the top-ranked issue truly the most damaging issue for trust, comprehension, or next-action clarity?
+- Is there a visible legibility or credibility problem that is easier to miss because the broader layout improved?
+- Am I passing a screen because it feels directionally better, rather than because the visible issues are actually resolved?
+- Did a decorative asymmetry, weak label, or low-contrast micro-element escape review because it seemed "small"?
+- Would a skeptical reviewer disagree with this `PASS` verdict based on the screenshot alone?
+
+### Rule
+
+If the challenge pass surfaces a more serious missed issue, re-rank the findings BEFORE issuing the final verdict. The dissent pass may demote a `PASS` to `PASS WITH ISSUES`, or `PASS WITH ISSUES` to `FAIL`. It may not upgrade a verdict — the only direction of travel is toward more skepticism. Record that the dissent pass ran (`dissent_pass: completed` in the output footer, even when the pass changed nothing).
+
+---
+
 ## EXECUTION
 
 Read fully and follow: `{project-root}/_bmad/bmm/workflows/design/design-artifact-loop/steps/step-01-receive-and-lock-mode.md` to begin.

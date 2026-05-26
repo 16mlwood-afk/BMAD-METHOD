@@ -100,25 +100,26 @@ If the user later asks for work that crosses a "no" cell mid-run, do NOT silentl
 That change is out of scope for {mode}. Mode-locked runs do not silently expand. To do {requested-work}, restate the handoff block under {target_mode} and rerun design-artifact-loop.
 ```
 
-### 6. Restate the Run Context Block
+### 6. Run Gates 1–2 and Restate the Run Context Block
+
+**Gate 1 — input validity** (per workflow.md → "Approval gates"): confirm the artifact exists on `main`, the target route/slug is known or explicitly unknown, the mode is explicit or unambiguously inferred, and screenshots are present if the task is screenshot-led refinement. If any check fails, stop and request the specific missing input — do NOT guess.
+
+**Gate 2 — context sufficiency**: confirm the context block has user/role, frequency, stakes, source-of-truth artifact, and an explicit out-of-scope boundary. If any field is missing AND no mode default covers it, ask ONCE for the missing field before proceeding. Mode defaults: `refine-screen` and `policy-lift` derive out-of-scope from the mode-scope matrix; `review-only` has no implicit defaults. Missing-but-asked fields that the user can't supply are recorded as `(not specified)` and become evidence gaps in the output — never silently invented.
 
 Emit a single short message to the user — this is the ONLY output of step 1. It is not a menu, not a checklist, just a paragraph and a quoted block:
 
 ```
-Locked mode: {mode}. Target: {target_label} ({target_route}). Source of truth: {artifact_path} ({artifact_type}, {N} lines). Proceeding autonomously.
+Locked mode: {mode}. Target: {target_label} ({target_route}). Source of truth: {artifact_path} ({artifact_type}, {N} lines). Gates 1–2 cleared. Proceeding autonomously.
 
-Context block:
-- Mode: {mode}
-- Target: {target_label} ({target_route} / slug {target_slug})
-- Source artifact: {artifact_path}
-- User / role: {user_role}
+Context:
+- User: {user_role}
 - Frequency: {frequency}
 - Stakes: {stakes}
+- Source of truth: {artifact_path}
 - Out of scope: {out_of_scope}
-- Sister skills available: design-policy-canonical, operational-analytics-band, operational-finance-ui
 ```
 
-Any field with the value `"(not specified in artifact)"` is rendered exactly as that string so the gap is visible to the user.
+Any field with the value `"(not specified)"` or `"(not specified in artifact)"` is rendered exactly so the gap is visible to the user and propagates into the output's evidence-gaps line.
 
 ### 7. Proceed to Step 2
 

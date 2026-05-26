@@ -90,17 +90,27 @@ For each path in `{screenshot_paths}`:
 
 If `{mode}` = `review-only` or `refine-screen` AND `{screenshot_paths}` is empty AND `{artifact_type}` ≠ `screen-review`, set `{evidence_gaps}` to include "no visual evidence (screenshot or screen-review) available" — step 3 will degrade the output to "directional refinement only, no per-pixel corrections" and the verdict cannot be `FAIL` without further evidence.
 
-### 4. Identify Sister Skills to Invoke
+### 4. Build the Skill Routing Plan
 
-Based on the target surface and `{mode}`, decide which sister skills to consult during step 3. Set `{sister_skills_invoked}` accordingly:
+Per workflow.md → "Frontend skill routing", routing is mode-driven. Build `{sister_skills_invoked}` by applying the rules verbatim from that section. Routing is REQUIRED for any run that produces UI-facing guidance — improvising visual decisions from workflow prose is the failure mode this gate exists to prevent.
 
-| Surface signal | Skill to invoke |
+**Always invoke (per mode):**
+
+| `{mode}` | Required skills |
 |---|---|
-| Operational finance page (VAT, reclaim, filings, reconciliation, registrations) | `operational-finance-ui` |
-| Page has (or brief asks for) an analytics row / trend band / coverage strip above a worklist | `operational-analytics-band` |
-| Any mode — palette, typography, page mode, layout, component-class decisions | `design-policy-canonical` |
+| `design-from-brief` | `design-policy-canonical`, `operational-finance-ui`, frontend / webapp skill (`website-building` or project-equivalent) |
+| `refine-screen` | `design-policy-canonical`, plus `operational-finance-ui` when the surface is a table-, queue-, or operations-led finance UI |
+| `review-only` | `design-policy-canonical` (frontend skill only required if the review will include concrete UI fix directions — flag during step 3) |
+| `policy-lift` | `design-policy-canonical`, plus whichever surface skill matches the target |
 
-`design-policy-canonical` is the default for all runs. Add the others only when their description scope matches the surface. Do NOT load their rules inline; record the skill name plus a one-line reason. Step 3 invokes the skill via the Skill tool at the moment a specific decision needs interpretation.
+**Conditionally invoke:**
+
+- `operational-analytics-band` when the screen includes (or the brief asks for) a KPI strip, analytics row, trend band, or quarter-by-quarter summary band — applies to all modes.
+- Frontend / webapp skill in `refine-screen` when concrete visual / layout / spacing / control / component changes are being proposed.
+
+Record each skill name plus a one-line reason in `{sister_skills_invoked}`. Do NOT load their rules inline; step 3 invokes the skill via the Skill tool at the moment a specific decision needs interpretation.
+
+**If a required frontend / webapp skill is not installed in this project** (no `website-building` or project-equivalent), record the absence in `{evidence_gaps}` as `"frontend skill missing — UI fix guidance falls back to policy + design-standards.md"`. Step 3 will degrade UI-fix specificity rather than improvise.
 
 ### 5. Build the Evidence Set
 
