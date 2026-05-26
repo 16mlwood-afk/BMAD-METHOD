@@ -83,7 +83,7 @@ Follow these steps in order. The goal is to capture domain entities from the sou
    - Precomputed rollups (`domesticCount`, `countryTotal`, `validCount`) — the designer decides which aggregations matter.
 6. **Note which primitive fields are nullable** — these need empty-state treatment.
 
-Capture `{data_shape}` in **domain-entity table form** (see step-03 template). If you find yourself copy-pasting `interface PageData { ... }`, you've gone off track.
+Capture `{data_shape}` as **full field-level entity tables** (one table per entity). These go into the brief's appendix. The main brief section uses a compact prose summary derived from these tables (see step-03 template). If you find yourself copy-pasting `interface PageData { ... }`, you've gone off track.
 
 **API Surface:**
 - What endpoints does the frontend call? → `{api_surface}`
