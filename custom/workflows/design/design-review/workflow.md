@@ -176,6 +176,16 @@ counts: { cards: 8, sections: 5, table_rows: 32 }
 duplicated_data:
   - "Order ID shown in header and context card"
 ```
+
+## Anti-AI Checklist
+
+<Three binary checks the page must pass on top of the violation list. Each is checked iff the reviewer can defend the "yes" with a one-line rationale on the same line. Boxes are filled in by the audit (not left blank for a human). If any item fails, it MUST also appear as a violation above — the checklist is a summary, not a parallel track. Wording is fixed across projects so the screen-review contract stays comparable.>
+
+- [ ] **1. No generic card row layout.** The page does not lean on a row of identical (or near-identical) cards as its primary structure. Rationale: <one line — e.g., "page is table-first with a single inline summary line; no card row anywhere">.
+- [ ] **2. Domain-authored hierarchy.** Order, grouping, and visual weight of major regions are driven by domain logic (risk, urgency, lifecycle, workflow state), not template defaults or alphabetical sorting. Rationale: <one line — name the domain logic, e.g., "countries ordered by VAT-at-stake descending; in-row weight pulls eye to overdue action items">.
+- [ ] **3. Recognizably this product.** A user familiar with the rest of this product would recognize the page as belonging here, not as "any AI-generated admin UI". Rationale: <one line — name what makes it specific, e.g., "slate-navy accent + 13px dense rows + monospace IDs match `/avask` and `/queries` exactly">.
+
+**Failure → violation rule:** If a check is `[ ]` (failed), there must be a matching block in `## Violations` above with severity `hard failure`. The checklist alone is not a punishment; it is a final cross-check that the violation list captured the AI-default failure modes the policy bans.
 ```
 
 ---
