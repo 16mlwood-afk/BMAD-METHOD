@@ -101,7 +101,7 @@ For each named product reference, evaluate whether the mockup borrows the specif
 |-----------|------------------|-----------|-------|
 | {product} | {what to borrow} | Y/N | {what the mockup does instead} |
 
-Flag deviations only where the reference explicitly states what to match. Don't penalize the mockup for not being a pixel-perfect copy of Stripe.
+Flag deviations only where the reference explicitly states what to match. Don't penalize the mockup for not being a pixel-perfect copy of any referenced product — references describe direction, not literal reproduction.
 
 ### 5. Identify What Works
 

@@ -14,7 +14,7 @@ description: 'Generate a bias-free Claude Design brief — domain data in entity
 1. **Self-contained.** Claude Design must be able to start without clarifying questions.
 2. **No current UI.** No layout descriptions, component names, section headings, tab lists, or grouping structures from the existing page — in any section.
 3. **Section 2 = domain-entity tables** walked up from the DB schema. Not a TypeScript interface. Not the page server's return type. No derived fields, rendering hints, grouped collections, or UI-control enums.
-4. **Section 4 = visual direction as theme.** Describe the desired aesthetic and constraints, not the current UI structure. Name reference products (Stripe, Ramp, Linear, Mercury, etc.) and state what to borrow from each.
+4. **Section 4 = visual direction as theme.** Describe the desired aesthetic and constraints, not the current UI structure. Reference products and visual anchors should come from the project's design policy (variant A) or, if absent, be omitted in favor of principles (variant C). Do not invent reference products.
 5. **Section 6 = questions and outcomes.** Frame user problems the design must solve. Never prescribe UI primitives ("must group by X", "must contain a Y picker").
 6. **Reconstructability test.** Read the finished brief. If a developer could rebuild the current page from it, it's leaking.
 - YOU MUST ALWAYS SPEAK OUTPUT in your agent communication style with the config `{communication_language}`
@@ -143,7 +143,7 @@ Fields are in domain language. Grouping, derivation, and presentation are design
 
 ### Component Patterns
 
-{Copy section 4 from brand identity — tables, badges, buttons, status indicators with exact Tailwind classes}
+{Copy section 4 from brand identity — tables, badges, buttons, status indicators with exact class names or token references as written in the policy}
 
 ### Spacing & Layout
 
@@ -167,9 +167,9 @@ Fields are in domain language. Grouping, derivation, and presentation are design
 
 **--- VARIANT C: `{design_system}` = "existing" (no brand identity, no external system) ---**
 
-This product should feel like a high-trust finance operations tool — not a generic SaaS dashboard.
-
-**Visual language:** Match the discipline of Stripe's data tables, the status clarity of Ramp's approval states, the filter density of Linear, and the calm restraint of Mercury. Optimize for dense tables, compact filters, and small pill badges. Use a mostly neutral palette, one accent color, and status color only for small badges.
+> No project design policy was found. Derive the visual system from the tokens below and the patterns observed in other pages of this app. The goal is **visual continuity with the existing product**, not the introduction of a new aesthetic. Where the existing system has gaps, default to restraint: neutral surfaces, sparing color use, status communicated through small consistent badges, type and density appropriate to the data.
+>
+> **Note for the project team:** Creating a `docs/design-policy.md` will replace this generic fallback with the project's actual visual language. Without one, the designer must reverse-engineer intent from raw CSS values.
 
 ### Tokens (from `{path}`)
 
@@ -193,28 +193,24 @@ This product should feel like a high-trust finance operations tool — not a gen
 
 **--- If `{page_mode}` = "operational" ---**
 
-This is an operational page. The design should optimize for row-level work, exception handling, and workflow progress. Prioritize dense scanning, explicit state visibility, and fast narrowing of large record sets. The page should feel like a high-trust finance operations tool: Stripe-style table discipline, Ramp-style status clarity, Linear-style filter density, and Mercury-style calm restraint.
+This is an operational page. The design should optimize for row-level work, exception handling, and workflow progress. Prioritize dense scanning, explicit state visibility, and fast narrowing of large record sets.
 
-**Composition:** Use table-first composition for workflow, review, and exception handling pages.
+**Composition:** Use table-first composition for workflow, review, and exception handling pages. Visual treatment of tables, badges, filters, and density follows the visual system defined in section 4 — this section governs mode, not aesthetic.
 
 **--- If `{page_mode}` = "analytical" ---**
 
 This is an analytical page. The design should help the user understand patterns, compare segments, detect anomalies, and move from summary insight to supporting evidence.
 
 **Design principles:**
-- Keep the same corporate visual system as the rest of the product: high-trust, restrained, precise, and data-first.
-- The page should feel evidence-based and operationally credible, not promotional, decorative, or BI-template-driven.
+- Maintain visual consistency with the rest of the product — the visual system is defined in section 4.
+- Charts and summary metrics exist to support understanding, not to decorate. Avoid promotional or BI-template-driven treatments.
 - Filters should remain compact and persistent so the user can understand the scope of the analysis at all times.
 - Charts may lead the page when they genuinely help the user see patterns faster, but there must always be a clear path to underlying records or evidence.
 - Tables are supporting evidence on analytical pages unless row-level processing is the dominant task.
 
 **Composition:** Use chart-led composition for analytical pages. Even on analytical pages, avoid KPI-card walls, decorative dashboards, and disconnected widgets.
 
-**Evidence rule:** Analytics pages may be chart-led, but they must still preserve a clear path to underlying records or evidence. Every chart, metric, or summary should let the user drill into the rows behind it. An analytical page that cannot show its working is a dashboard — and dashboards are not what this product does.
-
-**--- In both modes ---**
-
-Keep the same corporate visual system: Stripe table discipline, Ramp status clarity, Linear filter density, Mercury calm.
+**Evidence rule:** Analytics pages may be chart-led, but they must still preserve a clear path to underlying records or evidence. Every chart, metric, or summary should let the user drill into the rows behind it. An analytical page that cannot show its working is a dashboard.
 
 ---
 
@@ -252,29 +248,26 @@ Additionally, avoid all standard AI design tool fingerprints:
 
 **--- If `{design_system}` = "existing" ---**
 
-**Non-negotiable anti-patterns:**
-1. No sidebar navigation — content uses the full width
-2. No hero cards or stat cards as page openers — content starts immediately
-3. No bento grid layouts — use uniform tables or lists
-4. No centered card-on-gray-background pattern
-5. No branding invention (logos, taglines, product names in the UI)
-6. No more than 4 distinct badge/status colors
-7. No monochrome decorative icons
-8. No dashboard stat card grids
-9. No gradient text, gradient backgrounds, or glassmorphism
-10. No oversized border-radius (16px+)
-11. No colored card fills for status — use badges or left-border accents
-12. No marketing copy or enthusiastic language
+> No project design policy exists, so only **universal anti-AI-slop guardrails** apply. Aesthetic-specific rules (status color count, sidebar policy, status fill treatment, accent color, type family, etc.) are project decisions and should be added to `docs/design-policy.md` rather than asserted here.
 
-**Aesthetic rules:**
-- Pure white or cool neutral gray backgrounds
-- One neutral sans-serif family
-- Monospace for data only (IDs, codes, tabular numbers)
-- Color used sparingly and functionally
+**Universal anti-AI-slop guardrails (a design failing any of these is rejected):**
+
+1. No bento or asymmetric "magazine" grid layouts
+2. No hero strips, banner panels, or marketing-style intros above working content
+3. No dashboard stat-card grids as page openers (classic AI fingerprint)
+4. No 3-feature icon rows or colored-icon-circle clusters (classic AI fingerprint)
+5. No gradient text, gradient backgrounds, or glassmorphism
+6. No oversized container border-radius (>12px on panels/cards)
+7. No animated number counters, hover lift/scale transforms, or other decoration effects
+8. No purple/violet as default primary accent (`indigo-600` / `violet-500` are the AI default — pick a deliberate brand accent instead)
+9. No icon on every label or heading — icons earn their place by adding information
+10. No chatty empty states with illustrations
+11. No invented branding (logos, taglines, product names) the project has not specified
+12. No marketing copy or enthusiastic language in operational UI
 
 {constraints — responsive breakpoints, data density, accessibility, performance, navigation position}
 
-**Self-test:** If someone would guess AI-generated, it fails.
+**Self-test:** If someone would guess AI-generated, it fails. Anything beyond the universal guardrails above (color counts, sidebar vs full-width, status treatment, type family, etc.) is the **project's** decision — when those decisions are made, capture them in `docs/design-policy.md` so future briefs include them as branded constraints rather than re-deriving them per feature.
 
 ---
 
@@ -328,7 +321,7 @@ If `{page_mode}` = **analytical:**
 - "How does the interface support comparison across time periods, segments, categories, or entities?"
 - "How does the user move from summary insight to underlying evidence without losing context?"
 - "How does filtering define the scope of the analysis without turning the page into a control panel?"
-- "How does the page stay aligned with the same corporate visual system while still feeling analytical?"
+- "How does the page maintain visual consistency with the rest of the product while still feeling analytical?"
 
 **Bad questions** name the current UI's structure (disguised layout instructions — do NOT use):
 - "How should the per-country view work?" ← names the current grouping
@@ -367,7 +360,7 @@ Before writing, verify:
 - [ ] **No current UI anywhere.** The brief does not describe what sections, components, tabs, or groupings currently exist on the page. No phrases like "the current page has", "the left panel shows", "the table is currently placed under", "this section is a card grid."
 - [ ] **Section 2 is entity tables from the DB schema.** No `interface PageData {...}`, no ```typescript blocks, no nested/grouped collections, no derived fields, no rendering hints, no UI-control enums.
 - [ ] **Section 1 goals are outcomes, not UI actions.** No "click X" or "switch the Y tab."
-- [ ] **Section 4 describes the desired aesthetic, not the current layout.** Named reference products (Stripe, Ramp, etc.) describe a *direction*, not the existing implementation.
+- [ ] **Section 4 describes the desired aesthetic, not the current layout.** Reference products (where named by the project policy) describe a *direction*, not the existing implementation.
 - [ ] **Section 6 is questions, not primitives.** No "must group by", "must contain", "must have." Questions emerge from user goals + data shape, not from the current UI's solutions.
 - [ ] **Reconstructability test.** A developer could NOT rebuild the current page from this brief.
 - [ ] **Design system variant is correct and complete:**

@@ -57,8 +57,10 @@ SKIP token extraction entirely. Set:
 Fall back to extracting tokens from the codebase:
 
 ```bash
-find . -name "tokens.css" -o -name "variables.css" -o -name "theme.css" -o -name "colors*.css" | head -5
-find . -name "tailwind.config.*" | head -2
+# CSS token files (framework-agnostic)
+find . -name "tokens.css" -o -name "variables.css" -o -name "theme.css" -o -name "colors*.css" -o -name "globals.css" -o -name "app.css" | head -5
+# Framework-specific config (whichever applies to this project)
+find . -maxdepth 3 \( -name "tailwind.config.*" -o -name "panda.config.*" -o -name "uno.config.*" -o -name "stitches.config.*" -o -name "theme.config.*" -o -name "design-tokens.json" \) | head -5
 ```
 
 Capture `{design_tokens}`: colors, typography, spacing, borders, shadows, transitions.
@@ -67,7 +69,7 @@ Look at 2-3 **other** pages (NOT the target feature) for `{existing_patterns}`: 
 
 Set `{reference_pages}` from observing which pages look best.
 
-Set `{hard_failures}` from the generic corporate guardrails (section 4a template in step-03).
+Set `{hard_failures}` from the generic anti-AI-slop guardrails (section 5 variant C template in step-03).
 
 **WARNING for "existing" mode:** Without a brand identity, the extracted tokens are raw CSS values — they may include incidental choices (a shadow that was copied from a tutorial, a color that was a placeholder). The designer will treat them as intentional design decisions. Consider creating a brand identity document to disambiguate.
 

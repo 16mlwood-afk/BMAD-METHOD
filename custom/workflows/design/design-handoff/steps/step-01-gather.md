@@ -72,9 +72,9 @@ Set `{feature_scope}`:
 
 Follow these steps in order. The goal is to capture domain entities from the source of truth (DB schema), not from the page server's UI-shaped response.
 
-1. **Open the DB schema** (`src/lib/server/db/schema.ts` or equivalent). Find the tables this feature reads from.
+1. **Open the DB schema** at the project's source of truth. Common locations: `src/lib/server/db/schema.ts` (Drizzle), `prisma/schema.prisma` (Prisma), `app/models/` (Rails), `models.py` (Django), `migrations/*.sql` (raw SQL), or equivalent. Find the tables this feature reads from.
 2. **For each entity**, list its columns: name, type, nullability. These are the primitive fields.
-3. **Stop. Do NOT open `+page.server.ts` to get the data shape.** The page server denormalizes, groups, pre-computes, and adds rendering hints — all of which bias the designer. If you need to know which entities the feature uses, check the page server's imports or queries, but do NOT copy its return type.
+3. **Stop. Do NOT open the page-shaped server response file to get the data shape.** Examples: `+page.server.ts` (SvelteKit), `getServerSideProps` or route `loader` (Next.js), controller action (Rails), view function (Django/Flask), GraphQL resolver, etc. These denormalize, group, pre-compute, and add rendering hints — all of which bias the designer. If you need to know which entities the feature uses, check the file's imports or queries, but do NOT copy its return type.
 4. **Flatten any nested structures.** If the schema has a foreign key (e.g., `supplier_country` on an invoice), that's a flat field on the row — not a grouping dimension. Record it as a field.
 5. **Drop anything not in the schema:**
    - Pre-computed derivations (`daysLeft`, `totalNet`, `filingProgress`, etc.) — keep only the inputs (deadline date, money amount, status enum)

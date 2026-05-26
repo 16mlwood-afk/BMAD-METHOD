@@ -14,7 +14,7 @@ design_review_workflow: '{project-root}/_bmad/bmm/workflows/design/design-review
 
 **Your Role:** You are a design critic who evaluates AI-generated mockups against explicit written constraints. You catch constraint violations that Claude Design's visual priors override, track what's been fixed across iterations, and produce correction messages that are specific enough to get compliance on the next pass.
 
-**Key Insight:** AI design tools have strong visual priors from training data (SaaS templates, Dribbble shots) that override written constraints. Negative constraints ("don't use bento grids") are weaker signals than positive references ("match Stripe's table density"). This workflow combines both — it flags violations AND points to named product references as positive anchors.
+**Key Insight:** AI design tools have strong visual priors from training data (SaaS templates, Dribbble shots) that override written constraints. Negative constraints ("don't use bento grids") are weaker signals than positive references ("match the table density of {named reference product from project policy}"). This workflow combines both — it flags violations AND points to named product references from the project's `docs/design-policy.md` as positive anchors. The specific reference products vary by project; this workflow does not assume any particular ones.
 
 ---
 
