@@ -27,7 +27,7 @@ Single step: `steps/step-01-audit.md`. No fix phase. No verify phase.
 - `{output_mode}` — `"interactive"` (default) emits the human-readable review in chat. `"artifact"` additionally writes a structured `screen-review-{slug}-{date}.md` file to `{implementation_artifacts}` that downstream workflows (notably `design-handoff` in refine-screen mode) can consume programmatically.
 - `{target_slug}` — kebab-case slug derived from the route (used for the artifact filename and to let design-handoff match the right artifact to the target feature)
 - `{artifact_path}` — Absolute path where the artifact is written (only set when `{output_mode}` = "artifact")
-- `{review_findings}` — Structured findings object built during audit: `{ top_3: [...], edge_states: [...], peer_steals: [...], already_fine: [...], measurements: {...} }`. The interactive review and the artifact are both rendered from this single source.
+- `{review_findings}` — Structured findings object built during audit: `{ violations: [...], edge_states: [...], peer_steals: [...], keepers: [...], measurements: {...} }`. The interactive review and the artifact are both rendered from this single source. `violations` is an ordered list (hard failure → major → minor); no fixed count.
 
 ---
 
@@ -90,7 +90,7 @@ A single markdown response with these sections, in order:
 
 ### Artifact output (only when `{output_mode}` = "artifact")
 
-A second deliverable: a file at `{implementation_artifacts}/screen-review-{target_slug}-{date}.md` with this exact contract. The file is machine-consumable — `design-handoff` (refine-screen mode) parses it to seed the refinement brief.
+A second deliverable: a file at `{implementation_artifacts}/screen-review-{target_slug}-{date}.md` with this exact contract. The file is machine-consumable — `design-handoff` (refine-screen mode) parses it to seed the refinement brief, binding each violation back to its cited rule without ambiguity.
 
 ```markdown
 ---
@@ -106,27 +106,33 @@ peer_paths:
 generated_at: <ISO 8601 datetime>
 brand_identity_path: <path or empty>
 severity_summary:
-  high: <N>
-  medium: <N>
-  low: <N>
+  hard_failure: <N>
+  major: <N>
+  minor: <N>
 ---
 
 # Screen Review: <target>
 
-## Top 3 Issues
+## Violations
 
-### 1. <short-name>
-- **Severity:** high | medium | low
-- **Location:** `<file:line>` — current class: `<tailwind-class>`
-- **Question blocked:** <what the user can't answer at a glance>
-- **Before → After:** `<before-class>` → `<after-class>`
-- **Why this is the top fix:** <one sentence>
+<One block per issue, ordered by severity (hard failure → major → minor) and within a severity by impact. V1, V2, … are stable IDs the downstream brief references — never re-number across iterations of the same target. Emit every issue you'd act on; do not cap, do not pad.>
 
-### 2. <short-name>
+### V1. <short name>
+- **Severity:** hard failure | major | minor
+- **Rule violated:** <brief/policy reference — e.g., "Brief §4b Pass 2", "Brand identity §8 (hard failures)", "Design standards — density">
+- **Observed failure:** <what the mockup/page actually does. `<file:line>` and the current Tailwind class are allowed here as concrete evidence.>
+- **Required correction:** <exact replacement or constraint — concrete enough for refine-screen to execute without reinterpreting. May include the target class swap, the structural change, or both.>
+- **Do not change:** <optional. Local protection: a nearby good pattern this fix risks touching. Omit the bullet entirely if not applicable.>
+
+### V2. <short name>
 ...
 
-### 3. <short-name>
-...
+## Keepers
+
+<Page-wide protections. Things refine-screen must NOT break or rework. Distinct from per-violation "Do not change": these are global, not local.>
+
+- <thing>
+- <thing>
 
 ## Edge States to Test
 <States the design must produce variants for. Pull from real data conditions, not generic "loading/error". Example: "All-action-required country (47 rows, every row needs classification)", "Filed-and-locked country (zero rows in worklist)", "Mixed-currency country (GBP + EUR on same screen)".>
@@ -137,11 +143,6 @@ severity_summary:
 ## Peer Steals
 - From `<peer_path>`: <pattern> — port by <action>
 - From `<peer_path>`: <pattern> — port by <action>
-
-## Already Fine
-<List of things the refinement must NOT break.>
-- <thing>
-- <thing>
 
 ## Measurement Evidence
 <Raw numbers from step-3 measurement pass. Keep as YAML-ish for parseability.>
@@ -166,4 +167,4 @@ duplicated_data:
 - Don't flag dark-mode issues.
 - Don't propose new tokens — use what's in the design system.
 - Don't implement. This is a design review, not a PR.
-- **Artifact-mode rule:** Top 3, Edge States, and Peer Steals must all be populated in the artifact. If the audit genuinely produces fewer than 3 issues, fill the slots with the strongest density / hierarchy / IA findings — downstream consumers expect exactly 3.
+- **Artifact-mode rule:** Violations, Edge States, and Peer Steals must all be populated. Emit every violation you'd act on — do not cap, do not pad. Order by severity (hard failure → major → minor) and number V1, V2, … as stable IDs the consumer references. The interactive chat review may still surface the top 3 for the user to skim; the artifact carries the full list and consumers decide how many to act on.

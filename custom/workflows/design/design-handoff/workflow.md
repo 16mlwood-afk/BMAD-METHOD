@@ -54,10 +54,10 @@ This uses **step-file architecture** for focused execution:
 - `{output_path_relative_to_repo_root}` - Brief path relative to the repo root (for GitHub URLs and Claude Design references)
 - `{handoff_mode}` - `"fresh-design"` (default) or `"refine-screen"`. Refine-screen mode is triggered by the design-pm prompt-expansion or by the user passing `--refine-screen` / `--refine`. In refine-screen mode the workflow consumes a `screen-review` artifact (auto-running `design-review --artifact` first if none exists) and produces a tightly-scoped refinement brief instead of an open creative brief.
 - `{review_artifact_path}` - Absolute path to the consumed `screen-review-*.md` artifact (only set in refine-screen mode)
-- `{refine_focus}` - Top 3 issues parsed from the artifact (used to bound the brief's Design Ask in refine-screen mode)
+- `{refine_focus}` - Violations parsed from the artifact (V1, V2, … — used to bound the brief's Design Ask in refine-screen mode; the brief may consume all or just the top N)
 - `{required_variants}` - Edge states parsed from the artifact (required design variants in refine-screen mode)
 - `{peer_steals}` - Peer-pattern transplants parsed from the artifact (used as visual references in refine-screen mode)
-- `{already_fine}` - Things the artifact says NOT to break (folded into hard constraints in refine-screen mode)
+- `{already_fine}` - Keepers parsed from the artifact (things refine-screen must NOT break — folded into hard constraints. State-variable name kept for compatibility with step-03 templates.)
 
 ---
 
@@ -153,7 +153,7 @@ The workflow handles two modes:
 
 3. **Branch on result:**
 
-   - **Artifact found AND less than 24 hours old:** Load it. Set `{review_artifact_path}` to its absolute path. Parse the YAML frontmatter into state, then parse the body's Top 3 → `{refine_focus}`, Edge States → `{required_variants}`, Peer Steals → `{peer_steals}`, Already Fine → `{already_fine}`. Proceed to step-01.
+   - **Artifact found AND less than 24 hours old:** Load it. Set `{review_artifact_path}` to its absolute path. Parse the YAML frontmatter into state, then parse the body's Violations → `{refine_focus}` (preserve V-IDs, severities, and all per-violation fields), Edge States → `{required_variants}`, Peer Steals → `{peer_steals}`, Keepers → `{already_fine}`. Proceed to step-01.
 
    - **Artifact found but older than 24 hours:** The screen may have changed. Surface to the user: "Found a screen-review artifact from {age}. Use it as-is, or re-run design-review --artifact?" In autonomous mode, prefer fresh — re-run design-review.
 
@@ -165,7 +165,7 @@ The workflow handles two modes:
 
 5. **In step-03, the Design Ask section is rewritten** to the refine-screen variant — see step-03 for the bounded refinement template.
 
-**Refine-screen rule:** The brief produced in this mode must be BOUNDED. It addresses the artifact's top 3 issues and requires variants for the artifact's edge states. It does NOT redesign the IA, does NOT introduce new components unless required to land one of the top 3, and does NOT propose a "get radical" alternative. Open creative freedom belongs in `fresh-design`.
+**Refine-screen rule:** The brief produced in this mode must be BOUNDED. It addresses the artifact's top 3 violations (by severity order) and requires variants for the artifact's edge states. It does NOT redesign the IA, does NOT introduce new components unless required to land one of those top 3, and does NOT propose a "get radical" alternative. Open creative freedom belongs in `fresh-design`. Lower-severity violations (V4+) remain in the artifact for visibility but are not in-scope for the brief unless the user explicitly asks.
 
 ---
 
