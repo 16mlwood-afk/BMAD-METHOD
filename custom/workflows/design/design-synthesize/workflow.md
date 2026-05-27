@@ -33,6 +33,8 @@ When this workflow encounters conflicting guidance, the order of authority is:
 
 **Implication:** Every CSS value emitted by `design-synthesize` must trace back to (1), (2), or (5). Values from (3) or (4) appear only through the sister skills' published patterns. (6) is reserved for purely operational defaults that have no design meaning. Inventing a value with no trace is a synthesis failure — re-derive from the brief or surface the gap.
 
+**Tokens are inventory, choices are authorized.** The Tailwind config and project token file at (5) are the **inventory** of valid values that the system contains — the ground truth for *what tokens exist*. The brief (1) and policy (2) are the authority for *which token to use* for any given decision. These are distinct questions, which is why (5) appears below (1) and (2) in this precedence: synthesis cannot use a token that doesn't exist (inventory check), but a token's existence does not authorize its use without a brief/policy justification (authority check). The `design-policy-canonical` skill ranks `tailwind.config.ts` as its #1 trust source for *what is in the system*; this workflow's precedence ranks the brief #1 for *what to do with the system* — the two are compatible, not in conflict.
+
 **Policy non-overridability:** The brief (1) may narrow, focus, or summarize the policy (2) for a feature, but it MUST NOT loosen, carve out, or contradict the policy's hard failures or contract-critical positive-assertion allowlist. A brief that asks for behavior the policy forbids does not earn an exception — it surfaces a `modify-design-policy` candidate to the user. `design-synthesize` halts rather than honoring a brief that conflicts with policy. The brief's authority is over scope and emphasis, not over the policy's floors.
 
 ---
@@ -52,7 +54,9 @@ This uses **step-file architecture** for focused execution:
 - `{brief_type}` — `design-handoff` | `design-brief` | `design-response`. Parsed from filename prefix.
 - `{brief_content}` — Full contents of the brief artifact.
 - `{brief_frontmatter}` — Parsed YAML frontmatter from the brief (mode, target slug, route, etc.).
-- `{mode}` — `fresh-design` | `refine-screen`. Inherited from the brief's mode field; refine-screen requires the brief to reference a `screen-review-*.md` artifact and to declare targeted vs unchanged regions.
+- `{mode}` — `fresh-design` | `refine-screen`. Inherited from the brief's mode field; refine-screen requires the brief to reference a `screen-review-*.md` artifact and to declare targeted vs unchanged regions. This is the **synthesis mode**, distinct from `{page_mode}` below.
+- `{page_mode}` — `operational` | `analytical` | `detail`. The **page composition mode** from policy §6 / §7. Operational = table-first. Analytical = chart-first with drill-down. Detail = drawer or full-page extension of an operational list, never a re-skin. Hybrid pages default to `operational` per policy §6. Extracted from the brief's frontmatter (`page_mode:` field) or, if absent, inferred from the brief's data shape and design ask. Synthesis without a declared page mode is forbidden (Gate 1).
+- `{policy_sections_cited}` — Ordered list of policy section identifiers (e.g., `§2`, `§3 Color hierarchy`, `§6 operational mode`) that drove the synthesis. Recorded in the manifest per the `design-policy-canonical` exemplar-disclosure rules (skill §"Exemplars" / policy §10).
 - `{target_slug}` — Kebab-case slug for the feature/flow (e.g., `reclaim-avask`).
 - `{target_route}` — Route the bundle represents (e.g., `/reclaim/avask`). May be a single route or a flow of routes for multi-screen bundles.
 - `{screens}` — Ordered list of screen names for multi-screen bundles. Single-screen runs have `len(screens) == 1`.
@@ -93,6 +97,9 @@ This uses **step-file architecture** for focused execution:
 - **Screenshot is human-only.** `bundle/screenshot-<screen>.png` is for visual review before handoff. `design-implement` never reads it. If Playwright is unavailable, halt with a clear "install playwright" diagnostic — do not silently skip the render step. (See Playwright Invocation Contract for the dev-only escape hatch.)
 - **Manifest is split-authority.** Authoritative for synthesis receipt, interaction semantics, region declarations, and flow invariants. NEVER authoritative for visual properties. **Tie-breaker:** if `bundle/manifest.yaml` disagrees with `bundle/<screen>.html` or `bundle/tokens.css` on any visual fact, the HTML + tokens win — full stop — and the manifest is regenerated to match. No exceptions, no edge cases. A run where the manifest "looks more correct" than the HTML is a run where the synthesizer drifted; the HTML is what `design-implement` will enforce, so the HTML is the truth.
 - **Drift in refine-screen is failure, not noise.** Any non-empty diff in an `unchanged_region` against the prior implementation is a synthesis bug. Either eliminate the drift or move the region into `targeted_changes` (which surfaces the intentional scope expansion).
+- **Page mode declared up front.** Step 1 must resolve `{page_mode}` from the brief — `operational` | `analytical` | `detail` per policy §6 / §7. Per policy §6, hybrid pages default to `operational`. The page mode constrains composition (table-first vs chart-first vs detail extension), skill routing (operational → `operational-finance-ui`; analytical → `operational-analytics-band`), and what the lift test considers acceptable. Synthesis without an explicit `{page_mode}` is forbidden (Gate 1).
+- **No design inference from existing screens.** The current implementation may pre-date the policy or be mid-migration; it is not a design source (per `design-policy-canonical` skill: "Do not infer design from existing screens"). In `fresh-design` mode, only the brief, the policy, and the project token inventory authorize design choices. In `refine-screen` mode the prior implementation is a **drift baseline** — a reference for what NOT to alter outside `targeted_changes` — not a design source.
+- **Lift test (policy §10).** If the synthesized bundle would render acceptably as a different SaaS product (a generic CRM, an HR dashboard, a marketing tool) without modification, it has failed the lift test. The bundle must read as a high-trust UK VAT finance operations tool — calm fintech, never marketing or playful SaaS (policy §1). A lift-test failure is treated as a hard-failure check item; return to step 4 with the lift-test note as the correction. The synthesized bundle uses real domain content from the brief's data shape (invoices, VAT periods, suppliers, CDS records) — never placeholder/lorem ipsum data that could belong to any product.
 - **YOU MUST ALWAYS SPEAK OUTPUT** in your agent communication style with the config `{communication_language}`.
 
 ---
@@ -182,7 +189,7 @@ Written to `{output_dir}/<target_slug>-<date>/`:
 
 Each step is authored as a separate file under `steps/`. This workflow.md defines the contract; step files are authored after the workflow is stable.
 
-1. **`step-01-load-brief.md`** — Resolve the brief artifact, parse YAML frontmatter, extract feature purpose / data shape / user context / visual direction / hard constraints / design ask / mode / target slug / screens list / (refine-screen only) targeted vs unchanged regions. **Halts** if the brief is missing or malformed (Gate 1).
+1. **`step-01-load-brief.md`** — Resolve the brief artifact, parse YAML frontmatter, extract feature purpose / data shape / user context / visual direction / hard constraints / design ask / synthesis mode / **page mode (`operational | analytical | detail`, policy §6 / §7; hybrid defaults to `operational`)** / target slug / screens list / (refine-screen only) targeted vs unchanged regions. **Halts** if the brief is missing or malformed, or if `{page_mode}` cannot be resolved (Gate 1).
 2. **`step-02-load-policy.md`** — Resolve and load `{policy_path}`, compute `{policy_version_hash}`, extract `{hard_failures}` and `{positive_allowlist}`. **Halts** if the policy is missing (Gate 2).
 3. **`step-03-load-frontend-context.md`** — Detect `{framework}` from `package.json`, locate and parse `{tailwind_config_path}` and the project token file, populate `{project_tokens}`. In refine-screen mode, also locate `{prior_impl_paths}` for the drift baseline.
 4. **`step-04-synthesize.md`** — Invoke the relevant sister skills (per Skill Routing below) and generate `bundle/<screen>.html` + `bundle/tokens.css` for each screen in `{screens}`. Every visual property is an explicit value. **Halts** if synthesis would introduce >5 new tokens (Gate 3).
@@ -205,27 +212,21 @@ Each step is authored as a separate file under `steps/`. This workflow.md define
 
 ### Routing rules
 
-Because **every run of this workflow synthesizes actual HTML**, the project frontend/webapp design skill is mandatory in both modes — not conditional. Generating HTML without frontend design vocabulary is the exact failure mode this routing rule prevents. The conditional skills are `operational-finance-ui` and `operational-analytics-band`, which depend on screen type.
+Skill routing is driven by **`{page_mode}`**, not by free-text screen-type inference. This makes routing deterministic and aligns with policy §6 — the page mode constrains every downstream design decision, including which sister skills are authoritative for this screen.
 
-#### In `fresh-design` mode (new screen or full redesign)
+**Always invoke in every run (both synthesis modes, all page modes):**
+- `design-policy-canonical` — the policy itself is the floor; the skill enforces the trust hierarchy and refuses anti-default compositions.
+- Project frontend / webapp design skill (e.g., `website-building`) — synthesis emits HTML and needs design vocabulary regardless of screen type or scope.
 
-Always invoke:
-- `design-policy-canonical`
-- Project frontend / webapp design skill (e.g., `website-building`) — page composition, spacing, hierarchy, component treatment, web UI conventions.
+**Drive by `{page_mode}`:**
 
-Conditionally invoke:
-- `operational-finance-ui` when the screen is a dense worklist, table, queue, filter row, status hierarchy, or operational finance surface.
-- `operational-analytics-band` when the screen includes KPI strips, analytics rows, trend bands, or quarter-by-quarter summary bands.
+| `{page_mode}` | Mandatory in addition to always-invoke | Conditional |
+|---|---|---|
+| `operational` | `operational-finance-ui` (table-first composition, filter bar, status hierarchy, dense row treatment per policy §6) | `operational-analytics-band` if the screen carries a narrow analytics band above or beside the table |
+| `analytical` | `operational-analytics-band` (chart-led composition, drill-down evidence, no card-grid openers per policy §6) | `operational-finance-ui` if drill-down tables are part of the brief |
+| `detail` | `operational-finance-ui` (drawer/detail extends an operational list — same surface, typography, badges; policy §7) | `operational-analytics-band` is **not** applicable; detail views forbid KPI cards / charts per policy §7 |
 
-#### In `refine-screen` mode (iteration bounded by screen-review artifact)
-
-Always invoke:
-- `design-policy-canonical`
-- Project frontend / webapp design skill — same reason as `fresh-design`: synthesis emits HTML and needs design vocabulary regardless of how bounded the changes are.
-
-Conditionally invoke:
-- `operational-finance-ui` when the screen being refined is a finance worklist / table / queue / operational surface.
-- `operational-analytics-band` when the targeted changes touch an analytics band / KPI row.
+**Refine-screen mode** uses the same page-mode-driven matrix above. Synthesis mode (`fresh-design` vs `refine-screen`) does not change which skills are authoritative — page mode does.
 
 ### Enforcement
 
@@ -272,10 +273,11 @@ The workflow must pass these gates in order. Each is a hard halt. Step ownership
 
 ### Gate 1 — brief validity (step 1)
 - Brief path resolves to an existing file under `{implementation_artifacts}`.
-- Brief contains valid YAML frontmatter with at least: `target_slug`, `mode`, `route` (or `routes` for multi-screen).
+- Brief contains valid YAML frontmatter with at least: `target_slug`, `mode` (synthesis mode), `route` (or `routes` for multi-screen).
+- `{page_mode}` resolves to one of `operational | analytical | detail` — either declared in the brief frontmatter as `page_mode:` or unambiguously inferrable from the brief's data shape and design ask. If the brief describes both table-first work and analytics surfaces without a tiebreaker, default to `operational` per policy §6.
 - In `refine-screen` mode: brief references a `screen-review-*.md` and declares `targeted_changes` + `unchanged_regions`.
 
-If this gate fails, halt and report the missing field(s). Do NOT guess paths or substitute a stale brief.
+If this gate fails, halt and report the missing field(s). Do NOT guess paths, substitute a stale brief, or invent a page mode.
 
 ### Gate 2 — policy presence (step 2)
 - `{policy_path}` resolves to an existing file.
@@ -321,11 +323,22 @@ synthesis:
     - operational-analytics-band   # if applicable to screen type
 
 # Mode and scope — authoritative
-mode: {fresh-design | refine-screen}
+mode: {fresh-design | refine-screen}            # synthesis mode
+page_mode: {operational | analytical | detail}  # policy §6 / §7 composition mode
 target_slug: {kebab-case slug}
 target_route: {single route or null}
 routes: [{list of routes for multi-screen flows}]
 screens: [{ordered list of screen names}]
+
+# Policy sections that drove the synthesis — exemplar-disclosure rule
+# (design-policy-canonical skill §"Exemplars" / policy §10)
+policy_sections_cited:
+  - "§1 Visual Direction"
+  - "§2 Layout Principles"
+  - "§3 Color hierarchy"
+  - "§6 Operational mode (table-first)"
+  - "§5 Anti-default compositions"
+  # ... each section that justified a composition or component decision
 
 # Refine-screen scope — authoritative when mode == refine-screen
 targeted_changes:
@@ -386,8 +399,9 @@ flow_invariants:
 ```
 
 `design-implement` reads:
-- `synthesis.*` — for audit and re-run reproducibility
-- `mode`, `screens`, `routes` — for per-screen iteration
+- `synthesis.*` — for audit and re-run reproducibility (including `dev_no_render` refusal)
+- `mode`, `page_mode`, `screens`, `routes` — for per-screen iteration and to confirm the page-mode contract was honored
+- `policy_sections_cited` — for traceability when the implementer asks "why this composition?"
 - `targeted_changes` / `unchanged_regions` — for drift enforcement in refine-screen
 - `flow_invariants` — for the post-per-screen pass
 - `tokens.proposed` — surfaces these to the implementer as policy-extension decisions
@@ -414,7 +428,9 @@ This workflow succeeds when:
 - Every visual CSS value in the bundle is explicit (inline `style="…"` or resolves through `tokens.css`) — `design-implement` can extract values without interpretation. No config-dependent Tailwind classes appear.
 - The unconditional manifest-validation pass (step 7) has passed: no `var(--*)` dangles, no manifest entry disagrees with HTML + tokens on a visual fact, no external imports beyond `tokens.css`.
 - `manifest.tokens.proposed` length is ≤ 5.
-- `manifest.skills_invoked` includes the skills required for the mode (always: `design-policy-canonical` and project frontend skill; conditional: `operational-finance-ui`, `operational-analytics-band`).
+- `manifest.page_mode` is set to one of `operational | analytical | detail` and matches what the brief declared / what step 1 resolved.
+- `manifest.policy_sections_cited` is non-empty — at least the sections that drove composition (§2, §6 for operational; §6 for analytical; §7 for detail) and any anti-default checks invoked (§5).
+- `manifest.skills_invoked` includes the skills required for `{page_mode}` per the routing matrix (always: `design-policy-canonical` and project frontend skill; mandatory by page_mode: `operational-finance-ui` for operational/detail, `operational-analytics-band` for analytical).
 - `manifest.compliance_state` is `pass` OR a documented failure mode (`hard_failed | positive_failed | drift_failed | dev_only`) and the user sees it in the handoff print.
 - `bundle/screenshot-<screen>.png` exists for every screen and is non-empty — UNLESS the run used `--no-render`, in which case `manifest.synthesis.dev_no_render: true` is set and `design-implement` will refuse the bundle.
 - In `refine-screen` mode: the drift check has run and any drift has either been eliminated or explicitly moved into `targeted_changes`.
