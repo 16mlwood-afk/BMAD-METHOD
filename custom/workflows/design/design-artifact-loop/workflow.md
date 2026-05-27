@@ -39,7 +39,28 @@ When this workflow encounters conflicting guidance, the order of authority is:
 6. **Human summary text in the handoff block** — convenience only. If it conflicts with the file, the file wins.
 7. **Existing implementation** — observed file structure / component code. In brief-led modes, do not infer from current implementation unless the brief explicitly asks for comparison.
 
+**Not contract — never cite as authority:**
+
+- **Agent run-time thinking notes / "other observed issues" / mental scratch.** Only what is committed to a markdown artifact on `main` is contract. If the agent noticed a problem during a screen-review run but did NOT enumerate it as V1/V2/V3 (or as a separate `## Edge states` / `## What to keep` / `## Out-of-scope reminder` entry), that observation is not part of the artifact and a downstream PR cannot cite "the screen-review's deferred items" to justify shipping it. The remedy is below in §POLISH ITEMS BELOW V3.
+- **Prior conversation context / chat history** between the user and the agent. Only the committed artifact on `main` survives across runs.
+- **The PR description of any in-flight PR.** PR descriptions are convenience metadata; the artifact on `main` (or the diff itself once merged) is the durable record.
+
 **Implication:** A screen-review violation's `Rule violated:` field must cite (1) or (2), never (5) or (6). A design-handoff's exact-change list must come from the brief or from a violation tied back to (2); never from the agent's own preferences. Briefs may narrow the policy for a feature but may not loosen or carve out exceptions.
+
+---
+
+## POLISH ITEMS BELOW V3
+
+A screen-review caps at V1–V3 by the "issue cap rule" in `templates/screen-review.md`. That cap is intentional — it forces ranking discipline. But it creates a real-world tension: the screen often has additional violations the agent noticed but didn't rank, and the user later wants those fixed too.
+
+**The rule:** any code change for a polish item that is NOT covered by V1/V2/V3 of the current screen-review must do ONE of the following:
+
+1. **Cite the original handoff section** in the PR description (e.g. "implements `design-handoff-{slug}-{date}.md` §1.3 verbatim"). This is appropriate when the polish item is simply an as-yet-unbuilt piece of the original design contract — the contract was always there, the screen-review just didn't elevate it to top-3.
+2. **Run a second `design-artifact-loop` pass in `review-only` mode** that adds V4–Vn to the screen-review (V-IDs are stable; new findings get new IDs). Ship the polish PR citing the new V-ID. This is appropriate when the polish item is a new finding not in the original handoff (e.g. a regression discovered post-implementation, or a UX papercut the brief didn't anticipate).
+
+Phrases like "deferred items from the screen-review's Other observed issues list" are **not allowed in PR descriptions** when the screen-review does not contain such a list. If the agent's run-time thinking surfaced items beyond V1–V3, those items are not commitments — they are either (1) re-castable as handoff-section citations or (2) require a second review pass to become contract.
+
+Cross-check at PR-creation time: if a PR claims to implement a "deferred screen-review item" but the cited screen-review file on `main` does not contain that item by V-ID or by explicit list, the PR description is mis-citing and must be rewritten under one of the two paths above.
 
 ---
 
