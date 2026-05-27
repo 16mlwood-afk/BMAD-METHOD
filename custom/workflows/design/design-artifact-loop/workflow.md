@@ -1,6 +1,6 @@
 ---
 name: design-artifact-loop
-description: 'Artifact-first design workflow that replaces Claude Design. Reads a canonical markdown brief or screen-review on main, locks one mode (design-from-brief | refine-screen | review-only | policy-lift), and produces the screen-review, design-handoff, or design-response artifact needed for implementation. Use when the user hands off a design-brief or screen-review artifact, or types "design-artifact-loop".'
+description: 'Artifact-first design workflow that replaces Claude Design. Reads a canonical markdown brief or screen-review on main, locks one mode (design-from-brief | refine-screen | review-only | policy-lift), and produces the screen-review, design-handoff, or design-response artifact needed for implementation. In `review-only` mode this *re-audits an existing screen-review on main* — for the first audit of a target from live pixels, use `design-review --artifact` instead. Use when the user hands off a design-brief or screen-review artifact, or types "design-artifact-loop".'
 main_config: '{project-root}/_bmad/bmm/config.yaml'
 
 # Related workflows
@@ -16,6 +16,14 @@ design_tuning_workflow: '{project-root}/_bmad/bmm/workflows/design/design-tuning
 **Your Role:** You are an artifact-first design agent. You do not browse Dribbble, infer from the running app, or "vibe" the page. You read the artifact, restate the context block back to the user verbatim, defer domain rules to sister skills (`design-policy-canonical`, `operational-analytics-band`, `operational-finance-ui`), and emit a single mode-locked output file. Mode never silently morphs mid-run.
 
 **Key Insight:** The historical Claude Design workflow leaked because the consumer (Claude Design) imported visual priors from its training data and rewrote IA on a screenshot-led refinement. This workflow exists to keep the brief authoritative, keep refinement bounded, and keep reviews evidence-cited. The replacement is not just about hosting — it is about *bias control* on the consumer side of the brief.
+
+**Entry point for `review-only` — when to use this vs. `design-review`.** `review-only` mode is for *re-auditing an existing `screen-review-{slug}-*.md` on `main`*. It preserves V-ID lineage and verdict history across iterations of the same target. If no screen-review artifact exists yet for the target, this workflow has nothing to re-audit — use `design-review --artifact` first to create the initial audit from live pixels, then come back here once that artifact is committed on `main`. Quick check before invoking review-only:
+
+```bash
+ls _bmad/bmm/implementation-artifacts/screen-review-{slug}-*.md 2>/dev/null
+```
+
+Empty result → run `design-review --artifact` instead. Non-empty → proceed with review-only here.
 
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: design-review
-description: 'Senior product designer audit of a live page in Chrome — hierarchy, information architecture, density. Audit only, no implementation. Supports an artifact mode that emits a structured screen-review.md for downstream consumption by design-handoff (refine-screen).'
+description: 'Senior product designer audit of a live page in Chrome — hierarchy, information architecture, density. Audit only, no implementation. In artifact mode emits the *initial* `screen-review-*.md` for a target from live pixels. To re-audit an existing screen-review on main (preserving V-ID lineage), use `design-artifact-loop` in `review-only` mode instead.'
 main_config: '{project-root}/_bmad/bmm/config.yaml'
 ---
 
@@ -9,6 +9,14 @@ main_config: '{project-root}/_bmad/bmm/config.yaml'
 **Goal:** Audit the frontend design of the page the user has open in Chrome. Review for hierarchy, information architecture, and density — not just a11y or bugs.
 
 **Your Role:** Senior product designer. You compare the page under review against peer detail views in the same repo to set the quality bar. You cite real class names, real file paths, and real measurements. You do NOT implement — this workflow produces a design review document, not a PR.
+
+**When NOT to use this — entry-point routing.** This workflow *creates the first `screen-review-*.md`* for a target by auditing live pixels in Chrome. If a `screen-review-{slug}-*.md` already exists on `main` for this target, prefer `design-artifact-loop` in `review-only` mode — it re-audits the existing artifact, preserves V-ID lineage and verdict history across iterations, and avoids duplicate review files. Quick check before invoking:
+
+```bash
+ls _bmad/bmm/implementation-artifacts/screen-review-{slug}-*.md 2>/dev/null
+```
+
+Empty result → run this workflow with `--artifact`. Non-empty → run `design-artifact-loop` review-only instead.
 
 ---
 
