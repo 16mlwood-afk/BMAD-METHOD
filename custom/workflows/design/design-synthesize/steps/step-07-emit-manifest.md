@@ -153,6 +153,14 @@ synthesis:
   policy_version_hash: {policy_version_hash}
   baseline_commit: {baseline_commit}
   frontmatter_lifts: {frontmatter_lifts}    # map of field → {value, source} for required brief frontmatter fields that step 1 lifted from the brief body (§5b / §8a). Emit as `{}` when no lifts occurred (NOT null, NOT omitted — explicit `{}` confirms step 1 ran and recorded zero lifts). Non-empty lifts are structural decisions the bundle's reproducibility hinges on.
+  brief_provenance:                          # captured by step-01 §4a; traces the bundle to the exact brief revision. Per shared/brief-revision-policy.md.
+    revision_mode: {brief_revision_mode}
+    change_class: {brief_change_class}
+    supersedes: {brief_supersedes or ""}
+    superseded_by: {brief_superseded_by or ""}
+    source_run_date: {brief_source_run_date}
+    last_modified_by: {brief_last_modified_by}
+    last_modified_date: {brief_last_modified_date}
   iterations: {iteration_count}
   compliance_state: {compliance_state}
   dev_no_render: {dev_no_render}

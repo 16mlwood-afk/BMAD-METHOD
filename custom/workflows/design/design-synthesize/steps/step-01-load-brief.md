@@ -78,6 +78,82 @@ If the prefix doesn't match any of the above, halt with: `brief filename does no
 
 Read the entire file into `{brief_content}`. Use the Read tool (not `cat`) so the harness tracks the read.
 
+### 4a. Validate Brief Revision Provenance
+
+Before parsing the brief's domain frontmatter (§5), validate the **revision provenance** block per `{project-root}/_bmad/bmm/workflows/design/shared/brief-revision-policy.md`. A brief that fails validation is unconsumable; halt step-01 (Gate 1 failure) and surface the diagnostic to the user. Do NOT attempt to repair the file — surface and exit.
+
+**Escape hatch:** if the user's invocation includes the literal token `--allow-superseded` AND the brief path was passed explicitly (Shape A), skip Check 3 only. All other checks still run. Never auto-fall-back to `--allow-superseded`.
+
+Run the checks in order; halt on the first failure.
+
+**Check 1 — fields present.** Parse the provenance block. Required fields: `target_slug`, `brief_status`, `revision_mode`, `change_class`, `supersedes`, `superseded_by`, `source_workflow`, `source_run_date`, `last_modified_by`, `last_modified_date`. Empty strings are allowed only for `supersedes` and `superseded_by`. If any field is missing, halt with:
+
+```
+Gate 1 — brief provenance: missing field(s) <list>
+Brief: {brief_path}
+This brief predates the revision policy (or was malformed) and cannot be safely synthesized.
+Re-run design-handoff to regenerate it, or back-fill the provenance block per brief-revision-policy.md §7.
+See: {project-root}/_bmad/bmm/workflows/design/shared/brief-revision-policy.md
+```
+
+**Check 2 — invariants.** Run the invariants from `brief-revision-policy.md` §2 (items 2–8). Specifically:
+
+- `revision_mode == "workflow_generated"` ⇒ `change_class ∈ {"original", "material_revision"}`
+- `revision_mode == "manual_minor_revision"` ⇒ `change_class == "clarification"`
+- `change_class == "original"` ⇒ `supersedes` is empty
+- `change_class == "material_revision"` ⇒ `supersedes` names an existing file in `{implementation_artifacts}`
+- `brief_status == "superseded"` ⇒ `superseded_by` is non-empty
+- `revision_mode == "workflow_generated"` ⇒ `last_modified_by == "workflow"` AND `last_modified_date == source_run_date`
+
+Halt on any failure with the specific invariant and the conflicting fields.
+
+**Check 3 — superseded.** If `brief_status == "superseded"`:
+
+```
+Gate 1 — brief provenance: refusing to synthesize from a superseded brief.
+Brief: {brief_path}
+Superseded by: <superseded_by value>
+If you really need to synthesize from this older brief (e.g. for audit), pass --allow-superseded explicitly; otherwise switch to the successor.
+```
+
+Skipped only when `--allow-superseded` was passed AND the brief path was explicit (Shape A).
+
+**Check 4 — active uniqueness.** Glob `{implementation_artifacts}/design-brief-{this brief's target_slug}-*.md`, parse each match's frontmatter, and count those with `brief_status: active`. (Use the target_slug from this brief's frontmatter; if frontmatter omits it, derive from the filename per the auto-lift rule in §5b — both checks share the same slug.) If more than one match, halt:
+
+```
+Gate 1 — brief provenance: active-uniqueness invariant violated for target_slug "<slug>"
+  - <path 1>
+  - <path 2>
+  ...
+Exactly one active brief per target_slug is permitted. Fix the predecessor chain
+(set brief_status: superseded and superseded_by on the older briefs) and retry.
+See: {project-root}/_bmad/bmm/workflows/design/shared/brief-revision-policy.md §2.6
+```
+
+**Check 5 — material change with manual revision.** If `change_class == "material_revision"` AND `revision_mode == "manual_minor_revision"`:
+
+```
+Gate 1 — brief provenance: forbidden combination (material change + manual revision).
+Brief: {brief_path}
+A material revision must go through design-handoff. Re-run design-handoff for this feature.
+See: {project-root}/_bmad/bmm/workflows/design/shared/brief-revision-policy.md §3
+```
+
+**Check 6 — workflow-generated brief was hand-edited.** If `revision_mode == "workflow_generated"` AND `last_modified_by == "human"` AND `last_modified_date > source_run_date`:
+
+```
+Gate 1 — brief provenance: workflow-generated brief was hand-edited but revision_mode still claims workflow_generated.
+Brief: {brief_path}
+Either re-run design-handoff (material edit) or update the frontmatter to revision_mode: manual_minor_revision + change_class: clarification (minor edit).
+See: {project-root}/_bmad/bmm/workflows/design/shared/brief-revision-policy.md §3
+```
+
+**On success**, capture the provenance fields into state for inclusion in the load summary (§10) and the manifest (step-7):
+
+- `{brief_revision_mode}`, `{brief_change_class}`, `{brief_supersedes}`, `{brief_superseded_by}`, `{brief_source_run_date}`, `{brief_last_modified_by}`, `{brief_last_modified_date}`
+
+These flow into `manifest.synthesis.brief_provenance` so downstream tooling (and humans inspecting the bundle) can trace the bundle to the exact brief revision it was synthesized from.
+
 ### 5. Parse YAML frontmatter
 
 Extract the frontmatter block between the first two `---` lines. Parse into `{brief_frontmatter}` as a map. Required keys:
@@ -243,6 +319,7 @@ Print to the user (one block, concise):
   screens:         [{screens, comma-separated}]
   routes:          [{routes, comma-separated}]
   refine baseline: {screen_review_ref or "n/a"}
+  provenance:      revision_mode={brief_revision_mode}, change_class={brief_change_class}, last_modified_by={brief_last_modified_by} on {brief_last_modified_date}{; supersedes {brief_supersedes} if non-empty}
 
 Frontmatter lifts (only printed when {frontmatter_lifts} is non-empty):
   - <field>: lifted from <source>
@@ -267,6 +344,7 @@ After this step, the following state variables MUST be populated:
 - `{feature_purpose}`, `{data_shape}`, `{user_context}`, `{visual_direction}`, `{hard_constraints}`, `{design_ask}`
 - `{analytics_structure}` if §4b present, else null
 - `{frontmatter_lifts}` — map of `field → {value, source}` for every required field that was lifted from body rather than read directly from frontmatter. Empty map if all required fields were present in frontmatter. Non-empty lifts are not failures, but they ARE structural decisions the bundle's reproducibility hinges on — surface them in the step-10 load summary and (when step-07 is wired to read it) include them in `manifest.synthesis.frontmatter_lifts` for audit. Until step-07 wires this up explicitly, the state variable still exists for downstream introspection.
+- Brief revision provenance (populated in §4a; flow into `manifest.synthesis.brief_provenance` via step-07): `{brief_revision_mode}`, `{brief_change_class}`, `{brief_supersedes}`, `{brief_superseded_by}`, `{brief_source_run_date}`, `{brief_last_modified_by}`, `{brief_last_modified_date}`
 - In `refine-screen` mode: `{screen_review_ref}`, `{targeted_changes}`, `{unchanged_regions}`
 
 Any unset required variable is a workflow bug — halt before step 2.

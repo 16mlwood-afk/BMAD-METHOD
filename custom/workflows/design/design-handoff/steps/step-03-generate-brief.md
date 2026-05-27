@@ -50,6 +50,39 @@ If `{handoff_mode}` = `"refine-screen"`, use the slug `refine-{feature-slug}` in
 {output_path} = {implementation_artifacts}/design-brief-refine-{feature-slug}-{date}.md
 ```
 
+Capture `{output_filename}` = basename of `{output_path}` (used in §1a and the frontmatter below). Capture `{target_slug}` = the kebab-case slug component of the filename — i.e., `{feature-slug}` for fresh-design or `refine-{feature-slug}` for refine-screen. This becomes the active-uniqueness key consumers use; the predecessor lookup in §1a globs against this exact slug.
+
+### 1a. Resolve Predecessor & Decide change_class
+
+Per `shared/brief-revision-policy.md` §4, `design-handoff` must decide each new brief's `change_class` by checking for an existing **active** brief on the same surface. The `target_slug` for this lookup is the same kebab-case identifier used to name the file (in refine-screen mode, that includes the `refine-` prefix — refine-screen briefs supersede earlier refine-screen briefs on the same feature, not fresh-design briefs).
+
+```bash
+ls -t {implementation_artifacts}/design-brief-{target_slug}-*.md 2>/dev/null
+```
+
+For each candidate file returned by the glob, parse its frontmatter and keep only those where `brief_status: active`. Then branch on the count:
+
+| Count | Resolution |
+|---|---|
+| 0 | `{change_class}` = `"original"`; `{supersedes_filename}` = `""`; `{predecessor_path}` = none. |
+| 1 | `{change_class}` = `"material_revision"`; `{supersedes_filename}` = basename of the predecessor; `{predecessor_path}` = absolute path. (Re-running `design-handoff` on a surface IS material by definition — minor edits don't go through this workflow.) |
+| 2+ | **HALT.** The active-uniqueness invariant (`brief-revision-policy.md` §2.6) is already broken. Surface the list of conflicting paths and tell the user to fix the predecessor chain (set `brief_status: superseded` and `superseded_by` on the older briefs) before generating a new brief. Do NOT proceed and do NOT auto-pick a predecessor — the existing inconsistency must be resolved deliberately. |
+
+Capture `{source_run_date}` = `{date}` (the workflow's `date` variable; same value used in `last_modified_date`).
+
+### 1b. Flip the Predecessor (only when `change_class == "material_revision"`)
+
+When §1a found exactly one active predecessor, edit that file's frontmatter in-place BEFORE writing the new brief:
+
+- Set `brief_status: superseded`
+- Set `superseded_by: {output_filename}`
+- Set `last_modified_by: workflow`
+- Set `last_modified_date: {date}`
+
+Leave every other field (including `source_workflow`, `source_run_date`, the body, and any prior changelog) untouched. This is the only edit `design-handoff` makes to an existing file.
+
+If the predecessor's frontmatter is missing the provenance block entirely (a pre-policy brief), back-fill the full block at the same time per `brief-revision-policy.md` §7 — `revision_mode: workflow_generated`, `change_class: original`, `source_workflow: design-handoff`, `source_run_date` set to its existing top-level `date:` field if present (else its `last_modified_date`), and then apply the supersede edit above. The point is to leave the predecessor in a consumer-valid state so a later `--allow-superseded` lookup still works.
+
 ### 2. Generate the Brief
 
 Write the file using this template. The section order is intentional — Claude Design should understand the business problem first, then the visual system, then the non-negotiables.
@@ -60,10 +93,22 @@ Write the file using this template. The section order is intentional — Claude 
 ---
 type: design-brief
 feature: {feature_name}
+target_slug: {target_slug}            # kebab-case slug used in filename and as the active-uniqueness key (refine-screen runs use the "refine-{feature-slug}" form)
 scope: {feature_scope}
 date: {date}
 author: {user_name} via design-handoff workflow
 status: ready-for-design
+
+# Revision provenance (see shared/brief-revision-policy.md)
+brief_status: active
+revision_mode: workflow_generated
+change_class: {change_class}             # original | material_revision (decided in §1a)
+supersedes: {supersedes_filename}        # empty when change_class is original
+superseded_by:                           # always empty on a freshly generated brief
+source_workflow: design-handoff
+source_run_date: {source_run_date}
+last_modified_by: workflow
+last_modified_date: {date}
 ---
 
 # Design Brief: {feature_name}
@@ -73,6 +118,8 @@ status: ready-for-design
 > **Repository:** **{github_repo_url}** (branch: `main`). Connect to THIS repository to read referenced files.
 >
 > **This brief:** `{github_repo_url}/blob/main/{output_path_relative_to_repo_root}`
+>
+> **Revision provenance** follows `brief-revision-policy.md` in the shared design workflow docs. Consumers (design-artifact-loop, design-synthesize) validate the provenance frontmatter at intake; do not hand-edit this brief into a scope or intent change — re-run `design-handoff` instead.
 
 This brief was generated from the codebase after implementation. It intentionally omits the current layout — you have full creative freedom to design from the data, purpose, and constraints below.
 
@@ -471,6 +518,16 @@ Technical context only — NOT layout or design references.
 | File | What it contains |
 |------|-----------------|
 | {3-5 key files} | {type definitions, API handlers, CSS tokens if applicable} |
+
+---
+
+## Changelog
+
+Minor revisions (clarifications only — see `brief-revision-policy.md` §1) append one line here. Material revisions re-run `design-handoff` instead; they do NOT append to this changelog — they live in a new brief file.
+
+{If change_class is "material_revision", the first changelog entry below records the supersession; otherwise this section starts empty and is populated by future hand-edits.}
+
+- {date} — {if change_class == "material_revision": "Material revision; supersedes `{supersedes_filename}`. Author: design-handoff workflow."; if change_class == "original": leave the bullet OUT entirely and the section will be empty until a clarification is added.}
 ````
 
 ---
@@ -479,6 +536,8 @@ Technical context only — NOT layout or design references.
 
 Before writing, verify:
 
+- [ ] **Provenance frontmatter is complete and consistent.** All ten fields from `brief-revision-policy.md` §2 are present. `revision_mode` is `workflow_generated`. `last_modified_by` is `workflow`. `last_modified_date == source_run_date == {date}`. If `change_class == "material_revision"`, `supersedes` names an existing file in `{implementation_artifacts}`; if `change_class == "original"`, `supersedes` is empty. `superseded_by` is empty (it's set retroactively on the predecessor in §1b, never on a freshly generated brief).
+- [ ] **Predecessor flipped (if applicable).** When `change_class == "material_revision"`, the predecessor file's frontmatter was edited in §1b: its `brief_status` is now `superseded`, its `superseded_by` is set to this brief's filename, and its `last_modified_date` is `{date}`. Re-read the predecessor to confirm — the active-uniqueness invariant must hold after this run completes.
 - [ ] **No current UI anywhere.** The brief does not describe what sections, components, tabs, or groupings currently exist on the page. No phrases like "the current page has", "the left panel shows", "the table is currently placed under", "this section is a card grid." *(Refine-screen exception: section 6 cites the artifact's specific `file:line` references — that's expected, because the artifact IS the diagnostic.)*
 - [ ] **Verbatim policy quotes — no drift.** For every section that quotes the brand identity / design policy (section 4 Visual Identity sub-sections, section 5 Hard Failures, AI Fingerprint Sensitivity), re-open `{brand_identity_path}` and string-match each quoted bullet against the source. Specifically check: (a) no parentheticals appear in your bullet that don't appear in the policy bullet, (b) no qualifying phrase ("usually", "primarily", "except when", "the codebase already uses X so …") softens a hard rule, (c) every bullet in the policy's hard-failure list appears in section 5 — none silently dropped, (d) no merged bullets where two policy items collapsed into one. If any bullet fails the match, replace it with the policy text verbatim. **This catches the single most common drift mode — softening a hard rule with a "but in this case …" parenthetical.**
 - [ ] **Section 2 is entity tables from the DB schema.** No `interface PageData {...}`, no ```typescript blocks, no nested/grouped collections, no derived fields, no rendering hints, no UI-control enums.

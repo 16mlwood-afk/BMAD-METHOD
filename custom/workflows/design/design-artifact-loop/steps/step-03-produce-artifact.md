@@ -148,6 +148,15 @@ The output structure is the locked schema in workflow.md → "Output schemas" an
 
 Each template carries its own `## Context` block — populate it from the evidence set's `context_block`. Where the template's footer expects "Sources consulted", "Evidence gaps", or "Dissent pass" lines, populate those from `{skill_routing_used}`, `{evidence_set}.evidence_gaps`, and the result of the dissent pass (section 3b above) respectively.
 
+**Brief provenance pass-through.** When `{evidence_set}.primary.artifact_type == "design-brief"`, append a "Brief provenance" line under the Context block's `Source of truth:` / `Source artifacts:` entry. Format:
+
+```
+- Source of truth: <artifact_path>
+- Brief provenance: revision_mode={brief_revision_mode}, change_class={brief_change_class}, last_modified_by={brief_last_modified_by} on {brief_last_modified_date}{; supersedes <brief_supersedes> if non-empty}
+```
+
+This carries the brief's lineage forward one hop so the next consumer of THIS output (e.g. `design-implement` reading a `design-handoff-*.md`) sees provenance without re-reading the original brief. Skip the line when the primary artifact was a `screen-review` or `policy-delta` — those have their own lineage models.
+
 For `design-handoff` outputs, the dedicated `## Skill routing used` block is REQUIRED non-empty whenever the run produced UI-facing guidance — this is the Gate 4 cross-check.
 
 ### 6. Stage the Output for Step 4

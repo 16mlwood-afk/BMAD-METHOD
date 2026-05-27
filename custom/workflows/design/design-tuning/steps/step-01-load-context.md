@@ -31,6 +31,17 @@ Read the full brief. Extract and store:
 - `{feature_name}` — from the brief's frontmatter `feature:` field
 - `{brief_path}` — absolute path to the brief file
 
+### 1a. Validate Brief Revision Provenance
+
+Before extracting constraints, validate the brief's revision provenance per `{project-root}/_bmad/bmm/workflows/design/shared/brief-revision-policy.md`. This is a **hard halt** override on §1's "don't block, work with what's available" rule — an invalid or superseded brief cannot drive an iteration loop, because every correction message would be anchored to the wrong contract.
+
+Apply the consumer checks in the policy doc §5 (Checks 1–6) against the brief's frontmatter. The same diagnostics apply. The only differences from the other consumers:
+
+- **Escape hatch:** `--allow-superseded` is honored only when the user passed the brief path explicitly (not when this step found it via the `ls -t` fallback). Auto-discovered briefs must be active.
+- **No fallback:** if the most-recent brief is superseded, do NOT silently fall back to its predecessor. Halt and require the user to either pass the active brief's path explicitly or re-run `design-handoff`.
+
+On success, capture `{brief_revision_mode}`, `{brief_change_class}`, `{brief_last_modified_by}`, `{brief_last_modified_date}`, and `{brief_supersedes}` into state. Step-03's correction message includes a provenance line so the next iteration of the design tool sees which brief revision the correction was anchored to.
+
 ### 1b. Load Project Design Policy (canonical source)
 
 Check both possible locations for a project-level design system declaration, in order. `docs/design-policy.md` is the canonical location; `{planning_artifacts}/brand-identity.md` is the legacy slot. Prefer the first if both exist:

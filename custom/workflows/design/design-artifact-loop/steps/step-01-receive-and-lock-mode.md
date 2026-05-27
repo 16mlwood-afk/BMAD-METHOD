@@ -50,6 +50,90 @@ Read the file fully into `{artifact_content}`. Parse its YAML frontmatter (if an
 
 If neither frontmatter nor filename resolves the type, set `{artifact_type}` = `unknown` and surface the file path to the user — do NOT proceed.
 
+### 2a. Validate Brief Revision Provenance (only when `{artifact_type}` = `design-brief`)
+
+Briefs are subject to the contract defined in `{project-root}/_bmad/bmm/workflows/design/shared/brief-revision-policy.md`. Validate the provenance frontmatter BEFORE extracting target identity (§3) — a brief that fails validation is unconsumable and step-01 must halt without proceeding to step-02.
+
+**Skip this section entirely** when `{artifact_type}` ∈ {`screen-review`, `policy-delta`, `unknown`} — those artifacts have their own lineage models and are not governed by `brief-revision-policy.md`.
+
+**Escape hatch:** if the user's invocation includes the literal token `--allow-superseded` AND `{artifact_path}` names a specific superseded brief, skip Check 3 only. All other checks still run. Do NOT auto-apply this escape hatch — it exists for narrow audit cases ("what did we tell the designer two weeks ago") and must be passed explicitly each run.
+
+Run the checks in order; halt on the first failure with the diagnostic shown.
+
+**Check 1 — fields present.** Parse the provenance block. Required fields: `target_slug`, `brief_status`, `revision_mode`, `change_class`, `supersedes`, `superseded_by`, `source_workflow`, `source_run_date`, `last_modified_by`, `last_modified_date`. Empty strings are allowed only for `supersedes` and `superseded_by`. If any required field is missing or carries a disallowed empty value, halt:
+
+```
+Brief frontmatter missing provenance field(s): <comma-separated list>.
+Brief: {artifact_path}
+This brief predates the revision policy (or was malformed) and cannot be safely consumed.
+Re-run design-handoff to regenerate it under the current contract, or back-fill the provenance block per brief-revision-policy.md §7.
+See: {project-root}/_bmad/bmm/workflows/design/shared/brief-revision-policy.md
+```
+
+**Check 2 — invariants.** Run invariants 2–8 from `brief-revision-policy.md` §2 against the parsed frontmatter:
+
+- `revision_mode == "workflow_generated"` ⇒ `change_class ∈ {"original", "material_revision"}`
+- `revision_mode == "manual_minor_revision"` ⇒ `change_class == "clarification"`
+- `change_class == "original"` ⇒ `supersedes` is empty
+- `change_class == "material_revision"` ⇒ `supersedes` names an existing file in `{implementation_artifacts}`
+- `brief_status == "superseded"` ⇒ `superseded_by` is non-empty
+- `revision_mode == "workflow_generated"` ⇒ `last_modified_by == "workflow"` AND `last_modified_date == source_run_date`
+
+On any failure, halt with a diagnostic naming the specific invariant and the conflicting fields. Do NOT attempt to "fix" the file — surface to the user.
+
+**Check 3 — superseded.** If `brief_status == "superseded"`:
+
+```
+Refusing to consume a superseded brief.
+Brief: {artifact_path}
+Superseded by: <superseded_by value>
+If you really need to consume this older brief (e.g. for audit), restate the handoff with --allow-superseded; otherwise switch to the successor in {implementation_artifacts}.
+```
+
+Skipped only when `--allow-superseded` was passed AND the user named this specific file (per the escape-hatch rule above).
+
+**Check 4 — active uniqueness.** Resolve `{this_target_slug}` from this brief's frontmatter `target_slug:` field; if absent, derive it from the filename (strip the `design-brief-` prefix and the trailing `-{date}.md`). Glob `{implementation_artifacts}/design-brief-{this_target_slug}-*.md`, parse each match's frontmatter, and count those with `brief_status: active`. If more than one match, halt:
+
+```
+Active-uniqueness invariant violated for target_slug "<slug>":
+  - <path 1>
+  - <path 2>
+  - ...
+Exactly one active brief per target_slug is permitted. Fix the predecessor chain
+(set brief_status: superseded and superseded_by on the older briefs) and retry.
+See: {project-root}/_bmad/bmm/workflows/design/shared/brief-revision-policy.md §2.6
+```
+
+**Check 5 — material change with manual revision.** If `change_class == "material_revision"` AND `revision_mode == "manual_minor_revision"`:
+
+```
+Forbidden combination: material change with manual revision.
+Brief: {artifact_path}
+A material revision must go through design-handoff (which sets revision_mode: workflow_generated).
+Re-run design-handoff for this feature; do not hand-edit a brief into a material revision.
+See: {project-root}/_bmad/bmm/workflows/design/shared/brief-revision-policy.md §3
+```
+
+**Check 6 — workflow-generated brief was hand-edited.** If `revision_mode == "workflow_generated"` AND `last_modified_by == "human"` AND `last_modified_date > source_run_date`:
+
+```
+Brief was hand-edited after workflow generation, but revision_mode still claims workflow_generated.
+Brief: {artifact_path}
+Either re-run design-handoff (if the edit was material), or update the frontmatter
+(if the edit was a minor revision: set revision_mode: manual_minor_revision and change_class: clarification).
+See: {project-root}/_bmad/bmm/workflows/design/shared/brief-revision-policy.md §3
+```
+
+**On success**, capture the provenance into local state for inclusion in step-3's output context block:
+
+- `{brief_revision_mode}` = `revision_mode` value
+- `{brief_change_class}` = `change_class` value
+- `{brief_last_modified_by}` = `last_modified_by` value
+- `{brief_last_modified_date}` = `last_modified_date` value
+- `{brief_supersedes}` = `supersedes` value (may be empty)
+
+Step-3 surfaces these in the output's "Sources consulted" / context block so the next consumer in the chain sees provenance one hop back without re-reading the brief.
+
 ### 3. Extract Target Identity
 
 From the artifact's frontmatter and body, extract:

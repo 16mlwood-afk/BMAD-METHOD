@@ -37,6 +37,8 @@ When this workflow encounters conflicting guidance, the order of authority is:
 
 **Policy non-overridability:** The brief (1) may narrow, focus, or summarize the policy (2) for a feature, but it MUST NOT loosen, carve out, or contradict the policy's hard failures or contract-critical positive-assertion allowlist. A brief that asks for behavior the policy forbids does not earn an exception — it surfaces a `modify-design-policy` candidate to the user. `design-synthesize` halts rather than honoring a brief that conflicts with policy. The brief's authority is over scope and emphasis, not over the policy's floors.
 
+**Brief revision provenance** is governed by `{project-root}/_bmad/bmm/workflows/design/shared/brief-revision-policy.md`. Step-01 validates the provenance frontmatter at intake (Gate 1) and halts on missing fields, broken invariants, forbidden combinations, or consumption of a superseded brief (without explicit `--allow-superseded` opt-in). The validated provenance flows into `manifest.synthesis.brief_provenance` via step-07 so every bundle is traceable to the exact brief revision it was synthesized from.
+
 ---
 
 ## WORKFLOW ARCHITECTURE

@@ -38,6 +38,19 @@ When this workflow encounters conflicting guidance, the order of authority is:
 
 ---
 
+## BRIEF REVISION POLICY — CRITICAL
+
+This workflow is the **producer** under `shared/brief-revision-policy.md`. Every brief written by step-03 must carry the provenance frontmatter block defined there. Step-03 is responsible for:
+
+- Detecting whether an active predecessor brief already exists for this `target_slug` (§1a of step-03).
+- Setting `change_class` to `original` (no predecessor) or `material_revision` (one predecessor) — a re-run of `design-handoff` on the same surface is material by definition.
+- Halting if two or more active predecessors exist — that's a pre-existing invariant break that this workflow cannot silently paper over.
+- Flipping the predecessor's `brief_status` to `superseded` and setting its `superseded_by` in the same run (§1b of step-03) when superseding.
+
+Consumers (`design-artifact-loop`, `design-synthesize`) validate the provenance block at intake and halt on missing fields, broken invariants, or forbidden combinations. A brief that fails consumer validation is unconsumable — there is no fallback. See `shared/brief-revision-policy.md` for the full contract, the editing rules, and the halt diagnostics consumers emit.
+
+---
+
 ## WORKFLOW ARCHITECTURE
 
 This uses **step-file architecture** for focused execution:

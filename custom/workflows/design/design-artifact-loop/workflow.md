@@ -39,6 +39,8 @@ When this workflow encounters conflicting guidance, the order of authority is:
 6. **Human summary text in the handoff block** — convenience only. If it conflicts with the file, the file wins.
 7. **Existing implementation** — observed file structure / component code. In brief-led modes, do not infer from current implementation unless the brief explicitly asks for comparison.
 
+**Brief revision provenance** is governed by `{project-root}/_bmad/bmm/workflows/design/shared/brief-revision-policy.md`. When the input artifact is a `design-brief`, step-01 validates the provenance frontmatter (revision_mode / change_class / supersedes / active-uniqueness) before any other processing and halts on any failure. A brief that fails validation is not consumed — there is no fallback to a stale or superseded brief. The validation rules are mechanical; they exist to catch silent drift (hand-edited scope changes, multiple "active" briefs on the same surface, consumption of a superseded brief without explicit opt-in).
+
 **Not contract — never cite as authority:**
 
 - **Agent run-time thinking notes / "other observed issues" / mental scratch.** Only what is committed to a markdown artifact on `main` is contract. If the agent noticed a problem during a screen-review run but did NOT enumerate it as V1/V2/V3 (or as a separate `## Edge states` / `## What to keep` / `## Out-of-scope reminder` entry), that observation is not part of the artifact and a downstream PR cannot cite "the screen-review's deferred items" to justify shipping it. The remedy is below in §POLISH ITEMS BELOW V3.
