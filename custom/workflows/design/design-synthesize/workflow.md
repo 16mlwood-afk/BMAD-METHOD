@@ -80,10 +80,12 @@ This uses **step-file architecture** for focused execution:
 - `{bundle_dir}` — Absolute path to the output bundle directory (`{implementation_artifacts}/bundles/<target_slug>-<date>/`).
 - `{iteration_count}` — Number of synthesis attempts so far in the self-critique loop (max 3).
 - `{review_iterations}` — Number of visual-quality refine passes consumed by step 6 sub-checks (d)/(e)/(f). Distinct from `{iteration_count}` (which covers ALL critique loop returns including policy failures); `{review_iterations}` counts only the visual-quality / lift / exemplar-alignment loops. Recorded in manifest.
-- `{compliance_state}` — `pass` | `hard_failed` | `positive_failed` | `drift_failed` | `lift_failed` | `exemplar_failed`. Recorded in manifest after step 6.
-- `{visual_quality}` — `excellent` | `acceptable` | `weak`. Synthesizer's own assessment after the last review pass — recorded in manifest. `weak` forces `needs_human_review: true`.
+- `{compliance_state}` — `pass` | `under_grounded` | `hard_failed` | `positive_failed` | `drift_failed` | `lift_failed` | `exemplar_failed` | `dev_only`. Recorded in manifest after step 6. **`under_grounded`** = brief-faithful and policy-conformant on every checked axis, but at least one of: a mandated skill was not actually loaded (in `{skills_unloaded}`), at least one exemplar was path-only resolved (in `{exemplars_consulted_mode}`), or a high-confidence visual verdict was claimed without evidence. Always forces `needs_human_review: true` and `handoff_target: design-review`.
+- `{visual_quality}` — `excellent` | `unverified-strong` | `acceptable` | `weak`. Synthesizer's own assessment after the last review pass — recorded in manifest. `weak` forces `needs_human_review: true`. **`unverified-strong`** is the honest downgrade from `excellent` when the rating was not backed by actual screenshot-vs-evidence comparison (per Critical Rules → "Synthesis honesty"); also forces `needs_human_review: true`.
 - `{visual_lift_passed}` — Boolean. `true` only if the positive half of the lift test (Critical Rules) cleared. Recorded in manifest as `visual_lift_over_baseline`.
-- `{exemplar_alignment}` — `aligned` | `deviated_with_brief_authorization` | `deviated_unauthorized`. Aggregated from per-screen exemplar comparisons in step 6 (f). Recorded in manifest under `visual_review.exemplar_alignment`. `deviated_unauthorized` at the final iteration sets `{compliance_state} = "exemplar_failed"`.
+- `{exemplar_alignment}` — `aligned` | `unverified` | `deviated_with_brief_authorization` | `deviated_unauthorized`. Aggregated from per-screen exemplar comparisons in step 6 (f). Recorded in manifest under `visual_review.exemplar_alignment`. `deviated_unauthorized` at the final iteration sets `{compliance_state} = "exemplar_failed"`. **`unverified`** is the honest downgrade from `aligned` when at least one exemplar in `{exemplars_consulted_mode}` is `path_only` (per Critical Rules → "Exemplar alignment requires actual visual consultation"); forces `{compliance_state} = "under_grounded"` and `needs_human_review: true`.
+- `{exemplars_consulted_mode}` — Map of `exemplar_path → "template_markup" | "rendered_screenshot" | "path_only"`. Populated in step 3 §9.4 per the consultation contract. Any `path_only` entry forces `{exemplar_alignment} = "unverified"` and `{compliance_state} = "under_grounded"`. Recorded in manifest under `exemplars.selected[].consulted_mode`.
+- `{skills_unloaded}` — Ordered list of skills mandated by the routing matrix (workflow.md §SKILL ROUTING) that were NOT actually loaded via the Skill tool. Each entry: `{name, reason}` where `reason` is one of: `skill_tool_unavailable | skill_not_in_available_list | tool_call_failed | tool_call_skipped`. A non-empty list forces `{compliance_state} = "under_grounded"`. Recorded in manifest under `synthesis.skills_unloaded`.
 - `{visual_quality_axes}` — Per-axis ratings + evidence from step 6 (d), all five axes mandatory: `{hierarchy, density, typography, table_ergonomics, generic_look}` → `{rating: strong | adequate | weak, evidence: <one-line string citing test-case IDs like T1/T2/...>}`. Recorded in manifest under `visual_review.visual_quality_axes`. Missing evidence string or unevidenced "strong" rating is a workflow bug. Audit trail for the manifest; not a gating signal on its own except for the anti-spreadsheet floor (Axis 5 T4 caps `visual_quality` at `acceptable`).
 - `{macro_hierarchy}` — Per-screen above-the-fold judgment from step 6 (d). Map of `screen_path → {eye_lands_first: <element name>, above_fold_allocation: {band, table, controls, header, other}, evidence: <one-line>}`. `above_fold_allocation` percentages MUST sum to exactly 100. Unresolvable `eye_lands_first` forces Axis 1 (visual hierarchy) to `weak`. Recorded in manifest under `visual_review.macro_hierarchy`.
 - `{negative_lift_violations}` — List of negative-half lift-test violations from step 6 (e) — placeholder data, generic SaaS chrome, CRM composition, wrong locale, page-mode mismatch. Each entry: `{screen, detector, detail, line}`. **Always emitted, including empty `[]`** — empty array is the affirmative no-violations claim. Recorded in manifest under `violations.lift.negative_half`.
@@ -134,7 +136,28 @@ This uses **step-file architecture** for focused execution:
 
     A bundle that satisfies the negative half but does not visibly lift over the baseline is a Gate 5 failure with `visual_lift_passed: false`. Bundles that fail the positive half are NOT auto-handed-off to `design-implement`; they ship with `needs_human_review: true` and the user is prompted to either accept the run as-is or re-brief.
 
-- **Exemplar alignment (anchoring rule).** Synthesis must anchor in 2–3 *gold-standard* operational screens loaded in step 3 as `{exemplars}` rather than free-styling. The exemplars are the project's own best work — read from the repo (or a project-maintained design gallery file) — and answer the question "what does a strong version of this kind of screen look like in *this* product?". Synthesis must keep page-level hierarchy, density, top-band summary patterns, table framing, and state-presentation consistent with the exemplars unless the brief explicitly authorizes a departure. Departure without brief authorization is a synthesis failure surfaced in step 6.
+- **Exemplar alignment (anchoring rule) — requires actual visual consultation, not just path selection.** Synthesis must anchor in 2–3 *gold-standard* operational screens loaded in step 3 as `{exemplars}` rather than free-styling. The exemplars are the project's own best work — read from the repo (or a project-maintained design gallery file) — and answer the question "what does a strong version of this kind of screen look like in *this* product?". Synthesis must keep page-level hierarchy, density, top-band summary patterns, table framing, and state-presentation consistent with the exemplars unless the brief explicitly authorizes a departure. Departure without brief authorization is a synthesis failure surfaced in step 6.
+
+  **What counts as consultation.** For each exemplar, step 3 §9.4 must do ONE of:
+  - **(a) Read the `<template>` markup section in full** — not just the `<script>` block. Visual decisions live in the markup; the `<script>` block alone tells you which components are imported, not how they're laid out.
+  - **(b) Render the live exemplar via Playwright** at the bundle's primary viewport and save the screenshot as `bundle/exemplar-<name>.png`. Reference these during synthesis and during step 6 (f).
+  - **(c) Path-only fallback** — file exists, recorded in `{exemplars}`, no markup or screenshot consulted. This is a **Gate 5b half-failure**: the bundle proceeds but `{exemplar_alignment}` caps at `unverified`, `{compliance_state}` becomes `under_grounded`, and `{needs_human_review} = true`.
+
+  Per-exemplar consultation mode is recorded in `{exemplars_consulted_mode}` (map: path → `template_markup` | `rendered_screenshot` | `path_only`). Step 6 (f) checks this map before allowing an `aligned` verdict.
+
+- **Synthesis honesty — claims require evidence.** Three honesty rules apply to the manifest's verdict fields:
+
+  - **`skills_invoked` records actual Skill tool calls, not theoretically applicable skills.** An entry in `manifest.skills_invoked` requires that the Skill tool was invoked with that skill name during this run AND its content was loaded into context. Operating "in the spirit of" a skill — applying the workflow's summary of its rules without loading the skill itself — is NOT invocation. Skills mandated by the routing matrix but not actually loaded are recorded in `{skills_unloaded}` with a reason; the bundle's `compliance_state` becomes `under_grounded`.
+
+  - **High-confidence visual verdicts require visual evidence.** `{visual_quality} = "excellent"`, `{visual_lift_over_baseline} = true`, and `{exemplar_alignment} = "aligned"` may only be asserted when the synthesizer has compared the bundle's rendered screenshot against (i) the exemplars' actual markup or screenshots, AND (ii) the conceptual minimally-styled baseline. Without that comparison, verdicts downgrade automatically:
+    - `excellent` → `unverified-strong`
+    - `aligned` → `unverified`
+    - `visual_lift_over_baseline: true` → `null` (record absence, not a positive claim)
+
+    The bundle still ships, but with `compliance_state: under_grounded` and `needs_human_review: true`.
+
+  - **`under_grounded` is the honest label for brief-faithful, policy-conformant, visually unverified bundles.** A bundle that violates no policy rule, contains no lift-test red flag, and follows the brief's design ask — but was synthesized without actual exemplar consultation, without actual skill loading, or without comparing against rendered evidence — is NOT `pass`. It is `under_grounded`. `design-implement` refuses `under_grounded` bundles for the same reason it refuses `dev_no_render` ones: the verdict is unfalsifiable.
+
 - **YOU MUST ALWAYS SPEAK OUTPUT** in your agent communication style with the config `{communication_language}`.
 
 ---
@@ -356,7 +379,7 @@ If this gate fails, halt with: "Playwright not available. Run `pnpm add -D @play
 This gate has three components — all three must clear for the bundle to be auto-handed off to `design-implement`. A failure does not abort the run (the bundle is still emitted for human inspection), but it blocks the auto-handoff line and forces `needs_human_review: true` in the manifest.
 
 - **5a — Frontend skill resolved (step 3).** Per SKILL ROUTING → "Always invoke", a project frontend skill must be resolvable via the three-tier order (brief frontmatter → project config → available-skills fallback). If none resolves, halt with: `"No project frontend skill resolved. Synthesis requires a frontend/design skill in addition to policy + domain skills. Declare frontend_skill: <name> in the brief frontmatter or in {project-root}/_bmad/bmm/config.yaml, then re-invoke."` This is a hard halt — synthesis does not proceed.
-- **5b — Exemplars loaded (step 3).** `{exemplars}` must contain 2–3 paths from either `{exemplar_gallery_path}` or the repo-scan fallback. If neither yields exemplars AND the brief does not include `exemplar_anchoring: waived` in its frontmatter, halt with: `"No exemplars resolved for page_mode={page_mode}. Either populate {project-root}/docs/design-gallery.md with 2–3 gold-standard screens for this page mode, or set exemplar_anchoring: waived in the brief's frontmatter (only acceptable for greenfield projects with no shipped exemplars)."`
+- **5b — Exemplars loaded AND consulted (step 3).** `{exemplars}` must contain 2–3 paths from either `{exemplar_gallery_path}` or the repo-scan fallback. If neither yields exemplars AND the brief does not include `exemplar_anchoring: waived` in its frontmatter, halt with: `"No exemplars resolved for page_mode={page_mode}. Either populate {project-root}/docs/design-gallery.md with 2–3 gold-standard screens for this page mode, or set exemplar_anchoring: waived in the brief's frontmatter (only acceptable for greenfield projects with no shipped exemplars)."` **Path-only resolution is a half-failure (not a halt):** if `{exemplars}` is non-empty but at least one entry has `{exemplars_consulted_mode}[path] == "path_only"` (per Critical Rules → "Exemplar alignment requires actual visual consultation" and step 3 §9.4), the bundle proceeds but `{exemplar_alignment}` caps at `unverified`, `{compliance_state}` becomes `under_grounded`, and `{needs_human_review} = true`. The handoff line directs to `design-review`, not `design-implement`.
 - **5c — Visual lift (step 6).** The two-sided lift test (negative + positive halves per Critical Rules) must pass. Negative-half failure is treated as a hard-failure rule entry (existing behavior). Positive-half failure sets `{visual_lift_passed} = false` and, on the final iteration, sets `{compliance_state} = lift_failed` and `{needs_human_review} = true`. The bundle is emitted with the failure mode recorded; the manifest's hand-off line directs the user to human design review BEFORE `design-implement`, not directly to implementation.
 
 ---
@@ -381,13 +404,16 @@ synthesis:
       value: {lifted value}
       source: {body location, e.g., "filename" | "body §1: 'Route: /expenses'" | "body §6: V1, V2, V3 blocks"}
   iterations: {integer}
-  compliance_state: {pass | hard_failed | positive_failed | drift_failed | lift_failed | exemplar_failed | dev_only}
+  compliance_state: {pass | under_grounded | hard_failed | positive_failed | drift_failed | lift_failed | exemplar_failed | dev_only}
   dev_no_render: {false | true}  # true ONLY when --no-render was used; design-implement refuses these bundles
-  skills_invoked:
-    - design-policy-canonical
-    - {project-frontend-skill}     # MANDATORY — synthesis always emits HTML; Gate 5a halts if unresolved
-    - operational-finance-ui       # if applicable to screen type
-    - operational-analytics-band   # if applicable to screen type
+  skills_invoked:                 # ACTUAL Skill tool invocations during this run (Critical Rules → "Synthesis honesty").
+    - design-policy-canonical     # ONLY list a skill here if the Skill tool was called with that name AND its content loaded.
+    - {project-frontend-skill}    # Operating "in the spirit of" a skill without loading it does NOT qualify — record in skills_unloaded.
+    - operational-finance-ui      # MANDATORY (page_mode-dependent); if not actually loaded, list in skills_unloaded instead.
+    - operational-analytics-band  # MANDATORY (page_mode-dependent); same rule.
+  skills_unloaded:                # Skills mandated by routing matrix but NOT actually loaded — forces compliance_state: under_grounded.
+    - name: {skill-name}
+      reason: {skill_tool_unavailable | skill_not_in_available_list | tool_call_failed | tool_call_skipped}
 
 # Mode and scope — authoritative
 mode: {fresh-design | refine-screen}            # synthesis mode
@@ -402,7 +428,11 @@ screens: [{ordered list of screen names}]
 # MANDATORY: visual_quality_axes (per-axis rating + evidence) and macro_hierarchy
 # (per-screen above-the-fold judgment) are always emitted. Omission = workflow bug.
 visual_review:
-  visual_quality: {excellent | acceptable | weak}     # synthesizer's self-rating after step 6 (d)
+  visual_quality: {excellent | unverified-strong | acceptable | weak}    # synthesizer's self-rating after step 6 (d). unverified-strong = honest downgrade from excellent when no evidence comparison was performed (per Critical Rules → "Synthesis honesty").
+  evidence_basis:                                     # WHAT the visual verdicts above are actually backed by — Critical Rules → "Synthesis honesty"
+    exemplar_comparison: {markup | screenshot | none}  # how the synthesizer consulted exemplars during step 6 (f)
+    baseline_comparison: {explicit | implicit | none}  # did the synthesizer compare against a baseline operational screen in step 6 (e)?
+    own_screenshot_reviewed: {true | false}            # did the synthesizer Read the bundle/screenshot-<screen>.png during step 6 (d)?
   visual_quality_axes:                                # per-axis rating + evidence string, all 5 axes mandatory
     hierarchy:        { rating: {strong | adequate | weak}, evidence: "passes T1 (...), T2 (...)" }
     density:          { rating: {strong | adequate | weak}, evidence: "..." }
@@ -414,11 +444,11 @@ visual_review:
       eye_lands_first: {summary band | filter strip | table header | primary heading | chart | detail header | drawer}
       above_fold_allocation: { band: 35, table: 45, controls: 12, header: 8, other: 0 }   # MUST sum to 100
       evidence: "screenshot top 900px: summary band 35%, filter strip 12%, table 45%, page header 8%"
-  visual_lift_over_baseline: {true | false}           # positive half of the lift test (step 6 (e), Gate 5c)
-  exemplar_alignment: {aligned | deviated_with_brief_authorization | deviated_unauthorized}
+  visual_lift_over_baseline: {true | false | null}    # positive half of the lift test (step 6 (e), Gate 5c). null = no evidence comparison performed; do NOT assert true without comparison.
+  exemplar_alignment: {aligned | unverified | deviated_with_brief_authorization | deviated_unauthorized}    # unverified = at least one exemplar in exemplars_consulted_mode is path_only (forces compliance_state: under_grounded).
   review_iterations: {integer}                        # how many of the step-6 loop iterations were driven by visual sub-checks (d/e/f)
-  needs_human_review: {true | false}                  # true whenever visual_quality == weak, visual_lift_over_baseline == false, or exemplar_alignment == deviated_unauthorized
-  handoff_target: {design-implement | design-review}  # design-review when needs_human_review == true
+  needs_human_review: {true | false}                  # true whenever visual_quality ∈ {weak, unverified-strong}, visual_lift_over_baseline ∈ {false, null}, exemplar_alignment ∈ {deviated_unauthorized, unverified}, OR compliance_state == under_grounded
+  handoff_target: {design-implement | design-review}  # design-review when needs_human_review == true OR compliance_state == under_grounded
 
 # Exemplars — the 2–3 gold-standard screens used as anchors during synthesis (loaded in step 3)
 # MANDATORY: every selected entry must have consulted: true and a comparison.diffs block
@@ -429,6 +459,8 @@ exemplars:
   selected:
     - path: {repo-relative path to exemplar 1}
       rationale: "{why this exemplar — page-mode match, surface-family match, policy conformance, recency}"
+      consulted_mode: {template_markup | rendered_screenshot | path_only}    # REQUIRED — Critical Rules → "Exemplar alignment requires actual visual consultation". path_only forces compliance_state: under_grounded.
+      consulted_artifact: {path to rendered screenshot OR "src lines N-M of file"} # the artifact the synthesizer actually consulted; null when consulted_mode == path_only
       consulted: true                                  # MUST be true; consulted: false would have looped step 4
       consulted_at_step: {iteration count when the file was Read}
       comparison:

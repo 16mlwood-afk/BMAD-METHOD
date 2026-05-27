@@ -51,6 +51,16 @@ Per workflow.md §SKILL ROUTING, skill routing is **driven by `{page_mode}`**, n
 - `design-policy-canonical` — the policy is the floor; the skill enforces the trust hierarchy and refuses anti-default compositions.
 - **`{frontend_skill}`** (resolved in step 3 §8 — MANDATORY). Synthesis emits HTML and tokens; layout, hierarchy, typography, and visual patterns MUST be chosen by a skill with frontend/design competence — not by policy or domain skills alone. Per the role split in workflow.md §SKILL ROUTING → "Role of each skill", this skill owns taste (hierarchy, rhythm, density calibration, aesthetic restraint) — without it, synthesis produces a policy-compliant wireframe rather than a designed screen. Gate 5a in step 3 already halted the workflow if this skill couldn't be resolved.
 
+**Actual invocation — not paraphrasing (workflow.md Critical Rules → "Synthesis honesty"):**
+
+For EACH skill named above (and each conditional skill below), invocation means calling the `Skill` tool with that skill's name AND receiving its content into context. Do NOT add a skill to `{skills_invoked}` unless you actually invoked it:
+
+- **Skill loads successfully** → append to `{skills_invoked}` and proceed.
+- **Skill is not in the runtime's available-skills list** OR the Skill tool call fails OR you chose to skip it → append to `{skills_unloaded}` with `{name, reason}` and proceed. The bundle's `compliance_state` becomes `under_grounded` in step 6.
+- **You operated "in the spirit of" the skill without loading it** (read this workflow's prose summary of the skill's rules, applied your own taste, etc.) → that is NOT invocation. Record in `{skills_unloaded}` with `reason: tool_call_skipped`.
+
+The downstream `under_grounded` label exists so the synthesizer doesn't need to lie about skill loading to ship a bundle. A `pass` bundle whose `skills_invoked` falsely lists an un-loaded skill is worse than an `under_grounded` bundle whose `skills_unloaded` is honest about what happened — the former leaks visually un-grounded work into `design-implement`; the latter routes it to human review.
+
 **Consult `{exemplars}` (loaded in step 3 §9) BEFORE composing each screen.** Read 1–2 exemplars whose page-mode and surface-family best match the screen being synthesized. Anchor hierarchy, density, top-band summary patterns, table framing, and state presentation to the exemplars unless the brief explicitly authorizes a departure. Step 6 (f) will flag unauthorized deviation as `exemplar_failed`.
 
 **Drive by `{page_mode}`:**

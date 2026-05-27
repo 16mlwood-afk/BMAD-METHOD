@@ -234,6 +234,28 @@ For each selected exemplar, record:
 
 When the gallery file provided rationales, use them verbatim. When using repo-scan fallback, compose the rationale from the ranking signals (e.g., `"operational page_mode match; most recent shipped (commit abc1234, 2026-04-12); no hard-failure detector hits"`).
 
+#### 9.4 Consult each exemplar (Critical Rules → "Exemplar alignment requires actual visual consultation")
+
+Path selection alone is NOT exemplar anchoring. For each path in `{exemplars}`, do ONE of the following BEFORE leaving step 3:
+
+| Mode | What you do | Records as |
+|---|---|---|
+| `template_markup` | Open the file with the Read tool. Read PAST the `<script>` block — read the `<template>` block (Svelte/Vue) or the JSX returned from the component (React) IN FULL. The `<script>` block alone confirms which components are imported; it does NOT carry the visual evidence the rule requires. For very large files (>2000 lines), read the markup portion via `offset:` / `limit:` arguments to skip the script and capture the template. | `consulted_mode: template_markup`, `consulted_artifact: "<path> lines N-M"` |
+| `rendered_screenshot` | If the project has a running dev server (or a static fixture) for the exemplar's route, render at the bundle's primary viewport via Playwright. Save to `{output_dir}/<target_slug>-<date>/bundle/exemplar-<basename>.png` (the bundle dir is created in step 4; stage to a temp path here and move in step 4 §1 if needed). | `consulted_mode: rendered_screenshot`, `consulted_artifact: "<bundle_dir>/exemplar-<name>.png"` |
+| `path_only` | File exists, recorded in `{exemplars}`, no markup or screenshot consulted. **Permitted as fallback ONLY** when (a) the file is genuinely too large to read in full AND (b) no rendering target is available. Records a Gate 5b half-failure per workflow.md — the bundle proceeds but `compliance_state` becomes `under_grounded`, `exemplar_alignment` caps at `unverified`, `needs_human_review` is set, and the handoff routes to `design-review` instead of `design-implement`. | `consulted_mode: path_only`, `consulted_artifact: null` |
+
+Populate `{exemplars_consulted_mode}` as a map keyed by path:
+
+```
+{exemplars_consulted_mode} = {
+  <path 1>: "template_markup",       # e.g., read src/routes/queries/+page.svelte lines 1500-2200
+  <path 2>: "rendered_screenshot",   # e.g., bundle/exemplar-cds.png
+  <path 3>: "path_only",             # acknowledged half-failure
+}
+```
+
+**Honesty rule:** Marking a path as `template_markup` when you only read the `<script>` block is a synthesis bug. The `under_grounded` label exists so the synthesizer doesn't need to lie to ship — be honest about what you consulted and let the manifest carry the verdict. The downstream `design-implement` refusal of `under_grounded` bundles is the system's load-bearing check; circumventing it via dishonest consultation labels defeats the whole point of the contract.
+
 ### 10. Print the context summary and proceed
 
 ```
@@ -247,6 +269,8 @@ When the gallery file provided rationales, use them verbatim. When using repo-sc
   prior impl files:    {len(prior_impl_paths) or "n/a (fresh-design)"}
   frontend skill:      {frontend_skill} (resolved via {frontend_skill_source})
   exemplars:           {len(exemplars)} ({comma-separated basenames or "waived: " + waiver_reason})
+  consultation:        {comma-separated `<basename>:<consulted_mode>`}
+                       {⚠ flag any path_only entries — they will force compliance_state: under_grounded}
 
 Proceeding to step 4: synthesize.
 ```
@@ -264,7 +288,7 @@ After this step, the following state variables MUST be populated:
 - `{project_token_paths}` (may be empty list), `{project_tokens}` (may be empty map)
 - `{component_library}` (may be empty list)
 - `{frontend_skill}` (non-empty — Gate 5a halt if unresolved), `{frontend_skill_source}` ∈ {`brief`, `config`, `fallback`}
-- `{exemplars}` (2–3 entries, OR empty list with `exemplar_anchoring: waived` in brief — Gate 5b halt otherwise), `{exemplars_rationale}` (1:1 with `{exemplars}`), `{exemplar_gallery_path}` (may be null)
+- `{exemplars}` (2–3 entries, OR empty list with `exemplar_anchoring: waived` in brief — Gate 5b halt otherwise), `{exemplars_rationale}` (1:1 with `{exemplars}`), `{exemplar_gallery_path}` (may be null), `{exemplars_consulted_mode}` (1:1 with `{exemplars}`, each entry ∈ `{template_markup, rendered_screenshot, path_only}`)
 - In `refine-screen` mode only: `{prior_impl_paths}` (non-empty), `{prior_impl_content}` (non-empty)
 
 Any unset required variable is a workflow bug — halt before step 4.

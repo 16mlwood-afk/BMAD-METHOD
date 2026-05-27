@@ -151,6 +151,26 @@ A region that doesn't appear in either `targeted_changes` or `unchanged_regions`
 
 ### 6. Sub-check (d) — Visual-quality review
 
+**Evidence preamble (workflow.md Critical Rules → "High-confidence visual verdicts require visual evidence").** Before any rating below, record in `{evidence_basis}` for the manifest what you actually consulted:
+
+- `evidence_basis.own_screenshot_reviewed` — `true` only if you actually opened `bundle/screenshot-<screen>.png` via the Read tool for each screen. Rating the markup alone does NOT qualify; the rating is about the rendered output.
+- `evidence_basis.exemplar_comparison` — `markup` (you read the exemplar's `<template>` block per step 3 §9.4) | `screenshot` (you Read the staged exemplar PNG) | `none` (`{exemplars_consulted_mode}` is `path_only` for all exemplars, OR you didn't actually look at the exemplars during this sub-check).
+- `evidence_basis.baseline_comparison` — `explicit` (you mentally rendered or consulted a minimally-styled baseline operational screen and compared) | `implicit` (you applied the policy rules from memory) | `none`.
+
+**Evidence-gated ceiling on `{visual_quality}`:**
+
+| Evidence basis | Maximum allowed rating |
+|---|---|
+| `own_screenshot_reviewed: true` AND `exemplar_comparison ∈ {markup, screenshot}` | `excellent` (full ceiling) |
+| `own_screenshot_reviewed: true` AND `exemplar_comparison: none` | `unverified-strong` (you saw the bundle but didn't compare to anything; the rating is plausible but unfalsifiable) |
+| `own_screenshot_reviewed: false` | `unverified-strong` (you rated markup, not pixels) |
+
+`unverified-strong` is the honest downgrade. It still records the per-axis ratings and test-case evidence from the rubric below; it just labels the overall verdict accurately so step 7 routes the bundle to `design-review` instead of `design-implement`. The bundle ships either way — but only `excellent` bundles auto-handoff.
+
+The same gating applies to sub-checks (e) and (f) below: positive-half lift requires actual comparison; exemplar alignment requires the exemplars to have been consulted (not just path-listed).
+
+---
+
 Read each `bundle/<screen>.html` and each `bundle/screenshot-<screen>.png` (if `--no-render` was not used; otherwise read only the HTML and note `screenshot_skipped: dev_no_render`).
 
 Evaluate each screen along five axes against the explicit test cases below. Every rating MUST cite at least one test case in `{visual_quality_axes}[axis].evidence` — a rating without a cited test case is a workflow bug, not a judgment call. "Excellent" is a falsifiable claim only when the evidence string names the passing tests; an unevidenced rating is treated as `weak` for aggregation purposes.
@@ -407,9 +427,12 @@ if unconsulted:
     # This routing failure is NOT counted against {iteration_count} — it is a workflow bug, not a synthesis quality issue (same precedent as the skill-routing check in §2).
 ```
 
-Classify alignment per screen as `aligned | deviated_with_brief_authorization | deviated_unauthorized` based on the diffs:
+**Consultation-mode propagation (workflow.md Critical Rules → "Exemplar alignment requires actual visual consultation"):** Before classifying alignment, also check `{exemplars_consulted_mode}` from step 3 §9.4. If ANY entry is `path_only`, the alignment verdict caps at `unverified` regardless of the diffs below — the synthesizer never had the visual evidence to compare. Record `{exemplar_alignment} = "unverified"`, set `{compliance_state}` candidate to `under_grounded`, set `{needs_human_review} = true`, and continue. Do NOT classify as `aligned` or `deviated_*` when the comparison wasn't possible.
 
-- **aligned** — every dimension in every (exemplar × screen) pair has `aligned: true`.
+Classify alignment per screen as `aligned | unverified | deviated_with_brief_authorization | deviated_unauthorized` based on the diffs:
+
+- **aligned** — every dimension in every (exemplar × screen) pair has `aligned: true` AND every entry in `{exemplars_consulted_mode}` is `template_markup` or `rendered_screenshot`.
+- **unverified** — at least one entry in `{exemplars_consulted_mode}` is `path_only`; the comparison wasn't possible. Forces `compliance_state: under_grounded`.
 - **deviated_with_brief_authorization** — at least one dimension has `aligned: false` AND the brief explicitly calls for the departure (e.g., brief §"visual direction" says "depart from the dense table pattern — use a card-grid because the page mode is `analytical`"). The departure quotes the brief language in `{exemplar_alignment_rationale}`.
 - **deviated_unauthorized** — at least one dimension has `aligned: false` AND the brief does not authorize it.
 
@@ -484,8 +507,22 @@ visual_violations = (
 )
 total_violations = policy_violations + visual_violations
 
-if total_violations == 0:
+under_grounded = (
+    len({skills_unloaded}) > 0 or                                              # workflow.md Critical Rules → "Synthesis honesty"
+    any(mode == "path_only" for mode in {exemplars_consulted_mode}.values()) or # workflow.md Critical Rules → "Exemplar alignment requires actual visual consultation"
+    {visual_quality} == "unverified-strong" or                                 # evidence-gated ceiling in §6 above
+    {visual_lift_over_baseline} is None or                                     # positive-half lift not actually compared
+    {exemplar_alignment} == "unverified"                                       # propagated from §8 above
+)
+
+if total_violations == 0 and not under_grounded:
     {compliance_state} = "pass"
+    GOTO step 7
+elif total_violations == 0 and under_grounded:
+    # Honest label: brief-faithful, policy-conformant, visually under-grounded.
+    # Bundle ships, but design-implement refuses it; user is routed to design-review.
+    {compliance_state} = "under_grounded"
+    {needs_human_review} = true
     GOTO step 7
 elif iteration_count < 3:
     # Track which loop iterations were driven by visual sub-checks (d/e/f only).
@@ -512,11 +549,15 @@ else:  # iteration_count == 3
     elif {exemplar_alignment} == "deviated_unauthorized":
                                           {compliance_state} = "exemplar_failed"
     else:                                 {compliance_state} = "pass"   # only visual_quality=="weak" remained; no compliance_state change, but needs_human_review is set
-    # needs_human_review is set whenever any visual sub-check signals it (weak quality, lift failure, exemplar deviation)
-    if ({visual_quality} == "weak" or
-        not {visual_lift_passed} or
-        {exemplar_alignment} == "deviated_unauthorized"):
+    # needs_human_review is set whenever any visual sub-check signals it (weak/unverified quality, lift failure/absence, exemplar deviation/unverified, or under_grounded)
+    if ({visual_quality} in ("weak", "unverified-strong") or
+        not {visual_lift_passed} or {visual_lift_over_baseline} is None or
+        {exemplar_alignment} in ("deviated_unauthorized", "unverified") or
+        under_grounded):
         {needs_human_review} = true
+    # If only under_grounded conditions remain (no hard policy failures), compliance_state is under_grounded
+    if {compliance_state} == "pass" and under_grounded:
+        {compliance_state} = "under_grounded"
     print warning to user (see §11)
     GOTO step 7  # emit anyway, with failure mode flagged
 ```
