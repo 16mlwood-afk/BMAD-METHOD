@@ -26,6 +26,10 @@ On failure of any sub-check, return to step 4 with a precise correction note. Ma
 - **At iteration 3, do not loop.** Set `{compliance_state}` to the failure mode, emit the bundle anyway in step 7, surface the failure to the user. The bundle is shipped with `compliance_state: hard_failed | positive_failed | drift_failed | lift_failed | exemplar_failed` so the user sees the gap before invoking `design-implement`. Visual failures additionally set `{needs_human_review} = true`.
 - **`acceptable` triggers one refine pass; `weak` does not.** Sub-check (d) rates `{visual_quality}` as `excellent | acceptable | weak`. `excellent` proceeds with no loop. `acceptable` triggers exactly ONE refine pass (incrementing `{review_iterations}`) targeted at hierarchy, density, and operational framing; if the second pass still rates `acceptable`, accept the rating and proceed. `weak` does NOT trigger a refine pass — it proceeds to step 7 with `needs_human_review: true` because the synthesizer's own judgment is that the bundle is below the bar a single refine pass can correct.
 - **Skill-routing check is binary AND now checks for `{frontend_skill}`.** If `{skills_invoked}` is empty OR is missing the resolved `{frontend_skill}` entry, that's a routing failure regardless of iteration count — return to step 4 with: `step 6: skills_invoked is empty or missing {frontend_skill}. Route per workflow.md §SKILL ROUTING before re-emitting.`
+- **Violation arrays are mandatory outputs.** All six arrays — `{hard_failure_violations}`, `{positive_assertion_violations}`, `{drift_violations}`, `{negative_lift_violations}`, `{positive_lift_violations}`, `{exemplar_violations}` — MUST be initialized and emitted in the manifest, even when empty `[]`. An empty array is a falsifiable "no violations" claim that downstream consumers can audit; an omitted array is opaque and forbidden. Same rule for `{visual_quality_axes}` (per-axis rating + evidence string) and `{exemplar_comparisons}` (per-exemplar consulted flag + per-dimension diffs): always present, never omitted. A run that finishes step 7 without these structures is a workflow bug, not a passing run.
+- **Macro-hierarchy is a falsifiable claim, not a vibe.** Every screen MUST emit `{macro_hierarchy}[screen]` with `eye_lands_first` (a single named element) and `above_fold_allocation` (integer percentages summing to exactly 100). A sum ≠ 100, an unresolvable `eye_lands_first`, or a vague evidence string is a workflow bug — Axis 1 is forced to `weak` and the synthesizer must re-rate.
+- **Exemplars must be consulted, not just listed.** Every entry in `{exemplars}` MUST have `consulted: true` in `{exemplar_comparisons}` by the end of this step, with per-dimension diff strings (aligned or not — both are valid) for every screen. A `consulted: false` entry is a routing failure (not iteration-counted, same precedent as the skill-routing check) — return to step 4 to Read the unconsulted exemplars before re-emitting.
+- **Anti-spreadsheet hard floor.** Per §6 Axis 5 T4: a screen whose only differences from a plain styled `<table>` are pills and a summary line CANNOT earn `generic_look: strong`, and the bundle CANNOT earn `visual_quality: excellent`. This floor is the failure mode the rubric exists to catch — "policy-compliant spreadsheet" is the named failure, and it caps at `acceptable`.
 - YOU MUST ALWAYS SPEAK OUTPUT in your agent communication style with the config `{communication_language}`.
 
 ---
@@ -149,17 +153,88 @@ A region that doesn't appear in either `targeted_changes` or `unchanged_regions`
 
 Read each `bundle/<screen>.html` and each `bundle/screenshot-<screen>.png` (if `--no-render` was not used; otherwise read only the HTML and note `screenshot_skipped: dev_no_render`).
 
-Evaluate each screen along five axes. For each axis, classify the screen as `strong | adequate | weak`:
+Evaluate each screen along five axes against the explicit test cases below. Every rating MUST cite at least one test case in `{visual_quality_axes}[axis].evidence` — a rating without a cited test case is a workflow bug, not a judgment call. "Excellent" is a falsifiable claim only when the evidence string names the passing tests; an unevidenced rating is treated as `weak` for aggregation purposes.
 
-| Axis | What "strong" looks like | What "weak" looks like |
-|---|---|---|
-| **Visual hierarchy** | Titles, sections, table framing are immediately legible; the eye knows where to start; the screen has a clear "story" before the table | Flat type ramp, no section breaks, table dropped onto the page with no surrounding context |
-| **Whitespace & density** | Comfortable for the page mode — dense where the brief says dense, calm where the brief says calm; consistent rhythm between sections | Either gasping for air (too much padding everywhere) or suffocating (uniform tightness without breathing room around headers/separators) |
-| **Typography use** | Type scale used purposefully — body, secondary, labels, numbers all distinguishable; weight variation deliberate; tabular numbers in numeric columns | Uniformly small text everywhere, all-bold or all-thin, no weight contrast, non-tabular numbers misaligning columns |
-| **Table ergonomics** | Rows scan easily; row states (hover, selected, alert) are clear; column widths fit the data; numeric columns right-aligned; status column is the visual anchor for state | Wall of identical-looking rows, no row-state treatment, columns sized arbitrarily, numbers left-aligned in numeric columns |
-| **AI/generic template look** | Reads as a high-trust UK VAT finance operations tool — calm fintech with real operational story; specific to this product | Flat, spreadsheet-y, no operational narrative; would look at home in any generic admin panel; placeholder-feeling even with real data |
+#### Axis rubric — test cases per level
 
-Compose `{visual_quality}` from the per-axis ratings using the following rule:
+For each axis, classify the screen as `strong | adequate | weak`. The test cases below are the rubric — Step-06 evidence strings reference them by ID (T1, T2, …).
+
+**Axis 1 — Visual hierarchy**
+- *Strong* — passes ALL of:
+  - **T1**: Above-the-fold contains a dominant primary element (band, summary header, or section-titled summary) that states current state BEFORE the table — the eye lands on the primary question, not on row data.
+  - **T2**: Table is framed by a section heading + summary line, OR sits beneath a summary band; never dropped onto the page raw.
+  - **T3**: Clear focal region — alert/anomaly rows or counters break out of the routine treatment with visible escalation (weight, color, or position).
+- *Adequate* — passes T1 OR T2 (not both); T3 may be marginal.
+- *Weak* — fails T1 AND T2: the table is the first thing on the page with no framing, no summary band, and no section heading; the user must scan rows to know what's happening.
+
+**Axis 2 — Whitespace & density**
+- *Strong* — passes ALL of:
+  - **T1**: Rhythm varies between sections — header padding > summary padding > row padding > inline-detail padding. Not uniform.
+  - **T2**: Density matches the brief's `{page_mode}` declaration: `operational` = tight rows (24–32px), `analytical` = relaxed (40px+), `detail` = moderate (32–40px).
+  - **T3**: Headers and separators have explicit air around them — at least 1.5× the row gap above any section break.
+- *Adequate* — passes T2 (density matches mode); T1 OR T3 may be uniform/marginal.
+- *Weak* — uniform padding everywhere (suffocating), OR all gasping (no rhythm), OR density mismatches page mode (e.g., operational page with 50px rows).
+
+**Axis 3 — Typography use**
+- *Strong* — passes ALL of:
+  - **T1**: Type scale used purposefully — body, secondary, labels, numbers all distinguishable by size AND weight (not just one).
+  - **T2**: Tabular numbers (`font-variant-numeric: tabular-nums`) in EVERY numeric column; numbers align on the decimal.
+  - **T3**: Weight variation is deliberate and tied to information role (label vs value vs hint), not decorative.
+- *Adequate* — passes T1 AND T2; T3 may be marginal.
+- *Weak* — uniformly small text everywhere, OR all-bold/all-thin, OR non-tabular numbers misaligning numeric columns.
+
+**Axis 4 — Table ergonomics**
+- *Strong* — passes ALL of:
+  - **T1**: Row states are visually distinct — hover, selected, alert, disabled — and each treatment escalates above the routine row.
+  - **T2**: Column widths fit the data (currency columns sized for the longest expected value; status column has explicit width to act as visual anchor).
+  - **T3**: Numeric columns are right-aligned; the status column is the visual anchor for state (not just colored text).
+- *Adequate* — passes T1 AND (T2 OR T3); the missing item is marginal, not absent.
+- *Weak* — wall of identical-looking rows (no row states), OR columns sized arbitrarily, OR numbers left-aligned in numeric columns.
+
+**Axis 5 — AI/generic template look**
+- *Strong* — passes ALL of:
+  - **T1**: Real domain content from the brief's `{data_shape}` — invoices, VAT periods, suppliers, CDS records, GBP amounts. No placeholder data, no `John Doe`, no `$1,234.56`.
+  - **T2**: Specific to this product — UK VAT finance-operations vocabulary in section titles, column headers, and empty-state copy. Could NOT be mistaken for a generic CRM/HR/admin tool.
+  - **T3**: Operational narrative is present — the screen tells a story about what is happening (e.g., "12 invoices pending OCR · 3 anomalies · 1 overdue") — not just a list.
+  - **T4 (anti-spreadsheet)**: The screen contains at least one composition element that is NOT a styled `<table>`, a summary line, or status pills. Counter-examples that FAIL T4: a screen whose entire composition is a single `<table>` with status pills and a one-line totals row above; the operational analytics band is just a stack of counters with no chart/sparkline/state-grouped filter strip.
+- *Adequate* — passes T1 AND T2; T3 may be marginal; **T4 must still pass**.
+- *Weak* — placeholder data, OR could be a different product, OR no operational narrative, OR fails T4.
+
+**Anti-spreadsheet hard floor.** If a screen fails T4 (its only differences from a plain styled `<table>` are pills and a summary line), then:
+
+- `generic_look` CANNOT be rated `strong`. Cap at `adequate` at most; `weak` if T4 is the dominant failure.
+- The bundle's overall `{visual_quality}` CANNOT be `excellent`. Cap at `acceptable` regardless of other axis ratings.
+
+This floor is the failure mode the rubric exists to enforce. A bundle that satisfies every other axis but reads as a single styled table with pills has not done the work — it cannot be labeled "excellent".
+
+#### Macro-hierarchy judgment (mandatory, every screen)
+
+In addition to per-axis ratings, record an explicit macro-hierarchy judgment per screen in `{macro_hierarchy}` — a falsifiable claim about where attention lands above the fold:
+
+```
+{macro_hierarchy} = {
+  <screen_path>: {
+    eye_lands_first: <element name>,           # one of: "summary band" | "filter strip" | "table header" | "primary heading" | "chart" | "detail header" | "drawer"
+    above_fold_allocation: {                    # integer percentages of the top 900px viewport (DPR=2), MUST sum to 100
+      band: <int 0-100>,                        # operational-analytics-band or summary band
+      table: <int 0-100>,                       # table including header
+      controls: <int 0-100>,                    # filter strip + action bar
+      header: <int 0-100>,                      # page title + breadcrumb + meta
+      other: <int 0-100>                        # sidebars, drawers, empty space, anything else
+    },
+    evidence: <one-line string>,                # e.g., "screenshot top 900px: summary band 35%, filter strip 12%, table header + first 4 rows 45%, page header 8%"
+  },
+  ...
+}
+```
+
+Rules:
+
+- `above_fold_allocation` percentages MUST sum to exactly 100. A sum ≠ 100 is a workflow bug — halt the critique pass and resolve before continuing.
+- `eye_lands_first` MUST be a single element name. If the synthesizer cannot identify one ("everything competes equally"), the screen has no hierarchy and Axis 1 MUST be rated `weak`.
+- `evidence` MUST quote allocation percentages and at least one screen element by name — a generic "looks fine" evidence string is treated as missing.
+
+#### Composing {visual_quality}
 
 ```
 strong_count   = count of axes rated "strong" across all screens (averaged)
@@ -172,7 +247,37 @@ elif strong_count >= 3:        {visual_quality} = "excellent"
 else:                          {visual_quality} = "acceptable"
 ```
 
-Record per-axis ratings in `{visual_quality_axes}` for the manifest's audit trail. Multi-screen bundles aggregate by averaging axes across screens; one weak screen in a multi-screen flow forces at least `acceptable` overall.
+Then apply the **anti-spreadsheet floor**:
+
+```
+if any screen failed Axis 5 T4:
+    if {visual_quality_axes}[generic_look].rating == "strong":
+        downgrade {visual_quality_axes}[generic_look].rating to "adequate"  # T4 failure forbids strong
+    if {visual_quality} == "excellent":
+        {visual_quality} = "acceptable"                                      # T4 failure forbids excellent
+    # the weak-count rule already prevents "excellent" when generic_look is weak; this floor adds the cap when T4 is the only generic_look problem
+```
+
+Then apply the **macro-hierarchy cap**:
+
+```
+if any screen's macro_hierarchy.eye_lands_first is unresolvable (no dominant element):
+    Axis 1 (visual hierarchy) MUST be "weak" for that screen — re-rate before composing
+```
+
+Record per-axis ratings AND evidence strings in `{visual_quality_axes}` for the manifest's audit trail. Every axis must have both fields; missing evidence is a workflow bug:
+
+```
+{visual_quality_axes} = {
+  hierarchy:        { rating: "strong",   evidence: "passes T1 (summary band above table on bundle/list.html), T2 (table framed by section heading 'In progress')" },
+  density:          { rating: "adequate", evidence: "passes T2 (28px rows match operational mode); T1 marginal — rhythm between summary and table is similar to between table rows" },
+  typography:       { rating: "strong",   evidence: "passes T1, T2, T3 — type scale 18/14/13/12, tabular-nums on amount columns, weight tied to role (label 500, value 600, hint 400)" },
+  table_ergonomics: { rating: "strong",   evidence: "passes T1 (hover/selected/alert escalated via border-l-2 + bg-status-*), T2 (status column 100px), T3 (amount columns right-aligned tabular)" },
+  generic_look:     { rating: "strong",   evidence: "passes T1 (real GBP/VAT data from data_shape), T2 (UK VAT vocabulary in headers), T3 ('12 pending OCR · 3 anomalies' narrative line), T4 (top band is a state-grouped filter strip with sparkline, not a styled table)" },
+}
+```
+
+Multi-screen bundles aggregate by averaging axes across screens; one weak screen in a multi-screen flow forces at least `acceptable` overall. Anti-spreadsheet T4 failure on ANY screen forces the bundle below `excellent`.
 
 If `{visual_quality} == "weak"`:
 - Set `{needs_human_review} = true`.
@@ -192,7 +297,21 @@ If `{visual_quality} == "excellent"`:
 
 Per workflow.md §Critical Rules → "Lift test (policy §10) — two-sided contract", BOTH halves must pass.
 
-**Negative half** (already partially covered by §3 lift-test detectors — placeholder data, generic SaaS chrome, CRM-shaped composition, wrong currency/locale, page-mode mismatch). Re-use those detectors here; any hit is a `{negative_lift_violations}` entry.
+**Mandatory output.** `{negative_lift_violations}` and `{positive_lift_violations}` MUST always be written — even when empty `[]`. An empty array is a falsifiable "no violations" claim that downstream consumers can audit; an omitted array is opaque and forbidden. A run that finishes step 7 without both arrays present in the manifest's `violations.lift` section is a workflow bug.
+
+**Negative half** (already partially covered by §3 lift-test detectors — placeholder data, generic SaaS chrome, CRM-shaped composition, wrong currency/locale, page-mode mismatch). Re-run each detector for this sub-check and append a `{negative_lift_violations}` entry for every hit:
+
+```
+{negative_lift_violations} = [
+  { screen: <path>,
+    detector: "placeholder_data" | "generic_chrome" | "crm_composition" | "wrong_locale" | "page_mode_mismatch",
+    detail: <one-line evidence string, naming the offending element / text / class>,
+    line: <int or null> },
+  ...
+]
+```
+
+Even on pass, initialize `{negative_lift_violations} = []` explicitly.
 
 **Positive half** — verify all four requirements:
 
@@ -203,13 +322,15 @@ Per workflow.md §Critical Rules → "Lift test (policy §10) — two-sided cont
 | 3 | Visually distinguishes primary actions and alerts from background noise | Does the primary action have a distinct treatment from secondary actions (size, weight, position, or color escalation per policy §3)? Are alert/error states visually escalated above routine row treatment? Failure if primary action is indistinguishable from secondary, or alert rows blend into routine rows. |
 | 4 | Aligned with loaded exemplars | Deferred to sub-check (f) below. |
 
-Collect `{positive_lift_violations}` for each failed requirement:
+Collect `{positive_lift_violations}` for each failed requirement (initialize `[]` explicitly when nothing fails):
 
 ```
-[
-  { requirement: "1 - core operational question answered at a glance",
-    screen: "bundle/list.html",
-    detail: "table starts at top of page with no summary band; user must scan rows to learn current state" },
+{positive_lift_violations} = [
+  { requirement: 1 | 2 | 3,
+    requirement_label: "core operational question answered at a glance" | "key states surfaced above the worklist" | "primary actions and alerts visually escalated",
+    screen: <path>,
+    detail: <one-line evidence string>,
+    fix: <one-line correction directive, ties to brief / exemplar / policy> },
   ...
 ]
 ```
@@ -224,37 +345,88 @@ if len({negative_lift_violations}) > 0 OR len({positive_lift_violations}) > 0:
         {needs_human_review} = true
 else:
     {visual_lift_passed} = true
+
+# Arrays are written either way — empty [] is the affirmative no-violations claim.
 ```
 
 ### 8. Sub-check (f) — Exemplar alignment
 
-Skip if `{exemplars}` is empty (brief had `exemplar_anchoring: waived`); record `{exemplar_alignment} = "aligned"` (vacuously) and move on.
+Skip if `{exemplars}` is empty (brief had `exemplar_anchoring: waived`); record `{exemplar_alignment} = "aligned"` (vacuously), set `{exemplar_comparisons} = {}` (vacuously — none to consult), `{exemplar_violations} = []`, and move on.
 
-For each screen, compare against the most relevant 1–2 exemplars in `{exemplars}` along these dimensions:
+**Per-exemplar audit trail — mandatory.** For every entry in `{exemplars}`:
+
+1. **Open the file with the Read tool during this critique pass.** Not "trust step 4 read it"; this sub-check verifies the synthesizer actually consulted the exemplar against the bundle output. Record `consulted: true` only after a successful Read.
+2. **Emit a per-dimension diff string for every (exemplar × screen) pair** — even when the dimension is aligned. "matches: both open with summary band above table" is a valid diff string and is equally falsifiable as a misalignment string. An empty / missing diff for any (exemplar, screen, dimension) tuple is a workflow bug.
+
+For each screen, compare against EVERY exemplar in `{exemplars}` along these dimensions:
 
 | Dimension | What to compare |
 |---|---|
-| Page-level hierarchy | Does the screen open with the same KIND of element as the exemplars (summary band, header, chart, etc.)? Does section ordering follow the same pattern? |
-| Density | Does the screen feel as tight/loose as the exemplars? Row heights, gutter widths, header weight should be in the same family. |
-| Top-band patterns | If exemplars use a top band, does the screen? If exemplars don't, the screen shouldn't either (unless the brief explicitly authorizes). |
-| Table framing | Are tables introduced the same way — section heading + summary line, or summary band + filter strip, or direct (no framing)? |
-| State presentation | Are status/state treatments consistent (badge style, alert escalation, empty/loading/error states)? |
+| `hierarchy` | Does the screen open with the same KIND of element as the exemplar (summary band, header, chart, etc.)? Does section ordering follow the same pattern? |
+| `density` | Does the screen feel as tight/loose as the exemplar? Row heights, gutter widths, header weight should be in the same family. |
+| `top_band` | If the exemplar uses a top band, does the screen? If the exemplar doesn't, the screen shouldn't either (unless the brief explicitly authorizes). |
+| `table_framing` | Are tables introduced the same way — section heading + summary line, summary band + filter strip, or direct (no framing)? |
+| `state_presentation` | Are status/state treatments consistent (badge style, alert escalation, empty/loading/error states)? |
 
-Classify alignment per screen as `aligned | deviated_with_brief_authorization | deviated_unauthorized`:
+Record a structured comparison per exemplar in `{exemplar_comparisons}`:
 
-- **aligned** — all dimensions match the exemplars.
-- **deviated_with_brief_authorization** — at least one dimension departs from exemplars AND the brief explicitly calls for the departure (e.g., brief §"visual direction" says "depart from the dense table pattern — use a card-grid because the page mode is `analytical`"). The departure quotes the brief language in `{exemplar_alignment_rationale}`.
-- **deviated_unauthorized** — at least one dimension departs AND the brief does not authorize it.
+```
+{exemplar_comparisons} = {
+  <exemplar_path>: {
+    consulted: true | false,                        # true only after Read of <exemplar_path> in this critique pass
+    consulted_at_step: <iteration_count>,           # which loop iteration did the consult happen on
+    diffs: {
+      <screen_path>: {
+        hierarchy:          { aligned: true|false, diff: <one-line, e.g., "matches: both open with state-grouped filter strip above table" OR "differs: exemplar opens with summary band; screen opens with bare table heading"> },
+        density:            { aligned: true|false, diff: <one-line> },
+        top_band:           { aligned: true|false, diff: <one-line> },
+        table_framing:      { aligned: true|false, diff: <one-line> },
+        state_presentation: { aligned: true|false, diff: <one-line> },
+      },
+      ...                                          # one entry per screen in {screens}
+    },
+  },
+  ...                                              # one entry per exemplar in {exemplars}
+}
+```
+
+**Consulted-flag enforcement.** Before classifying alignment, scan `{exemplar_comparisons}` for any entry with `consulted: false`:
+
+```
+unconsulted = [path for path, entry in {exemplar_comparisons}.items() if not entry.consulted]
+if unconsulted:
+    correction = (
+        f"step 6(f) routing: the following exemplars were never opened during synthesis "
+        f"or this critique pass: {unconsulted}. "
+        f"Per workflow.md §Exemplar alignment (anchoring rule), every entry in "
+        f"{{exemplars}} MUST be opened and compared. Re-enter step 4 and Read each "
+        f"unconsulted exemplar before re-emitting; on re-entry to step 6, populate "
+        f"diffs for every (exemplar × screen × dimension) tuple."
+    )
+    GOTO step 4 with {correction_note} = correction
+    # This routing failure is NOT counted against {iteration_count} — it is a workflow bug, not a synthesis quality issue (same precedent as the skill-routing check in §2).
+```
+
+Classify alignment per screen as `aligned | deviated_with_brief_authorization | deviated_unauthorized` based on the diffs:
+
+- **aligned** — every dimension in every (exemplar × screen) pair has `aligned: true`.
+- **deviated_with_brief_authorization** — at least one dimension has `aligned: false` AND the brief explicitly calls for the departure (e.g., brief §"visual direction" says "depart from the dense table pattern — use a card-grid because the page mode is `analytical`"). The departure quotes the brief language in `{exemplar_alignment_rationale}`.
+- **deviated_unauthorized** — at least one dimension has `aligned: false` AND the brief does not authorize it.
 
 Aggregate across screens: any `deviated_unauthorized` makes the bundle's `{exemplar_alignment} = "deviated_unauthorized"`. All `aligned` makes it `"aligned"`. Mix of `aligned` and `deviated_with_brief_authorization` (but no unauthorized) makes it `"deviated_with_brief_authorization"`.
 
 Decision:
 
 ```
+{exemplar_violations} = []   # initialize explicitly, even on pass
 if {exemplar_alignment} == "deviated_unauthorized":
     {exemplar_violations} = [
-      { screen: <path>, dimension: <name>, exemplar: <path>,
-        detail: "<which exemplar dimension was departed from, what the bundle did instead>" },
+      { screen: <path>,
+        dimension: "hierarchy" | "density" | "top_band" | "table_framing" | "state_presentation",
+        exemplar: <path>,
+        diff: <the diff string from {exemplar_comparisons}[exemplar].diffs[screen][dimension].diff>,
+        detail: <one-line: what departed, why it isn't brief-authorized>,
+        fix: <one-line: match the exemplar OR get brief authorization (cite section)> },
       ...
     ]
     if {iteration_count} == 3:
@@ -424,10 +596,12 @@ After this step (when proceeding to step 7):
 - `{review_iterations}` is 0, 1, or 2 (visual-half loops only; subset of `{iteration_count}`).
 - `{compliance_state}` ∈ `{pass, hard_failed, positive_failed, drift_failed, lift_failed, exemplar_failed}`.
 - `{visual_quality}` ∈ `{excellent, acceptable, weak}`.
-- `{visual_quality_axes}` populated with per-axis ratings for the manifest audit trail.
+- `{visual_quality_axes}` populated for ALL 5 axes (hierarchy, density, typography, table_ergonomics, generic_look). Each entry has both `rating` ∈ `{strong, adequate, weak}` AND a non-empty `evidence` string citing the passing test-case IDs (T1, T2, …). Missing rating or missing/generic evidence string ("looks fine", "good") is a workflow bug.
+- `{macro_hierarchy}` populated for every screen in `{screens}`. Each entry has `eye_lands_first` (a single element name), `above_fold_allocation` (integer percentages summing to exactly 100), and `evidence` (one-line string quoting allocation percentages and at least one screen element by name). Missing entry, sum ≠ 100, or unresolvable `eye_lands_first` is a workflow bug.
 - `{visual_lift_passed}` is a boolean.
 - `{exemplar_alignment}` ∈ `{aligned, deviated_with_brief_authorization, deviated_unauthorized}`.
+- `{exemplar_comparisons}` populated for EVERY entry in `{exemplars}` (or `{}` when `exemplar_anchoring: waived`). Each entry has `consulted: true | false`, `consulted_at_step` (iteration number), and `diffs` keyed by `<screen_path>` with sub-entries for ALL FIVE dimensions (`hierarchy`, `density`, `top_band`, `table_framing`, `state_presentation`) each carrying `aligned: bool` and a non-empty `diff` string. A `consulted: false` entry that survived past step 6 is a workflow bug (routing failure should have looped step 4).
 - `{needs_human_review}` is a boolean. True whenever `{visual_quality} == "weak"`, `{visual_lift_passed} == false`, or `{exemplar_alignment} == "deviated_unauthorized"` at the final iteration.
-- `{hard_failure_violations}`, `{positive_assertion_violations}`, `{drift_violations}`, `{negative_lift_violations}`, `{positive_lift_violations}`, `{exemplar_violations}` are populated (may be empty lists). These feed the manifest's failure-mode disclosure.
+- All six violation arrays are present (may be empty `[]` — empty is the affirmative no-violations claim, omission is forbidden): `{hard_failure_violations}`, `{positive_assertion_violations}`, `{drift_violations}`, `{negative_lift_violations}`, `{positive_lift_violations}`, `{exemplar_violations}`. These feed the manifest's `violations:` section unconditionally.
 
 Any unset required variable is a workflow bug — halt before step 7.

@@ -169,14 +169,38 @@ screens: {screens}
 
 # Visual review — authoritative for the visual-quality + lift outcome of step 6 (d/e/f).
 # design-implement reads needs_human_review as the auto-handoff gating signal.
+# MANDATORY: every field below is always emitted, never omitted. visual_quality_axes
+# must include both a rating AND an evidence string per axis. macro_hierarchy must be
+# populated per screen with percentages summing to 100. Omission = workflow bug.
 visual_review:
   visual_quality: {visual_quality}                            # excellent | acceptable | weak
-  visual_quality_axes:                                        # per-axis ratings from step 6 (d), audit trail
-    hierarchy: {strong | adequate | weak}
-    density: {strong | adequate | weak}
-    typography: {strong | adequate | weak}
-    table_ergonomics: {strong | adequate | weak}
-    generic_look: {strong | adequate | weak}
+  visual_quality_axes:                                        # per-axis ratings AND evidence — both mandatory
+    hierarchy:
+      rating: {strong | adequate | weak}
+      evidence: {one-line string citing test-case IDs, e.g., "passes T1 (summary band above table), T2 (section heading 'In progress')"}
+    density:
+      rating: {strong | adequate | weak}
+      evidence: {one-line citing T1/T2/T3 outcomes}
+    typography:
+      rating: {strong | adequate | weak}
+      evidence: {one-line citing T1/T2/T3 outcomes}
+    table_ergonomics:
+      rating: {strong | adequate | weak}
+      evidence: {one-line citing T1/T2/T3 outcomes}
+    generic_look:
+      rating: {strong | adequate | weak}
+      evidence: {one-line citing T1/T2/T3/T4 outcomes — T4 is the anti-spreadsheet test}
+  macro_hierarchy:                                            # per-screen above-the-fold judgment, mandatory
+    {screen_path}:
+      eye_lands_first: {summary band | filter strip | table header | primary heading | chart | detail header | drawer}
+      above_fold_allocation:                                  # integer percentages MUST sum to exactly 100
+        band: {int 0-100}
+        table: {int 0-100}
+        controls: {int 0-100}
+        header: {int 0-100}
+        other: {int 0-100}
+      evidence: {one-line quoting allocation percentages and at least one screen element by name}
+    # ... one entry per screen in {screens}
   visual_lift_over_baseline: {visual_lift_passed}             # boolean — positive half of the lift test
   exemplar_alignment: {exemplar_alignment}                    # aligned | deviated_with_brief_authorization | deviated_unauthorized
   review_iterations: {review_iterations}                      # how many of the step-6 loop iterations were driven by visual sub-checks
@@ -185,14 +209,34 @@ visual_review:
 
 # Exemplars — 2-3 gold-standard screens used as anchors during synthesis (loaded in step 3 §9).
 # When the brief sets exemplar_anchoring: waived, this section reflects the waiver.
+# MANDATORY: every selected entry must include `consulted: true` and a per-screen
+# `comparison.diffs` block covering all 5 dimensions. An entry without `consulted` is
+# a workflow bug — step 6 (f) should have routed back to step 4 to Read the file.
 exemplars:
   gallery_path: {exemplar_gallery_path or null}
   selected:
     - path: {repo-relative path 1}
       rationale: {one-line rationale from {exemplars_rationale}}
+      consulted: true                                          # MUST be true to emit; false would have looped step 4
+      consulted_at_step: {iteration_count at consult}
+      comparison:
+        diffs:
+          {screen_path}:
+            hierarchy:          { aligned: {true | false}, diff: {one-line: "matches: ..." or "differs: ..."} }
+            density:            { aligned: {true | false}, diff: {one-line} }
+            top_band:           { aligned: {true | false}, diff: {one-line} }
+            table_framing:      { aligned: {true | false}, diff: {one-line} }
+            state_presentation: { aligned: {true | false}, diff: {one-line} }
+          # ... one entry per screen in {screens}
     - path: {repo-relative path 2}
       rationale: ...
-  # When waived, omit `selected` and emit:
+      consulted: true
+      consulted_at_step: ...
+      comparison:
+        diffs: {...}
+  # When waived (brief sets `exemplar_anchoring: waived`):
+  # gallery_path: null
+  # selected: []
   # waiver_reason: {brief_frontmatter.waiver_reason}
 
 # Policy sections that drove the synthesis — exemplar-disclosure rule
@@ -241,41 +285,63 @@ flow_invariants:
 
 For single-screen bundles, omit `flow_invariants` (or set to `[]`). For `fresh-design` mode, omit `targeted_changes` and `unchanged_regions`.
 
-For sub-checks that didn't fail, omit their violation arrays (don't write `hard_failure_violations: []` — leave silent). If sub-checks failed but the bundle still emitted (compliance_state != pass OR needs_human_review == true), include the violation arrays for audit:
+**The `violations:` section is unconditional.** Always emit it, with all six arrays present — even when each is empty `[]`. An empty array is the affirmative "no violations" claim; omission is opaque and forbidden. This is the structural difference between "passed and we know it" and "passed but we have no record of what was checked":
 
 ```yaml
 violations:
-  # Policy half (step 6 a/b/c)
-  hard_failures:
-    - rule: {text}
-      file: {path}
-      line: {int}
-      snippet: {text}
-  positive_assertions: [...]
-  drift: [...]
+  # Policy half (step 6 a/b/c) — arrays always present, empty [] on pass
+  hard_failures: []                                   # or [{rule, source_line, file, line, snippet}, ...]
+    # - rule: {text}
+    #   source_line: {policy line number}
+    #   file: {bundle path}
+    #   line: {int}
+    #   snippet: {text}
+  positive_assertions: []                             # or [{assertion, source_line, file, line, snippet}, ...]
+  drift: []                                           # or [{region, file, lines, prior_file, prior_lines, diff}, ...]
+                                                       # (refine-screen only; fresh-design still emits [])
 
-  # Visual half (step 6 d/e/f)
+  # Visual half (step 6 d/e/f) — every block always present
   visual_quality:
     rating: {visual_quality}
-    weak_axes:
-      - axis: {hierarchy | density | typography | table_ergonomics | generic_look}
-        screens: [<list of screens where this axis was weak>]
-        correction_note: {one-line from step 6 visual_quality_correction}
+    weak_axes: []                                     # populated when any axis was rated weak; [] otherwise
+      # - axis: {hierarchy | density | typography | table_ergonomics | generic_look}
+      #   screens: [<list of screens where this axis was weak>]
+      #   correction_note: {one-line from step 6 visual_quality_correction}
+    anti_spreadsheet:
+      t4_failed: {true | false}                       # true when any screen fails Axis 5 T4 — caps visual_quality at acceptable
+      failed_screens: []                              # screens where T4 failed; [] when t4_failed: false
+      detail: {one-line explanation when t4_failed: true; "n/a" when false}
   lift:
-    negative_half:
-      - screen: {path}
-        detector: {placeholder_data | generic_chrome | crm_composition | wrong_locale | page_mode_mismatch}
-        detail: {text}
-    positive_half:
-      - screen: {path}
-        requirement: {1 | 2 | 3}
-        detail: {text}
-  exemplar:
-    - screen: {path}
-      dimension: {hierarchy | density | top_band | table_framing | state_presentation}
-      exemplar: {path}
-      detail: {what departed}
+    negative_half: []                                 # mandatory array — [] on pass
+      # - screen: {path}
+      #   detector: {placeholder_data | generic_chrome | crm_composition | wrong_locale | page_mode_mismatch}
+      #   detail: {text}
+      #   line: {int or null}
+    positive_half: []                                 # mandatory array — [] on pass
+      # - screen: {path}
+      #   requirement: {1 | 2 | 3}
+      #   requirement_label: {text}
+      #   detail: {text}
+      #   fix: {text}
+  exemplar: []                                        # mandatory array — [] on pass (vacuous when exemplar_anchoring: waived)
+    # - screen: {path}
+    #   dimension: {hierarchy | density | top_band | table_framing | state_presentation}
+    #   exemplar: {path}
+    #   diff: {the diff string from exemplars.selected[i].comparison.diffs[screen][dimension].diff}
+    #   detail: {what departed, why it isn't brief-authorized}
+    #   fix: {match the exemplar OR cite brief authorization section}
 ```
+
+**Schema cross-check.** Before writing the manifest, verify:
+
+- `violations.hard_failures`, `violations.positive_assertions`, `violations.drift`, `violations.lift.negative_half`, `violations.lift.positive_half`, `violations.exemplar` — all six are present as arrays (may be `[]`).
+- `violations.visual_quality.weak_axes` is present as an array.
+- `violations.visual_quality.anti_spreadsheet.t4_failed` is a boolean, and `failed_screens` is an array consistent with that boolean (empty iff `t4_failed: false`).
+- `visual_review.visual_quality_axes` has all 5 axes, each with `rating` AND `evidence`.
+- `visual_review.macro_hierarchy` has an entry for every screen in `screens`, with `above_fold_allocation` summing to exactly 100.
+- For every entry in `exemplars.selected`, `consulted: true` AND `comparison.diffs` contains all 5 dimensions for every screen in `screens`. (`selected: []` is acceptable only when `waiver_reason` is set.)
+
+A missing field, a percentage sum ≠ 100, an `exemplars.selected[i].consulted: false`, or a missing diff for any (exemplar × screen × dimension) tuple is a workflow bug — halt and re-emit, do NOT write the manifest.
 
 ### 3. Re-run invariant 3 against the actual draft
 

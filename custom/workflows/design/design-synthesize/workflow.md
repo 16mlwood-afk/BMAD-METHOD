@@ -84,10 +84,12 @@ This uses **step-file architecture** for focused execution:
 - `{visual_quality}` — `excellent` | `acceptable` | `weak`. Synthesizer's own assessment after the last review pass — recorded in manifest. `weak` forces `needs_human_review: true`.
 - `{visual_lift_passed}` — Boolean. `true` only if the positive half of the lift test (Critical Rules) cleared. Recorded in manifest as `visual_lift_over_baseline`.
 - `{exemplar_alignment}` — `aligned` | `deviated_with_brief_authorization` | `deviated_unauthorized`. Aggregated from per-screen exemplar comparisons in step 6 (f). Recorded in manifest under `visual_review.exemplar_alignment`. `deviated_unauthorized` at the final iteration sets `{compliance_state} = "exemplar_failed"`.
-- `{visual_quality_axes}` — Per-axis ratings from step 6 (d): `{hierarchy, density, typography, table_ergonomics, generic_look}` → `strong` | `adequate` | `weak`. Audit trail for the manifest; not a gating signal on its own.
-- `{negative_lift_violations}` — List of negative-half lift-test violations from step 6 (e) — placeholder data, generic SaaS chrome, CRM composition, wrong locale, page-mode mismatch. Each entry: `{screen, detector, detail}`.
-- `{positive_lift_violations}` — List of positive-half lift-test violations from step 6 (e). Each entry: `{screen, requirement, detail}` covering the 4 positive lift requirements (core question answered, key states surfaced, primary actions escalated, exemplar-aligned).
-- `{exemplar_violations}` — List of exemplar-alignment deviations from step 6 (f). Each entry: `{screen, dimension, exemplar, detail}`.
+- `{visual_quality_axes}` — Per-axis ratings + evidence from step 6 (d), all five axes mandatory: `{hierarchy, density, typography, table_ergonomics, generic_look}` → `{rating: strong | adequate | weak, evidence: <one-line string citing test-case IDs like T1/T2/...>}`. Recorded in manifest under `visual_review.visual_quality_axes`. Missing evidence string or unevidenced "strong" rating is a workflow bug. Audit trail for the manifest; not a gating signal on its own except for the anti-spreadsheet floor (Axis 5 T4 caps `visual_quality` at `acceptable`).
+- `{macro_hierarchy}` — Per-screen above-the-fold judgment from step 6 (d). Map of `screen_path → {eye_lands_first: <element name>, above_fold_allocation: {band, table, controls, header, other}, evidence: <one-line>}`. `above_fold_allocation` percentages MUST sum to exactly 100. Unresolvable `eye_lands_first` forces Axis 1 (visual hierarchy) to `weak`. Recorded in manifest under `visual_review.macro_hierarchy`.
+- `{negative_lift_violations}` — List of negative-half lift-test violations from step 6 (e) — placeholder data, generic SaaS chrome, CRM composition, wrong locale, page-mode mismatch. Each entry: `{screen, detector, detail, line}`. **Always emitted, including empty `[]`** — empty array is the affirmative no-violations claim. Recorded in manifest under `violations.lift.negative_half`.
+- `{positive_lift_violations}` — List of positive-half lift-test violations from step 6 (e). Each entry: `{requirement, requirement_label, screen, detail, fix}` covering the 4 positive lift requirements (core question answered, key states surfaced, primary actions escalated, exemplar-aligned). **Always emitted, including empty `[]`.** Recorded in manifest under `violations.lift.positive_half`.
+- `{exemplar_violations}` — List of exemplar-alignment deviations from step 6 (f). Each entry: `{screen, dimension, exemplar, diff, detail, fix}`. **Always emitted, including empty `[]`.** Recorded in manifest under `violations.exemplar`.
+- `{exemplar_comparisons}` — Per-exemplar audit trail from step 6 (f). Map of `exemplar_path → {consulted: bool, consulted_at_step: int, diffs: {<screen_path>: {hierarchy, density, top_band, table_framing, state_presentation}}}` where each dimension carries `{aligned: bool, diff: <one-line string>}`. Every exemplar must end the run with `consulted: true` (a `consulted: false` entry is a routing failure — not iteration-counted — that loops step 4). Every diff string is mandatory, even on alignment ("matches: both X" is valid). Recorded in manifest under `exemplars.selected[].comparison.diffs` AND `exemplars.selected[].consulted` / `.consulted_at_step`.
 - `{needs_human_review}` — Boolean. `true` whenever `{visual_quality} == "weak"`, `{visual_lift_passed} == false`, or `{exemplar_alignment} == "deviated_unauthorized"` at the final iteration. Recorded in manifest; downstream consumers (`design-implement`) refuse to auto-consume — they bounce-back to `design-review`.
 - `{exemplars}` — Ordered list of 2–3 absolute paths to gold-standard operational screens loaded in step 3, used as anchoring references during synthesis (step 4) and exemplar-alignment check (step 6). Recorded in manifest under `exemplars:`.
 - `{exemplars_rationale}` — Map of `path → rationale string` paired 1:1 with `{exemplars}`. Each rationale states why the exemplar was selected (page-mode match, surface-family match, policy conformance, recency). Recorded in manifest under `exemplars.selected[].rationale`.
@@ -397,8 +399,21 @@ screens: [{ordered list of screen names}]
 
 # Visual review — authoritative for the visual-quality + lift outcome of step 6 (d/e/f)
 # Used by design-implement to decide auto-consume vs route to human review.
+# MANDATORY: visual_quality_axes (per-axis rating + evidence) and macro_hierarchy
+# (per-screen above-the-fold judgment) are always emitted. Omission = workflow bug.
 visual_review:
   visual_quality: {excellent | acceptable | weak}     # synthesizer's self-rating after step 6 (d)
+  visual_quality_axes:                                # per-axis rating + evidence string, all 5 axes mandatory
+    hierarchy:        { rating: {strong | adequate | weak}, evidence: "passes T1 (...), T2 (...)" }
+    density:          { rating: {strong | adequate | weak}, evidence: "..." }
+    typography:       { rating: {strong | adequate | weak}, evidence: "..." }
+    table_ergonomics: { rating: {strong | adequate | weak}, evidence: "..." }
+    generic_look:     { rating: {strong | adequate | weak}, evidence: "passes T1, T2, T3, T4 (anti-spreadsheet: ...)" }
+  macro_hierarchy:                                    # per-screen above-the-fold judgment, mandatory
+    {screen_path}:
+      eye_lands_first: {summary band | filter strip | table header | primary heading | chart | detail header | drawer}
+      above_fold_allocation: { band: 35, table: 45, controls: 12, header: 8, other: 0 }   # MUST sum to 100
+      evidence: "screenshot top 900px: summary band 35%, filter strip 12%, table 45%, page header 8%"
   visual_lift_over_baseline: {true | false}           # positive half of the lift test (step 6 (e), Gate 5c)
   exemplar_alignment: {aligned | deviated_with_brief_authorization | deviated_unauthorized}
   review_iterations: {integer}                        # how many of the step-6 loop iterations were driven by visual sub-checks (d/e/f)
@@ -406,17 +421,54 @@ visual_review:
   handoff_target: {design-implement | design-review}  # design-review when needs_human_review == true
 
 # Exemplars — the 2–3 gold-standard screens used as anchors during synthesis (loaded in step 3)
+# MANDATORY: every selected entry must have consulted: true and a comparison.diffs block
+# covering all 5 dimensions per screen. consulted: false would have routed step 4 — it
+# cannot appear in an emitted manifest.
 exemplars:
   gallery_path: {path to docs/design-gallery.md if used, else null}
   selected:
     - path: {repo-relative path to exemplar 1}
       rationale: "{why this exemplar — page-mode match, surface-family match, policy conformance, recency}"
+      consulted: true                                  # MUST be true; consulted: false would have looped step 4
+      consulted_at_step: {iteration count when the file was Read}
+      comparison:
+        diffs:
+          {screen_path}:
+            hierarchy:          { aligned: true,  diff: "matches: both open with state-grouped filter strip above table" }
+            density:            { aligned: true,  diff: "matches: 28px rows + 24px section gap" }
+            top_band:           { aligned: false, diff: "differs: exemplar uses summary band with sparkline; screen omits sparkline" }
+            table_framing:      { aligned: true,  diff: "matches: section heading + summary line above table" }
+            state_presentation: { aligned: true,  diff: "matches: status pills + escalated alert rows" }
+          # ... one entry per screen in {screens}
     - path: {repo-relative path to exemplar 2}
       rationale: "..."
+      consulted: true
+      consulted_at_step: {int}
+      comparison:
+        diffs: { ... }
   # When exemplar_anchoring is waived in the brief, this section is:
   #   gallery_path: null
   #   selected: []
   #   waiver_reason: "{the brief's stated reason for waiving exemplar anchoring}"
+
+# Violations — UNCONDITIONAL section. All six arrays are always present, even [].
+# Empty array is the affirmative "no violations" claim; omission is forbidden and
+# treated as a workflow bug. design-implement reads violations.* for context even on pass.
+violations:
+  hard_failures: []                                   # or [{rule, source_line, file, line, snippet}, ...]
+  positive_assertions: []                             # or [{assertion, source_line, file, line, snippet}, ...]
+  drift: []                                           # or [{region, file, lines, prior_file, prior_lines, diff}, ...]
+  visual_quality:
+    rating: {visual_quality}
+    weak_axes: []                                     # or [{axis, screens, correction_note}, ...]
+    anti_spreadsheet:
+      t4_failed: {true | false}                       # true caps visual_quality at acceptable
+      failed_screens: []                              # screens that failed Axis 5 T4
+      detail: "n/a"                                   # or one-line when t4_failed: true
+  lift:
+    negative_half: []                                 # or [{screen, detector, detail, line}, ...]
+    positive_half: []                                 # or [{requirement, requirement_label, screen, detail, fix}, ...]
+  exemplar: []                                        # or [{screen, dimension, exemplar, diff, detail, fix}, ...]
 
 # Policy sections that drove the synthesis — exemplar-disclosure rule
 # (design-policy-canonical skill §"Exemplars" / policy §10)
@@ -491,6 +543,9 @@ flow_invariants:
 - `mode`, `page_mode`, `screens`, `routes` — for per-screen iteration and to confirm the page-mode contract was honored
 - `visual_review.needs_human_review` — **gating signal.** When `true`, `design-implement` refuses the bundle and points the user at `design-review` (mirrors the `dev_no_render` refusal contract). This is the auto-handoff blocker that prevents `weak`/`lift_failed`/`exemplar_failed` bundles from leaking into implementation.
 - `visual_review.visual_quality`, `visual_lift_over_baseline`, `exemplar_alignment` — surfaced to the implementer for context even when `needs_human_review: false`, so the implementer knows whether the bundle is `excellent` (implement faithfully) or `acceptable` (worth a sanity check before pixel-locking).
+- `visual_review.visual_quality_axes`, `visual_review.macro_hierarchy` — audit trail showing WHY the bundle earned its rating (per-axis evidence) and what the macro composition looks like above the fold. Useful for the implementer to confirm structural choices.
+- `violations.*` — always present, even when all empty. Lets the implementer (and downstream review) verify that no violation slipped through silently; a manifest where every array is `[]` is provably "checked and clean" rather than "omitted".
+- `exemplars.selected[].consulted` and `.comparison.diffs` — confirms each exemplar was actually opened during synthesis and lists per-dimension comparisons. The implementer can use the diffs to identify structural areas where the bundle followed the exemplar versus departed from it.
 - `exemplars.selected` — implementer can cross-reference the same exemplars when making framework-level structural choices that the bundle's HTML didn't fully constrain.
 - `policy_sections_cited` — for traceability when the implementer asks "why this composition?"
 - `targeted_changes` / `unchanged_regions` — for drift enforcement in refine-screen
@@ -524,7 +579,11 @@ This workflow succeeds when:
 - `manifest.skills_invoked` includes the skills required for `{page_mode}` per the routing matrix (always: `design-policy-canonical` and the resolved project frontend skill; mandatory by page_mode: `operational-finance-ui` for operational/detail, `operational-analytics-band` for analytical). A missing frontend skill is a Gate 5a halt — not a success-criteria warning.
 - `manifest.compliance_state` is `pass` OR a documented failure mode (`hard_failed | positive_failed | drift_failed | lift_failed | exemplar_failed | dev_only`) and the user sees it in the handoff print.
 - `manifest.visual_review` is fully populated: `visual_quality` ∈ {`excellent`, `acceptable`, `weak`}, `visual_lift_over_baseline` is a boolean, `exemplar_alignment` is set, `review_iterations` is an integer, `needs_human_review` is a boolean, and `handoff_target` is `design-implement` (when `needs_human_review: false`) or `design-review` (when `needs_human_review: true`).
-- `manifest.exemplars.selected` has 2–3 entries with rationale strings — UNLESS the brief set `exemplar_anchoring: waived`, in which case `exemplars.waiver_reason` is non-empty.
+- `manifest.visual_review.visual_quality_axes` has all 5 axes (`hierarchy`, `density`, `typography`, `table_ergonomics`, `generic_look`) each with a `rating` AND a non-empty `evidence` string citing test-case IDs (T1, T2, …). An unevidenced "strong" rating is treated as `weak` for aggregation, so the absence is self-correcting on emit.
+- `manifest.visual_review.macro_hierarchy` has an entry for every screen in `manifest.screens`, each with `eye_lands_first`, `above_fold_allocation` (integer percentages summing to exactly 100), and a non-generic `evidence` string. Sum ≠ 100, an unresolvable `eye_lands_first`, or a generic evidence string is a workflow bug — the manifest is not emitted.
+- `manifest.violations` is present with all six arrays (`hard_failures`, `positive_assertions`, `drift`, `lift.negative_half`, `lift.positive_half`, `exemplar`) AND a `visual_quality.anti_spreadsheet` block — all unconditionally present, empty `[]` on pass. A run that omits any of these arrays is a workflow bug.
+- `manifest.violations.visual_quality.anti_spreadsheet.t4_failed` is consistent with `manifest.visual_review.visual_quality`: when `t4_failed: true`, `visual_quality` MUST be `acceptable` or `weak` (never `excellent`). This is the anti-spreadsheet floor — it is a manifest-validation invariant, not a soft guideline.
+- `manifest.exemplars.selected` has 2–3 entries with rationale strings — UNLESS the brief set `exemplar_anchoring: waived`, in which case `exemplars.selected: []` AND `exemplars.waiver_reason` is non-empty. Every non-waived entry has `consulted: true`, `consulted_at_step` set, and `comparison.diffs` populated for every screen × all 5 dimensions (`hierarchy`, `density`, `top_band`, `table_framing`, `state_presentation`). A `consulted: false` entry, or any missing diff, is a workflow bug — step 6 (f) should have looped step 4 before reaching emit.
 - `bundle/screenshot-<screen>.png` exists for every screen and is non-empty — UNLESS the run used `--no-render`, in which case `manifest.synthesis.dev_no_render: true` is set and `design-implement` will refuse the bundle.
 - In `refine-screen` mode: the drift check has run and any drift has either been eliminated or explicitly moved into `targeted_changes`.
 - The next agent in the chain can work from the bundle alone without re-prompting the user. When `needs_human_review: false`, that next agent is `design-implement`; when `true`, it is `design-review` and the manifest's `handoff_target` reflects this.
