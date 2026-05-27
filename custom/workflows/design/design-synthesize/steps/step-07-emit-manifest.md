@@ -152,6 +152,7 @@ synthesis:
   policy_path: {repo-relative policy_path}
   policy_version_hash: {policy_version_hash}
   baseline_commit: {baseline_commit}
+  frontmatter_lifts: {frontmatter_lifts}    # map of field → {value, source} for required brief frontmatter fields that step 1 lifted from the brief body (§5b / §8a). Emit as `{}` when no lifts occurred (NOT null, NOT omitted — explicit `{}` confirms step 1 ran and recorded zero lifts). Non-empty lifts are structural decisions the bundle's reproducibility hinges on.
   iterations: {iteration_count}
   compliance_state: {compliance_state}
   dev_no_render: {dev_no_render}

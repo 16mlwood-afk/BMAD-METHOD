@@ -367,6 +367,10 @@ synthesis:
   policy_path: {repo-relative path}
   policy_version_hash: {sha256}
   baseline_commit: {git sha}
+  frontmatter_lifts:                              # map of required brief frontmatter fields lifted from brief body by step 1 (§5b / §8a). Always emitted — `{}` when zero lifts occurred (explicit, not omitted). Each entry records value + source for audit.
+    {field}:
+      value: {lifted value}
+      source: {body location, e.g., "filename" | "body §1: 'Route: /expenses'" | "body §6: V1, V2, V3 blocks"}
   iterations: {integer}
   compliance_state: {pass | hard_failed | positive_failed | drift_failed | lift_failed | exemplar_failed | dev_only}
   dev_no_render: {false | true}  # true ONLY when --no-render was used; design-implement refuses these bundles
