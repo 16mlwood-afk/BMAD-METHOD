@@ -13,14 +13,17 @@ REFERENCE_FILE="$HOME/.bmad-reference"
 CHECK_ONLY=false
 FORCE=false
 PULL_TARGET=""
+WORKTREE_TARGET=""
 
 usage() {
-  echo "Usage: $0 [--check] [--force] [--pull <project-workflows-path>]"
+  echo "Usage: $0 [--check] [--force] [--pull <path> | --worktree <path>]"
   echo ""
-  echo "  (no args)   Sync source → all targets (aborts if targets have local-only content)"
-  echo "  --check     Report drift without modifying anything"
-  echo "  --force     Sync even if targets have local-only content (DESTRUCTIVE)"
-  echo "  --pull PATH Pull changes from a project back to the source of truth"
+  echo "  (no args)       Sync source → all targets (aborts if targets have local-only content)"
+  echo "  --check         Report drift without modifying anything"
+  echo "  --force         Sync even if targets have local-only content (DESTRUCTIVE)"
+  echo "  --pull PATH     Pull changes from a project back to the source of truth"
+  echo "  --worktree PATH Sync custom workflow dirs into a single worktree path"
+  echo "                  (minimal — no hooks/commands/CLAUDE.md; git-tracked files propagate via checkout)"
   exit 1
 }
 
@@ -31,6 +34,9 @@ while [[ $# -gt 0 ]]; do
     --pull)
       [[ -z "${2:-}" ]] && { echo "ERROR: --pull requires a path argument"; usage; }
       PULL_TARGET="$2"; shift 2 ;;
+    --worktree)
+      [[ -z "${2:-}" ]] && { echo "ERROR: --worktree requires a path argument"; usage; }
+      WORKTREE_TARGET="$2"; shift 2 ;;
     -h|--help) usage ;;
     *) echo "ERROR: Unknown argument: $1"; usage ;;
   esac
@@ -430,6 +436,34 @@ if [[ -n "$PULL_TARGET" ]]; then
   else
     echo "Nothing to pull — sources already match $project."
   fi
+  exit 0
+fi
+
+# --- WORKTREE MODE ---
+# Minimal sync into a single worktree. Skips hooks, slash-commands, and CLAUDE.md
+# because those are git-tracked and propagate via the worktree's normal checkout.
+# Only writes the custom workflow dirs (SYNC_DIRS), which are NOT tracked in
+# project repos and would otherwise be missing in worktrees branched from origin.
+if [[ -n "$WORKTREE_TARGET" ]]; then
+  WORKTREE_TARGET="${WORKTREE_TARGET%/}"
+  # Accept either a project root or a _bmad/bmm/workflows path
+  if [[ "$WORKTREE_TARGET" != */_bmad/bmm/workflows ]]; then
+    WORKTREE_TARGET="$WORKTREE_TARGET/_bmad/bmm/workflows"
+  fi
+
+  mkdir -p "$WORKTREE_TARGET"
+
+  copied=0
+  for dir in "${SYNC_DIRS[@]}"; do
+    src="$SOURCE/$dir"
+    dst="$WORKTREE_TARGET/$dir"
+    [[ ! -d "$src" ]] && continue
+    mkdir -p "$dst"
+    rsync -a --delete --exclude='.DS_Store' "$src/" "$dst/"
+    copied=$((copied + 1))
+  done
+
+  echo "OK    Worktree synced: $WORKTREE_TARGET ($copied dirs)"
   exit 0
 fi
 
