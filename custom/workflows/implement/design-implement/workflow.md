@@ -22,7 +22,10 @@ This uses **step-file architecture** for focused execution:
 
 ### State Variables
 
-- `{design_url}` — Claude Design artifact URL provided by the user
+- `{input_kind}` — `claude_design_url` | `synthesize_bundle`. Determines whether step 1 fetches a URL or reads a local bundle directory.
+- `{design_url}` — Claude Design artifact URL (when `{input_kind} == "claude_design_url"`)
+- `{bundle_dir}` — Absolute path to a local design-synthesize bundle directory (when `{input_kind} == "synthesize_bundle"`)
+- `{bundle_manifest}` — Parsed `bundle/manifest.yaml` contents (when `{input_kind} == "synthesize_bundle"`)
 - `{design_file}` — Target design file name (e.g., `Data Quality Dashboard.html`)
 - `{design_dir}` — Extracted bundle directory on disk
 - `{design_components}` — Map of component name → file path within the extracted bundle
@@ -49,6 +52,11 @@ This uses **step-file architecture** for focused execution:
 - **Check Tailwind config overrides.** A class like `rounded-sm` doesn't mean 2px — it means whatever the project's `tailwind.config.js` maps it to. Always resolve through the config.
 - **Enumerate exhaustively.** Every CSS property on every component. The value of this workflow is that nothing slips through. Sampling is failure.
 - **N/A is a valid cell.** If a property exists in the design but the implementation doesn't have that component, or vice versa — mark it, don't skip it.
+- **Bundle gating is non-negotiable when consuming a design-synthesize bundle.** When `{input_kind} == "synthesize_bundle"`, step 1 MUST parse `bundle/manifest.yaml` and refuse the bundle (halt with the diagnostic in §"Input Resolution") if EITHER of the following is true:
+  - `synthesis.dev_no_render: true` — the bundle was emitted without a screenshot (development mode) and is explicitly not production-ready.
+  - `visual_review.needs_human_review: true` — `design-synthesize`'s self-critique (step 6 d/e/f) flagged the bundle as needing human design review before implementation. Reasons can include `visual_quality: weak`, `visual_lift_over_baseline: false`, or `exemplar_alignment: deviated_unauthorized`. Implementing a flagged bundle would pixel-lock a design that the synthesizer itself doesn't trust.
+
+  These are bounce-back refusals, not soft warnings. The workflow halts BEFORE step 2 and prints the next-step command (re-run `design-synthesize` or route through `design-review`). This preserves the contract: bundles that `design-synthesize` doesn't trust never become implementations.
 
 ---
 
@@ -66,12 +74,74 @@ Load config from `{main_config}` and resolve:
 
 ### Input Resolution
 
-The user provides:
+The user provides ONE of two input kinds:
 
-- **Claude Design artifact URL** — required. Format: `https://api.anthropic.com/v1/design/h/...`
-- **Target file name** — optional. If not specified, the workflow reads the bundle's README to identify the primary design file.
+- **Claude Design artifact URL** — `https://api.anthropic.com/v1/design/h/...`. Sets `{input_kind} = "claude_design_url"`.
+- **Local design-synthesize bundle directory** — an absolute path to a directory containing `manifest.yaml`, `<screen>.html`, and `tokens.css`. Sets `{input_kind} = "synthesize_bundle"`.
 
-Store as `{design_url}` and `{design_file}`.
+Detection rule: if the input string starts with `http://` or `https://`, treat as a URL; otherwise treat as a filesystem path and verify it is a directory containing `manifest.yaml`. If neither matches, halt with: `"input must be a Claude Design URL (https://...) or a directory containing manifest.yaml. Got: <input>"`.
+
+#### When `{input_kind} == "synthesize_bundle"`: Bundle gating
+
+Before any other work, parse `{bundle_dir}/manifest.yaml` into `{bundle_manifest}`. Then check the two refusal gates:
+
+**Refusal 1 — dev-only bundle.** If `{bundle_manifest}.synthesis.dev_no_render == true`:
+
+```
+══════════════════════════════════════════════════════════════════
+✗ design-implement refused this bundle.
+
+Reason: bundle was emitted with --no-render and has no screenshot.
+        synthesis.dev_no_render: true
+
+A bundle without a screenshot has not been visually verified by a human
+and is explicitly a development-mode artifact, not a production bundle.
+
+Re-run design-synthesize WITHOUT --no-render and re-invoke:
+
+  /bmad:bmm:workflows:design-synthesize {bundle_manifest.synthesis.brief_path}
+══════════════════════════════════════════════════════════════════
+```
+
+Halt — do NOT proceed to step 1.
+
+**Refusal 2 — needs human review.** If `{bundle_manifest}.visual_review.needs_human_review == true`:
+
+```
+══════════════════════════════════════════════════════════════════
+✗ design-implement refused this bundle.
+
+Reason: design-synthesize flagged this bundle for human review.
+        visual_review.needs_human_review: true
+        visual_review.visual_quality: {bundle_manifest.visual_review.visual_quality}
+        visual_review.visual_lift_over_baseline: {bundle_manifest.visual_review.visual_lift_over_baseline}
+        visual_review.exemplar_alignment: {bundle_manifest.visual_review.exemplar_alignment}
+        synthesis.compliance_state: {bundle_manifest.synthesis.compliance_state}
+
+This bundle satisfies the policy contract but failed one or more of
+design-synthesize's visual sub-checks (step 6 d/e/f — visual quality,
+lift over baseline, exemplar alignment). Implementing it would pixel-lock
+a design that the synthesizer itself does not trust.
+
+Next step — route through human design review BEFORE implementation:
+
+  /bmad:bmm:workflows:design-review {bundle_dir}
+
+Then either re-run design-synthesize with corrections, or — if the human
+review explicitly approves the bundle as-is — re-emit the manifest with
+visual_review.needs_human_review: false (this requires editing the
+manifest manually or re-running design-synthesize until the visual half
+passes).
+══════════════════════════════════════════════════════════════════
+```
+
+Halt — do NOT proceed to step 1.
+
+If neither refusal fires, set `{design_dir} = {bundle_dir}` and `{design_file}` defaults to the first entry in `{bundle_manifest}.screens` (use `<screen>.html` resolution within `{bundle_dir}`). Continue to step 1, which will skip the URL download path and read directly from `{bundle_dir}`.
+
+#### When `{input_kind} == "claude_design_url"`: existing flow
+
+Store as `{design_url}` and `{design_file}`. Continue to step 1.
 
 ### Paths
 
