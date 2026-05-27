@@ -166,6 +166,34 @@ target_route: {target_route or null}
 routes: {routes or []}
 screens: {screens}
 
+# Visual review — authoritative for the visual-quality + lift outcome of step 6 (d/e/f).
+# design-implement reads needs_human_review as the auto-handoff gating signal.
+visual_review:
+  visual_quality: {visual_quality}                            # excellent | acceptable | weak
+  visual_quality_axes:                                        # per-axis ratings from step 6 (d), audit trail
+    hierarchy: {strong | adequate | weak}
+    density: {strong | adequate | weak}
+    typography: {strong | adequate | weak}
+    table_ergonomics: {strong | adequate | weak}
+    generic_look: {strong | adequate | weak}
+  visual_lift_over_baseline: {visual_lift_passed}             # boolean — positive half of the lift test
+  exemplar_alignment: {exemplar_alignment}                    # aligned | deviated_with_brief_authorization | deviated_unauthorized
+  review_iterations: {review_iterations}                      # how many of the step-6 loop iterations were driven by visual sub-checks
+  needs_human_review: {needs_human_review}                    # boolean — design-implement refuses when true
+  handoff_target: {"design-review" if needs_human_review else "design-implement"}
+
+# Exemplars — 2-3 gold-standard screens used as anchors during synthesis (loaded in step 3 §9).
+# When the brief sets exemplar_anchoring: waived, this section reflects the waiver.
+exemplars:
+  gallery_path: {exemplar_gallery_path or null}
+  selected:
+    - path: {repo-relative path 1}
+      rationale: {one-line rationale from {exemplars_rationale}}
+    - path: {repo-relative path 2}
+      rationale: ...
+  # When waived, omit `selected` and emit:
+  # waiver_reason: {brief_frontmatter.waiver_reason}
+
 # Policy sections that drove the synthesis — exemplar-disclosure rule
 # (design-policy-canonical skill §"Exemplars" / policy §10)
 policy_sections_cited:
@@ -212,10 +240,11 @@ flow_invariants:
 
 For single-screen bundles, omit `flow_invariants` (or set to `[]`). For `fresh-design` mode, omit `targeted_changes` and `unchanged_regions`.
 
-For sub-checks that didn't fail, omit their violation arrays (don't write `hard_failure_violations: []` — leave silent). If sub-checks failed but the bundle still emitted (compliance_state != pass), include the violation arrays for audit:
+For sub-checks that didn't fail, omit their violation arrays (don't write `hard_failure_violations: []` — leave silent). If sub-checks failed but the bundle still emitted (compliance_state != pass OR needs_human_review == true), include the violation arrays for audit:
 
 ```yaml
 violations:
+  # Policy half (step 6 a/b/c)
   hard_failures:
     - rule: {text}
       file: {path}
@@ -223,6 +252,28 @@ violations:
       snippet: {text}
   positive_assertions: [...]
   drift: [...]
+
+  # Visual half (step 6 d/e/f)
+  visual_quality:
+    rating: {visual_quality}
+    weak_axes:
+      - axis: {hierarchy | density | typography | table_ergonomics | generic_look}
+        screens: [<list of screens where this axis was weak>]
+        correction_note: {one-line from step 6 visual_quality_correction}
+  lift:
+    negative_half:
+      - screen: {path}
+        detector: {placeholder_data | generic_chrome | crm_composition | wrong_locale | page_mode_mismatch}
+        detail: {text}
+    positive_half:
+      - screen: {path}
+        requirement: {1 | 2 | 3}
+        detail: {text}
+  exemplar:
+    - screen: {path}
+      dimension: {hierarchy | density | top_band | table_framing | state_presentation}
+      exemplar: {path}
+      detail: {what departed}
 ```
 
 ### 3. Re-run invariant 3 against the actual draft
@@ -241,32 +292,58 @@ Verify the file exists and is non-empty.
 
 ### 5. Print the handoff line
 
-This is the workflow's output. The user should be able to read this and immediately proceed:
+This is the workflow's output. The user should be able to read this and immediately proceed. The next-step command is chosen by `needs_human_review`: when true, route through `design-review` first; when false, hand directly to `design-implement`.
 
 ```
 ══════════════════════════════════════════════════════════════════
 ✓ design-synthesize complete
 
-  bundle:            {bundle_dir}
-  page_mode:         {page_mode}
-  screens:           {comma-separated screen filenames}
-  compliance state:  {compliance_state}
-  iterations:        {iteration_count}/3
-  proposed tokens:   {len(tokens_proposed)}/5
-  skills invoked:    {comma-separated skills_invoked}
-  policy sections:   {comma-separated policy_sections_cited}
+  bundle:              {bundle_dir}
+  page_mode:           {page_mode}
+  screens:             {comma-separated screen filenames}
+  compliance state:    {compliance_state}
+  iterations:          {iteration_count}/3 (visual: {review_iterations})
+  proposed tokens:     {len(tokens_proposed)}/5
+  skills invoked:      {comma-separated skills_invoked}
+  frontend skill:      {frontend_skill} (resolved via {frontend_skill_source})
+  exemplars:           {len(exemplars.selected)} ({comma-separated basenames or "waived"})
+  policy sections:     {comma-separated policy_sections_cited}
+
+  [VISUAL REVIEW]
+  visual quality:      {visual_quality}
+  lift over baseline:  {"passed" if visual_lift_over_baseline else "failed"}
+  exemplar alignment:  {exemplar_alignment}
+  needs human review:  {needs_human_review}
 {if compliance_state != pass:}
-  ⚠ failure mode:   {compliance_state} — {N} violations recorded in manifest.violations
+  ⚠ failure mode:     {compliance_state} — {N} violations recorded in manifest.violations
 {end if}
 {if dev_no_render:}
-  ⚠ dev-only build: --no-render was used. design-implement WILL refuse this bundle.
+  ⚠ dev-only build:   --no-render was used. design-implement WILL refuse this bundle.
+{end if}
+{if needs_human_review:}
+  ⚠ blocked from auto-handoff: visual review flagged this bundle for human design review.
+    design-implement WILL refuse it (per the bundle-gating contract). Route through
+    design-review first.
 {end if}
 
-Next step — hand the bundle to design-implement:
+Next step:
 
+{if needs_human_review:}
+  # Human design review required before implementation.
+  /bmad:bmm:workflows:design-review {bundle_dir}
+
+  After design-review either confirms the bundle or you re-run design-synthesize
+  to address the review notes, then hand to design-implement.
+{else if dev_no_render:}
+  # This bundle cannot be implemented (no screenshot). Re-run without --no-render.
+  /bmad:bmm:workflows:design-synthesize {brief_path}
+{else:}
+  # Hand the bundle to design-implement:
   /bmad:bmm:workflows:design-implement {bundle_dir}
 
-design-implement will read bundle/<screen>.html + tokens.css value-by-value and emit a delta report against your project's current implementation.
+  design-implement will read bundle/<screen>.html + tokens.css value-by-value and
+  emit a delta report against your project's current implementation.
+{end if}
 ══════════════════════════════════════════════════════════════════
 ```
 

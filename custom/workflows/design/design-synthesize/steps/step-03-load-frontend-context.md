@@ -7,7 +7,7 @@ description: 'Detect frontend framework, parse Tailwind config, build the projec
 
 **Goal:** Discover the project's frontend conventions so step 4 can distinguish real tokens (the project already has them) from invented values (proposed tokens that count against the 5-cap). Without this, synthesis silently invents `var(--*)` names that don't exist anywhere, which breaks `design-implement`'s value resolution.
 
-**Gate owned:** None directly. This step feeds Gate 3 (token cap) in step 4 and the drift baseline in step 6c.
+**Gates owned:** Gate 5a (frontend skill resolution) and Gate 5b (exemplars loaded), per workflow.md §APPROVAL GATES. Both gates halt the workflow if they fail. This step also feeds Gate 3 (token cap) in step 4 and the drift baseline in step 6c.
 
 ---
 
@@ -148,7 +148,93 @@ ls {project-root}/src/components 2>/dev/null
 
 If a `ui/` directory is found, scan filenames into `{component_library}` (e.g., `["button", "badge", "card", "dialog", ...]`). Step 4 uses this to choose component patterns that align with the project's existing visual language. Not finding one is fine; step 4 falls back to first-principles synthesis from the policy.
 
-### 8. Print the context summary and proceed
+### 8. Resolve `{frontend_skill}` (Gate 5a)
+
+Per workflow.md §SKILL ROUTING → "Always invoke", a project frontend skill MUST be resolvable. Synthesis emits HTML and tokens; layout, hierarchy, typography, and visual patterns require a frontend/design skill in addition to policy + domain skills.
+
+Resolution order (first match wins):
+
+1. **Brief frontmatter.** Check `{brief_frontmatter}` for a `frontend_skill:` field. If present and non-empty, that is `{frontend_skill}`.
+2. **Project config.** Read `{main_config}` (`{project-root}/_bmad/bmm/config.yaml`) and check for a `frontend_skill:` key at the root or under a `design:` block. If present and non-empty, that is `{frontend_skill}`.
+3. **Available skills fallback.** Scan the runtime's available-skills list (the same list this workflow can invoke) for the first skill whose name contains `frontend`, `website-building`, or `webapp` as a substring. If exactly one match, that is `{frontend_skill}`. If multiple matches, prefer in this order: `website-building`, `frontend-design`, anything containing `webapp`, then the first remaining match.
+
+If none of the three tiers resolves a skill, halt with:
+
+```
+GATE 5a FAILURE: no project frontend skill resolved.
+
+Synthesis requires a frontend/design skill in addition to policy + domain skills.
+Resolution order tried:
+  1. {brief_path} frontmatter (frontend_skill:)        → not declared
+  2. {main_config} (frontend_skill:)                   → not declared
+  3. available-skills scan for frontend/website-building/webapp → no match
+
+Declare frontend_skill: <name> in either the brief frontmatter or {main_config},
+then re-invoke. (See workflow.md §SKILL ROUTING for the role this skill plays
+versus design-policy-canonical and the domain skill.)
+```
+
+Record the resolved name and the tier that matched: `{frontend_skill}`, `{frontend_skill_source}` ∈ {`brief`, `config`, `fallback`}.
+
+### 9. Load exemplars (Gate 5b)
+
+Per workflow.md §Critical Rules → "Exemplar alignment (anchoring rule)" and Gate 5b, synthesis must anchor in 2–3 gold-standard operational screens that match `{page_mode}`. Without exemplars, synthesis free-styles and consistently produces policy-compliant-but-bland output.
+
+#### 9.1 Check for an exemplar gallery file
+
+```bash
+ls {project-root}/docs/design-gallery.md 2>/dev/null
+ls {project-root}/docs/design-exemplars.md 2>/dev/null
+ls {project-root}/_bmad/bmm/design-gallery.md 2>/dev/null
+```
+
+If found, set `{exemplar_gallery_path}` to the absolute path. Read the file fully. The gallery is expected to list exemplars organized by page mode — look for a section heading or YAML block keyed by `page_mode: operational | analytical | detail`. Extract 2–3 paths whose page-mode tag matches `{page_mode}` along with any rationale strings the gallery records.
+
+If the gallery exists but has no entries for `{page_mode}`, treat it as if no gallery file existed and fall through to §9.2.
+
+#### 9.2 Repo-scan fallback (no gallery, or gallery silent for this page_mode)
+
+When no gallery resolves exemplars, scan the repo for high-confidence operational screens matching the brief's data shape and `{page_mode}`:
+
+| `{page_mode}` | Where to scan |
+|---|---|
+| `operational` | Existing routes that render dense tables, worklists, filings dashboards. For SvelteKit: `src/routes/**/+page.svelte` files >300 lines (proxy for non-trivial operational screens). Pair with the brief's `{data_shape}` keywords (e.g., "invoices", "reclaims", "registrations") to narrow. |
+| `analytical` | Routes with chart-led composition (look for `Chart`, `Sparkline`, `Trend` component imports). |
+| `detail` | Drawer / detail components that extend an operational list (look for `Drawer`, `DetailPanel`, `<slot name="detail">`). |
+
+Rank candidates by recency (most recently modified first, via `git log --format=%ct -1 <path>`) and by inverse-policy-violation (prefer files that DO NOT match the policy's hard-failure detectors — e.g., no `bg-orange-500` pill chips). Select the top 2–3.
+
+If the repo-scan yields fewer than 2 candidates, check the brief: if `{brief_frontmatter}` contains `exemplar_anchoring: waived` with a non-empty `waiver_reason`, accept `{exemplars} = []` and record the waiver. Otherwise, halt with:
+
+```
+GATE 5b FAILURE: no exemplars resolved for page_mode={page_mode}.
+
+Tried:
+  1. Gallery file ({path or 'none found'}) → no entries for this page_mode
+  2. Repo scan in {project-root} for {page_mode} screens → {N} candidate(s) found (need 2-3)
+
+Either populate {project-root}/docs/design-gallery.md with 2-3 gold-standard
+screens for page_mode={page_mode}, or set exemplar_anchoring: waived (with a
+waiver_reason) in the brief's frontmatter. The waiver is only acceptable for
+greenfield projects with no shipped exemplars; for projects with existing
+screens, populate the gallery so future runs don't keep hitting this halt.
+```
+
+#### 9.3 Build `{exemplars}` and `{exemplars_rationale}`
+
+For each selected exemplar, record:
+
+```
+{exemplars}            = [<absolute path 1>, <absolute path 2>, ...]
+{exemplars_rationale}  = {
+  <path 1>: "<one-line rationale — page-mode match, surface-family match, policy conformance, recency>",
+  <path 2>: "...",
+}
+```
+
+When the gallery file provided rationales, use them verbatim. When using repo-scan fallback, compose the rationale from the ranking signals (e.g., `"operational page_mode match; most recent shipped (commit abc1234, 2026-04-12); no hard-failure detector hits"`).
+
+### 10. Print the context summary and proceed
 
 ```
 ✓ Frontend context loaded:
@@ -159,6 +245,8 @@ If a `ui/` directory is found, scan filenames into `{component_library}` (e.g., 
   project tokens:      {len(project_tokens)}
   component library:   {len(component_library) or "none"}
   prior impl files:    {len(prior_impl_paths) or "n/a (fresh-design)"}
+  frontend skill:      {frontend_skill} (resolved via {frontend_skill_source})
+  exemplars:           {len(exemplars)} ({comma-separated basenames or "waived: " + waiver_reason})
 
 Proceeding to step 4: synthesize.
 ```
@@ -175,6 +263,8 @@ After this step, the following state variables MUST be populated:
 - `{tailwind_config_path}` (may be null), `{tailwind_config_classes}` (may be empty set)
 - `{project_token_paths}` (may be empty list), `{project_tokens}` (may be empty map)
 - `{component_library}` (may be empty list)
+- `{frontend_skill}` (non-empty — Gate 5a halt if unresolved), `{frontend_skill_source}` ∈ {`brief`, `config`, `fallback`}
+- `{exemplars}` (2–3 entries, OR empty list with `exemplar_anchoring: waived` in brief — Gate 5b halt otherwise), `{exemplars_rationale}` (1:1 with `{exemplars}`), `{exemplar_gallery_path}` (may be null)
 - In `refine-screen` mode only: `{prior_impl_paths}` (non-empty), `{prior_impl_content}` (non-empty)
 
 Any unset required variable is a workflow bug — halt before step 4.

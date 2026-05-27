@@ -59,7 +59,9 @@ This uses **step-file architecture** for focused execution:
 - `{policy_sections_cited}` — Ordered list of policy section identifiers (e.g., `§2`, `§3 Color hierarchy`, `§6 operational mode`) that drove the synthesis. Recorded in the manifest per the `design-policy-canonical` exemplar-disclosure rules (skill §"Exemplars" / policy §10).
 - `{target_slug}` — Kebab-case slug for the feature/flow (e.g., `reclaim-avask`).
 - `{target_route}` — Route the bundle represents (e.g., `/reclaim/avask`). May be a single route or a flow of routes for multi-screen bundles.
-- `{screens}` — Ordered list of screen names for multi-screen bundles. Single-screen runs have `len(screens) == 1`.
+- `{routes}` — Ordered list of all routes the bundle represents (multi-screen). For single-screen runs this is `[{target_route}]`. Recorded in manifest under `routes:`.
+- `{screens}` — Ordered list of screen names for multi-screen bundles. Single-screen runs have `len(screens) == 1`. Recorded in manifest under `screens:`.
+- `{skills_invoked}` — Ordered list of skill names actually invoked during synthesis. Always includes `design-policy-canonical` and the resolved `{frontend_skill}`; conditionally includes `operational-finance-ui` and/or `operational-analytics-band` per the page-mode matrix in SKILL ROUTING. Recorded in manifest under `synthesis.skills_invoked` and checked by step 6's binary skill-routing check.
 - `{policy_path}` — Resolved path to `docs/design-policy.md` or `{planning_artifacts}/brand-identity.md`.
 - `{policy_content}` — Loaded policy contents.
 - `{policy_version_hash}` — SHA of the policy file at synthesis time (recorded in the manifest for reproducibility).
@@ -77,7 +79,21 @@ This uses **step-file architecture** for focused execution:
 - `{flow_invariants}` — Cross-screen invariants for multi-screen bundles (e.g., status-badge token consistency).
 - `{bundle_dir}` — Absolute path to the output bundle directory (`{implementation_artifacts}/bundles/<target_slug>-<date>/`).
 - `{iteration_count}` — Number of synthesis attempts so far in the self-critique loop (max 3).
-- `{compliance_state}` — `pass` | `hard_failed` | `positive_failed` | `drift_failed`. Recorded in manifest after step 6.
+- `{review_iterations}` — Number of visual-quality refine passes consumed by step 6 sub-checks (d)/(e)/(f). Distinct from `{iteration_count}` (which covers ALL critique loop returns including policy failures); `{review_iterations}` counts only the visual-quality / lift / exemplar-alignment loops. Recorded in manifest.
+- `{compliance_state}` — `pass` | `hard_failed` | `positive_failed` | `drift_failed` | `lift_failed` | `exemplar_failed`. Recorded in manifest after step 6.
+- `{visual_quality}` — `excellent` | `acceptable` | `weak`. Synthesizer's own assessment after the last review pass — recorded in manifest. `weak` forces `needs_human_review: true`.
+- `{visual_lift_passed}` — Boolean. `true` only if the positive half of the lift test (Critical Rules) cleared. Recorded in manifest as `visual_lift_over_baseline`.
+- `{exemplar_alignment}` — `aligned` | `deviated_with_brief_authorization` | `deviated_unauthorized`. Aggregated from per-screen exemplar comparisons in step 6 (f). Recorded in manifest under `visual_review.exemplar_alignment`. `deviated_unauthorized` at the final iteration sets `{compliance_state} = "exemplar_failed"`.
+- `{visual_quality_axes}` — Per-axis ratings from step 6 (d): `{hierarchy, density, typography, table_ergonomics, generic_look}` → `strong` | `adequate` | `weak`. Audit trail for the manifest; not a gating signal on its own.
+- `{negative_lift_violations}` — List of negative-half lift-test violations from step 6 (e) — placeholder data, generic SaaS chrome, CRM composition, wrong locale, page-mode mismatch. Each entry: `{screen, detector, detail}`.
+- `{positive_lift_violations}` — List of positive-half lift-test violations from step 6 (e). Each entry: `{screen, requirement, detail}` covering the 4 positive lift requirements (core question answered, key states surfaced, primary actions escalated, exemplar-aligned).
+- `{exemplar_violations}` — List of exemplar-alignment deviations from step 6 (f). Each entry: `{screen, dimension, exemplar, detail}`.
+- `{needs_human_review}` — Boolean. `true` whenever `{visual_quality} == "weak"`, `{visual_lift_passed} == false`, or `{exemplar_alignment} == "deviated_unauthorized"` at the final iteration. Recorded in manifest; downstream consumers (`design-implement`) refuse to auto-consume — they bounce-back to `design-review`.
+- `{exemplars}` — Ordered list of 2–3 absolute paths to gold-standard operational screens loaded in step 3, used as anchoring references during synthesis (step 4) and exemplar-alignment check (step 6). Recorded in manifest under `exemplars:`.
+- `{exemplars_rationale}` — Map of `path → rationale string` paired 1:1 with `{exemplars}`. Each rationale states why the exemplar was selected (page-mode match, surface-family match, policy conformance, recency). Recorded in manifest under `exemplars.selected[].rationale`.
+- `{exemplar_gallery_path}` — Path to a project-maintained design gallery file (e.g., `docs/design-gallery.md`) if it exists; null otherwise. When present, `{exemplars}` are resolved from it; when absent, step 3 falls back to scanning the repo for high-confidence operational screens (see step 3 contract).
+- `{frontend_skill}` — Name of the resolved project frontend skill (e.g., `website-building`, `frontend-design`, or a project-specific name). Resolution order is documented in SKILL ROUTING → "Always invoke". Unresolved = Gate 5a halt.
+- `{frontend_skill_source}` — Which tier resolved `{frontend_skill}`: `brief` (brief frontmatter) | `config` (`_bmad/bmm/config.yaml`) | `fallback` (available-skills scan). Surfaced in step 3 §10 summary and in step 7 handoff line for audit; not recorded in the manifest as a separate field but inferable from the manifest's `skills_invoked` entry.
 - `{baseline_commit}` — Git SHA before any changes.
 
 ### Step Processing Rules
@@ -99,7 +115,17 @@ This uses **step-file architecture** for focused execution:
 - **Drift in refine-screen is failure, not noise.** Any non-empty diff in an `unchanged_region` against the prior implementation is a synthesis bug. Either eliminate the drift or move the region into `targeted_changes` (which surfaces the intentional scope expansion).
 - **Page mode declared up front.** Step 1 must resolve `{page_mode}` from the brief — `operational` | `analytical` | `detail` per policy §6 / §7. Per policy §6, hybrid pages default to `operational`. The page mode constrains composition (table-first vs chart-first vs detail extension), skill routing (operational → `operational-finance-ui`; analytical → `operational-analytics-band`), and what the lift test considers acceptable. Synthesis without an explicit `{page_mode}` is forbidden (Gate 1).
 - **No design inference from existing screens.** The current implementation may pre-date the policy or be mid-migration; it is not a design source (per `design-policy-canonical` skill: "Do not infer design from existing screens"). In `fresh-design` mode, only the brief, the policy, and the project token inventory authorize design choices. In `refine-screen` mode the prior implementation is a **drift baseline** — a reference for what NOT to alter outside `targeted_changes` — not a design source.
-- **Lift test (policy §10).** If the synthesized bundle would render acceptably as a different SaaS product (a generic CRM, an HR dashboard, a marketing tool) without modification, it has failed the lift test. The bundle must read as a high-trust UK VAT finance operations tool — calm fintech, never marketing or playful SaaS (policy §1). A lift-test failure is treated as a hard-failure check item; return to step 4 with the lift-test note as the correction. The synthesized bundle uses real domain content from the brief's data shape (invoices, VAT periods, suppliers, CDS records) — never placeholder/lorem ipsum data that could belong to any product.
+- **Lift test (policy §10) — two-sided contract.** Passing the policy is the floor, not the ceiling. The bundle must clear *both* a negative test (no generic SaaS look) AND a positive test (a clear lift over a baseline operational screen). Both halves must pass; either failure is a Gate 5 failure (see Approval Gates).
+  - **Negative half (anti-AI / anti-generic).** If the synthesized bundle would render acceptably as a different SaaS product (a generic CRM, an HR dashboard, a marketing tool) without modification, it has failed the lift test. The bundle must read as a high-trust UK VAT finance operations tool — calm fintech, never marketing or playful SaaS (policy §1). Real domain content from the brief's data shape (invoices, VAT periods, suppliers, CDS records) is required — never placeholder/lorem ipsum data that could belong to any product.
+  - **Positive half (lift over baseline).** The **baseline** is a minimally styled table with correct tokens and status chips but no operational narrative, no top summary, and flat hierarchy. To pass the positive half, the bundle MUST:
+    1. **Answer the screen's core operational question at a glance** (e.g., for an `operational` import screen: "what's happening with my imports right now?") *before* the user has to scan the table — typically via a top band (`operational-analytics-band`) or a summary header.
+    2. **Surface the screen's key states** above or beside the worklist (pending, failed, anomalies, overdue, awaiting-response) — not buried inside individual rows.
+    3. **Visually distinguish primary actions and alerts from background noise** — primary action affordance is unambiguous; alert/error states are escalated above policy-baseline weight; routine rows recede.
+    4. **Align with the loaded exemplars** in hierarchy, density, framing, and how tables are introduced (see exemplar-alignment rule below).
+
+    A bundle that satisfies the negative half but does not visibly lift over the baseline is a Gate 5 failure with `visual_lift_passed: false`. Bundles that fail the positive half are NOT auto-handed-off to `design-implement`; they ship with `needs_human_review: true` and the user is prompted to either accept the run as-is or re-brief.
+
+- **Exemplar alignment (anchoring rule).** Synthesis must anchor in 2–3 *gold-standard* operational screens loaded in step 3 as `{exemplars}` rather than free-styling. The exemplars are the project's own best work — read from the repo (or a project-maintained design gallery file) — and answer the question "what does a strong version of this kind of screen look like in *this* product?". Synthesis must keep page-level hierarchy, density, top-band summary patterns, table framing, and state-presentation consistent with the exemplars unless the brief explicitly authorizes a departure. Departure without brief authorization is a synthesis failure surfaced in step 6.
 - **YOU MUST ALWAYS SPEAK OUTPUT** in your agent communication style with the config `{communication_language}`.
 
 ---
@@ -149,13 +175,14 @@ If the input is ambiguous, the workflow does NOT generate its own brief — it h
 
 If `autonomous_mode` is `true` in config:
 
-- Never halt for user input. The only legitimate halts are the four gates below.
-- When the policy is missing → halt (this is one of the gates).
-- When >5 tokens would be proposed → halt (this is one of the gates).
-- When Playwright is unavailable → halt (this is one of the gates).
-- When the brief is missing or malformed → halt (this is one of the gates).
+- Never halt for user input. The only legitimate halts are the five gates below.
+- When the brief is missing or malformed → halt (Gate 1).
+- When the policy is missing → halt (Gate 2).
+- When >5 tokens would be proposed → halt (Gate 3).
+- When Playwright is unavailable → halt (Gate 4).
+- When the project frontend skill cannot be resolved OR exemplars cannot be loaded → halt (Gate 5a / 5b). Note: Gate 5c (visual-lift failure) is the one non-halting gate — it emits the bundle with `needs_human_review: true` and blocks auto-handoff to `design-implement`, but does not halt the run.
 
-These four gates are the only autonomous-mode exits. Everything else proceeds.
+These five gates are the only autonomous-mode exits. Everything else proceeds.
 
 ---
 
@@ -191,18 +218,25 @@ Each step is authored as a separate file under `steps/`. This workflow.md define
 
 1. **`step-01-load-brief.md`** — Resolve the brief artifact, parse YAML frontmatter, extract feature purpose / data shape / user context / visual direction / hard constraints / design ask / synthesis mode / **page mode (`operational | analytical | detail`, policy §6 / §7; hybrid defaults to `operational`)** / target slug / screens list / (refine-screen only) targeted vs unchanged regions. **Halts** if the brief is missing or malformed, or if `{page_mode}` cannot be resolved (Gate 1).
 2. **`step-02-load-policy.md`** — Resolve and load `{policy_path}`, compute `{policy_version_hash}`, extract `{hard_failures}` and `{positive_allowlist}`. **Halts** if the policy is missing (Gate 2).
-3. **`step-03-load-frontend-context.md`** — Detect `{framework}` from `package.json`, locate and parse `{tailwind_config_path}` and the project token file, populate `{project_tokens}`. In refine-screen mode, also locate `{prior_impl_paths}` for the drift baseline.
-4. **`step-04-synthesize.md`** — Invoke the relevant sister skills (per Skill Routing below) and generate `bundle/<screen>.html` + `bundle/tokens.css` for each screen in `{screens}`. Every visual property is an explicit value. **Halts** if synthesis would introduce >5 new tokens (Gate 3).
+3. **`step-03-load-frontend-context.md`** — Detect `{framework}` from `package.json`, locate and parse `{tailwind_config_path}` and the project token file, populate `{project_tokens}`. In refine-screen mode, also locate `{prior_impl_paths}` for the drift baseline. **Also load `{exemplars}`**: 2–3 gold-standard operational screens for this `{page_mode}`. Resolution order: (i) read from `{exemplar_gallery_path}` (`docs/design-gallery.md` or project equivalent) if it exists and declares exemplars for this page mode; (ii) otherwise scan the repo for the highest-confidence operational screens matching the brief's data shape (e.g., the most recently shipped or most-policy-conformant screens in the same surface family) and select up to 3. Record selection rationale in `{exemplars_rationale}` for the manifest. **Halts** if no exemplars can be resolved AND the brief does not explicitly waive exemplar anchoring — this is part of Gate 5.
+4. **`step-04-synthesize.md`** — Invoke the relevant sister skills (per Skill Routing below) and generate `bundle/<screen>.html` + `bundle/tokens.css` for each screen in `{screens}`. Every visual property is an explicit value. Synthesis must consult `{exemplars}` to anchor hierarchy, density, top-band patterns, table framing, and state presentation; deviation from exemplars is allowed only when the brief explicitly authorizes it. **Halts** if synthesis would introduce >5 new tokens (Gate 3).
 5. **`step-05-render-screenshot.md`** — Run Playwright (headless Chromium) against each `bundle/<screen>.html` at the brief's primary viewport. Save `bundle/screenshot-<screen>.png`. **Halts** if Playwright is unavailable (Gate 4).
-6. **`step-06-self-critique.md`** — Run three sub-checks:
+6. **`step-06-self-critique.md`** — Run policy-compliance sub-checks AND visual-quality sub-checks. The policy half (a/b/c) is the original critique loop. The visual half (d/e/f) is the *crit/refine* loop the workflow uses to lift bundles above baseline; passing policy is necessary but not sufficient.
+
+   **Policy half (compliance):**
    - **(a) Hard-failure check** against `{hard_failures}` from the policy.
    - **(b) Policy-derived positive-assertion check** against `{positive_allowlist}` from the policy — items the policy itself ratifies as contract-critical (e.g., "status indicators use status tokens not raw colors", "components have stable identifiers"). `design-synthesize` does NOT invent allowlist items.
    - **(c) Drift check** (refine-screen only) — diff bundle against prior implementation; non-empty diff in any `unchanged_region` is a failure.
 
-   Note: workflow invariants (every `var(--*)` resolves, no config-dependent Tailwind, manifest visual-disagreement-tiebreaker, bundle self-containment) are NOT in this self-critique pass — they are unconditional and run in step 7's manifest-validation gate. The allowlist is reserved for policy-derived assertions only.
+   **Visual half (lift & taste):**
+   - **(d) Visual-quality review.** The synthesizer reviews its own screenshots and HTML for: visual hierarchy (titles, sections, table framing), whitespace and density, typography use (avoid uniformly small text; avoid all-bold or all-thin), table ergonomics (scan-ability, row states), and "AI/generic" template look (flat, spreadsheet-y, no operational story). Rate `{visual_quality}` as `excellent | acceptable | weak`. `excellent` proceeds; `acceptable` triggers one refine pass to strengthen hierarchy, density, and operational framing; `weak` proceeds to step 7 but sets `needs_human_review: true` and blocks auto-handoff.
+   - **(e) Lift-over-baseline check** (Critical Rules → "Lift test"). Both halves of the lift test must pass — the negative half (no generic SaaS look, real domain content) AND the positive half (answers core operational question at a glance; key states surfaced above the worklist; primary actions and alerts visually escalated; aligned with exemplars). Positive-half failure sets `{visual_lift_passed} = false` and is a Gate 5 failure.
+   - **(f) Exemplar-alignment check.** Compare the bundle's hierarchy, density, top-band patterns, and table framing against `{exemplars}`. Deviation is only acceptable when the brief explicitly authorizes it. Unauthorized deviation is a failure with mode `exemplar_failed`.
 
-   On failure of any sub-check, return to step 4 with a targeted correction note. Max 3 iterations across all sub-checks. On the 3rd failure, set `{compliance_state}` to the failure mode and proceed to step 7 anyway.
-7. **`step-07-emit-manifest.md`** — Run the **unconditional manifest-validation pass** first: every `var(--*)` in any `<screen>.html` resolves in `tokens.css`; no config-dependent Tailwind classes appear; no values in `manifest.yaml` disagree with HTML + tokens; bundle is self-contained (no external imports beyond `tokens.css`). A failure here is a workflow bug — halt and report; do NOT emit a bundle that violates workflow invariants. If validation passes, write `bundle/manifest.yaml` per the Manifest Schema below. Print bundle path, screen list, compliance state, and the next-agent hand-off line directing the user to `design-implement`.
+   **Loop policy:** On failure of any sub-check, return to step 4 with a targeted correction note. Max 3 iterations across all sub-checks combined. `{review_iterations}` tracks how many of those iterations were driven by visual sub-checks (d/e/f) specifically. On the 3rd failure: policy failures (a/b/c) set `{compliance_state}` to the corresponding failure mode; visual failures (d/e/f) set `{compliance_state}` to `lift_failed` or `exemplar_failed` AND `{needs_human_review} = true`. Either way, proceed to step 7.
+
+   Note: workflow invariants (every `var(--*)` resolves, no config-dependent Tailwind, manifest visual-disagreement-tiebreaker, bundle self-containment) are NOT in this self-critique pass — they are unconditional and run in step 7's manifest-validation gate. The allowlist is reserved for policy-derived assertions only.
+7. **`step-07-emit-manifest.md`** — Run the **unconditional manifest-validation pass** first: every `var(--*)` in any `<screen>.html` resolves in `tokens.css`; no config-dependent Tailwind classes appear; no values in `manifest.yaml` disagree with HTML + tokens; bundle is self-contained (no external imports beyond `tokens.css`). A failure here is a workflow bug — halt and report; do NOT emit a bundle that violates workflow invariants. If validation passes, write `bundle/manifest.yaml` per the Manifest Schema below — including `visual_review:` (visual_quality, visual_lift_over_baseline, review_iterations, needs_human_review) and `exemplars:`. Print bundle path, screen list, compliance state, `visual_quality`, `needs_human_review`, and the next-agent hand-off line. When `needs_human_review: true`, the hand-off line MUST direct the user to human design review (`design-review` or `bmad:bmm:workflows:design-review`) BEFORE `design-implement`, not directly to implementation.
 
 ---
 
@@ -210,13 +244,25 @@ Each step is authored as a separate file under `steps/`. This workflow.md define
 
 `design-synthesize` MUST invoke the relevant frontend/design skills BEFORE generating output in step 4. Skill invocation is logged in the manifest under `skills_invoked:` for audit. Improvising visual decisions from workflow prose alone is the failure mode this section exists to prevent.
 
+### Role of each skill — non-overlapping responsibilities
+
+Synthesis depends on three distinct sources of authority. Each owns a different slice of the visual decision; collapsing them into one (e.g., letting the domain skill make taste calls, or letting policy substitute for layout craft) is the failure mode that produces policy-compliant-but-bland output. Spell out the division explicitly:
+
+| Skill | Owns | Does NOT own |
+|---|---|---|
+| `design-policy-canonical` | Palette rules, status vocab, component allowlist, anti-patterns, hard failures, positive-assertion contracts. The *floor* — what is forbidden and what is contract-critical. | Hierarchy, rhythm, where things go on a page, how dense a table should feel. Policy says what NOT to look like; it does not say what good looks like. |
+| `operational-finance-ui` (or project domain skill) | Domain-specific layout patterns for financial tables, reconciliations, imports, observability surfaces. Where KPIs go relative to tables, how filings/registrations/reconciliations are framed, what an "operational story" looks like for finance ops. | Aesthetic restraint, typographic rhythm, micro-spacing, generic taste decisions outside the finance domain. |
+| Project frontend skill (`{frontend_skill}` — e.g., `website-building`, `frontend-design`, or project-specific) | **Taste.** Hierarchy, spacing, rhythm, typography pairings, density calibration, aesthetic restraint. The "is this beautiful and easy to use" layer that turns policy + domain into a designed screen rather than a wireframe. | Domain semantics, policy interpretation. Frontend skill does not invent finance patterns or override hard failures. |
+
+For `page_mode: operational`, **all three categories are required** — policy + domain + frontend. Synthesis that consults only policy + domain produces wireframes; synthesis that consults only frontend produces a pretty CRM. The combination is the contract.
+
 ### Routing rules
 
 Skill routing is driven by **`{page_mode}`**, not by free-text screen-type inference. This makes routing deterministic and aligns with policy §6 — the page mode constrains every downstream design decision, including which sister skills are authoritative for this screen.
 
 **Always invoke in every run (both synthesis modes, all page modes):**
 - `design-policy-canonical` — the policy itself is the floor; the skill enforces the trust hierarchy and refuses anti-default compositions.
-- Project frontend / webapp design skill (e.g., `website-building`) — synthesis emits HTML and needs design vocabulary regardless of screen type or scope.
+- **Project frontend / webapp design skill (`{frontend_skill}` — MANDATORY).** Synthesis emits HTML and tokens; layout, hierarchy, typography, and visual patterns must be chosen by a skill with frontend/design competence — not by policy or domain skills alone. **Absence of a project frontend skill is a Gate 5 failure** (see Approval Gates). Resolution order: (i) the `frontend_skill:` field in the brief's frontmatter; (ii) a `frontend_skill:` entry in the project's `_bmad/bmm/config.yaml`; (iii) the first skill in the available skills list whose name contains `frontend`, `website-building`, or `webapp`. If none of those resolve, halt with the diagnostic in Gate 5.
 
 **Drive by `{page_mode}`:**
 
@@ -230,7 +276,7 @@ Skill routing is driven by **`{page_mode}`**, not by free-text screen-type infer
 
 ### Enforcement
 
-A run that emits a bundle with no entries under `manifest.skills_invoked` is a failed routing pass. Step 6 must rewind to step 4 to load the missing skills before continuing. Skills are loaded once per run (cache on the first invocation); subsequent step-04 iterations within the self-critique loop reuse the cached skill context.
+A run that emits a bundle with `manifest.skills_invoked` missing any of the required entries (always-invoke + page-mode-mandatory) is a failed routing pass. Step 6 must rewind to step 4 to load the missing skills before continuing. Skills are loaded once per run (cache on the first invocation); subsequent step-04 iterations within the self-critique loop reuse the cached skill context. The frontend-skill requirement is hard: a run that cannot resolve a frontend skill halts at Gate 5 rather than proceeding with a "policy-compliant wireframe."
 
 ---
 
@@ -296,6 +342,14 @@ If this gate fails, halt and surface: "this bundle would introduce N>5 new token
 
 If this gate fails, halt with: "Playwright not available. Run `pnpm add -D @playwright/test && npx playwright install chromium` then re-invoke." Do NOT silently skip the screenshot step.
 
+### Gate 5 — visual lift + frontend skill + exemplars (steps 3 and 6)
+
+This gate has three components — all three must clear for the bundle to be auto-handed off to `design-implement`. A failure does not abort the run (the bundle is still emitted for human inspection), but it blocks the auto-handoff line and forces `needs_human_review: true` in the manifest.
+
+- **5a — Frontend skill resolved (step 3).** Per SKILL ROUTING → "Always invoke", a project frontend skill must be resolvable via the three-tier order (brief frontmatter → project config → available-skills fallback). If none resolves, halt with: `"No project frontend skill resolved. Synthesis requires a frontend/design skill in addition to policy + domain skills. Declare frontend_skill: <name> in the brief frontmatter or in {project-root}/_bmad/bmm/config.yaml, then re-invoke."` This is a hard halt — synthesis does not proceed.
+- **5b — Exemplars loaded (step 3).** `{exemplars}` must contain 2–3 paths from either `{exemplar_gallery_path}` or the repo-scan fallback. If neither yields exemplars AND the brief does not include `exemplar_anchoring: waived` in its frontmatter, halt with: `"No exemplars resolved for page_mode={page_mode}. Either populate {project-root}/docs/design-gallery.md with 2–3 gold-standard screens for this page mode, or set exemplar_anchoring: waived in the brief's frontmatter (only acceptable for greenfield projects with no shipped exemplars)."`
+- **5c — Visual lift (step 6).** The two-sided lift test (negative + positive halves per Critical Rules) must pass. Negative-half failure is treated as a hard-failure rule entry (existing behavior). Positive-half failure sets `{visual_lift_passed} = false` and, on the final iteration, sets `{compliance_state} = lift_failed` and `{needs_human_review} = true`. The bundle is emitted with the failure mode recorded; the manifest's hand-off line directs the user to human design review BEFORE `design-implement`, not directly to implementation.
+
 ---
 
 ## MANIFEST SCHEMA (`bundle/manifest.yaml`)
@@ -314,11 +368,11 @@ synthesis:
   policy_version_hash: {sha256}
   baseline_commit: {git sha}
   iterations: {integer}
-  compliance_state: {pass | hard_failed | positive_failed | drift_failed | dev_only}
+  compliance_state: {pass | hard_failed | positive_failed | drift_failed | lift_failed | exemplar_failed | dev_only}
   dev_no_render: {false | true}  # true ONLY when --no-render was used; design-implement refuses these bundles
   skills_invoked:
     - design-policy-canonical
-    - {project-frontend-skill}     # MANDATORY — synthesis always emits HTML
+    - {project-frontend-skill}     # MANDATORY — synthesis always emits HTML; Gate 5a halts if unresolved
     - operational-finance-ui       # if applicable to screen type
     - operational-analytics-band   # if applicable to screen type
 
@@ -329,6 +383,29 @@ target_slug: {kebab-case slug}
 target_route: {single route or null}
 routes: [{list of routes for multi-screen flows}]
 screens: [{ordered list of screen names}]
+
+# Visual review — authoritative for the visual-quality + lift outcome of step 6 (d/e/f)
+# Used by design-implement to decide auto-consume vs route to human review.
+visual_review:
+  visual_quality: {excellent | acceptable | weak}     # synthesizer's self-rating after step 6 (d)
+  visual_lift_over_baseline: {true | false}           # positive half of the lift test (step 6 (e), Gate 5c)
+  exemplar_alignment: {aligned | deviated_with_brief_authorization | deviated_unauthorized}
+  review_iterations: {integer}                        # how many of the step-6 loop iterations were driven by visual sub-checks (d/e/f)
+  needs_human_review: {true | false}                  # true whenever visual_quality == weak, visual_lift_over_baseline == false, or exemplar_alignment == deviated_unauthorized
+  handoff_target: {design-implement | design-review}  # design-review when needs_human_review == true
+
+# Exemplars — the 2–3 gold-standard screens used as anchors during synthesis (loaded in step 3)
+exemplars:
+  gallery_path: {path to docs/design-gallery.md if used, else null}
+  selected:
+    - path: {repo-relative path to exemplar 1}
+      rationale: "{why this exemplar — page-mode match, surface-family match, policy conformance, recency}"
+    - path: {repo-relative path to exemplar 2}
+      rationale: "..."
+  # When exemplar_anchoring is waived in the brief, this section is:
+  #   gallery_path: null
+  #   selected: []
+  #   waiver_reason: "{the brief's stated reason for waiving exemplar anchoring}"
 
 # Policy sections that drove the synthesis — exemplar-disclosure rule
 # (design-policy-canonical skill §"Exemplars" / policy §10)
@@ -401,6 +478,9 @@ flow_invariants:
 `design-implement` reads:
 - `synthesis.*` — for audit and re-run reproducibility (including `dev_no_render` refusal)
 - `mode`, `page_mode`, `screens`, `routes` — for per-screen iteration and to confirm the page-mode contract was honored
+- `visual_review.needs_human_review` — **gating signal.** When `true`, `design-implement` refuses the bundle and points the user at `design-review` (mirrors the `dev_no_render` refusal contract). This is the auto-handoff blocker that prevents `weak`/`lift_failed`/`exemplar_failed` bundles from leaking into implementation.
+- `visual_review.visual_quality`, `visual_lift_over_baseline`, `exemplar_alignment` — surfaced to the implementer for context even when `needs_human_review: false`, so the implementer knows whether the bundle is `excellent` (implement faithfully) or `acceptable` (worth a sanity check before pixel-locking).
+- `exemplars.selected` — implementer can cross-reference the same exemplars when making framework-level structural choices that the bundle's HTML didn't fully constrain.
 - `policy_sections_cited` — for traceability when the implementer asks "why this composition?"
 - `targeted_changes` / `unchanged_regions` — for drift enforcement in refine-screen
 - `flow_invariants` — for the post-per-screen pass
@@ -430,11 +510,13 @@ This workflow succeeds when:
 - `manifest.tokens.proposed` length is ≤ 5.
 - `manifest.page_mode` is set to one of `operational | analytical | detail` and matches what the brief declared / what step 1 resolved.
 - `manifest.policy_sections_cited` is non-empty — at least the sections that drove composition (§2, §6 for operational; §6 for analytical; §7 for detail) and any anti-default checks invoked (§5).
-- `manifest.skills_invoked` includes the skills required for `{page_mode}` per the routing matrix (always: `design-policy-canonical` and project frontend skill; mandatory by page_mode: `operational-finance-ui` for operational/detail, `operational-analytics-band` for analytical).
-- `manifest.compliance_state` is `pass` OR a documented failure mode (`hard_failed | positive_failed | drift_failed | dev_only`) and the user sees it in the handoff print.
+- `manifest.skills_invoked` includes the skills required for `{page_mode}` per the routing matrix (always: `design-policy-canonical` and the resolved project frontend skill; mandatory by page_mode: `operational-finance-ui` for operational/detail, `operational-analytics-band` for analytical). A missing frontend skill is a Gate 5a halt — not a success-criteria warning.
+- `manifest.compliance_state` is `pass` OR a documented failure mode (`hard_failed | positive_failed | drift_failed | lift_failed | exemplar_failed | dev_only`) and the user sees it in the handoff print.
+- `manifest.visual_review` is fully populated: `visual_quality` ∈ {`excellent`, `acceptable`, `weak`}, `visual_lift_over_baseline` is a boolean, `exemplar_alignment` is set, `review_iterations` is an integer, `needs_human_review` is a boolean, and `handoff_target` is `design-implement` (when `needs_human_review: false`) or `design-review` (when `needs_human_review: true`).
+- `manifest.exemplars.selected` has 2–3 entries with rationale strings — UNLESS the brief set `exemplar_anchoring: waived`, in which case `exemplars.waiver_reason` is non-empty.
 - `bundle/screenshot-<screen>.png` exists for every screen and is non-empty — UNLESS the run used `--no-render`, in which case `manifest.synthesis.dev_no_render: true` is set and `design-implement` will refuse the bundle.
 - In `refine-screen` mode: the drift check has run and any drift has either been eliminated or explicitly moved into `targeted_changes`.
-- The next agent in the chain (`design-implement`) can work from the bundle alone without re-prompting the user.
+- The next agent in the chain can work from the bundle alone without re-prompting the user. When `needs_human_review: false`, that next agent is `design-implement`; when `true`, it is `design-review` and the manifest's `handoff_target` reflects this.
 
 ---
 

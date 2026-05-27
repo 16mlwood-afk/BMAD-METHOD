@@ -48,7 +48,9 @@ Per workflow.md §SKILL ROUTING, skill routing is **driven by `{page_mode}`**, n
 **Always invoke in every run (every page_mode, both synthesis modes):**
 
 - `design-policy-canonical` — the policy is the floor; the skill enforces the trust hierarchy and refuses anti-default compositions.
-- Project frontend / webapp design skill — e.g., `website-building` for SvelteKit/React web UIs. Synthesis emits HTML and needs design vocabulary regardless of scope.
+- **`{frontend_skill}`** (resolved in step 3 §8 — MANDATORY). Synthesis emits HTML and tokens; layout, hierarchy, typography, and visual patterns MUST be chosen by a skill with frontend/design competence — not by policy or domain skills alone. Per the role split in workflow.md §SKILL ROUTING → "Role of each skill", this skill owns taste (hierarchy, rhythm, density calibration, aesthetic restraint) — without it, synthesis produces a policy-compliant wireframe rather than a designed screen. Gate 5a in step 3 already halted the workflow if this skill couldn't be resolved.
+
+**Consult `{exemplars}` (loaded in step 3 §9) BEFORE composing each screen.** Read 1–2 exemplars whose page-mode and surface-family best match the screen being synthesized. Anchor hierarchy, density, top-band summary patterns, table framing, and state presentation to the exemplars unless the brief explicitly authorizes a departure. Step 6 (f) will flag unauthorized deviation as `exemplar_failed`.
 
 **Drive by `{page_mode}`:**
 
