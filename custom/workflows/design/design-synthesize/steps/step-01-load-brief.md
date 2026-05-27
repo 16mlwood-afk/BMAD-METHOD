@@ -15,8 +15,8 @@ description: 'Resolve the brief artifact, parse YAML frontmatter, extract featur
 
 - **Do not generate a brief.** If the brief is missing or malformed, halt. Brief authoring is the upstream workflow's job (`design-handoff` / `design-artifact-loop`).
 - **Do not substitute a stale brief.** If the user's input is ambiguous (e.g., they passed a slug that matches three artifacts), halt and ask for the exact path — do not pick the newest and continue.
-- **Do not interpret the brief.** The brief is the canonical input; this step's job is to parse it, not to fix it. If a field is missing, halt — do not invent defaults.
-- **Mode is locked here.** `{mode}` is set from the brief's frontmatter once and never reconsidered. If the brief's `mode` is `refine-screen` but it lacks `targeted_changes` / `unchanged_regions`, halt — refine-screen mode without scope declarations is unsafe (the drift check in step 6c has no baseline).
+- **Do not invent. Do lift.** Inventing defaults is forbidden — never fabricate a `target_slug`, a route, a V-number, or an unchanged region the brief does not state. BUT: if a required frontmatter field is missing AND the brief body authors it unambiguously (e.g., `Route: /expenses` in §1, `screen-review-{slug}-{date}.md` referenced in §6, V1/V2/V3 with explicit region+rationale, a "Do not change" list with named regions), lift the value into the resolved state and record the lift in `{frontmatter_lifts}` for audit. Lifting is structuring; inventing is fabricating. Halt only when the body is silent or ambiguous on the missing field — never bounce the user back for a mechanical copy-paste from §X into the frontmatter.
+- **Mode is locked here.** `{mode}` is set from the brief's frontmatter (or inferred per §5b's mode-inference rule) once and never reconsidered. If the brief's `mode` resolves to `refine-screen` but neither frontmatter nor body unambiguously supplies `targeted_changes` AND `unchanged_regions`, halt — refine-screen mode without scope declarations is unsafe (the drift check in step 6c has no baseline).
 - YOU MUST ALWAYS SPEAK OUTPUT in your agent communication style with the config `{communication_language}`.
 
 ---
@@ -86,9 +86,32 @@ Extract the frontmatter block between the first two `---` lines. Parse into `{br
 - `mode` (`fresh-design` or `refine-screen`)
 - `route` (single route) OR `routes` (list of routes for multi-screen)
 
-If any required key is missing, halt with: `brief frontmatter missing required field(s): <list>`. Report ALL missing fields in one halt — do not halt-on-first-miss; the user should fix them in one pass.
+For each missing required key, attempt the auto-lift in §5b BEFORE halting. Halt with `brief frontmatter missing required field(s): <list>` only for fields that §5b could not resolve from the body. Report ALL unresolved fields in one halt — do not halt-on-first-miss.
 
 If frontmatter is malformed (parser raises), halt with the parser error and the offending line range. Do not attempt to "repair" the YAML.
+
+### 5b. Auto-lift universal required fields from body (when frontmatter omits them)
+
+Initialize `{frontmatter_lifts} = {}` (map of lifted-field → source-region). For each universal required field missing from `{brief_frontmatter}`, apply the resolution rule below. Lift on unambiguous success; halt on ambiguity or silence.
+
+| Missing field | Resolution rule | Halt if |
+|---|---|---|
+| `target_slug` | Derive from `{brief_path}` filename: strip prefix (`design-handoff-` / `design-brief-` / `design-response-` / `handoff-`) and the trailing `-{date}.md`. The remainder is the slug. | Filename does not match the prefix-slug-date convention. |
+| `mode` | Scan `{brief_frontmatter}` and `{brief_content}` for refine-screen signals: presence of `screen_review_ref`, a body reference to a `screen-review-*.md` artifact, V1/V2/V3 issue blocks tied to a prior review, or explicit "refinement of" / "refine-screen" language in §1 or the design ask. If any are present → `refine-screen`. Otherwise → `fresh-design`. | Body contains BOTH refine-screen and fresh-design signals (e.g., references a screen-review but also says "new screen, no prior implementation"). |
+| `route` / `routes` | Search the body for explicit route lines. Patterns: `Route: <pathname>`, `Routes:\n- <pathname>\n- ...`, a "Route" or "Routes" section heading, or a code fence containing `/<segment>/...` lines. Lift the first unambiguous match. Single route → set `route`; multiple → set `routes`. | Body contains no explicit route declaration, OR multiple distinct route candidates without an authoring marker (`Route:`, "Routes:", a section heading) to disambiguate. |
+
+For each successful lift, record in `{frontmatter_lifts}`:
+
+```yaml
+{frontmatter_lifts}:
+  target_slug: { value: "expenses-ocr-failure-visibility", source: "filename" }
+  mode: { value: "refine-screen", source: "body: §6 references screen-review-expenses-ocr-failure-visibility-2026-05-24.md" }
+  route: { value: "/expenses", source: "body §1: 'Route: /expenses'" }
+```
+
+Mutate `{brief_frontmatter}` in-memory with the lifted values so downstream steps (6, 6a, 7, 8) operate on a complete frontmatter. **Do not write back to disk** — the brief file is upstream's source of truth; lifts are local-to-this-run.
+
+If any required field cannot be lifted per the rule above, append it to the halt list. Emit one combined halt message naming both the unresolved fields AND any failed-lift attempts (so the user sees WHY the lift failed — "found 3 candidate routes, no `Route:` marker to disambiguate").
 
 ### 6. Project frontmatter into state
 
@@ -146,15 +169,36 @@ If `screens` is omitted, derive: `[list, detail, drawer]` from `[/.../avask, /..
 
 ### 8. Refine-screen mode validation
 
-If `{mode} == "refine-screen"`, the brief MUST contain:
+If `{mode} == "refine-screen"`, the brief MUST supply (in frontmatter OR unambiguously in the body):
 
 - `screen_review_ref` — path to the `screen-review-*.md` that scoped this refinement.
 - `targeted_changes` — list of regions the bundle is intentionally changing (each with a `region:` name and a `rationale:` tied to a screen-review V-number or brief section).
 - `unchanged_regions` — list of regions that must match the prior implementation byte-for-byte (modulo token substitution).
 
-If any of these is missing, halt with: `refine-screen mode requires screen_review_ref, targeted_changes, and unchanged_regions in frontmatter; missing: <list>`.
+For each missing field, attempt the auto-lift in §8a BEFORE halting. Halt with `refine-screen mode requires screen_review_ref, targeted_changes, and unchanged_regions; could not resolve: <list>` only for fields §8a could not lift.
 
-Project into state:
+### 8a. Auto-lift refine-screen required fields from body (when frontmatter omits them)
+
+For each refine-screen required field missing from `{brief_frontmatter}`, apply the resolution rule below. Lift on unambiguous success; halt on ambiguity or silence. Append each lift to the same `{frontmatter_lifts}` map initialized in §5b.
+
+| Missing field | Resolution rule | Halt if |
+|---|---|---|
+| `screen_review_ref` | Scan body for a path-shaped string matching `screen-review-{target_slug}-*.md` (anywhere — explicit "Source artifact:" line, §6 reference, prose mention). If exactly one matches, lift it. If zero, attempt the latest `screen-review-{target_slug}-*.md` under `{implementation_artifacts}` as a fallback ONLY IF the body explicitly says "based on the most recent review" or equivalent. | Multiple distinct `screen-review-*.md` paths appear in the body without a clear primary; OR zero paths AND no explicit "most recent review" instruction. |
+| `targeted_changes` | Extract V-numbered issue blocks from the body. Each must have an identifiable `region:` (named UI surface — "filter bar", "table header", "expanded row drawer") and a `rationale:` (V-number reference like "V1" or "V1, V2" OR a brief-section citation like "§6"). Lift as a list. | Body has V-numbers but no nameable regions per block; OR has region names but no V-number / brief-section anchor (lift without anchor is unsafe — the drift check has no baseline). |
+| `unchanged_regions` | Extract from a body list explicitly labeled "Do not change", "Do NOT break", "Preserve", "Unchanged regions", "Keepers", "What to keep", or equivalent. Lift the named regions verbatim. | No such labeled list exists in the body. (Implicit unchanged-regions are unsafe — refine-screen requires explicit scoping.) |
+
+For each successful lift, append to `{frontmatter_lifts}`:
+
+```yaml
+{frontmatter_lifts}:
+  screen_review_ref: { value: "<path>", source: "body §6: explicit reference" }
+  targeted_changes:  { value: [<list>], source: "body §6: V1, V2, V3 blocks with regions+rationales" }
+  unchanged_regions: { value: [<list>], source: "body §6: 'Do NOT break' list (8 entries)" }
+```
+
+Mutate `{brief_frontmatter}` in-memory with the lifted values. Do not write back to disk.
+
+Project into state (whether from frontmatter or lifted):
 
 | Frontmatter field | State variable |
 |---|---|
@@ -200,8 +244,14 @@ Print to the user (one block, concise):
   routes:          [{routes, comma-separated}]
   refine baseline: {screen_review_ref or "n/a"}
 
+Frontmatter lifts (only printed when {frontmatter_lifts} is non-empty):
+  - <field>: lifted from <source>
+  - <field>: lifted from <source>
+
 Proceeding to step 2: load policy.
 ```
+
+If `{frontmatter_lifts}` is non-empty, the lifts block MUST appear in the print — the user needs to see which structural decisions came from body-inference rather than explicit frontmatter, so a wrong inference is caught before synthesis runs. If `{frontmatter_lifts}` is empty, omit the block entirely (don't print an empty "Frontmatter lifts:" header).
 
 Then load `step-02-load-policy.md` and follow it.
 
@@ -216,6 +266,7 @@ After this step, the following state variables MUST be populated:
 - `{target_slug}`, `{target_route}` (or null for multi-screen), `{screens}`
 - `{feature_purpose}`, `{data_shape}`, `{user_context}`, `{visual_direction}`, `{hard_constraints}`, `{design_ask}`
 - `{analytics_structure}` if §4b present, else null
+- `{frontmatter_lifts}` — map of `field → {value, source}` for every required field that was lifted from body rather than read directly from frontmatter. Empty map if all required fields were present in frontmatter. Non-empty lifts are not failures, but they ARE structural decisions the bundle's reproducibility hinges on — surface them in the step-10 load summary and (when step-07 is wired to read it) include them in `manifest.synthesis.frontmatter_lifts` for audit. Until step-07 wires this up explicitly, the state variable still exists for downstream introspection.
 - In `refine-screen` mode: `{screen_review_ref}`, `{targeted_changes}`, `{unchanged_regions}`
 
 Any unset required variable is a workflow bug — halt before step 2.
