@@ -21,6 +21,7 @@ description: 'Invoke sister skills, generate bundle/<screen>.html and bundle/tok
 - **No lorem ipsum.** Realistic content comes from `{data_shape}`. If the brief says the table shows invoices with VAT rates, populate rows with realistic invoice numbers, supplier names, GBP amounts at plausible VAT rates. Empty states, error states, loading states — render them with realistic copy too.
 - **The HTML is canonical; framework files are scaffolds.** Emit `<screen>.html` first, every time. The framework file (e.g., `<screen>.svelte`) is an OPTIONAL convenience for the implementer; if you emit it, it must match the HTML's visual decisions exactly. `design-implement` reads the HTML.
 - **Refine-screen: respect the scope.** In `refine-screen` mode, regions declared in `{unchanged_regions}` must match `{prior_impl_content}` byte-for-byte (modulo token substitution). Touching them is a step-6c failure.
+- **Existing UI is not a visual baseline.** When the brief references current implementation files for context (its "Implementation Files" section, references to current pages by route), treat the reference as **IA-only by default** — use it for routes, fields, data binding, and the sequence of user actions, but DO NOT inherit visual treatments (type scale, density, column composition, spacing, chip styling, table framing, filter pills, action button treatment). Re-derive every presentational decision from the brief's visual direction, the policy, and `{exemplars}`. A surface earns visual-baseline status only when its current rendering traces back to a documented `design-handoff → design-synthesize → design-implement` (or `design-review`-approved) chain — surfaces from `quick-dev` / `quick-spec` / unreviewed paths are low-design-provenance and do not. See workflow.md Critical Rules → "IA vs visual trust" and §3 "Provenance check during planning" below.
 - YOU MUST ALWAYS SPEAK OUTPUT in your agent communication style with the config `{communication_language}`.
 
 ---
@@ -81,6 +82,23 @@ For each screen in `{screens}`, plan:
 - Mark each planned region as `targeted` (in `{targeted_changes}`) or `unchanged` (in `{unchanged_regions}`).
 - For `unchanged` regions, copy the prior implementation's markup (translated to inline-style HTML if it currently uses Tailwind classes — token substitution is allowed, structural changes are not).
 - For `targeted` regions, apply the brief's correction.
+
+**Provenance check during planning (every mode):**
+
+Before adopting any visual treatment from a referenced implementation file, ask: "did this surface ship through `design-handoff → design-synthesize → design-implement` (or `design-review`-approved)?"
+
+- **Yes (high-provenance)** — its rendering MAY anchor your visual decisions (alongside `{exemplars}`).
+- **No, or unknown (low-provenance)** — treat the reference as IA-only. Use it for routes, fields, data binding, and the sequence of user actions, but do not inherit type scale, density, column composition, spacing, chip styling, table framing, filter pills, or action button treatment. Re-derive those from the brief's visual direction (precedence 1) + the project policy (2) + `{exemplars}` (anchoring rule).
+
+Heuristics for classifying provenance when the brief doesn't say:
+
+- A surface that the brief's §6 / "Reference Pages" / "Visual register to match" lists is high-provenance by definition (the brief author selected it as a visual exemplar).
+- A surface the brief mentions only in §8 "Implementation Files" (technical reference) without separately listing in §6 is presumed **low-provenance** unless the brief explicitly says otherwise.
+- A surface the brief explicitly describes with language like "currently behaves as if…", "the chrome here is wrong", "redesign", "don't reproduce either page's current chrome" is **low-provenance** by the brief author's own framing.
+- A surface produced by `quick-spec` / `quick-dev` (visible in commit history, or in the brief's mention of one-off implementation paths) is **low-provenance**.
+- When in genuine doubt, presume **low**. Re-deriving from policy + exemplars is safer than perpetuating an un-designed treatment as canon.
+
+The provenance verdict is per-surface, not per-bundle. A bundle may legitimately treat one referenced page as a visual anchor (high-provenance exemplar) and another as IA-only (low-provenance context).
 
 Do not write any file yet. Planning happens first so the token budget is known before emission.
 
