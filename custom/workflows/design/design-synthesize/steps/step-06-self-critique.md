@@ -151,6 +151,76 @@ Collect violations into `{drift_violations}`:
 
 A region that doesn't appear in either `targeted_changes` or `unchanged_regions` is an UNDECLARED region — surface as a drift violation: `region 'X' appears in bundle but is not declared in either targeted_changes or unchanged_regions. Declare it.`
 
+### 5a.0. DETERMINISTIC PRE-EMIT GATES — runs BEFORE (g/h/i) rubric
+
+This sub-step runs concrete shell detectors BEFORE the agent does any rubric grading in §5a (g/h/i). The detectors close a structural blind spot in the previous design: §5a (g/h) was rubric-graded by the same agent that synthesized the bundle. In practice this means the agent that committed to one narrative when writing the active-mode label and another when writing the section dividers must catch its own contradiction — a known self-review blind spot.
+
+The named failure case: the `amazon-transactions` bundle on 2026-05-28 was rated `pass / excellent / aligned` on its first self-critique pass while containing four internal-consistency contradictions and a missing brief §7 deliverable. The re-grade under the (g/h/i) rubric caught all of them — but only because the rubric was patched after the fact. A deterministic pre-emit gate catches them on iteration 1, not iteration N after a rubric upgrade.
+
+**Gate semantics — IMPORTANT:**
+
+- **The detector output IS the violation.** The agent does NOT get to rationalize it away, mark it false-positive, or modify the gate's conclusion. If the gate fires, the violation enters the manifest as-is with `source: deterministic_gate_GX`.
+- **The detectors are intentionally conservative (high precision, lower recall).** They use entity-specific patterns (a specific card number, an order ID, a known state-label string) rather than generic-action patterns. False negatives are acceptable here; false positives are a workflow bug.
+- **§5a (g/h/i) still runs after the deterministic gates, additively.** The agent's rubric pass finds project-specific contradictions and prose-only / abstract-answer cases the gates don't cover. But anything the gates fire on enters `{internal_consistency_violations}` and `{deliverable_violations}` unconditionally — the agent's rubric pass cannot remove gate hits.
+
+**Execute:**
+
+```bash
+# Path is fork-synced — resolves under the project's _bmad/ tree.
+gates_script="{project-root}/_bmad/bmm/workflows/design/design-synthesize/scripts/run-deterministic-gates.py"
+
+# Run against the emitted bundle directory. --brief is required for G.6
+# (the empty-state deliverable check); omit only when the brief is absent.
+python3 "$gates_script" "{bundle_dir}" --brief "{brief_path}"
+gate_exit=$?
+```
+
+`gate_exit` semantics:
+
+| Exit | Meaning |
+|---|---|
+| 0 | No deterministic violations. Proceed to §5a (g/h/i) rubric pass. |
+| 1 | At least one deterministic violation. Parse the YAML output, append to violation arrays, then run §5a rubric pass for any additional findings. |
+| 2 | Script invocation error (missing bundle dir, missing python3, broken script). Surface to the user — this is a workflow bug, not a synthesis quality issue. |
+
+**Interpret the output:**
+
+The script emits YAML to stdout — one block per violation:
+
+```yaml
+- check: <gate_check_id>
+  screen: <screen_filename>
+  detail: <one-line evidence with the offending strings inline>
+  fix: <one-line directive>
+  source: deterministic_gate_GX
+```
+
+For each block, append directly to the matching state variable:
+
+| `check` value | Append to |
+|---|---|
+| `active_filter_matches_rows` | `{internal_consistency_violations}` |
+| `action_not_duplicated_across_three_surfaces` | `{internal_consistency_violations}` |
+| `dividers_consistent_with_filter` | `{internal_consistency_violations}` |
+| `empty_state_deliverable_present` | `{deliverable_violations}` (also mark the empty-state entry in `{deliverable_coverage}` as `missing`) |
+
+Preserve the `source: deterministic_gate_GX` field on each appended entry. The manifest reader uses it to trace which violations came from the deterministic pass and which from the agent's rubric pass.
+
+**Detector reference:**
+
+| ID | Check | What it catches | False-positive guard |
+|---|---|---|---|
+| G.2 | `active_filter_matches_rows` | Active-filter label "Showing <state>" while in-table section dividers introduce other state groups | Skips when active filter is "all" (then dividers are expected) |
+| G.3 | `action_not_duplicated_across_three_surfaces` | The same `<button>` text appearing in ≥2 distinct `data-component` regions on the same screen | Only fires when the button text contains an entity identifier (digit run, `INV-09817`, `306-2841092-4738155`); generic verbs like "Run auto-match", "Verify matches" can legitimately repeat in header + empty-state CTA |
+| G.5 | `dividers_consistent_with_filter` | Twin of G.2 — the dividers half of the contradiction; emitted as a separate violation so the user sees both detectors fire | Same as G.2 |
+| G.6 | `empty_state_deliverable_present` | Brief §7 names an empty/no-results state but bundle contains no `*-empty.html` | Only fires when brief §7 explicitly mentions empty/no-results state; silent when the brief doesn't ask for one |
+
+**Loop behavior:** If `gate_exit == 1`, do NOT immediately loop back to step 4. Continue through §5a (g/h/i) rubric to collect any additional findings, then through §6 (d/e/f) visual rubric for evidence-gated ratings, then compose the combined correction note in §9. The deterministic findings sit in the correction note alongside rubric findings. The iteration counter applies normally — three iterations max. The gates eliminate the false-positive class where iteration 1 self-rates `excellent` only to be downgraded by a later rubric upgrade.
+
+**When the script is unavailable:** If `gate_exit == 2`, record the failure mode in `{workflow_diagnostics}` and proceed with §5a rubric only. The bundle still gets graded; it just loses the deterministic floor. This degrades to the pre-2026-05-29 behavior. Surface the diagnostic in step 7's handoff line so the user knows the gates didn't run.
+
+---
+
 ### 5a. PRE-VISUAL GATES — brief-faithfulness half (g/h/i)
 
 These three sub-checks run BEFORE the visual rubric (§6 d/e/f). Their purpose is to catch the failure mode the visual rubric structurally misses: a bundle that is self-rated `excellent` but is **internally inconsistent**, **fails to produce deliverables the brief asked for**, or **only abstractly answers the brief's questions**. The visual rubric can rate a single coherent table as `excellent`; these gates ask whether the bundle answers the contract the brief signed.
@@ -161,7 +231,9 @@ These gates were added 2026-05-28 after the `amazon-transactions` bundle (PR #80
 
 #### Sub-check (g) — Internal consistency
 
-For each `<screen>.html` in the bundle, scan for the four pre-defined contradictions below. Every match is recorded in `{internal_consistency_violations}`. Even on pass, initialize the array `[]` explicitly.
+**Note on layering:** Step 5a.0 has already run the deterministic detectors for `active_filter_matches_rows`, `action_not_duplicated_across_three_surfaces`, `dividers_consistent_with_filter`, and `empty_state_deliverable_present` (the last feeds (h), not (g)). Any hits from those detectors are already appended to `{internal_consistency_violations}` with `source: deterministic_gate_GX`. Do NOT re-run those four checks here. The agent's job in (g) is to find project-specific contradictions the deterministic detectors don't cover, plus the fourth check below (`counts_not_duplicated_without_new_value`) which is rubric-only.
+
+For each `<screen>.html` in the bundle, scan for the pre-defined contradictions below. Every match is recorded in `{internal_consistency_violations}` with `source: rubric_grading`. Even on pass, initialize the array `[]` explicitly (or leave intact if the deterministic gates already populated it).
 
 **Mandatory consistency checks:**
 
