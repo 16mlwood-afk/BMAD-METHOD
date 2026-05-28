@@ -275,6 +275,7 @@ components_emitted:
     screen: {screen_name}            # for single-screen-only components
     screens: [{list}]                # for multi-screen components
     region_span: {selector or anchor}
+    states_emitted: [{list}]         # MANDATORY — every state this component renders in the bundle. ALWAYS includes "default"; add "hover", "focus", "selected", "failed", "empty", "disabled", "loading", or project-specific values when the bundle contains <style>-block rules targeting them, sibling instances carrying data-state="…", or compound state combinations (e.g., "failed:hover"). A component with interactive affordances (row, button, input, action cell) that emits only ["default"] is a state-coverage gap — design-implement's step-01 will surface it for re-audit; design-implement's step-03 grid will rate any state the impl supports but the design doesn't catalog as EXTRA in impl. Empty list is forbidden; absent field is forbidden.
   - ...
 
 interaction:

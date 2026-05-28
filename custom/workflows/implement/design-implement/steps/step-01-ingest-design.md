@@ -13,6 +13,7 @@ description: 'Ingest the design source — either fetch and extract a Claude Des
 - **Branch on `{input_kind}` at the top.** Two ingestion paths converge on the same downstream state. Never mix them: a `synthesize_bundle` path never calls curl; a `claude_design_url` path never reads `manifest.yaml`.
 - If download fails (URL path only), retry once. If it fails again, report the error and stop.
 - Read every file in the bundle that the target design file references — do not skip any.
+- **Catalog the state axis explicitly.** Inline `style="…"` attributes only describe a single rendering. State-conditional rules live in (a) `<style>` blocks inside `<screen>.html` with `:hover`, `:focus`, `[data-state="…"]`, `.failed`-style selectors, (b) sibling element instances carrying `data-state="…"` variants, and (c) — for URL-path bundles — JSX conditional styling keyed on a prop or row.status. **Skipping any of these three is silent failure**: the default-state grid will rate `✓` while the state-conditional rule ships as a delta. Every property row records a `state` field; if no state is detectable for an element, record `state: default`.
 - YOU MUST ALWAYS SPEAK OUTPUT in your agent communication style with the config `{communication_language}`
 
 ---
@@ -102,16 +103,24 @@ Read the token/theme file (typically `theme/tokens.jsx` or similar). Extract and
 | Type | body | 13px |
 | ... | ... | ... |
 
-### URL.5. Catalog Every Component's CSS Properties (JSX inline styles)
+### URL.5. Catalog Every Component's CSS Properties (JSX inline styles + state-conditional branches)
 
 For each component in `{design_components}`, extract **every inline style property** from the JSX source. For every `style={{ ... }}` block, record one property row.
+
+**State detection on the URL path.** JSX bundles encode states three ways — catalog ALL of them, not just the default branch:
+
+1. **Conditional style objects.** `style={{ ...base, ...(row.status === 'failed' && failedStyles) }}` → emit rows for BOTH branches: one with `state: default` containing the base styles, one with `state: failed` containing the merged base + override styles.
+2. **Template-literal class joins.** `` className={`row ${hovered ? 'row-hover' : ''} ${selected ? 'row-selected' : ''}`} `` → look up the referenced class rules in the same component file or imported stylesheets; emit a row per (component, state, property) triple.
+3. **Multiple JSX siblings demonstrating variants.** A component file that renders `<Row state="default" />`, `<Row state="failed" />`, `<Row state="empty" />` for documentation → catalog the styling each variant resolves to.
+
+Add `{design_states}[ComponentName]` populated with every state observed (deduplicated). If only the default branch exists, record `[default]` and move on.
 
 Property rows live in TWO places (write to both — they're the same data, different shapes):
 
 1. **Embedded in `{design_components}`** — append to `{design_components}[name].properties` (a list of rows). This is the canonical store that step-03 reads from when iterating component-by-component for the comparison grid.
 2. **Flat list in `{css_property_catalog}`** — append to the flat catalog for SHARED.1's non-empty verification and SHARED.2's count display.
 
-Both writes use the same row shape (see §SHARED below).
+Both writes use the same row shape (see §SHARED below). Every row includes a `state` field — `default` for the unconditional branch, `hover | focus | selected | failed | empty | disabled | <other>` for state-conditional rules.
 
 Token references like `tokens.radius.lg` resolve to their numeric value (`4px`) via `{design_tokens}` and the resolved value is what gets recorded; preserve the token name in parentheses for traceability.
 
@@ -210,6 +219,10 @@ For each screen file `{design_dir}/<screen>.html`:
 - Read the file fully (use the Read tool).
 - Scan for `data-component="ComponentName"` attributes. Each match defines one component instance in this screen.
 - Cross-reference against `components_emitted`. Any HTML `data-component` not in `components_emitted` is a manifest/HTML mismatch — log it as `{component_drift}` but do NOT halt (the HTML wins per design-synthesize's tie-breaker rule). Any `components_emitted` entry not found in HTML is also drift — log it.
+- Cross-reference `components_emitted[*].states_emitted` (manifest field added 2026-05-28) against the states observed in HTML (`<style>`-block selectors, `data-state` variants). Manifest declares states the synthesizer claims to have rendered; HTML is the actual evidence. Discrepancies surface in `{state_drift}` — do NOT halt:
+  - **States in manifest but absent from HTML** → synthesizer over-claimed; surface as `state_drift.over_claimed` so the user knows the bundle's state coverage is shallower than the manifest advertises.
+  - **States in HTML but absent from manifest** → manifest under-reported; surface as `state_drift.under_reported`. HTML wins per the existing tie-breaker; populate `{design_states}` from HTML.
+  - **`components_emitted` entry with `states_emitted: [default]` for a component the heuristics flag as interactive** (row, button, input, action cell, anything with `data-bind`/`data-action`/role="button") → surface as `state_drift.interactive_default_only`. This is the explicit signal that the bundle is the kind that historically leaked state-conditional rules — the user sees it before step-03 builds the (likely incomplete) grid.
 
 Build `{design_components}` as:
 
@@ -233,28 +246,37 @@ Build `{design_components}` as:
 
 The `instances` and `inline_style_blocks` counts feed step 3's exhaustiveness gate — every instance and every style block needs a delta row.
 
-### BUNDLE.5. Catalog every CSS property (inline `style="…"` + resolved `var(--*)`)
+### BUNDLE.5. Catalog every CSS property — three sources (inline `style="…"`, `<style>` blocks, `data-state` variants)
 
-For each `<screen>.html` file, extract **every visual property** declared inline. The bundle's invariant is "every visual value is explicit at parse time" — so the catalog is built by scanning inline `style="…"` attributes and resolving any `var(--*)` references through `{design_tokens}`.
+The bundle's invariant is "every visual value is explicit at parse time" — but "explicit" includes state-conditional rules, which only fire on hover/focus/data-state changes. The catalog is built from THREE sources, and skipping any one is silent failure (the previous design caught inline styles only and shipped state-conditional rules as deltas — see fork retro 2026-05-28: PR #827 failed-row tint, hover, null-data).
 
-For each `style="..."` attribute:
+**Source 1 — Inline `style="…"` attributes.** For each `style="..."` attribute:
 
 - Split into individual `property: value;` declarations.
-- For each declaration, record one property row in TWO places (same data, different shapes):
-  1. **Embedded in `{design_components}`** — append to `{design_components}[component].properties`. This is the canonical store that step-03 reads from when iterating component-by-component for the comparison grid.
-  2. **Flat list in `{css_property_catalog}`** — append to the flat catalog for SHARED.1's non-empty verification and SHARED.2's count display.
+- Identify the row's `state` by walking up to the nearest ancestor carrying `data-state="…"`. If none, `state: default`.
+- For each declaration, record one property row in TWO places (canonical embedded + flat catalog; same data, different shapes).
 
-Row shape (used for both writes):
+**Source 2 — `<style>` blocks inside `<screen>.html`.** Scan every `<style>` block in the screen file. Parse each rule. For each rule whose selector targets a state pseudo-class or attribute (`:hover`, `:focus`, `:focus-visible`, `:active`, `[data-state="…"]`, `.failed`-style state classes, descendant combinators that name a state):
+
+- Identify the target component by matching the selector against `data-component` roots in the HTML body.
+- Identify the `state` from the selector itself (`:hover` → `hover`; `[data-state="failed"]` → `failed`; `.row-empty` → `empty`).
+- For each `property: value;` in the rule body, emit one property row per matching (component, state, property) triple. A rule like `[data-component="ExpenseRow"][data-state="failed"]:hover { background: var(--row-failed-hover-bg); }` produces a row with `state: "failed:hover"` — compound states are explicit, not flattened.
+
+**Source 3 — Sibling `data-state` variants.** A bundle that demonstrates state coverage by rendering multiple instances (e.g., one `<tr data-state="default">`, one `<tr data-state="failed">`, one `<tr data-state="empty">`) supplies state rows via inline `style="…"` on the variant element. Catalog each variant's styles per Source 1, distinguishing them via the `state` field. Populate `{design_states}[component]` with the deduplicated set of states observed across all three sources.
+
+Row shape (used for all three sources):
 
 ```
 {
-  component: "StatusBadge",            # from the nearest ancestor data-component
+  component: "ExpenseRow",             # from the nearest ancestor data-component
+  state: "failed",                     # default | hover | focus | selected | failed | empty | disabled | <other> | <compound like "failed:hover">
   screen: "list.html",                 # source screen
-  element: "<span>" or selector path,  # the DOM element bearing the style attribute
+  element: "<tr>" or selector path,    # the DOM element or CSS selector the rule applies to
   property: "background-color",        # CSS property name (kebab-case as in CSS, not camelCase)
-  raw_value: "var(--status-warning)",  # exact source value from the attribute
-  resolved_value: "#f59e0b",           # resolved through tokens.css (var(--*) → value)
-  token_ref: "--status-warning",       # populated when raw_value is a var(--*) reference
+  raw_value: "var(--row-failed-bg)",   # exact source value
+  resolved_value: "#fee2e2",           # resolved through tokens.css (var(--*) → value)
+  token_ref: "--row-failed-bg",        # populated when raw_value is a var(--*) reference
+  source: "inline" | "style_block" | "data_state_variant",
   source_file: "list.html",
   source_line: 47,
 }
@@ -262,7 +284,7 @@ Row shape (used for both writes):
 
 If a `var(--*)` reference cannot be resolved against `{design_tokens}`, that is an invariant-1 violation that design-synthesize step 7 should already have caught. Log as `{unresolved_var_refs}` and surface in the ingestion summary — do not halt, but flag prominently (this bundle should not have been emitted).
 
-**Be exhaustive.** Every property on every styled element. This table is the reference for the comparison grid in Step 3. Every property missed here is a delta that leaks through.
+**Be exhaustive along all three axes — component, state, property.** Every property on every (element, state) pair. This table is the reference for the comparison grid in Step 3. Every (component, state, property) triple missed here is a delta that leaks through. State-conditional rules are the dominant leak mode — prioritize Source 2 (`<style>` blocks) audit before declaring this step complete.
 
 Pay special attention to:
 - `border-radius` — the #1 source of design drift
@@ -325,6 +347,11 @@ Design ingested ({input_kind}):
   token categories:       {comma-separated unique categories}
   tokens cataloged:       {len(design_tokens)}
   CSS properties:         {len(css_property_catalog)}
+  states cataloged:       {sum(len(states) for states in design_states.values())} across {len(design_states)} components
+  state breakdown:        {comma-separated unique states observed, e.g., "default(12), hover(4), focus(2), failed(3), empty(1)"}
+{if any(states == ["default"] for component, states in design_states.items() if component in interactive_components):}
+  ⚠ interactive-only-default: {list of interactive components with default-only states} — state-conditional rules may have been missed; re-audit <style> blocks before proceeding
+{end if}
 {if input_kind == "synthesize_bundle" and len(unresolved_var_refs) > 0:}
   ⚠ unresolved var(--*):  {len(unresolved_var_refs)} — bundle should not have been emitted
 {end if}
@@ -333,6 +360,12 @@ Design ingested ({input_kind}):
 {end if}
 {if input_kind == "synthesize_bundle" and len(component_drift) > 0:}
   ⚠ manifest/HTML component drift: {len(component_drift)} — HTML wins per tie-breaker, but flag for audit
+{end if}
+{if input_kind == "synthesize_bundle" and len(state_drift) > 0:}
+  ⚠ manifest/HTML state drift:
+    over-claimed (in manifest, missing from HTML):   {len(state_drift.over_claimed)}
+    under-reported (in HTML, missing from manifest): {len(state_drift.under_reported)}
+    interactive-default-only (likely leak case):     {len(state_drift.interactive_default_only)} — re-audit <style> blocks before step-02
 {end if}
 ```
 
@@ -352,7 +385,8 @@ Both paths must populate the same normalized state:
 - `{design_file}` resolves to a primary file inside `{design_dir}` that exists and is readable.
 - `{design_components}` is a non-empty map of component name → metadata. Each component entry includes a non-empty `.properties` list of property rows (this is what step-03 iterates over).
 - `{design_tokens}` is a non-empty list of tokens with resolved values.
-- `{css_property_catalog}` is non-empty and every entry has `component`, `property`, `resolved_value`, and `source_file`. Its rows are identical to the rows embedded across `{design_components}[*].properties` — same data, different shape.
+- `{css_property_catalog}` is non-empty and every entry has `component`, `state`, `property`, `resolved_value`, `source`, and `source_file`. Its rows are identical to the rows embedded across `{design_components}[*].properties` — same data, different shape.
+- `{design_states}` is populated for every component. Components with only `[default]` are flagged in the summary if they match interactive-component heuristics (rows, buttons, inputs, cells with `data-bind` / `data-action` / role="button") — interactivity without state-conditional rules is the dominant leak mode and warrants a re-audit of `<style>` blocks before step-02.
 
 URL-path-only:
 - Design bundle downloaded and extracted successfully.
@@ -372,3 +406,4 @@ Bundle-path-only:
 - Treating the HTML wrapper as the design spec on the URL path (the components and theme files are the spec; the HTML is just the wrapper).
 - Missing asymmetric padding (`padding: '8px 12px'` is two properties, not one).
 - Silently ignoring `{unresolved_var_refs}` or `{config_class_violations}` on the bundle path. These indicate a bundle that should not have been emitted; surface them in the summary even though they don't halt step 1.
+- **State-axis blindness — the dominant leak mode.** Cataloging only inline `style="…"` and ignoring `<style>` blocks, `data-state` sibling variants, or JSX conditional style branches. The default-state catalog will look complete; the bundle's hover/focus/failed/empty/disabled rules will silently bypass the grid and ship as deltas in production. The 2026-05-28 fork retro (PR #827) was caused by exactly this — failed-row tint, failed-row hover, null-supplier styling, and null-total styling were all state-conditional and absent from the cataloged rows. If you finish ingestion with `{design_states}` showing only `[default]` for an interactive component (row, button, input, action cell), that is the signal that this failure mode is in play — re-audit `<style>` blocks before proceeding to step-02.

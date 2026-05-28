@@ -6,9 +6,9 @@ main_config: '{project-root}/_bmad/bmm/config.yaml'
 
 # Design Implement Workflow
 
-**Goal:** Take a Claude Design artifact URL and bring the codebase into pixel-perfect alignment with the design — measured by an exhaustive component × property comparison grid, not by eyeballing.
+**Goal:** Take a Claude Design artifact URL and bring the codebase into pixel-perfect alignment with the design — measured by an exhaustive **component × state × property** comparison grid, not by eyeballing. The state axis (default, hover, focus, selected, failed, empty, disabled, …) is part of the contract: a state-conditional rule in the design that has no matching grid row leaks to production.
 
-**Your Role:** You are a pixel-precision engineer. You do not design — you enforce. The Claude Design artifact is the authoritative specification. Your job is to extract every CSS value from the design source, compare it against the implementation, enumerate every delta, and fix all of them. A delta that slips through is a failure.
+**Your Role:** You are a pixel-precision engineer. You do not design — you enforce. The Claude Design artifact is the authoritative specification. Your job is to extract every CSS value from the design source — **inline styles, `<style>`-block rules, and `data-state` variants alike** — compare it against the implementation, enumerate every delta, and fix all of them. A delta that slips through is a failure, including state-conditional rules (failed-row tint, hover behavior, null-data styling) that don't appear in the default rendering.
 
 ---
 
@@ -33,8 +33,9 @@ This uses **step-file architecture** for focused execution:
 - `{impl_page}` — Path to the SvelteKit/React/Vue page component in the codebase
 - `{impl_components}` — Map of component name → file path in the project
 - `{impl_config}` — Tailwind/CSS config path and key overrides (border-radius, colors, etc.)
-- `{comparison_grid}` — The full component × property delta table
-- `{delta_count}` — Number of properties with non-zero deltas
+- `{design_states}` — Map of component name → list of states cataloged (e.g., `ExpenseRow → [default, hover, selected, failed, empty]`). A component with only `[default]` is the implicit baseline; any other state must be explicitly populated from the design source.
+- `{comparison_grid}` — The full component × state × property delta table
+- `{delta_count}` — Number of (component, state, property) triples with non-zero deltas
 - `{baseline_commit}` — Git SHA before any changes
 
 ### Step Processing Rules
@@ -50,7 +51,7 @@ This uses **step-file architecture** for focused execution:
 - **The design artifact is the single source of truth.** If the design says `border-radius: 4px` and the implementation says `rounded-lg` (which maps to `10px`), the implementation is wrong — full stop.
 - **Read the design source code, not screenshots.** JSX inline styles and token files contain exact values. Screenshots lose precision.
 - **Check Tailwind config overrides.** A class like `rounded-sm` doesn't mean 2px — it means whatever the project's `tailwind.config.js` maps it to. Always resolve through the config.
-- **Enumerate exhaustively.** Every CSS property on every component. The value of this workflow is that nothing slips through. Sampling is failure.
+- **Enumerate exhaustively along all three axes — component, state, property.** Every CSS property on every (component, state) pair. The value of this workflow is that nothing slips through. Sampling is failure. Cataloging only the default-state rendering is silent failure: hover, focus, selected, failed, empty, and disabled rules in the design that have no grid row will ship as deltas.
 - **N/A is a valid cell.** If a property exists in the design but the implementation doesn't have that component, or vice versa — mark it, don't skip it.
 - **Bundle gating is non-negotiable when consuming a design-synthesize bundle.** When `{input_kind} == "synthesize_bundle"`, step 1 MUST parse `bundle/manifest.yaml` and refuse the bundle (halt with the diagnostic in §"Input Resolution") if EITHER of the following is true:
   - `synthesis.dev_no_render: true` — the bundle was emitted without a screenshot (development mode) and is explicitly not production-ready.

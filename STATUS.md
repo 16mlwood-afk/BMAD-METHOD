@@ -7,7 +7,7 @@ description: Volatile state of the Mason-BMAD fork. Read by mason-bmad-workflow-
 
 > Update whenever you ship a change to the fork, absorb upstream, or change the shipped/designed status of a feature.
 
-**Last updated:** 2026-05-28 by Mason (workflow retro fixes: degraded-mode + drift gate + collapse + Block B + worktree-portability + delivery-to-main)
+**Last updated:** 2026-05-28 by Mason (workflow retro fixes: degraded-mode + drift gate + collapse + Block B + worktree-portability + delivery-to-main + design-implement state-axis)
 
 ---
 
@@ -41,6 +41,7 @@ description: Volatile state of the Mason-BMAD fork. Read by mason-bmad-workflow-
 - [x] **shared/worktree-portability.md** — codified rule: every producer resolves `{project-root}` via `git rev-parse --show-toplevel` at write-time, refuses writes outside the active worktree, halts with named diagnostic. Applied in design-review step-01 §7 and design-handoff step-03 §1. Closes silent main-checkout-write bug (2026-05-28).
 - [x] **shared/delivery-to-main.md + design-handoff step-04-deliver.md** — producer-side delivery sequence (commit → push → PR → merge → verify → fast-forward → exit-worktree). Closes the "file written to disk but not on origin/main" gap that caused Claude Design to fail-find a brief on 2026-05-28. Skippable via `--no-deliver` or `delivery.design-handoff: skip` config. Pattern is reusable for design-synthesize / maintenance-triage / artifact-loop — they should adopt step-N-deliver next (2026-05-28).
 - [x] **Canonical implementation-artifacts path consolidation** — workflow text was referencing legacy `_bmad/bmm/implementation-artifacts/` literal in 11 places across 6 design workflows; config resolves `{implementation_artifacts}` to `_bmad-output/implementation-artifacts/`. Diagnosed in accounting-tools (27 orphaned artifacts), fixed at fork-level (commit `ae4bb805`, 2026-05-28). Audit of all 13 projects: only accounting-tools materially affected. Re-sync needed for the other 12 to refresh workflow text (no artifact moves needed there).
+- [x] **design-implement state-axis (component × state × property grid)** — `design-implement/workflow.md`, `steps/step-01-ingest-design.md`, `steps/step-03-build-grid.md` + `design-synthesize/steps/step-07-emit-manifest.md`. The grid contract was Component × Property; the design's intent is Component × **State** × Property. Step-01 now catalogs state-conditional rules from three sources (inline `style=`, `<style>` blocks, `data-state` sibling variants); step-03's grid has a State column with per-state property sweeps and Tier-1 surfacing of state-coverage gaps; manifest schema gains mandatory `components_emitted[*].states_emitted`. Diagnosed in accounting-tools PR #827 retro (failed-row tint at 0.06 vs 0.10, failed-row hover regression, null-supplier rendered bold, null-total rendered bold — all four were state-conditional rules with no grid row). Driven by mason-bmad-workflow-expert Mode 3 diagnosis 2026-05-28; proposed new root cause class `contract-dimension-gap`. Re-sync needed for all 13 projects to pick up the new step text. (2026-05-28)
 - [?] **Worktree creation hook → auto-sync** — partial: `--worktree` flag exists, automatic hook wiring needs confirmation per-project
 - [?] **.gitignore entries for synced directories** — enforced per-project; audit across all 13 projects pending
 
