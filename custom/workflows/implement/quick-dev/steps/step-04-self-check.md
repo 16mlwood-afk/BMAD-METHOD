@@ -75,6 +75,26 @@ If gaps are found post-implementation, report them clearly:
 | transportationType | populated | all null | SP-API does not return shippingSolution for these shipments |
 ```
 
+### 6. Regression Surface (REQUIRED for brownfield/mixed; optional for greenfield)
+
+> **Skip this section ONLY if `project_phase: greenfield`.** For brownfield and mixed, this is a hard gate: production users depend on the existing behavior of any code you touched.
+
+For each function, component, or schema field you modified:
+
+- [ ] **Callers identified.** Listed every caller/dependent that consumed the old behavior (grep for the symbol; trace imports).
+- [ ] **No callers broken.** Type-checked or compiled — no errors introduced. If the project has tests for the affected files, they pass. If not, the absence of tests is itself noted.
+- [ ] **Behavior contract documented.** If the change is non-trivial, a one-sentence "before → after" of the contract is recorded (in the tech-spec for Mode A; in your summary for Mode B).
+- [ ] **Rollback path known.** You can state in one sentence how to revert this change if production breaks.
+
+If you can't tick all four boxes, the change is not done — return to step-03 and address the gap. Do NOT proceed to adversarial review until the regression surface is clean.
+
+```
+**Regression Surface Report (brownfield/mixed):**
+| Symbol Touched | Callers | Tests Pass? | Rollback |
+|---|---|---|---|
+| matchSupplier() | invoices.svelte, queries.svelte, admin/match-batch | yes (3 unit, 0 integration) | revert PR + redeploy; no schema change |
+```
+
 ---
 
 ## UPDATE TECH-SPEC (Mode A only)
@@ -129,3 +149,4 @@ Proceed immediately to `{project-root}/_bmad/bmm/workflows/implement/quick-dev/s
 - Ignoring pattern violations
 - Not updating tech-spec status (Mode A)
 - Shipping UI for fields that are 100% null in production without documenting the gap
+- Skipping §6 Regression Surface on a brownfield/mixed project

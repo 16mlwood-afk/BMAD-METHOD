@@ -30,8 +30,21 @@ Load config from `{project-root}/_bmad/bmm/config.yaml` and resolve:
 - `user_name`, `communication_language`, `user_skill_level`
 - `planning_artifacts`, `implementation_artifacts`
 - `autonomous_mode`, `autonomous_rules`
+- `project_phase` — `greenfield | brownfield | mixed`. If absent, default to `mixed`.
 - `date` as system-generated current datetime
 - ✅ YOU MUST ALWAYS SPEAK OUTPUT In your Agent communication style with the config `{communication_language}`
+
+### Project Phase Branching
+
+`project_phase` slightly tightens behavior on top of the base workflow. Treat `mixed` as `brownfield` for any check where a regression would harm existing users — be conservative when in doubt.
+
+- **greenfield**: building toward first launch. Optimistic about new patterns. Regression checks are best-effort; the brownfield gates below are skippable.
+- **brownfield** / **mixed**: production users depend on existing behavior.
+  - step-04-self-check **§6 Regression Surface** is REQUIRED, not optional
+  - tech-spec must enumerate affected callers/dependents (Mode A)
+  - direct-mode (Mode B) tasks must include a 1-sentence "what could this break?" before exiting step-02
+
+Other workflows that read `project_phase` and branch on it: `quick-spec`, `maintenance-triage`.
 
 ### Autonomous Mode Override
 

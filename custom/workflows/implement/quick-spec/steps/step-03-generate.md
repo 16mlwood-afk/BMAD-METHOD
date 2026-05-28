@@ -93,6 +93,33 @@ c) **Notes**
 - Known limitations
 - Future considerations (out of scope but worth noting)
 
+### 4b. Brownfield/Mixed Sections (REQUIRED when `project_phase` is brownfield or mixed)
+
+Skip this entire subsection only if `project_phase: greenfield`.
+
+Add two sections to `{wipFile}` before the "Tasks" section:
+
+**Affected Callers / Dependents**
+
+Grep + import-trace every symbol the implementation will touch (functions, types, schema fields, components). List every caller. Format:
+
+```markdown
+| Symbol | Callers | Notes |
+|---|---|---|
+| matchSupplier() | src/routes/queries/+page.svelte (line 412), src/routes/admin/match-batch/+page.server.ts (line 88), src/lib/server/amazon/reconcile.ts (line 230) | reconcile.ts hits it via batch loop — 50-100/sec under load |
+```
+
+An empty list is acceptable ONLY when verified (e.g., new private function with no callers yet). Document the verification: "Grep confirmed: no callers of this symbol elsewhere in the repo."
+
+**Rollback Plan**
+
+One paragraph. Cover:
+- How to revert: PR revert, manual reversion, or schema-migration rollback steps
+- Any state cleanup required (cache invalidation, queue draining, etc.)
+- Estimated revert time once the decision is made
+
+If the change is purely additive and reversible by `git revert`, state that explicitly — that's a valid rollback plan, not laziness.
+
 ### 5. Write Complete Spec
 
 a) **Update `{wipFile}` with all generated content:**
@@ -101,6 +128,7 @@ a) **Update `{wipFile}` with all generated content:**
 - No placeholder text remaining
 - All frontmatter values current
 - Update status to 'review' (NOT 'ready-for-dev' - that happens after user review in Step 4)
+- For brownfield/mixed: confirm both Affected Callers / Dependents and Rollback Plan sections are present and non-empty (per §4b)
 
 b) **Update frontmatter:**
 

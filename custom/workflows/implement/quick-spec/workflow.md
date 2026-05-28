@@ -72,9 +72,19 @@ Load and read full config from `{main_config}` and resolve:
 - `project_name`, `planning_artifacts`, `implementation_artifacts`, `user_name`
 - `communication_language`, `document_output_language`, `user_skill_level`
 - `autonomous_mode`, `autonomous_rules`
+- `project_phase` — `greenfield | brownfield | mixed`. If absent, default to `mixed`. Brownfield/mixed adds required sections to the tech-spec (see Project Phase Branching below).
 - `date` as system-generated current datetime
 - `project_context` = `**/project-context.md` (load if exists)
 - ✅ YOU MUST ALWAYS SPEAK OUTPUT In your Agent communication style with the config `{communication_language}`
+
+### Project Phase Branching
+
+When `project_phase` is `brownfield` or `mixed`, the tech-spec produced by step-03-generate MUST include two extra sections in addition to the standard template:
+
+- **Affected Callers / Dependents** — every caller/dependent of the touched symbols, identified via grep + import tracing during step-02-investigate. Empty list is acceptable only when verified.
+- **Rollback Plan** — one paragraph: how to revert the change if production breaks. Include schema-migration rollback if relevant.
+
+These sections are skippable for `greenfield`. For brownfield/mixed they are part of the "Ready for Development" standard at the top of this workflow — a spec missing them is NOT ready.
 
 ### 2. First Step Execution
 
