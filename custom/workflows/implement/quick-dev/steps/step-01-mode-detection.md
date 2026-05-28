@@ -91,11 +91,45 @@ Analyze the user's input to determine mode:
 
 - User provided task description directly (e.g., `refactor src/foo.ts...`)
 - Set `{execution_mode}` = "direct"
-- **NEXT:** Evaluate escalation threshold, then proceed
+- **NEXT:** Apply the GROUNDING GATE below, then (if it passes) evaluate escalation threshold
 
 ---
 
-## ESCALATION THRESHOLD (Mode B only)
+## GROUNDING GATE — Mode B only (overrides autonomous_mode)
+
+> **This gate is NOT subject to `autonomous_mode`.** Autonomous mode grants *decision autonomy* (which file, which pattern, which library). It does NOT grant *intent autonomy* — i.e., guessing what the user wants. If user intent isn't groundable, halt and ask. Inventing intent under autonomous_mode is the documented failure class that caused PR #785's audit.
+
+Before exiting this step, you MUST be able to state both of the following in plain English. If you cannot, the input is not groundable — see HALT below.
+
+1. **The specific change** the user wants — in one sentence, with a verb. ("Fix the null check in the supplier matcher", "Add a column to the queries table", "Make the period selector wider.")
+2. **The specific target** in this codebase — at least a file glob or a clearly-named UI surface. ("`src/lib/server/amazon/match.ts`", "the `/queries` page header", "the InvoiceDetail drawer.")
+
+### Ungroundable inputs (HALT)
+
+You **cannot** derive both (1) and (2) when the user input is:
+
+- A single word that isn't a verb-target ("all", "go", "do", "yes", "this", "next")
+- A pure sentinel / leftover ("ok", ".", "—", a stray flag like `--check`)
+- A reference to a thing that doesn't exist after one quick grep (no file matches, no UI surface matches the name)
+- A task description with no nameable target ("clean things up", "make it better", "fix the issues")
+- An empty argument list when one was expected
+
+**A short input is not automatically ungroundable.** "Fix the typo in the header" is short but groundable — a verb, a target. The test is groundability, not length.
+
+### HALT response
+
+When ungroundable:
+
+1. State plainly: "I can't tell what you want me to change. Quick-dev needs a verb (what to do) and a target (where in the code)."
+2. Show what you parsed: the literal input you received.
+3. Offer one helpful nudge — e.g., "Did you mean to point at a tech-spec file? `quick-dev path/to/spec.md`. Or describe the change: `quick-dev fix the null check in queries header`."
+4. **Do NOT proceed to step-02.** Do NOT make up a task to keep the workflow moving. **EXIT Quick Dev.**
+
+This halt fires regardless of `autonomous_mode`. The mode grants execution latitude, not the right to fabricate intent.
+
+---
+
+## ESCALATION THRESHOLD (Mode B only, after GROUNDING GATE passes)
 
 Evaluate user input with minimal token usage (no file loading):
 
@@ -120,6 +154,8 @@ Use holistic judgment, not mechanical keyword matching.
 ## ESCALATION HANDLING
 
 > **AUTONOMOUS MODE:** If `autonomous_mode` is `true` in config, skip all menus below. Auto-select [E] Execute directly and proceed immediately to step-02-context-gathering. Do not halt or wait for user input.
+>
+> **Scope:** Autonomous mode covers *decision autonomy* — picking the implementation approach, the file to edit, the pattern to follow — when intent is already clear from the input or the tech-spec. It does NOT cover *intent autonomy*. The GROUNDING GATE above is the contract: if user intent isn't groundable, halt regardless of this flag.
 
 ### No Escalation (simple request)
 

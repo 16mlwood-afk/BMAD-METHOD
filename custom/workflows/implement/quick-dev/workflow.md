@@ -42,6 +42,15 @@ If `autonomous_mode` is `true` in config, the following rules apply to ALL steps
 - **Default selections:** For escalation menus, always select [E] Execute directly. For review findings, always select [F] Fix automatically.
 - **Complete the full workflow end-to-end** without deferring any decision back to the user.
 
+#### What autonomous mode covers — and what it does NOT
+
+Autonomous mode grants two distinct kinds of latitude, and they have different safety profiles:
+
+- **Decision autonomy** (granted): which file to edit, which pattern to follow, which library to use, how to structure the change, when to write tests. These are *implementation choices* downstream of clear user intent.
+- **Intent autonomy** (NOT granted): what the user wants. Intent must be derivable from the input itself (Mode A: tech-spec; Mode B: a verb-target user instruction). If intent isn't groundable, autonomous mode does NOT authorize inventing one.
+
+**Rule:** if step-01's GROUNDING GATE fails, halt the workflow regardless of `autonomous_mode`. Decision autonomy without grounded intent is fabrication. This invariant is non-negotiable and protects against the failure class documented in accounting-tools PR #785 audit (input "all" produced a hallucinated expense-OCR task).
+
 ### Paths
 
 - `installed_path` = `{project-root}/_bmad/bmm/workflows/implement/quick-dev`
