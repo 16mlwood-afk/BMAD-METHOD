@@ -57,7 +57,9 @@ This uses **step-file architecture** for focused execution:
 
 - Each step loads fresh to combat "lost in the middle"
 - State persists via variables (see below)
-- Sequential progression: gather → audit → generate
+- Sequential progression: gather → audit → generate → deliver
+
+**Step 4 (deliver)** is governed by `shared/delivery-to-main.md`. It commits the brief, opens a PR, merges to `main`, and surfaces the merged URL — closing the gap between "file written to disk" and "file accessible to external consumers (Claude Design, downstream synthesize, design-implement) via `origin/main`". Skippable via `--no-deliver` or `delivery.design-handoff: skip` in config.
 
 ### State Variables
 
@@ -196,8 +198,22 @@ The workflow handles two modes:
 
 **Refine-screen rule:** The brief produced in this mode must be BOUNDED. It addresses the artifact's top 3 violations (by severity order) and requires variants for the artifact's edge states. It does NOT redesign the IA, does NOT introduce new components unless required to land one of those top 3, and does NOT propose a "get radical" alternative. Open creative freedom belongs in `fresh-design`. Lower-severity violations (V4+) remain in the artifact for visibility but are not in-scope for the brief unless the user explicitly asks.
 
+**Collapse allowance (one collapse max).** Strict severity ordering can fill all three slots with mechanical token / class-swap violations (hex literal cleanup, `rounded-full` → `rounded-md`, `uppercase tracking-wide` removal, etc.) when a higher-leverage design-requiring violation sits at V4+. The brief is meant to drive design work, not enumerate find-and-replace. Therefore: **if two or more of the top 3 violations are mechanical (no design decision required — concrete class swap fully specified by the policy)**, collapse them into one combined fix labeled `Vx+Vy (combined)` and promote the next design-requiring hard failure into the freed slot.
+
+Constraints on the collapse:
+- **At most one collapse per brief.** Never collapse two pairs.
+- **The collapsed entry must keep both V-IDs visible** so artifact-to-brief lineage stays traceable: `Vx+Vy (combined)` in the section header, both V-IDs cited in the body.
+- **Only mechanical violations are collapsible.** Litmus test: if the Required Correction in the artifact gives an exact class swap or token table that an implementer can apply without a designer thinking, it is mechanical. If the correction requires choosing a layout, sizing, or interaction pattern, it is design-requiring and must keep its own slot.
+- **Severity floor.** The promoted violation must be `hard failure` — never promote a `major` or `minor` into the top 3 just to fill the slot. If the next-highest hard failure also turns out to be mechanical, do NOT collapse a second time; emit the brief with only 2 design-requiring fixes and a combined entry, and surface to the user that the artifact's hard-failure list is mostly mechanical.
+- **Document the collapse.** In the brief's `mode` / `targeted_changes` frontmatter (per `brief-revision-policy.md` §2), add a `collapse_note:` line stating which V-IDs were collapsed and why.
+
 ---
 
 ## EXECUTION
 
-Read fully and follow: `{project-root}/_bmad/bmm/workflows/design/design-handoff/steps/step-01-gather.md` to begin the workflow.
+Read fully and follow each step file in sequence:
+
+1. `{project-root}/_bmad/bmm/workflows/design/design-handoff/steps/step-01-gather.md` — gather feature purpose, data shape, user context.
+2. `{project-root}/_bmad/bmm/workflows/design/design-handoff/steps/step-02-audit-design.md` — audit the current design system / extract tokens / locate reference pages.
+3. `{project-root}/_bmad/bmm/workflows/design/design-handoff/steps/step-03-generate-brief.md` — write the brief to `{output_path}` with full Block A + Block B frontmatter.
+4. `{project-root}/_bmad/bmm/workflows/design/design-handoff/steps/step-04-deliver.md` — commit, push, PR, merge to `main`, surface the merged URL. Skippable via `--no-deliver`.

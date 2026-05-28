@@ -75,10 +75,15 @@ When this workflow audits a page or emits a screen-review artifact, the order of
 
 **Implication for artifact mode:** Every violation block's `Rule violated:` field must cite the policy section directly (e.g., `docs/design-policy.md §5 (Hard Failures): "Emoji as UI icons"`) — not a brief section, and not a peer page. Briefs and peer pages may inform peer-steals or context, but the rule itself originates in the policy. This guarantees downstream consumers (e.g., `design-handoff` in refine-screen mode) can re-resolve each rule against the canonical source.
 
-### Prerequisites
+### Prerequisites (one of three measurement modes)
 
-- Chrome is open with the page under review visible in a tab
-- `mcp__claude-in-chrome__*` tools are available (load via ToolSearch if needed)
+Step-01 must run in exactly one of the three measurement modes below. The mode is recorded in the artifact's `measurement_method` field so downstream consumers know what to trust.
+
+1. **`chrome-live` (preferred).** Chrome is open with the page under review visible in a tab AND `mcp__claude-in-chrome__*` tools are available (load via ToolSearch if needed). All of step-01 §2 (read page) and §3 (measure) run against the live DOM.
+2. **`source-derived` (fallback).** Chrome MCP is unavailable but the auditor has full source-tree access AND at least one screenshot of the rendered page. Measurements in §3 are derived from source (Tailwind classes, source-grep of identifiers, source-counted DOM elements) plus screenshot reading. The artifact MUST carry a non-empty `measurement_caveat` explaining what was NOT measured live (typically: real computed `getComputedStyle`, real `scrollWidth` deltas, real-render counts).
+3. **`screenshot-only` (weakest).** No source access AND no live Chrome — only one or more screenshots of the rendered page. Use this only when reviewing an external system, a deployed app the auditor cannot clone, or a designer-supplied mockup. Composition violations (§5 anti-AI layout principles) and visible-class violations are still in scope; precise measurement-evidence and `file:line` citations are not. The `measurement_caveat` must say so explicitly.
+
+**Mode selection is sticky for the whole run.** Do not start in `chrome-live` and degrade silently mid-step. If a tool fails after the run starts, halt, downgrade the mode, re-record `measurement_method`, and write the appropriate caveat into `measurement_caveat`.
 
 ### Output Mode Detection
 
@@ -133,6 +138,10 @@ peer_paths:
   - <absolute path>
 generated_at: <ISO 8601 datetime>
 brand_identity_path: <path or empty>
+measurement_method: <chrome-live | source-derived | screenshot-only>   # see step-01 §3
+measurement_caveat: |                                                  # REQUIRED when measurement_method != chrome-live; empty/null otherwise
+  <one-paragraph statement of what was NOT measured live and why downstream
+   consumers should treat the artifact accordingly.>
 severity_summary:
   hard_failure: <N>
   major: <N>

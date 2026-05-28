@@ -7,7 +7,7 @@ description: Volatile state of the Mason-BMAD fork. Read by mason-bmad-workflow-
 
 > Update whenever you ship a change to the fork, absorb upstream, or change the shipped/designed status of a feature.
 
-**Last updated:** 2026-05-28 by Mason (design-synthesize step-06 brief-faithfulness half + canonical-path consolidation)
+**Last updated:** 2026-05-28 by Mason (workflow retro fixes: degraded-mode + drift gate + collapse + Block B + worktree-portability + delivery-to-main)
 
 ---
 
@@ -34,6 +34,12 @@ description: Volatile state of the Mason-BMAD fork. Read by mason-bmad-workflow-
 - [x] **sync `--worktree PATH` flag** — single-worktree minimal sync (commit `647c14e7`)
 - [x] **project_phase config flag** — `greenfield | brownfield | mixed` (commit `0dd2e1ca`, shipped today)
 - [x] **maintenance-triage workflow** — `custom/workflows/implement/maintenance-triage/` (commit `0dd2e1ca`, shipped today)
+- [x] **design-review degraded-mode switch** — `measurement_method: chrome-live | source-derived | screenshot-only` + mandatory `measurement_caveat` (2026-05-28). Closes the gap where step-01 §3 assumed Chrome MCP always available and FAILURE MODES listed screenshot-only as failure with no sanctioned alternative.
+- [x] **Source-vs-deployed drift gate** — design-review step-01 §1.5 pre-flight checks `git status` / recent local commits / local-vs-origin/main delta before reading the page; surfaces source_state_caveat in autonomous mode (2026-05-28).
+- [x] **Refine-screen Collapse allowance** — design-handoff workflow.md "Refine-screen rule" now allows one mechanical Vx+Vy collapse to free a slot for a design-requiring hard failure when strict top-3 severity ordering fills slots with token/class swaps. Capped at one collapse per brief; promoted violation must be hard failure (2026-05-28).
+- [x] **Brief frontmatter Block A + Block B contract** — `brief-revision-policy.md` §2 split into Block A (Provenance, 11 fields) + Block B (Content, 3-6 fields mode-dependent). Block B fields: `mode`, `page_mode`, `route` always; `screen_review_ref`, `targeted_changes`, `unchanged_regions`, `deferred_violations` for refine-screen; `collapse_note` conditional. Producer (design-handoff step-03) updated; consumers reference by policy name so no inline updates needed. Check 1 expanded to validate both blocks (2026-05-28).
+- [x] **shared/worktree-portability.md** — codified rule: every producer resolves `{project-root}` via `git rev-parse --show-toplevel` at write-time, refuses writes outside the active worktree, halts with named diagnostic. Applied in design-review step-01 §7 and design-handoff step-03 §1. Closes silent main-checkout-write bug (2026-05-28).
+- [x] **shared/delivery-to-main.md + design-handoff step-04-deliver.md** — producer-side delivery sequence (commit → push → PR → merge → verify → fast-forward → exit-worktree). Closes the "file written to disk but not on origin/main" gap that caused Claude Design to fail-find a brief on 2026-05-28. Skippable via `--no-deliver` or `delivery.design-handoff: skip` config. Pattern is reusable for design-synthesize / maintenance-triage / artifact-loop — they should adopt step-N-deliver next (2026-05-28).
 - [x] **Canonical implementation-artifacts path consolidation** — workflow text was referencing legacy `_bmad/bmm/implementation-artifacts/` literal in 11 places across 6 design workflows; config resolves `{implementation_artifacts}` to `_bmad-output/implementation-artifacts/`. Diagnosed in accounting-tools (27 orphaned artifacts), fixed at fork-level (commit `ae4bb805`, 2026-05-28). Audit of all 13 projects: only accounting-tools materially affected. Re-sync needed for the other 12 to refresh workflow text (no artifact moves needed there).
 - [?] **Worktree creation hook → auto-sync** — partial: `--worktree` flag exists, automatic hook wiring needs confirmation per-project
 - [?] **.gitignore entries for synced directories** — enforced per-project; audit across all 13 projects pending

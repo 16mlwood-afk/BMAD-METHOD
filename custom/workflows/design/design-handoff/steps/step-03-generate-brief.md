@@ -39,9 +39,13 @@ From steps 01–02:
 
 ### 1. Determine Output Path
 
+**Resolve `{project-root}` to the current working tree.** Per `shared/worktree-portability.md` §1, `{project-root}` is the output of `git rev-parse --show-toplevel` from the session's current working directory — the worktree root when inside a worktree, the main checkout root otherwise. Do NOT use a cached resolution from earlier session state or an absolute path from `{main_config}` that points outside the current tree.
+
 ```
-{output_path} = {implementation_artifacts}/design-brief-{feature-slug}-{date}.md
-{output_path_relative_to_repo_root} = path relative to git repo root
+{project-root}            = $(git rev-parse --show-toplevel)
+{implementation_artifacts} = {project-root}/_bmad-output/implementation-artifacts/
+{output_path}             = {implementation_artifacts}/design-brief-{feature-slug}-{date}.md
+{output_path_relative_to_repo_root} = path relative to {project-root}
 ```
 
 If `{handoff_mode}` = `"refine-screen"`, use the slug `refine-{feature-slug}` instead of `{feature-slug}` so the refinement brief is visually distinct from any fresh-design brief on the same feature:
@@ -51,6 +55,8 @@ If `{handoff_mode}` = `"refine-screen"`, use the slug `refine-{feature-slug}` in
 ```
 
 Capture `{output_filename}` = basename of `{output_path}` (used in §1a and the frontmatter below). Capture `{target_slug}` = the kebab-case slug component of the filename — i.e., `{feature-slug}` for fresh-design or `refine-{feature-slug}` for refine-screen. This becomes the active-uniqueness key consumers use; the predecessor lookup in §1a globs against this exact slug.
+
+**Worktree refusal.** Before writing, verify `{output_path}` is a descendant of `{project-root}`. If not, halt with the diagnostic in `shared/worktree-portability.md` §4 — this catches the case where a stale absolute path leaked into state from an earlier session and would have caused the brief to land in the main checkout instead of the worktree.
 
 ### 1a. Resolve Predecessor & Decide change_class
 
@@ -93,13 +99,13 @@ Write the file using this template. The section order is intentional — Claude 
 ---
 type: design-brief
 feature: {feature_name}
-target_slug: {target_slug}            # kebab-case slug used in filename and as the active-uniqueness key (refine-screen runs use the "refine-{feature-slug}" form)
 scope: {feature_scope}
 date: {date}
 author: {user_name} via design-handoff workflow
 status: ready-for-design
 
-# Revision provenance (see shared/brief-revision-policy.md)
+# Block A — Revision Provenance (see shared/brief-revision-policy.md §2)
+target_slug: {target_slug}               # kebab-case slug; doubles as the active-uniqueness key. Refine-screen runs use the "refine-{feature-slug}" form.
 brief_status: active
 revision_mode: workflow_generated
 change_class: {change_class}             # original | material_revision (decided in §1a)
@@ -109,6 +115,30 @@ source_workflow: design-handoff
 source_run_date: {source_run_date}
 last_modified_by: workflow
 last_modified_date: {date}
+
+# Block B — Content (see shared/brief-revision-policy.md §2)
+mode: {handoff_mode}                     # fresh-design | refine-screen
+page_mode: {page_mode}                   # operational | analytical | detail
+route: {route}                           # primary route this brief targets
+{# In refine-screen mode the following four fields are REQUIRED. In fresh-design mode they MUST be omitted entirely. #}
+{if handoff_mode == "refine-screen"}
+screen_review_ref: {review_artifact_path_relative_to_repo_root}
+targeted_changes:
+  {for each entry in {targeted_changes_list}}
+  - region: {region_name}
+    rationale: "{V-ID} — {one-line summary}"
+  {end for}
+{if collapse_occurred}collapse_note: "{which V-IDs collapsed and why}"{end if}
+unchanged_regions:
+  {for each entry in {unchanged_regions_list}}
+  - region: {region_name}
+    note: "{one-line reason this region is protected}"
+  {end for}
+deferred_violations:
+  {for each V-ID in {deferred_violations_list}}
+  - {V-ID}: "{reason deferred — out of scope, mechanical-only, IA decision, etc.}"
+  {end for}
+{end if}
 ---
 
 # Design Brief: {feature_name}
@@ -536,7 +566,8 @@ Minor revisions (clarifications only — see `brief-revision-policy.md` §1) app
 
 Before writing, verify:
 
-- [ ] **Provenance frontmatter is complete and consistent.** All ten fields from `brief-revision-policy.md` §2 are present. `revision_mode` is `workflow_generated`. `last_modified_by` is `workflow`. `last_modified_date == source_run_date == {date}`. If `change_class == "material_revision"`, `supersedes` names an existing file in `{implementation_artifacts}`; if `change_class == "original"`, `supersedes` is empty. `superseded_by` is empty (it's set retroactively on the predecessor in §1b, never on a freshly generated brief).
+- [ ] **Block A (Provenance) is complete and consistent.** All 11 fields from `brief-revision-policy.md` §2 Block A are present. `revision_mode` is `workflow_generated`. `last_modified_by` is `workflow`. `last_modified_date == source_run_date == {date}`. If `change_class == "material_revision"`, `supersedes` names an existing file in `{implementation_artifacts}`; if `change_class == "original"`, `supersedes` is empty. `superseded_by` is empty (it's set retroactively on the predecessor in §1b, never on a freshly generated brief).
+- [ ] **Block B (Content) is complete for the run mode.** Always-required fields present: `mode`, `page_mode`, `route`. If `mode: refine-screen`, also present: `screen_review_ref` (resolvable path), `targeted_changes` (≥1 entry, each citing a V-ID), `unchanged_regions` (≥1 entry), `deferred_violations` (may be empty list but key present). If a collapse occurred per the design-handoff "Collapse allowance", `collapse_note` is present and names both collapsed V-IDs + the promoted one. If `mode: fresh-design`, the refine-screen-specific fields MUST be absent (not just empty).
 - [ ] **Predecessor flipped (if applicable).** When `change_class == "material_revision"`, the predecessor file's frontmatter was edited in §1b: its `brief_status` is now `superseded`, its `superseded_by` is set to this brief's filename, and its `last_modified_date` is `{date}`. Re-read the predecessor to confirm — the active-uniqueness invariant must hold after this run completes.
 - [ ] **No current UI anywhere.** The brief does not describe what sections, components, tabs, or groupings currently exist on the page. No phrases like "the current page has", "the left panel shows", "the table is currently placed under", "this section is a card grid." *(Refine-screen exception: section 6 cites the artifact's specific `file:line` references — that's expected, because the artifact IS the diagnostic.)*
 - [ ] **Verbatim policy quotes — no drift.** For every section that quotes the brand identity / design policy (section 4 Visual Identity sub-sections, section 5 Hard Failures, AI Fingerprint Sensitivity), re-open `{brand_identity_path}` and string-match each quoted bullet against the source. Specifically check: (a) no parentheticals appear in your bullet that don't appear in the policy bullet, (b) no qualifying phrase ("usually", "primarily", "except when", "the codebase already uses X so …") softens a hard rule, (c) every bullet in the policy's hard-failure list appears in section 5 — none silently dropped, (d) no merged bullets where two policy items collapsed into one. If any bullet fails the match, replace it with the policy text verbatim. **This catches the single most common drift mode — softening a hard rule with a "but in this case …" parenthetical.**
@@ -544,7 +575,7 @@ Before writing, verify:
 - [ ] **Section 1 goals are outcomes, not UI actions.** No "click X" or "switch the Y tab."
 - [ ] **Section 4 describes the desired aesthetic, not the current layout.** Reference products (where named by the project policy) describe a *direction*, not the existing implementation.
 - [ ] **Section 6 variant is correct.** If `{handoff_mode}` = "refine-screen", section 6 uses the REFINE variant — fixes from `{refine_focus}`, variants from `{required_variants}`, peer steals from `{peer_steals}`, "do not break" from `{already_fine}`. If `{handoff_mode}` = "fresh-design", section 6 uses the FRESH variant — framing + scope directive + open questions, no diagnostic fixes.
-- [ ] **Refine-screen scope is bounded.** The brief addresses exactly 3 fixes (not 4, not 2). It lists at least 2 edge-state variants. It does NOT instruct the designer to redesign the IA, replace components wholesale, or "get radical."
+- [ ] **Refine-screen scope is bounded.** The brief addresses exactly 3 fixes (not 4, not 2). It lists at least 2 edge-state variants. It does NOT instruct the designer to redesign the IA, replace components wholesale, or "get radical." If two top-3 violations are mechanical (token/class swaps with no design decision), the workflow.md "Collapse allowance" applies — one combined Vx+Vy entry plus a promoted design-requiring V-ID, with `collapse_note` in frontmatter. Never collapse twice; never collapse a design-requiring violation.
 - [ ] **Fresh-design section 6 is questions, not primitives.** No "must group by", "must contain", "must have." Questions emerge from user goals + data shape, not from the current UI's solutions.
 - [ ] **Reconstructability test (fresh-design only).** A developer could NOT rebuild the current page from this brief. Does not apply in refine-screen mode — that mode intentionally references the current page.
 - [ ] **Design system variant is correct and complete:**

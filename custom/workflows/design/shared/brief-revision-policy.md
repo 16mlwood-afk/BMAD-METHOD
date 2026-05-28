@@ -41,45 +41,80 @@ Material revisions produce a **new brief file** via `design-handoff`. The old br
 
 ## 2. Frontmatter contract
 
-Every brief carries this provenance block at the top of its YAML frontmatter, in addition to whatever feature/route/mode fields the workflow already requires. The block also requires a `target_slug` field — consumers use it as the active-uniqueness key, so it cannot be left to filename-parsing alone.
+Every brief carries **two named blocks** in its YAML frontmatter, in addition to whatever feature-level fields the workflow already requires (`type`, `feature`, `scope`, `date`, `author`, `status`):
+
+- **Block A — Provenance** (11 fields). Tracks brief lifecycle: identity, status, predecessor chain, who/when last touched.
+- **Block B — Content** (3–6 fields, mode-dependent). Tracks what the brief contains: handoff mode, page mode, route, source diagnostic, and (in refine-screen mode) the targeted-changes / unchanged-regions / deferred-violations breakdown.
+
+Both blocks are validated by consumers at intake. Missing a required field in either block halts consumption.
 
 ```yaml
 ---
-# ... existing fields (type, feature, route, mode, page_mode, scope, date, author, status, etc.) ...
-
-target_slug: my-feature         # kebab-case identifier; doubles as the active-uniqueness key. For refine-screen runs, prefix with "refine-".
-
-brief_status: active            # active | superseded
-revision_mode: workflow_generated   # workflow_generated | manual_minor_revision
-change_class: original          # original | clarification | material_revision
-supersedes:                     # filename of the brief this one replaces (null/empty if original)
-superseded_by:                  # filename of the brief that replaced this one (null/empty until superseded)
+# Block A — Provenance (always required)
+target_slug: my-feature                  # kebab-case identifier; doubles as the active-uniqueness key. For refine-screen runs, prefix with "refine-".
+brief_status: active                     # active | superseded
+revision_mode: workflow_generated        # workflow_generated | manual_minor_revision
+change_class: original                   # original | clarification | material_revision
+supersedes:                              # filename of the brief this one replaces (null/empty if original)
+superseded_by:                           # filename of the brief that replaced this one (null/empty until superseded)
 source_workflow: design-handoff
 source_run_date: 2026-05-27
-last_modified_by: workflow      # workflow | human
+last_modified_by: workflow               # workflow | human
 last_modified_date: 2026-05-27
+
+# Block B — Content (always required; refine-screen mode adds more)
+mode: fresh-design                       # fresh-design | refine-screen
+page_mode: operational                   # operational | analytical | detail
+route: /my-feature                       # the primary route this brief targets
+
+# Block B (refine-screen mode only — required when mode == refine-screen)
+screen_review_ref:                       # relative path to the consumed screen-review-*.md artifact
+targeted_changes:                        # list of regions this round will touch, each with rationale tied to a V-ID
+  - region: <name>
+    rationale: "V1 — <one-line summary of the fix>"
+collapse_note:                           # optional; required iff two V-IDs were collapsed per the design-handoff "Collapse allowance"
+unchanged_regions:                       # list of regions this round explicitly preserves; refine-screen must NOT touch them
+  - region: <name>
+    note: "<one-line reason this region is protected>"
+deferred_violations:                     # V-IDs from the artifact that are NOT addressed in this brief and the reason
+  - V4: "<why deferred>"
 ---
 ```
 
-### Field semantics
+### Field semantics — Block A (Provenance)
 
 | Field | Allowed values | Meaning |
 |---|---|---|
-| `brief_status` | `active`, `superseded` | Only one `active` brief per feature surface (`target_slug`) is permitted. Consumers refuse to consume a `superseded` brief unless the user explicitly cites its filename. |
+| `target_slug` | kebab-case identifier | Active-uniqueness key. For refine-screen runs, prefix with `refine-`. |
+| `brief_status` | `active`, `superseded` | Only one `active` brief per `target_slug` is permitted. Consumers refuse to consume a `superseded` brief unless the user explicitly cites its filename. |
 | `revision_mode` | `workflow_generated`, `manual_minor_revision` | How the current file state came to be. `workflow_generated` means produced (or last produced) by `design-handoff`; `manual_minor_revision` means a human hand-edited the file after generation. |
 | `change_class` | `original`, `clarification`, `material_revision` | What kind of change this file represents relative to its predecessor. `original` = first brief for the feature. `clarification` = minor revision. `material_revision` = workflow re-generation triggered by a scope/intent change. |
-| `supersedes` | filename, or empty | Set when this brief replaces a prior brief on the same feature. Filename only (e.g. `design-brief-foo-2026-05-23.md`), not a full path — both files live in `{implementation_artifacts}`. |
+| `supersedes` | filename, or empty | Set when this brief replaces a prior brief on the same feature. Filename only, not a full path. |
 | `superseded_by` | filename, or empty | Set on the **older** brief (retroactively) when a newer brief takes over. Pairs with the newer brief's `supersedes`. |
 | `source_workflow` | `design-handoff` | The workflow that generated this brief. Reserved for future workflows that may also emit briefs. |
 | `source_run_date` | ISO date | When `source_workflow` last produced this file. Never updated by a minor revision. |
 | `last_modified_by` | `workflow`, `human` | The hand that touched the file most recently. |
 | `last_modified_date` | ISO date | When the file was last written, regardless of by whom. |
 
+### Field semantics — Block B (Content)
+
+| Field | Allowed values | Required in | Meaning |
+|---|---|---|---|
+| `mode` | `fresh-design`, `refine-screen` | every brief | Which handoff mode produced this brief. Refine-screen briefs are bounded; fresh-design briefs are open creative scope. |
+| `page_mode` | `operational`, `analytical`, `detail` | every brief | The composition contract the design must satisfy. Drives §4a / §4b inclusion in the brief body. |
+| `route` | pathname string | every brief | The primary route this brief targets. Used by downstream consumers to verify the brief and the implementation target line up. |
+| `screen_review_ref` | relative path to `screen-review-*.md` | refine-screen only | The diagnostic artifact this refinement brief was generated from. Consumers re-resolve violation references against the cited artifact. |
+| `targeted_changes` | list of `{region, rationale}` objects | refine-screen only | Which regions of the screen the refinement will touch. Each rationale must cite the V-ID(s) from the artifact that justify the touch. |
+| `collapse_note` | free text | required iff a Vx+Vy collapse occurred (see design-handoff "Collapse allowance") | One-line statement of which V-IDs were collapsed and which design-requiring violation was promoted in their place. |
+| `unchanged_regions` | list of `{region, note}` objects | refine-screen only | Page regions this round must NOT touch. The refinement brief uses this to make the "do not break" contract machine-readable in addition to the body's prose. |
+| `deferred_violations` | list of `V<N>: <reason>` entries | refine-screen only when the artifact has V4+ entries the brief does not address | V-IDs not in scope this round and the reason (severity, mechanical-only, IA decision deferred, etc.). Empty list is permitted; the field itself must be present. |
+
 ### Invariants
 
 A brief is **valid** iff all of the following hold. Consumers reject briefs that violate any of them.
 
-1. **Field completeness.** All eleven required fields are present: `target_slug` plus the ten provenance fields. Empty strings are allowed only for `supersedes` and `superseded_by`.
+1. **Field completeness — Block A.** All eleven Block-A fields are present. Empty strings are allowed only for `supersedes` and `superseded_by`.
+1a. **Field completeness — Block B.** `mode`, `page_mode`, and `route` are present in every brief. When `mode: refine-screen`, the additional fields `screen_review_ref`, `targeted_changes`, `unchanged_regions`, and `deferred_violations` are also present (the latter may be an empty list but the key must exist). `collapse_note` is conditional — required iff a collapse occurred, absent otherwise.
 2. **Workflow-generated ⇒ original or material.** `revision_mode: workflow_generated` requires `change_class ∈ {original, material_revision}`. A workflow-generated brief cannot be a `clarification`.
 3. **Manual ⇒ clarification only.** `revision_mode: manual_minor_revision` requires `change_class: clarification`. A hand-edited brief MUST NOT carry `change_class: material_revision` — that combination is the forbidden case (see §3).
 4. **Original ⇒ no predecessor.** `change_class: original` requires `supersedes` to be empty.
@@ -154,14 +189,28 @@ When in doubt, re-run `design-handoff`. It is cheaper than a downstream chain th
 Any workflow that consumes a brief must, at intake, validate the provenance frontmatter and halt on invalid combinations BEFORE running the rest of the workflow. The validation order is deterministic:
 
 ### Check 1 — fields present
-Parse the provenance block. If any of the ten fields in §2 is missing, halt:
+Parse the frontmatter. Halt if any required field is missing.
+
+**Required from Block A (Provenance):** all 11 fields listed in §2 (`target_slug` plus the 10 provenance fields).
+
+**Required from Block B (Content):**
+- Always: `mode`, `page_mode`, `route`.
+- When `mode: refine-screen`: also `screen_review_ref`, `targeted_changes`, `unchanged_regions`, `deferred_violations`. `collapse_note` is conditional (required only if the brief collapsed two V-IDs per the design-handoff "Collapse allowance").
+
+Halt diagnostic:
 
 ```
-Brief frontmatter missing provenance field(s): <comma-separated list>.
+Brief frontmatter missing required field(s): <comma-separated list>.
 Brief: <path>
-This brief predates the revision policy and cannot be safely consumed.
+Block A (Provenance) missing: <list, or "none">
+Block B (Content) missing:    <list, or "none">
+
+This brief predates the current revision policy or was generated by a workflow
+that has not migrated to the Block A + Block B contract. It cannot be safely
+consumed.
+
 Re-run design-handoff to regenerate it under the current contract.
-See: {project-root}/_bmad/bmm/workflows/design/shared/brief-revision-policy.md
+See: {project-root}/_bmad/bmm/workflows/design/shared/brief-revision-policy.md §2
 ```
 
 ### Check 2 — invariants
