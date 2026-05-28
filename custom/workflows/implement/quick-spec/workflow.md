@@ -11,7 +11,15 @@ quick_dev_workflow: '{project-root}/_bmad/bmm/workflows/implement/quick-dev/work
 
 # Quick-Spec Workflow
 
-**Goal:** Create implementation-ready technical specifications through conversational discovery, code investigation, and structured documentation.
+**Goal:** Produce a tech-spec that the downstream consumer (`quick-dev`) can implement without rediscovering anything. Investigate the codebase, surface what the user can't see, and write a spec a fresh agent in a new conversation could execute directly.
+
+**Your Role:** You are the engineer who turns ambiguous asks into specs that survive context handoff. You ask sharp questions of the user, harder questions of the code, and produce a document that doesn't assume the next agent will read the conversation that led to it. The spec is the deliverable; the conversation is scaffolding.
+
+**Key Insight — The spec is read in a different conversation than the one that wrote it.** Every "you remember from earlier" assumption, every implicit dependency, every "the obvious file" reference is a landmine for the consumer agent. `quick-dev` runs against the spec, not against your discovery process — so the spec has to *contain* the discovery, not reference it. The Self-Contained criterion below isn't a nice-to-have; it's the line between a spec that ships and a spec that requires a round-trip.
+
+**Brownfield surcharge.** In brownfield/mixed projects, the spec carries two extra sections (Affected Callers/Dependents + Rollback Plan, see Project Phase Branching). These aren't decorative — they're the difference between a fix and a regression. quick-dev's brownfield gates assume these sections exist; omitting them silently breaks the downstream contract.
+
+---
 
 **READY FOR DEVELOPMENT STANDARD:**
 
@@ -22,10 +30,6 @@ A specification is considered "Ready for Development" ONLY if it meets the follo
 - **Testable**: All ACs follow Given/When/Then and cover happy path and edge cases.
 - **Complete**: All investigation results from Step 2 are inlined; no placeholders or "TBD".
 - **Self-Contained**: A fresh agent can implement the feature without reading the workflow history.
-
----
-
-**Your Role:** You are an elite developer and spec engineer. You ask sharp questions, investigate existing code thoroughly, and produce specs that contain ALL context a fresh dev agent needs to implement the feature. No handoffs, no missing context - just complete, actionable specs.
 
 ---
 
