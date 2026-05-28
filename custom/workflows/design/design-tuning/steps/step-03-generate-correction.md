@@ -31,10 +31,13 @@ From steps 01–02:
 
 ### 1. Determine Output Type
 
-Based on findings:
+Based on the overall assessment from step-02 §7:
 
-- **If 0 violations (all checks pass):** Generate an APPROVAL message, not a correction. Skip to section 5.
-- **If 1+ violations:** Generate a correction message. Continue to section 2.
+- **Assessment = PASS** (0 hard failures AND `{coverage_partial} = false`): Generate an APPROVAL message. Skip to section 5.
+- **Assessment = FAIL** (1+ hard failures, regardless of coverage): Generate a correction message. Continue to section 2.
+- **Assessment = PARTIAL** (0 hard failures BUT `{coverage_partial} = true`): Generate a PARTIAL-STATUS message — list everything that's resolved, list the prior keepers that re-verified cleanly, and explicitly name the missing screens that block approval. The PARTIAL-STATUS path does NOT emit an APPROVAL and does NOT emit a corrective directive; it emits a "design is on track but cannot be approved until you provide screens X, Y, Z" status message. The user pastes that status message back to themselves (or to Claude Design as a "please render the missing screens" request) — it is not a correction to send Claude Design. See section 5b for the PARTIAL-STATUS template.
+
+Refusing to emit APPROVAL on PARTIAL is the workflow's defense against approval-by-omission: a clean record on 3 of 5 screens is not evidence that screens 4 and 5 are clean.
 
 ### 2. Build the Correction Message
 
@@ -117,14 +120,14 @@ Fixed this round: {count}
 {List of elements that work well, accumulated across iterations}
 ```
 
-### 5. Generate Approval Message (if no violations)
+### 5. Generate Approval Message (if assessment == PASS)
 
-If all checks pass:
+If `{assessment} == PASS` (0 hard failures AND `{coverage_partial} == false`):
 
 ```markdown
 **Design approved — iteration {iteration_number}.**
 
-All constraints from the design brief are satisfied. No corporate guardrail violations. Visual direction aligns with references.
+All constraints from the design brief are satisfied. No corporate guardrail violations. Visual direction aligns with references. All required screens were inspected.
 
 **Approved elements:**
 {List all kept_elements}
@@ -133,6 +136,28 @@ All constraints from the design brief are satisfied. No corporate guardrail viol
 ```
 
 Update the state file with `status: approved`.
+
+### 5a. Generate PARTIAL-STATUS Message (if assessment == PARTIAL)
+
+If `{assessment} == PARTIAL` (0 hard failures BUT `{coverage_partial} == true` — required screens are missing):
+
+```markdown
+**Iteration {iteration_number}: PARTIAL — on track but cannot approve.**
+
+No hard failures and no scope-creep issues on the screens that WERE provided. The blocker is coverage: {N} screen(s) from the brief's required edge-state list have not been rendered or were not included in the screenshots provided.
+
+**Missing screens (block approval):**
+{For each item in missing_screens:}
+- {screen name as listed in the brief}
+
+**Status of the screens that WERE inspected:**
+{For each fixed_violations item from §6: "✓ {ID} resolved on {screen}"}
+{For each previous keeper that re-verified in §6a: "✓ {keeper} held"}
+
+**Next step:** drop screenshots of the missing screens here. I will not emit an approval until I have inspected every required screen — partial-coverage approval is the silent-failure mode this workflow exists to prevent (see workflow.md SOURCE-OF-TRUTH PRECEDENCE and step-02 §1a).
+```
+
+Update the state file with `status: partial-pending-coverage` and persist `{missing_screens}` so the next iteration can recognize the gap is closed when those screens arrive.
 
 ### 5b. Brand Identity Feedback (on approval only)
 
@@ -156,8 +181,8 @@ Output these suggestions in a `**Brand Identity Updates**` section after the app
 
 Display to the user:
 
-1. **Summary line:** "Iteration {N}: {PASS|FAIL} — {X} violations ({Y} hard failures), {Z} fixed from last round"
-2. **The full correction message** inside a clearly marked block — ready to copy
+1. **Summary line:** "Iteration {N}: {PASS|FAIL|PARTIAL} — {X} violations ({Y} hard failures), {Z} fixed from last round{, missing N screen(s) if PARTIAL}"
+2. **The full correction / approval / partial-status message** inside a clearly marked block — ready to copy
 3. **Brief drift report** (if `{policy_overrides_brief}` = true). For each item in `{brief_drift}`, print:
    > **Brief drift detected — policy wins.** The brief at `{brief_path}` softens a rule from `{brand_identity_path}`. This run evaluated against the policy, not the brief.
    > - Rule: `{rule}`
@@ -169,6 +194,7 @@ Display to the user:
 5. **Next step instruction:**
    - If FAIL: "Paste the message above into Claude Design. Drop the next screenshot here when ready."
    - If PASS: "Design approved. Run the design-implement workflow to bring the approved design into the codebase. For a single, isolated component change, quick-dev may be sufficient."
+   - If PARTIAL: "Drop screenshots of the missing screens listed above and re-invoke design-tuning. The status message is for your records; do not send it to Claude Design as a correction."
 
 ---
 
@@ -188,3 +214,5 @@ Display to the user:
 - Writing "consider doing X" instead of "do X" — Claude Design responds better to direct imperatives
 - Not persisting state — losing iteration tracking between invocations
 - Approving a design that still has hard failures
+- **Approving on `{coverage_partial} == true`.** PASS requires both 0 hard failures AND full screen coverage; emit PARTIAL-STATUS when coverage is incomplete and refuse to send Claude Design a correction (the gap is on the user's side, not the design's). See §5a.
+- **Sending the PARTIAL-STATUS message to Claude Design as a correction.** That message is a status-for-the-user; Claude Design would treat it as a directive to redesign the screens it has already shown. The next step is the user dropping the missing screens, not Claude Design producing new ones.

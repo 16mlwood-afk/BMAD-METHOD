@@ -73,6 +73,8 @@ When this workflow encounters conflicting guidance, the order of authority is:
 
 **Brief drift is real.** Generated briefs sometimes insert editorializing parentheticals into hard rules ("Use Lucide icons or no icon at all. (But the codebase uses flag emoji so the designer may …)"). If design-tuning treats the brief as authoritative, that false exception propagates into correction messages and is then "fixed" in the wrong direction. Step-01 loads the policy directly to break that chain. Step-02 runs a contradiction scan between brief-derived constraints and policy-derived constraints; on conflict, policy wins and the drift is recorded.
 
+**Rendered output beats source on rendering-level checks.** When the reviewer is evaluating a screenshot — and the source HTML/CSS (or a CSS comment claiming a behavior) disagrees with what the rendered pixels show — **the rendered pixels are authoritative**. A CSS rule like `.tile { border-left: 3px solid; background: transparent; }` may claim a single-shared-band rendering, but if the screenshot shows full-border rounded-corner cards, the rendering is the truth. The source disagreement is itself evidence — it signals a stylesheet override the reviewer hasn't traced, a markup mismatch, or a comment that no longer matches the code — and that disagreement is flagged as a sub-finding, not used to absolve the rendering. Reviewers reading the source instead of the rendering is the single most common failure mode this workflow exists to prevent. See step-02 §2's evidence-required rule and §1b's per-surface render inspection for the procedural enforcement.
+
 ---
 
 ## INITIALIZATION

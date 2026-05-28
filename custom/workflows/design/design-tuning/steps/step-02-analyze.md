@@ -51,50 +51,94 @@ Identify what pages/views are shown in the screenshot(s):
 - Which route is depicted? (e.g., `/upload`, `/invoices`)
 - Is this a full page or a detail/component view?
 - Note the viewport width if discernible
+- Enumerate the discrete screens visible (e.g., for a multi-state mockup: "screen 01 All-failed batch, screen 03 Retry-in-progress, screen 04 Permanent vs transient" — note any explicit screen labels).
+
+### 1a. Coverage Gate (all-screens-or-partial)
+
+If the brief lists required edge-state variants in §6 (refine-screen mode) OR names multiple screens / states the mockup must include (fresh-design mode), compare the inventoried screens from §1 against that list:
+
+- **Full coverage** — every required screen is present in the provided screenshots. Proceed to §1b.
+- **Partial coverage** — one or more required screens is missing. **The run cannot produce an APPROVAL.** Continue with the analysis on the screens that ARE present (violations found are still real), but record `{coverage_partial} = true` and the list of missing screens in `{missing_screens}`. Step-03 must surface this in the correction/status message and refuse the approval path; the user must provide the missing screens before approval is possible.
+
+This gate exists because partial evidence is the silent failure mode of this workflow: an iteration that's "passing" on screens 01/03/04 may regress catastrophically on screens 02/05, and approving without seeing them is approval by omission.
+
+### 1b. Per-Surface Render Inspection (forcing function for AI-fingerprint tropes)
+
+Anti-AI tropes hide at component scale. A full-page screenshot at typical resolution smooths a card grid into "a band", a stat-card row into "a summary", a colored-icon-circle cluster into "navigation". This step pre-names the surfaces to inspect explicitly so the §2 checks land on the right region of the right screen.
+
+Based on the brief's `{page_mode}` and whether an analytics band is present, populate `{render_surfaces}` — the surfaces that must be visually inspected at zoom (zooming into the screenshot region or, if a zoom-level screenshot is not provided, explicitly flagging "could not verify at zoom" in the §2 evidence column):
+
+**For `operational` mode with analytics band:**
+- Pipeline strip / coverage strip / summary band — inspect every tile for: per-tile border (top/right/bottom), per-tile rounded corners, per-tile shadow, per-tile background fill distinct from the band container. ANY of these on multiple tiles = card-grid violation under "Dashboard card grid" in §2.
+- Status pill — inspect for: shape (`rounded-md` vs `rounded-full`), saturated fill vs tint, leading colored dot.
+- Filter chip bar — inspect for: chip shape, chip count beyond search + filters + sort, ad-hoc color on chips.
+- Row anatomy — inspect for: secondary-signal placement (status cell vs document cell vs other), hover-gated actions promoted to rest, per-row card framing vs hairline separators.
+
+**For `operational` mode without analytics band:**
+- Page header — inspect for: hero strip, banner panel, marketing intro, stat-card opener.
+- Status pill — same as above.
+- Filter chip bar — same as above.
+- Row anatomy — same as above.
+
+**For `analytical` mode:**
+- Chart panels — inspect for: card grid framing (each chart in its own bordered card with identical chrome), KPI cards as page opener, hero summary.
+- Filter row — same as operational.
+- Evidence table — row anatomy as above.
+
+**For `detail` mode (drawer or full-page):**
+- Header — inspect for: hero, gradient, oversized identifier.
+- Body sections — inspect for: card-grid framing of field groups, KPI cards inside the detail view, more than 3-4 groups.
+- Footer / action region — inspect for: rounded-full primary CTA, more than one primary action, oversized action region.
+
+Record the per-surface inspection results — even when "no violation" — as evidence rows that step-03 will reference. A clean inspection is `surface: pipeline-strip; verified-at: screen-01 zoom; finding: shared band, border-left only` rather than a silent pass.
 
 ### 2. Check Corporate Guardrails (if applicable)
 
-If `{corporate_guardrails}` is populated, run through each anti-pattern check:
+If `{corporate_guardrails}` is populated, run through each anti-pattern check.
+
+**Evidence-required rule — CRITICAL.** Every row below requires `(Y/N) + evidence`. A `Y` cites the specific rendering and where to see it; an `N` cites where in the screenshot the reviewer looked to verify absence. **For RENDER-LEVEL rows (everything in the AI fingerprint table plus background-tint, decorative-color, semantic-card-fills, oversized-radius, gradients/glass, heavy shadows, hover scale, animated counters, semantic card fills, excessive badge colors), evidence must be a screenshot region** — `verified-at: screen-01 / pipeline-strip zoom, tiles share container, no per-tile border` is acceptable; `verified-from: HTML source line 281 .pipeline .tile CSS` is NOT acceptable on its own, because source can disagree with render (see workflow.md SOURCE-OF-TRUTH PRECEDENCE block). Source-only evidence is acceptable on SOURCE-LEVEL rows (typography family, monospace abuse where the rendered text origin is unambiguous, voice-checks like marketing copy). An `N` without evidence — anywhere in the table — must be promoted to "unverified" and the run cannot APPROVE until it is filled in.
+
+Cross-reference the `{render_surfaces}` populated in §1b: for each surface, the relevant rows in the tables below should reference the corresponding zoom evidence captured there.
 
 **Aesthetic checks:**
 
-| Check | What to look for | Violation? |
-|-------|-----------------|------------|
-| Background tint | Any cream, warm, or off-white background — must be pure white or cool neutral gray | Y/N |
-| Typography family | More than one sans-serif, or any personality/display fonts | Y/N |
-| Monospace abuse | Monospace used in headings, labels, navigation, or section titles (OK in IDs, codes, tabular numbers) | Y/N |
-| Decorative color | Color used for personality or branding rather than functional state indication | Y/N |
-| Dark mode tint | Navy, deep blue, or warm dark — must be true dark neutrals if dark mode is shown | Y/N |
+| Check | What to look for | Evidence-class | Violation? + evidence |
+|-------|-----------------|----------------|----------------------|
+| Background tint | Any cream, warm, or off-white background — must be pure white or cool neutral gray | render | Y/N + region |
+| Typography family | More than one sans-serif, or any personality/display fonts | source or render | Y/N + region or file:line |
+| Monospace abuse | Monospace used in headings, labels, navigation, or section titles (OK in IDs, codes, tabular numbers) | render | Y/N + region |
+| Decorative color | Color used for personality or branding rather than functional state indication | render | Y/N + region |
+| Dark mode tint | Navy, deep blue, or warm dark — must be true dark neutrals if dark mode is shown | render | Y/N + region |
 
 **Voice checks:**
 
-| Check | What to look for | Violation? |
-|-------|-----------------|------------|
-| Marketing copy | Aspirational headlines, agency voice, taglines on internal pages | Y/N |
-| Unexplained badges | Numeric or icon badges without adjacent text labels | Y/N |
-| Truncated text | Text cut off without a visible tooltip/expand affordance | Y/N |
-| Labeling style | Editorial numbering ("01 —"), playful labels, non-functional section names | Y/N |
+| Check | What to look for | Evidence-class | Violation? + evidence |
+|-------|-----------------|----------------|----------------------|
+| Marketing copy | Aspirational headlines, agency voice, taglines on internal pages | render | Y/N + region |
+| Unexplained badges | Numeric or icon badges without adjacent text labels | render | Y/N + region |
+| Truncated text | Text cut off without a visible tooltip/expand affordance | render | Y/N + region |
+| Labeling style | Editorial numbering ("01 —"), playful labels, non-functional section names | render | Y/N + region |
 
-**AI fingerprint checks:**
+**AI fingerprint checks** (all RENDER-LEVEL — source evidence alone is insufficient):
 
-| Check | What to look for | Violation? |
-|-------|-----------------|------------|
-| Bento grid | Asymmetric mixed-size card grid layout | Y/N |
-| Hero section | Tagline, stat row, or marketing-style header on an internal page | Y/N |
-| Dashboard card grid | Row of metric cards as the page's opening element | Y/N |
-| Excessive whitespace | Massive padding (>24px section gaps, >16px card padding for a dense tool) | Y/N |
-| Purple/violet primary | Purple used as the primary accent color | Y/N |
-| Gradients/glass | Gradient text, gradient backgrounds, glassmorphism effects | Y/N |
-| Oversized radius | Border radius >8px on containers (pill shapes OK on tags/badges only) | Y/N |
-| Heavy shadows | Card shadows used decoratively rather than for elevation hierarchy | Y/N |
-| Colored dividers | Gradient or colored section dividers instead of 1px solid border | Y/N |
-| Colored nav icons | Different color per navigation item | Y/N |
-| Semantic card fills | Entire card background colored by status (green card, red card) | Y/N |
-| Chatty empty states | Illustrations or enthusiastic copy in empty states | Y/N |
-| Icon overload | Icons on every label, heading, and menu item | Y/N |
-| Hover scale | Scale transforms on card hover instead of background/border change | Y/N |
-| Animated counters | Number counters that animate up to their value | Y/N |
-| Excessive badge colors | More than 4 distinct badge/status colors | Y/N |
+| Check | What to look for | Violation? + evidence |
+|-------|-----------------|----------------------|
+| Bento grid | Asymmetric mixed-size card grid layout | Y/N + region |
+| Hero section | Tagline, stat row, or marketing-style header on an internal page | Y/N + region |
+| Dashboard card grid | Row of metric cards as the page's opening element. **Also fires when an analytics band that should read as a single shared container instead renders each panel with per-panel border + rounded corners + identical hierarchy.** Inspect the pipeline-strip / coverage-strip / summary-band region of the screenshot at zoom; if each tile has its own four-sided border, this fires regardless of what the source CSS claims. | Y/N + region |
+| Excessive whitespace | Massive padding (>24px section gaps, >16px card padding for a dense tool) | Y/N + region |
+| Purple/violet primary | Purple used as the primary accent color | Y/N + region |
+| Gradients/glass | Gradient text, gradient backgrounds, glassmorphism effects | Y/N + region |
+| Oversized radius | Border radius >8px on containers (pill shapes OK on tags/badges only) | Y/N + region |
+| Heavy shadows | Card shadows used decoratively rather than for elevation hierarchy | Y/N + region |
+| Colored dividers | Gradient or colored section dividers instead of 1px solid border | Y/N + region |
+| Colored nav icons | Different color per navigation item | Y/N + region |
+| Semantic card fills | Entire card background colored by status (green card, red card) | Y/N + region |
+| Chatty empty states | Illustrations or enthusiastic copy in empty states | Y/N + region |
+| Icon overload | Icons on every label, heading, and menu item | Y/N + region |
+| Hover scale | Scale transforms on card hover instead of background/border change | Y/N + region |
+| Animated counters | Number counters that animate up to their value | Y/N + region |
+| Excessive badge colors | More than 4 distinct badge/status colors | Y/N + region |
 
 **Self-test:** Would someone guess this design is AI-generated? If yes, that is itself a violation.
 
@@ -136,7 +180,19 @@ If `{previous_violations}` is populated:
 - For each previous violation still present → mark as "persisting" with iteration count
 - New violations not in the previous list → mark as "new"
 
-If this is iteration 1, skip this step.
+If this is iteration 1, skip this list-comparison part — but still run §6a below (keeper re-verification) on the keepers added during iteration 1, because keepers are added the moment they're claimed and must be verified against the same screenshot in the same step.
+
+### 6a. Re-Verify Prior Keepers (regression guard — CRITICAL)
+
+Keepers are not monotonic. A keeper added in iteration N must hold in iteration N+1 — otherwise it's a regression that the violation-diff in §6 will miss (because §6 only tracks the violations list, not the keepers list).
+
+If `{state_file_path}` exists and contains a `## Kept Elements` section, load that list as `{previous_keepers}`. For each entry, run the same evidence-required check the keeper originally passed:
+
+- **Held — re-verified.** The keeper still holds against the current screenshot, with cited evidence (region or file:line per the §2 evidence-class rule). Carry forward into the new iteration's keepers list.
+- **No longer holds — regressed.** The element that worked in iteration N now violates a constraint in iteration N+1. Demote to `{current_violations}` with severity = hard-failure (regressed-keeper is always hard-failure because the design previously demonstrated it could meet the constraint) and `Status: regressed-from-V{N}`. Remove from the keepers list.
+- **Never held — was wrongly added.** The keeper was claimed in iteration N without rigorous evidence (e.g., evidence cited source-only on a render-level check, per the §2 evidence-class rule), and re-inspection at zoom reveals the constraint was already violated then. Demote to `{current_violations}` with severity = hard-failure (because a missed-since-iteration-1 hard-failure is the most damaging miss in this workflow's failure modes — it propagates as approval through every subsequent iteration). Status: `missed-since-V1`. Remove from the keepers list. Note in the violation description: "wrongly listed as keeper since V{N}; original evidence was {source-only / inferred}".
+
+The keeper re-verification check is what protects against the single most common failure mode in this workflow: a claim made early on insufficient evidence, calcified into a "do not change this" instruction in the correction message, blocking the constraint from being re-inspected on subsequent iterations.
 
 ### 7. Compile Findings
 
@@ -147,10 +203,15 @@ Store:
   - Category (corporate-guardrail | brief-constraint | visual-reference | ai-fingerprint)
   - Severity (hard-failure | issue)
   - Description (what the brief says vs. what the mockup shows)
-  - Status (new | persisting-from-V{N} | regressed)
+  - Evidence (region citation per §2 evidence-class rule)
+  - Status (new | persisting-from-V{N} | regressed-from-V{N} | missed-since-V{N})
 - `{fixed_violations}` — violations from previous iteration that are now resolved
-- `{kept_elements}` — list of elements that work well
-- Overall assessment: PASS (0 hard failures) | FAIL (1+ hard failures)
+- `{kept_elements}` — list of elements that work well, each carrying the evidence that re-verified it this iteration (§6a)
+- `{coverage_partial}` and `{missing_screens}` — populated by §1a if any required screens are absent from the provided screenshots
+- Overall assessment:
+  - **PASS** — 0 hard failures AND `{coverage_partial} = false`
+  - **FAIL** — 1+ hard failures
+  - **PARTIAL** — 0 hard failures but `{coverage_partial} = true` (step-03 cannot emit APPROVAL; emits status-with-pending-coverage instead)
 
 ---
 
@@ -162,13 +223,16 @@ Load and follow: `{project-root}/_bmad/bmm/workflows/design/design-tuning/steps/
 
 ## SUCCESS METRICS
 
-- Every corporate guardrail checked (if applicable)
+- Coverage gate (§1a) ran — every required screen was either inspected or marked missing
+- Per-surface render inspection (§1b) populated `{render_surfaces}` with at least the surfaces named for the current `{page_mode}` + analytics-band combination
+- Every corporate guardrail checked **with evidence cited per the §2 evidence-class rule** (render-region for render-level rows; source-or-render for source-class rows); no `Y/N` without backing evidence
 - Every brief constraint checked
 - Every visual reference checked (if applicable)
 - Comparison against previous iteration completed (if applicable)
-- Findings categorized with IDs, severity, and status
-- "What works" list populated — not just negative findings
-- Overall assessment determined
+- **Prior keepers re-verified (§6a) — every keeper held, regressed, or was demoted to missed-since-V{N}**
+- Findings categorized with IDs, severity, status, and evidence
+- "What works" list populated — not just negative findings — and every entry carries the re-verification evidence from §6a
+- Overall assessment determined (PASS | FAIL | PARTIAL)
 
 ## FAILURE MODES
 
@@ -176,3 +240,7 @@ Load and follow: `{project-root}/_bmad/bmm/workflows/design/design-tuning/steps/
 - Missing a hard failure because the mockup "looks nice"
 - Flagging something as a violation when the brief explicitly allows it
 - Not comparing against previous iteration when state exists
+- **Trusting source HTML/CSS or a CSS comment over the rendered screenshot on render-level checks.** A `.tile { border-left: 3px solid; background: transparent; }` rule that claims a shared band but renders as a card grid means the rendering is the truth and the source disagreement is itself evidence. See workflow.md SOURCE-OF-TRUTH PRECEDENCE block.
+- **Recording an `N` on a §2 row without citing screenshot region.** An N answer from inference is unverified — promote to "unverified" and block APPROVAL until filled in.
+- **Approving on partial screen coverage.** §1a's coverage gate exists to prevent approval-by-omission; honor it.
+- **Treating keepers as append-only.** §6a re-verifies every prior keeper — a calcified wrong-since-V1 claim must be demoted as soon as inspection at zoom proves it.
