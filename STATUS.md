@@ -7,7 +7,7 @@ description: Volatile state of the Mason-BMAD fork. Read by mason-bmad-workflow-
 
 > Update whenever you ship a change to the fork, absorb upstream, or change the shipped/designed status of a feature.
 
-**Last updated:** 2026-05-28 by Mason (design-synthesize step-06 brief-faithfulness half)
+**Last updated:** 2026-05-28 by Mason (design-synthesize step-06 brief-faithfulness half + canonical-path consolidation)
 
 ---
 
@@ -34,6 +34,7 @@ description: Volatile state of the Mason-BMAD fork. Read by mason-bmad-workflow-
 - [x] **sync `--worktree PATH` flag** — single-worktree minimal sync (commit `647c14e7`)
 - [x] **project_phase config flag** — `greenfield | brownfield | mixed` (commit `0dd2e1ca`, shipped today)
 - [x] **maintenance-triage workflow** — `custom/workflows/implement/maintenance-triage/` (commit `0dd2e1ca`, shipped today)
+- [x] **Canonical implementation-artifacts path consolidation** — workflow text was referencing legacy `_bmad/bmm/implementation-artifacts/` literal in 11 places across 6 design workflows; config resolves `{implementation_artifacts}` to `_bmad-output/implementation-artifacts/`. Diagnosed in accounting-tools (27 orphaned artifacts), fixed at fork-level (commit `ae4bb805`, 2026-05-28). Audit of all 13 projects: only accounting-tools materially affected. Re-sync needed for the other 12 to refresh workflow text (no artifact moves needed there).
 - [?] **Worktree creation hook → auto-sync** — partial: `--worktree` flag exists, automatic hook wiring needs confirmation per-project
 - [?] **.gitignore entries for synced directories** — enforced per-project; audit across all 13 projects pending
 
