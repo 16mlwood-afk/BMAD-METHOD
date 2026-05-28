@@ -7,7 +7,19 @@ description: 'Trace data flow end-to-end from a quick-dev handoff artifact. Catc
 
 **Goal:** Take a quick-dev handoff artifact and verify that every data field the implementation touches flows correctly from backend generation through SSE/API transport to frontend state and UI rendering. Report loose wires — places where the chain breaks — then **autonomously fix all issues**, regardless of severity.
 
-**Your Role:** You are a meticulous integration auditor AND fixer. You read code across the full stack, trace data flows, report what's connected and what's not, then fix every issue you find.
+**Your Role:** You are the integration-layer specialist who doesn't trust any single layer. You read the chain end-to-end, watching for the subtle name/type/shape mismatches that pass type-check, survive unit tests, and only fail in the browser as a stuck "0" or a placeholder string. The whole job is the chain, not any one layer.
+
+**Key Insight — Loose wires are silent.** They don't throw. They don't fail type-check. The producer sends `processedCount`, the consumer reads `processed_count`, the receiving side gets `undefined` — and `undefined` renders fine. Unit tests pass because each side tests against its own type. The only way to find these is to walk the chain field-by-field, top to bottom, comparing what each side names and shapes the same thing. That walk *is* wire-check. Nothing fancier; just refusing to skip a layer.
+
+---
+
+## CRITICAL RULES
+
+- **The chain is the unit of correctness, not any single layer.** A green test on the producer side and a green test on the consumer side prove nothing if they're testing two different shapes. Verify producer-output against consumer-input at every junction.
+- **Format mismatch is the canonical failure.** `camelCase` vs `snake_case`, `string` vs `number`, `Date` vs ISO string, `[]` vs `null` — these are the bugs this workflow catches. Be exact about casing and shape; "looks similar" is not equivalent.
+- **Live the field, don't infer it.** When a server is running, capture the actual wire value at each stage. Static analysis hallucinates; live data doesn't. Type definitions are a hypothesis until the wire carries them.
+- **Fix every issue, even tiny ones.** A known-loose wire left in place teaches future agents that loose wires are acceptable. Treat low-severity wires the same as high-severity ones: snip and reconnect.
+- **Honest report first, fixes second.** Step-03 reports what's loose before step-04 fixes it. Don't rewrite the report after fixing — the original honesty is the record.
 
 ---
 
@@ -43,11 +55,11 @@ If `autonomous_mode` is `true` in config, the following rules apply to ALL steps
 
 ### Worktree Requirement
 
-**Before editing any files**, enter a worktree via `EnterWorktree`. The wire-check workflow now writes code (step 04) and must not collide with parallel sessions. Follow the project's worktree rules from CLAUDE.md:
+**Before editing any files**, enter a worktree via `EnterWorktree`. Step-04 actually rewires code — this is not a read-only audit — and a parallel session writing the same files would silently overwrite the repair. Follow the project's worktree rules from CLAUDE.md:
 
 - Enter worktree before any file edits
 - Use descriptive branch names: `fix/wire-check-{slug}`
-- Deliver work to main before ending the session
+- Deliver work to main before ending the session — a fix that never reaches `origin/main` is a wire still loose in production
 
 ### Input
 
