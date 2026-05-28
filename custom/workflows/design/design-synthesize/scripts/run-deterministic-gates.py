@@ -606,6 +606,239 @@ def detect_g8_tier1_column_placement(html: str, path: str) -> list[dict]:
 
 
 # ----------------------------------------------------------------------------
+# G.4 — counts_not_duplicated_without_new_value
+# ----------------------------------------------------------------------------
+
+# Domain keywords. A (count, keyword) pair repeated across distinct regions
+# is the "same data point, two surfaces" pattern V11 catches. We use a
+# keyword-anchored detector because generic numeric matching produces too
+# much noise (e.g., row prices, dates, column widths).
+DOMAIN_KEYWORDS = {
+    "invoices", "orders", "transactions", "charges", "refunds",
+    "queries", "items", "rows", "records", "shipments",
+    "missing", "orphan", "blocked", "stuck",
+    "filed", "reconciled", "verified", "archived",
+}
+
+
+def detect_g4_count_duplication(html: str, path: str) -> list[dict]:
+    """Same (count, domain-keyword) pair surfaced in ≥2 distinct data-component
+    regions = a cross-reference that duplicates without adding value.
+
+    The V11 case: sub-tabs render "Missing invoices 8"; a foot-note band
+    renders "8 orders missing invoices →". Same count, same keyword, two
+    distinct surfaces — the second adds noise, not information.
+
+    Scan element-level inner text (button/a/li/span with role): the count
+    and the noun typically live in separate text nodes (e.g.,
+    "<button>Missing invoices <span>8</span></button>"), so per-text-node
+    matching misses the pair.
+    """
+    violations: list[dict] = []
+    builder = _TreeBuilder()
+    try:
+        builder.feed(html)
+        builder.close()
+    except Exception:  # noqa: BLE001
+        return violations
+
+    # (count, keyword) → set of region names
+    observations: defaultdict[tuple[int, str], set[str]] = defaultdict(set)
+    # (count, keyword) → set of one sample phrase per region
+    samples: defaultdict[tuple[int, str], set[str]] = defaultdict(set)
+
+    # Element-level scan: each surface-bearing element gets its concatenated
+    # descendant text scanned once. We skip pure-container divs to avoid
+    # double-counting (a <div> wrapping a <button> with "8 invoices" would
+    # otherwise produce two observations for the same content).
+    SURFACE_TAGS = {"button", "a", "li"}
+
+    stack: list[_TreeNode] = [builder.root]
+    while stack:
+        node = stack.pop()
+        for child in node.children:
+            if isinstance(child, _TreeNode):
+                stack.append(child)
+        if node.tag not in SURFACE_TAGS:
+            continue
+        text = re.sub(r"\s+", " ", _node_text(node).lower()).strip()
+        if not text or len(text) > 200:
+            continue
+        for m in re.finditer(
+            r"(\d{1,5})(?=\D)[^a-z\d]{0,8}([a-z\s\-]{1,60})|"
+            r"([a-z\s\-]{1,60})[^a-z\d]{0,8}(\d{1,5})\b",
+            text,
+        ):
+            if m.group(1):
+                num_str, phrase = m.group(1), m.group(2) or ""
+            else:
+                num_str, phrase = m.group(4), m.group(3) or ""
+            try:
+                count = int(num_str)
+            except ValueError:
+                continue
+            if count == 0 or count > 99999:
+                continue
+            tokens = {
+                t.strip("-").rstrip("s")
+                for t in phrase.split()
+                if t.strip()
+            }
+            if not tokens:
+                continue
+            anchors = {
+                t for t in tokens
+                if t in DOMAIN_KEYWORDS or t + "s" in DOMAIN_KEYWORDS
+            }
+            if not anchors:
+                continue
+            # Region = nearest ancestor with data-component attribute.
+            region = "(unscoped)"
+            cursor: _TreeNode | None = node
+            while cursor is not None:
+                rv = cursor.attrs.get("data-component")
+                if rv:
+                    region = rv
+                    break
+                cursor = cursor.parent
+            for anchor in anchors:
+                key = (count, anchor)
+                observations[key].add(region)
+                sample = text[:80]
+                samples[key].add(f"[{region}] {sample}")
+
+    for (count, anchor), regions in observations.items():
+        if len(regions) < 2:
+            continue
+        # Two or more distinct regions surface the same (count, keyword) pair.
+        sample_list = sorted(samples[(count, anchor)])[:4]
+        violations.append({
+            "check": "counts_not_duplicated_without_new_value",
+            "screen": path,
+            "detail": (
+                f"count {count} with keyword '{anchor}' surfaced in "
+                f"{len(regions)} distinct regions {sorted(regions)}. "
+                f"samples: {sample_list}"
+            ),
+            "fix": (
+                "drop the duplicated surface — the first surface (typically "
+                "the sub-tabs or page header) already carries the count; "
+                "the second surface (cross-reference band, foot-note) adds "
+                "noise without new information. If a second surface is "
+                "needed, change the framing so it carries different data "
+                "(e.g., a state breakdown, a trend, a delta)"
+            ),
+            "source": "deterministic_gate_G4",
+        })
+    return violations
+
+
+# ----------------------------------------------------------------------------
+# G.9 — invented_chrome_elements (brand-mark glyph on sub-route)
+# ----------------------------------------------------------------------------
+
+# Page-header-like data-component values. The brand-mark belongs in the
+# global top-nav, not in a sub-route's PageHead. This is a structural check:
+# if a small square-styled glyph with 1–2 character text content lives
+# inside a PageHead-class container, it's the invented chrome pattern.
+PAGEHEAD_REGIONS = {"PageHead", "PageHeader", "PageHead.brand"}
+
+# CSS dimension bands. Brand-mark glyphs cluster around 14-32px squares.
+GLYPH_DIM_RE = re.compile(r"(?:width|height)\s*:\s*(\d{1,3})\s*px")
+
+
+def detect_g9_invented_chrome(html: str, path: str) -> list[dict]:
+    """A brand-mark glyph rendered inside the page-content PageHead is an
+    invented chrome element on sub-route pages. The brand mark belongs in
+    the global top-nav (out of bundle scope). Policy §2: "Page chrome is
+    minimal: title, optional one-line description, inline actions."
+
+    Detection: tree-walk for elements inside a PageHead-class container
+    that have (a) explicit small square dimensions, (b) an explicit
+    background, AND (c) text content of 1–2 characters. Self-closing
+    icons (SVG) are excluded — they don't carry text content.
+    """
+    violations: list[dict] = []
+    builder = _TreeBuilder()
+    try:
+        builder.feed(html)
+        builder.close()
+    except Exception:  # noqa: BLE001
+        return violations
+
+    def _is_inside_pagehead(node: _TreeNode) -> bool:
+        cursor = node.parent
+        while cursor is not None:
+            if cursor.tag == "header":
+                return True
+            comp = cursor.attrs.get("data-component", "")
+            if comp in PAGEHEAD_REGIONS or comp.startswith("PageHead"):
+                return True
+            cursor = cursor.parent
+        return False
+
+    def _glyph_dimensions(style: str) -> tuple[int | None, int | None]:
+        width = height = None
+        for m in re.finditer(r"width\s*:\s*(\d{1,3})\s*px", style):
+            width = int(m.group(1))
+        for m in re.finditer(r"height\s*:\s*(\d{1,3})\s*px", style):
+            height = int(m.group(1))
+        return width, height
+
+    stack: list[_TreeNode] = [builder.root]
+    while stack:
+        node = stack.pop()
+        if not isinstance(node, _TreeNode):
+            continue
+        for child in node.children:
+            if isinstance(child, _TreeNode):
+                stack.append(child)
+        # Only consider div/span/a — SVG icons handled separately
+        if node.tag not in ("div", "span", "a"):
+            continue
+        style = node.attrs.get("style", "")
+        if not style:
+            continue
+        width, height = _glyph_dimensions(style)
+        if width is None or height is None:
+            continue
+        if not (12 <= width <= 32 and 12 <= height <= 32):
+            continue
+        if abs(width - height) > 4:
+            # Not roughly square — likely a separator or pill
+            continue
+        if "background" not in style.lower():
+            continue
+        # Text content: must be 1–2 chars and contain a letter
+        text_only = _node_text(node).strip()
+        if not (1 <= len(text_only) <= 2):
+            continue
+        if not re.match(r"^[A-Za-z][A-Za-z0-9]?$", text_only):
+            continue
+        if not _is_inside_pagehead(node):
+            continue
+        violations.append({
+            "check": "invented_chrome_elements",
+            "screen": path,
+            "detail": (
+                f"brand-mark glyph '{text_only}' rendered inside PageHead "
+                f"on sub-route page — {width}x{height}px square with "
+                f"background style. Brand mark belongs in the global "
+                f"top-nav, not in a feature page's chrome"
+            ),
+            "fix": (
+                "drop the brand-mark glyph from the PageHead. Policy §2: "
+                "'Page chrome is minimal: title, optional one-line "
+                "description, inline actions.' Keep the title row, "
+                "eyebrow text, subtitle, period selector, and primary "
+                "actions — nothing else"
+            ),
+            "source": "deterministic_gate_G9",
+        })
+    return violations
+
+
+# ----------------------------------------------------------------------------
 # G.6 — empty_state_deliverable_present
 # ----------------------------------------------------------------------------
 
@@ -709,9 +942,11 @@ def main() -> int:
         rel = screen.name
         all_violations += detect_g2_active_filter_matches_rows(html, rel)
         all_violations += detect_g3_action_duplicated(html, rel)
+        all_violations += detect_g4_count_duplication(html, rel)
         all_violations += detect_g5_dividers_consistent_with_filter(html, rel)
         all_violations += detect_g7_status_color_consistency(html, rel)
         all_violations += detect_g8_tier1_column_placement(html, rel)
+        all_violations += detect_g9_invented_chrome(html, rel)
     all_violations += detect_g6_empty_state_deliverable(bundle_dir, brief_path)
 
     emit(all_violations)
