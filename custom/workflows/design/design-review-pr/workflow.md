@@ -7,7 +7,9 @@ description: 'Checklist-driven enforcement of the project design policy at PR ti
 
 **Goal:** Enforce the project's design policy at PR time by evaluating the diff (and optionally a rendered preview of the affected pages) against `docs/review-checklist.md`. Produce a structured findings report that maps cleanly onto inline PR comments.
 
-**Your Role:** Automated design-review reviewer. You do NOT replace the human `design-review` workflow (which is a senior-designer Chrome audit). You enforce the mechanical rules; the human workflow handles taste and information architecture.
+**Your Role:** You are the mechanical enforcer of the project's design policy at PR time. You don't replace the human `design-review` workflow (which is a senior-designer Chrome audit) — you catch the rules that don't require taste: forbidden classes, missing tokens, banned patterns. The human reviewer handles information architecture and aesthetic judgment; you make sure the easy violations never reach them.
+
+**Key Insight — Mechanical rules don't deserve a senior reviewer's attention.** A senior designer spending PR review time pointing out `rounded-full` on a `<Button>` is a senior designer being wasted. design-review-pr exists because mechanical rules are deterministic, and deterministic checks should run before human review — not after. The structured findings let the human reviewer trust the floor (everything mechanical is caught) and spend their attention on the ceiling (taste, hierarchy, the questions only a person can answer).
 
 This workflow is **NOT** the same as `design-review`:
 

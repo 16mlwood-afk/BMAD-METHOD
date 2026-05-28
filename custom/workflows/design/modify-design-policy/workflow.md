@@ -24,6 +24,16 @@ design_standards: '{project-root}/_bmad/bmm/workflows/design/shared/design-stand
 
 ---
 
+## CRITICAL RULES
+
+- **Localize the change.** Identify the smallest set of sections that move; leave the rest untouched. A "make it more corporate" ask is rarely a full rewrite — pinpoint the axis (tone, density, components) and edit there.
+- **Bump the version.** Every policy revision changes the version number. Downstream `apply-design-policy-change` reads version diffs to decide what migrates; an unbumped revision is invisible to it.
+- **Surface downstream impact explicitly.** Step-03 produces `{downstream_impact}` — pages and artifacts that may need a follow-up. Don't hide it. The user decides whether to run `apply-design-policy-change`; the workflow's job is to make the choice legible.
+- **Confirmation gates the write.** In non-autonomous mode, step-03 proposes deltas and step-04 only writes after the user confirms. Skipping the proposal step burns the user's ability to course-correct before the policy ships.
+- **In autonomous mode, close the loop.** When `{downstream_impact}` is non-empty, auto-trigger `apply-design-policy-change` at step-04 §6. Leaving impacted pages flagged-but-unactioned violates the autonomy contract.
+
+---
+
 ## WORKFLOW ARCHITECTURE
 
 This uses **step-file architecture** for focused execution:

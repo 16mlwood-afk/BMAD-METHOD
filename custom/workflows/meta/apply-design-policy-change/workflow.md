@@ -25,6 +25,16 @@ create_design_policy_workflow: '{project-root}/_bmad/bmm/workflows/design/create
 
 ---
 
+## CRITICAL RULES
+
+- **Classify per page, not globally.** The same policy delta can be Level 1 for one page (a token swap) and Level 3 for another (a full redesign). Page-by-page classification is the discipline.
+- **Conservative on ambiguity.** When classification is unclear, upgrade the action one level — never downgrade. A wasted restyle costs minutes; a missed full handoff costs visible drift in production.
+- **Read the policy diff, not assumptions about what changed.** Step-02 diffs section-by-section from git history. The diff is the ground truth; "the user said the change was small" is not.
+- **Emit briefs, don't implement.** This workflow produces scoped briefs that downstream handoff/tuning/implement workflows consume. It never edits implementation code directly — repair belongs to its consumers.
+- **Brief frontmatter carries the policy version it targets.** Downstream workflows check the target version against the current policy to detect re-drift. Don't omit the version field.
+
+---
+
 ## WORKFLOW ARCHITECTURE
 
 This uses **step-file architecture** for focused execution:

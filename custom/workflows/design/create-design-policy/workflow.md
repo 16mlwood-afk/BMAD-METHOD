@@ -24,6 +24,16 @@ brand_identity_template: '{project-root}/_bmad/bmm/workflows/design/brand-identi
 
 ---
 
+## CRITICAL RULES
+
+- **Discover, don't impose.** The policy reflects the project owner's intent, not the workflow's preferences. Every aesthetic decision originates from the user or from brainstorming the user requested — never from defaults.
+- **Brand identity ≠ design policy.** Brand identity is the tactical "what we actually are" (exact tokens, hex values). The policy is the strategic "what we want to be." When both exist, the policy is the north star and brand identity is its expression. Don't blur the boundary.
+- **Brownfield first, vision second.** When a project has existing UI, extract the implicit visual language before proposing changes. A policy that contradicts what the product already is invalidates the product, not the other way round.
+- **Brainstorming is opt-in.** Enter brainstorming mode only when the user explicitly requests it or expresses uncertainty. Otherwise ask structured questions and codify the answers — don't lead the user through directions they didn't ask for.
+- **The policy is downstream-load-bearing.** Every design brief, every design-tuning iteration, every implementation review references this document. A loose policy propagates looseness everywhere. Be precise.
+
+---
+
 ## WORKFLOW ARCHITECTURE
 
 This uses **step-file architecture** for focused execution:
