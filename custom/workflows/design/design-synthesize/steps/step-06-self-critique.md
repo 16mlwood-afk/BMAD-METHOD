@@ -203,6 +203,8 @@ For each block, append directly to the matching state variable:
 | `action_not_duplicated_across_three_surfaces` | `{internal_consistency_violations}` |
 | `dividers_consistent_with_filter` | `{internal_consistency_violations}` |
 | `empty_state_deliverable_present` | `{deliverable_violations}` (also mark the empty-state entry in `{deliverable_coverage}` as `missing`) |
+| `status_color_consistency_with_§3_hierarchy` | `{hard_failure_violations}` with `source_line` referencing policy §3 (this is a §3 hierarchy enforcement, not an internal-consistency check) |
+| `tier1_column_placement` | `{hard_failure_violations}` with `source_line` referencing policy §6 (this is a §6 column-hierarchy enforcement) |
 
 Preserve the `source: deterministic_gate_GX` field on each appended entry. The manifest reader uses it to trace which violations came from the deterministic pass and which from the agent's rubric pass.
 
@@ -214,6 +216,8 @@ Preserve the `source: deterministic_gate_GX` field on each appended entry. The m
 | G.3 | `action_not_duplicated_across_three_surfaces` | The same `<button>` text appearing in ≥2 distinct `data-component` regions on the same screen | Only fires when the button text contains an entity identifier (digit run, `INV-09817`, `306-2841092-4738155`); generic verbs like "Run auto-match", "Verify matches" can legitimately repeat in header + empty-state CTA |
 | G.5 | `dividers_consistent_with_filter` | Twin of G.2 — the dividers half of the contradiction; emitted as a separate violation so the user sees both detectors fire | Same as G.2 |
 | G.6 | `empty_state_deliverable_present` | Brief §7 names an empty/no-results state but bundle contains no `*-empty.html` | Only fires when brief §7 explicitly mentions empty/no-results state; silent when the brief doesn't ask for one |
+| G.7 | `status_color_consistency_with_§3_hierarchy` | Same operational state rendered with multiple §3 color families on the same page (e.g., action-required as RED on row pills + YELLOW on inline summary chip). Tree-walks the bundle HTML, finds smallest enclosing grouping element per state-label occurrence, harvests inline-style hex + Tailwind color classes within that subtree | Synonyms map ("need action" → "action required") so different surface phrasings of the same state correlate; only fires when ≥2 distinct families observed for the same canonical state |
+| G.8 | `tier1_column_placement` | Policy §6 Tier-1 columns (identifiers + primary status) placed past position 4 in a table's `<thead>` (e.g., Status as column 7 of 9). Reads `<th>` order, identifies Tier-1 columns by header text | Skips tables with <4 columns (Tier-1 placement is moot); only fires when a recognized Tier-1 header lands at position 5+ |
 
 **Loop behavior:** If `gate_exit == 1`, do NOT immediately loop back to step 4. Continue through §5a (g/h/i) rubric to collect any additional findings, then through §6 (d/e/f) visual rubric for evidence-gated ratings, then compose the combined correction note in §9. The deterministic findings sit in the correction note alongside rubric findings. The iteration counter applies normally — three iterations max. The gates eliminate the false-positive class where iteration 1 self-rates `excellent` only to be downgraded by a later rubric upgrade.
 

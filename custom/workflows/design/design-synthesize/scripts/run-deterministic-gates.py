@@ -69,6 +69,84 @@ ENTITY_PATTERN = re.compile(
     r")\b"
 )
 
+# G.7 — §3 color hierarchy.
+# Each operational state binds to exactly one color family per policy §3.
+# A state rendered with two different families on the same page = inconsistency.
+STATE_TO_FAMILY = {
+    # red — primary/blocking weight
+    "action required": "red",
+    "failed": "red",
+    "blocked": "red",
+    "not filed": "red",
+    "error": "red",
+    "rejected": "red",
+    # yellow/amber — mid weight (needs attention)
+    "needs review": "yellow",
+    "attention required": "yellow",
+    "manual classification pending": "yellow",
+    "review required": "yellow",
+    "pending review": "yellow",
+    # green — restrained weight (success / done)
+    "ready": "green",
+    "filed": "green",
+    "reconciled": "green",
+    "success": "green",
+    "completed": "green",
+    "verified": "green",
+    # gray — resting weight
+    "queued": "gray",
+    "unknown": "gray",
+    "not-yet-processed": "gray",
+    "not yet processed": "gray",
+    "archived": "gray",
+    "pending": "gray",
+    "excluded": "gray",
+}
+
+# Hex/RGB color-string → family. Built defensively — only entries that
+# unambiguously identify a family. Ambiguous neutrals stay un-mapped (None).
+COLOR_TO_FAMILY = {
+    # red / rose family
+    "#7f1d1d": "red", "#991b1b": "red", "#b91c1c": "red", "#dc2626": "red",
+    "#ef4444": "red", "#f87171": "red", "#fca5a5": "red", "#fecaca": "red",
+    "#fee2e2": "red", "#fef2f2": "red",
+    # amber / yellow family
+    "#78350f": "yellow", "#92400e": "yellow", "#b45309": "yellow",
+    "#d97706": "yellow", "#f59e0b": "yellow", "#fbbf24": "yellow",
+    "#fcd34d": "yellow", "#fde68a": "yellow", "#fef3c7": "yellow",
+    "#fffbeb": "yellow",
+    # green / emerald family
+    "#14532d": "green", "#166534": "green", "#15803d": "green",
+    "#16a34a": "green", "#22c55e": "green", "#4ade80": "green",
+    "#86efac": "green", "#bbf7d0": "green", "#dcfce7": "green",
+    "#f0fdf4": "green", "#059669": "green", "#10b981": "green",
+    # gray / neutral / slate family
+    "#171717": "gray", "#262626": "gray", "#404040": "gray",
+    "#525252": "gray", "#737373": "gray", "#a3a3a3": "gray",
+    "#d4d4d4": "gray", "#e5e5e5": "gray", "#f5f5f5": "gray",
+    "#fafafa": "gray",
+}
+
+# Tailwind color-token prefixes → family (when classes leak into bundle HTML).
+CLASS_PREFIX_TO_FAMILY = {
+    "red": "red", "rose": "red",
+    "amber": "yellow", "yellow": "yellow", "orange": "yellow",
+    "green": "green", "emerald": "green", "lime": "green",
+    "gray": "gray", "slate": "gray", "neutral": "gray", "zinc": "gray", "stone": "gray",
+}
+
+# State-label synonyms — different surface phrasings of the same operational
+# state. The semantic state is the dict value; rendered label is the dict key.
+STATE_SYNONYMS = {
+    "need action": "action required",
+    "needs action": "action required",
+    "action-required": "action required",
+    "needs filing": "not filed",
+    "needs review": "needs review",
+    "review needed": "needs review",
+    "action required": "action required",
+}
+
 
 def _strip_tags(html: str) -> str:
     """Strip HTML tags and collapse whitespace — for text-level regex matching."""
@@ -262,6 +340,272 @@ def detect_g5_dividers_consistent_with_filter(html: str, path: str) -> list[dict
 
 
 # ----------------------------------------------------------------------------
+# G.7 — status_color_consistency_with_§3_hierarchy
+# ----------------------------------------------------------------------------
+
+class _TreeNode:
+    """Lightweight DOM node — children is a list of _TreeNode or str."""
+    __slots__ = ("tag", "attrs", "children", "parent")
+
+    def __init__(self, tag, attrs, parent):
+        self.tag = tag
+        self.attrs = dict(attrs) if attrs else {}
+        self.children: list = []
+        self.parent = parent
+
+
+class _TreeBuilder(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.root = _TreeNode("__root__", {}, None)
+        self._current = self.root
+
+    def handle_starttag(self, tag, attrs):
+        child = _TreeNode(tag, attrs, self._current)
+        self._current.children.append(child)
+        self._current = child
+
+    def handle_endtag(self, tag):
+        if self._current.parent is not None:
+            self._current = self._current.parent
+
+    def handle_startendtag(self, tag, attrs):
+        # Void/self-closing — append but don't descend.
+        self._current.children.append(_TreeNode(tag, attrs, self._current))
+
+    def handle_data(self, data):
+        self._current.children.append(data)
+
+
+# Grouping elements whose immediate inner content is treated as a single
+# "state rendering" — colors found in this subtree are correlated with state
+# labels found in the same subtree.
+GROUPING_TAGS = {"button", "a", "td", "li", "div", "span", "section", "nav"}
+
+
+def _node_text(node: _TreeNode) -> str:
+    """Concatenated text content of a node and its descendants."""
+    parts: list[str] = []
+    stack: list = [node]
+    while stack:
+        item = stack.pop()
+        if isinstance(item, str):
+            parts.append(item)
+        else:
+            for child in reversed(item.children):
+                stack.append(child)
+    return " ".join(p.strip() for p in parts if p.strip())
+
+
+def _collect_colors_in_subtree(node: _TreeNode) -> set[tuple[str, str]]:
+    """All (family, source) pairs from inline styles + classes within this
+    subtree. Recurses into children but stops at nested grouping elements
+    deeper than two levels — siblings of the state-label container are
+    in-scope; distant cousins are not.
+    """
+    found: set[tuple[str, str]] = set()
+    stack: list[tuple[_TreeNode, int]] = [(node, 0)]
+    while stack:
+        current, depth = stack.pop()
+        if not isinstance(current, _TreeNode):
+            continue
+        style = current.attrs.get("style", "")
+        classes = current.attrs.get("class", "")
+        for m in re.finditer(r"#[0-9a-fA-F]{6}", style):
+            family = COLOR_TO_FAMILY.get(m.group(0).lower())
+            if family:
+                found.add((family, f"style: {m.group(0)}"))
+        for cls in classes.split():
+            m = re.match(
+                r"(?:text|bg|border|ring|fill|stroke|from|to|via)-([a-z]+)-\d+",
+                cls,
+            )
+            if m:
+                family = CLASS_PREFIX_TO_FAMILY.get(m.group(1))
+                if family:
+                    found.add((family, f"class: {cls}"))
+        for child in current.children:
+            if isinstance(child, _TreeNode):
+                stack.append((child, depth + 1))
+    return found
+
+
+def _canonical_state(label: str) -> str:
+    return STATE_SYNONYMS.get(label, label)
+
+
+def detect_g7_status_color_consistency(html: str, path: str) -> list[dict]:
+    """For each operational state label rendered on the page, verify all
+    visual treatments use the §3-mandated color family.
+
+    Strategy: parse the HTML into a tree; for each state-label text node,
+    find the smallest enclosing grouping element (button/td/li/div/span);
+    collect color context from that element's full subtree (siblings of the
+    label container, not just ancestors — the amber dot + amber count in
+    the inline-summary chip are siblings of the "need action" label).
+    """
+    violations: list[dict] = []
+    builder = _TreeBuilder()
+    try:
+        builder.feed(html)
+        builder.close()
+    except Exception:  # noqa: BLE001
+        return violations
+
+    # state_canonical → set of (family, source)
+    observations: defaultdict[str, set[tuple[str, str]]] = defaultdict(set)
+
+    # All known labels including synonyms, longest-first to prefer specific.
+    all_labels = sorted(
+        set(STATE_TO_FAMILY.keys()) | set(STATE_SYNONYMS.keys()),
+        key=len, reverse=True,
+    )
+
+    # Walk every text node; find labels; locate the smallest enclosing
+    # grouping element; harvest its subtree's color context.
+    stack: list = [builder.root]
+    seen_pairs: set[tuple[int, str]] = set()
+    while stack:
+        node = stack.pop()
+        if isinstance(node, str):
+            continue
+        for child in node.children:
+            if isinstance(child, _TreeNode):
+                stack.append(child)
+                continue
+            text = child.lower().strip()
+            text = re.sub(r"\s+", " ", text)
+            if not text:
+                continue
+            for label in all_labels:
+                if label not in text:
+                    continue
+                # Tighten: the label must be the dominant content of this
+                # text node (≥70% of the trimmed text). This skips false
+                # positives where the state word appears inside a longer
+                # phrase that's clearly not a status rendering — e.g.,
+                # "match verified · Xero push blocked …" mentions "verified"
+                # but is not a verified-state pill.
+                if len(label) < 0.7 * len(text) and text != label:
+                    # Allow short prefixes/suffixes (counts, separators)
+                    # e.g., "47 need action", "need action ·"
+                    stripped = re.sub(r"^[\d\s·•,()]+|[\d\s·•,()]+$", "", text)
+                    if stripped != label and len(label) < 0.7 * len(stripped):
+                        continue
+                # Walk up ancestors until we find a grouping element whose
+                    # subtree carries color context. The state label's visual
+                    # treatment may live on siblings of its immediate wrapper
+                    # — e.g., the amber dot + count chip are siblings of the
+                    # inner <span> that holds "need action", so we have to
+                    # walk past the inner <span> to its <button> ancestor.
+                canonical = _canonical_state(label)
+                container = node
+                found_colors: set[tuple[str, str]] = set()
+                while container is not None:
+                    if container.tag in GROUPING_TAGS:
+                        pair = (id(container), label)
+                        if pair in seen_pairs:
+                            break
+                        colors = _collect_colors_in_subtree(container)
+                        if colors:
+                            seen_pairs.add(pair)
+                            found_colors = colors
+                            break
+                    container = container.parent
+                for fam_src in found_colors:
+                    observations[canonical].add(fam_src)
+                break  # one label per text node — longest-first preference
+
+    for canonical, obs in observations.items():
+        families = {family for family, _ in obs}
+        if len(families) <= 1:
+            continue
+        expected = STATE_TO_FAMILY.get(canonical)
+        sources = sorted({src for _, src in obs})
+        if expected and expected in families:
+            extras = sorted(families - {expected})
+            detail = (
+                f"state '{canonical}' (per §3 → {expected}) renders with "
+                f"additional families {extras} elsewhere on the screen. "
+                f"sources: {sources[:6]}"
+            )
+        else:
+            detail = (
+                f"state '{canonical}' (per §3 → {expected or 'unmapped'}) "
+                f"renders with multiple non-§3-aligned families "
+                f"{sorted(families)}. sources: {sources[:6]}"
+            )
+        violations.append({
+            "check": "status_color_consistency_with_§3_hierarchy",
+            "screen": path,
+            "detail": detail,
+            "fix": (
+                f"route every rendering of '{canonical}' through the §3 "
+                f"weight ({expected or 'mapped family'}); drop the other "
+                f"families from any element labelled with this state "
+                f"(inline summary, count chips, segment buttons, banners)"
+            ),
+            "source": "deterministic_gate_G7",
+        })
+    return violations
+
+
+# ----------------------------------------------------------------------------
+# G.8 — tier1_column_placement
+# ----------------------------------------------------------------------------
+
+# Tier 1 headers per policy §6 — identifier-class + primary status column.
+# "Status" is the literal §6-mandated Tier 1 column most commonly misplaced.
+TIER1_HEADER_PATTERNS = (
+    re.compile(r"^status\b", re.I),
+)
+
+
+def detect_g8_tier1_column_placement(html: str, path: str) -> list[dict]:
+    """For each <table>, find the first <thead>; flag any Tier-1 column
+    (per policy §6) landing at index > 3 (1-based: position > 4).
+    """
+    violations: list[dict] = []
+    # Extract the first <thead>...</thead> block per table
+    thead_blocks = re.findall(r"<thead[^>]*>(.*?)</thead>", html, re.I | re.S)
+    if not thead_blocks:
+        return violations
+
+    for thead in thead_blocks:
+        # Extract <th> contents in order
+        ths = re.findall(r"<th[^>]*>(.*?)</th>", thead, re.I | re.S)
+        if len(ths) < 4:
+            # Too few columns for tier-1 placement to be meaningful
+            continue
+        for idx, th in enumerate(ths):
+            text = re.sub(r"<[^>]+>", " ", th)
+            text = re.sub(r"\s+", " ", text).strip()
+            for pattern in TIER1_HEADER_PATTERNS:
+                if pattern.match(text):
+                    # 1-based index for human-readable detail
+                    position = idx + 1
+                    if position > 4:
+                        violations.append({
+                            "check": "tier1_column_placement",
+                            "screen": path,
+                            "detail": (
+                                f"Tier-1 column '{text}' placed at "
+                                f"position {position} of {len(ths)}; "
+                                f"policy §6 mandates Tier-1 columns "
+                                f"(identifiers + status) leftmost (≤4)"
+                            ),
+                            "fix": (
+                                f"move '{text}' to position ≤ 4 (after "
+                                f"date + primary identifier columns). "
+                                f"Keep Action / row-action columns rightmost."
+                            ),
+                            "source": "deterministic_gate_G8",
+                        })
+                    break
+    return violations
+
+
+# ----------------------------------------------------------------------------
 # G.6 — empty_state_deliverable_present
 # ----------------------------------------------------------------------------
 
@@ -366,6 +710,8 @@ def main() -> int:
         all_violations += detect_g2_active_filter_matches_rows(html, rel)
         all_violations += detect_g3_action_duplicated(html, rel)
         all_violations += detect_g5_dividers_consistent_with_filter(html, rel)
+        all_violations += detect_g7_status_color_consistency(html, rel)
+        all_violations += detect_g8_tier1_column_placement(html, rel)
     all_violations += detect_g6_empty_state_deliverable(bundle_dir, brief_path)
 
     emit(all_violations)
