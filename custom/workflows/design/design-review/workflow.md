@@ -13,7 +13,7 @@ main_config: '{project-root}/_bmad/bmm/config.yaml'
 **When NOT to use this — entry-point routing.** This workflow *creates the first `screen-review-*.md`* for a target by auditing live pixels in Chrome. If a `screen-review-{slug}-*.md` already exists on `main` for this target, prefer `design-artifact-loop` in `review-only` mode — it re-audits the existing artifact, preserves V-ID lineage and verdict history across iterations, and avoids duplicate review files. Quick check before invoking:
 
 ```bash
-ls _bmad/bmm/implementation-artifacts/screen-review-{slug}-*.md 2>/dev/null
+ls _bmad-output/implementation-artifacts/screen-review-{slug}-*.md 2>/dev/null
 ```
 
 Empty result → run this workflow with `--artifact`. Non-empty → run `design-artifact-loop` review-only instead.

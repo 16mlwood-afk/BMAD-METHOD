@@ -73,7 +73,7 @@ Scan for artifacts that consumed the old policy:
 
 ```bash
 ls {project_knowledge}/brand-identity.md 2>/dev/null
-find _bmad/bmm/implementation-artifacts -name "handoff-*" -mtime -90 2>/dev/null | head -10
+find _bmad-output/implementation-artifacts -name "handoff-*" -mtime -90 2>/dev/null | head -10
 ```
 
 Set `{downstream_impact}` to a list of:

@@ -199,7 +199,7 @@ Store the resolved path as `{policy_path}` and contents as `{policy_content}`. C
 
 The user invokes this workflow with one of:
 
-- **A brief path** — `_bmad/bmm/implementation-artifacts/design-handoff-{slug}-{date}.md` (most common entry point, fed by `design-artifact-loop`).
+- **A brief path** — `_bmad-output/implementation-artifacts/design-handoff-{slug}-{date}.md` (most common entry point, fed by `design-artifact-loop`).
 - **A brief slug** — `design-handoff` resolves to the most recent matching artifact in `{implementation_artifacts}`.
 - **A handoff block** — same canonical handoff shape as `design-artifact-loop` accepts. The block names a file on `main` which is then read locally.
 

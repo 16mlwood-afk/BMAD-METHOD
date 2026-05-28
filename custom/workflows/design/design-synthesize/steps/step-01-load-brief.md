@@ -40,7 +40,7 @@ The user invokes this workflow with one of three input shapes. Resolve each into
 **Shape A — explicit absolute or repo-relative path:**
 
 ```
-_bmad/bmm/implementation-artifacts/design-handoff-{slug}-{date}.md
+_bmad-output/implementation-artifacts/design-handoff-{slug}-{date}.md
 ```
 
 Check the file exists. If yes, set `{brief_path}` and proceed to step 3. If no, halt with: `brief path not found: <path>`.

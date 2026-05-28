@@ -24,7 +24,7 @@ The handoff block (in the user's message that triggered this workflow, or in the
 | Component | How to find it |
 |---|---|
 | `{repo_url}` | The `https://github.com/ORG/REPO` URL, no trailing `.git` |
-| `{artifact_path}` | Repo-relative path on `main`, e.g. `_bmad/bmm/implementation-artifacts/design-brief-foo-2026-05-26.md` |
+| `{artifact_path}` | Repo-relative path on `main`, e.g. `_bmad-output/implementation-artifacts/design-brief-foo-2026-05-26.md` |
 | `{user_summary}` | The 1–3 line bullet list under "Summary (3 lines):" — convenience only, NOT authoritative |
 | `{user_instruction}` | The free-text directive after "Hand off to design-artifact-loop:" (e.g., "Design the UI following the brief exactly") |
 | `{screenshot_paths}` | Any image paths/URLs the user attached; empty if none |

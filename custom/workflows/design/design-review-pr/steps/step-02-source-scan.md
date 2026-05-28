@@ -74,7 +74,7 @@ These are starting points — refine per rule. The exact patterns belong in the 
 
 - **`G-TYPO-04` (font-mono on prose):** A simple regex finds `font-mono` everywhere. To distinguish prose from numeric/ID content, inspect the matched element's text or class context — if the enclosing element renders dynamic numeric data (e.g., a table cell bound to a `price` field) or has class names like `tabular-nums`, `numeric`, `id-cell`, suppress the finding.
 - **`G-TYPO-05` (emoji as icon):** Match Unicode emoji ranges (e.g., `[\u{1F300}-\u{1FAFF}]`). Suppress matches inside `*.test.ts`, `*.fixture.*`, `mocks/**`.
-- **`E-EXEMPLAR-*`:** Run only if `{diff_files}` includes anything under `_bmad-output/`, `_bmad/bmm/implementation-artifacts/`, or a path matching `*exemplar*`.
+- **`E-EXEMPLAR-*`:** Run only if `{diff_files}` includes anything under `_bmad-output/` or a path matching `*exemplar*`.
 
 ---
 

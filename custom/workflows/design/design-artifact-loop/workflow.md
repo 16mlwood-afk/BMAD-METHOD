@@ -20,7 +20,7 @@ design_tuning_workflow: '{project-root}/_bmad/bmm/workflows/design/design-tuning
 **Entry point for `review-only` — when to use this vs. `design-review`.** `review-only` mode is for *re-auditing an existing `screen-review-{slug}-*.md` on `main`*. It preserves V-ID lineage and verdict history across iterations of the same target. If no screen-review artifact exists yet for the target, this workflow has nothing to re-audit — use `design-review --artifact` first to create the initial audit from live pixels, then come back here once that artifact is committed on `main`. Quick check before invoking review-only:
 
 ```bash
-ls _bmad/bmm/implementation-artifacts/screen-review-{slug}-*.md 2>/dev/null
+ls _bmad-output/implementation-artifacts/screen-review-{slug}-*.md 2>/dev/null
 ```
 
 Empty result → run `design-review --artifact` instead. Non-empty → proceed with review-only here.
@@ -78,7 +78,7 @@ This uses **step-file architecture**:
 ### State Variables
 
 - `{repo_url}` — GitHub HTTPS URL from the handoff block (no trailing `.git`)
-- `{artifact_path}` — Repo-relative path to the canonical artifact on `main` (e.g., `_bmad/bmm/implementation-artifacts/design-brief-foo-2026-05-26.md`)
+- `{artifact_path}` — Repo-relative path to the canonical artifact on `main` (e.g., `_bmad-output/implementation-artifacts/design-brief-foo-2026-05-26.md`)
 - `{artifact_abs_path}` — Absolute path on the local filesystem
 - `{artifact_type}` — `design-brief` | `screen-review` | `policy-delta` | `unknown` (parsed from artifact frontmatter or filename prefix)
 - `{artifact_content}` — Full contents of the canonical artifact
@@ -157,8 +157,8 @@ The handoff block accepted by this workflow has this canonical shape:
 ```text
 Brief written, PR opened (#NNN), squash-merged to main (HASH), worktree cleaned.
 
-File: _bmad/bmm/implementation-artifacts/design-brief-{slug}-{date}.md
-(on GitHub https://github.com/ORG/REPO/blob/main/_bmad/bmm/implementation-artifacts/design-brief-{slug}-{date}.md)
+File: _bmad-output/implementation-artifacts/design-brief-{slug}-{date}.md
+(on GitHub https://github.com/ORG/REPO/blob/main/_bmad-output/implementation-artifacts/design-brief-{slug}-{date}.md)
 
 Summary (3 lines):
 - ...
@@ -167,7 +167,7 @@ Summary (3 lines):
 
 Hand off to design-artifact-loop:
 Connect to https://github.com/ORG/REPO and read
-_bmad/bmm/implementation-artifacts/design-brief-{slug}-{date}.md on main.
+_bmad-output/implementation-artifacts/design-brief-{slug}-{date}.md on main.
 This is a design brief for {target}. Design the UI following the brief exactly.
 ```
 
