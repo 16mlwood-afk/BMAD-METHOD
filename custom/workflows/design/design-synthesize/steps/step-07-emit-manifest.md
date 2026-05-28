@@ -293,7 +293,7 @@ flow_invariants:
 
 For single-screen bundles, omit `flow_invariants` (or set to `[]`). For `fresh-design` mode, omit `targeted_changes` and `unchanged_regions`.
 
-**The `violations:` section is unconditional.** Always emit it, with all six arrays present — even when each is empty `[]`. An empty array is the affirmative "no violations" claim; omission is opaque and forbidden. This is the structural difference between "passed and we know it" and "passed but we have no record of what was checked":
+**The `violations:` section is unconditional.** Always emit it, with all sections present — even when each is empty `[]` / `{}`. An empty array is the affirmative "no violations" claim; omission is opaque and forbidden. This is the structural difference between "passed and we know it" and "passed but we have no record of what was checked":
 
 ```yaml
 violations:
@@ -308,16 +308,53 @@ violations:
   drift: []                                           # or [{region, file, lines, prior_file, prior_lines, diff}, ...]
                                                        # (refine-screen only; fresh-design still emits [])
 
+  # Brief-faithfulness half (step 6 §5a g/h/i) — added 2026-05-28
+  # All three sections mandatory, empty [] / {} on pass. These cap visual_quality and
+  # enter under_grounded — even on policy-clean pass, any non-empty entry here forces
+  # needs_human_review and routes the handoff to design-review.
+  internal_consistency: []                            # step 6 (g) — array, mandatory; [] on pass
+    # - screen: {path}
+    #   check: {active_filter_matches_rows | counts_not_duplicated_without_new_value | action_not_duplicated_across_three_surfaces | dividers_consistent_with_filter | <project_specific>}
+    #   detail: {one-line evidence}
+    #   fix: {one-line directive}
+  deliverables:                                       # step 6 (h) — map, mandatory
+    coverage:                                         # per-deliverable classification (always populated, never omitted)
+      # <deliverable_id>:
+      #   brief_section: {ref}
+      #   text: {verbatim brief text}
+      #   classification: {produced | prose_only | missing}
+      #   evidence: {file/region OR manifest block OR null}
+    violations: []                                    # the unmet subset; [] when every deliverable is `produced`
+      # - deliverable: {text}
+      #   classification: {missing | prose_only}
+      #   brief_section: {ref}
+      #   fix: {produce it OR mark waived in next brief revision}
+  questions:                                          # step 6 (i) — map, mandatory
+    coverage:                                         # per-question classification (always populated, never omitted)
+      # Q1:
+      #   question: {verbatim brief text}
+      #   classification: {answered_with_evidence | answered_abstractly | incomplete | unaddressed}
+      #   evidence: {one-line citing bundle region OR null}
+      #   gap: {one-line OR null when answered_with_evidence}
+    violations: []                                    # the non-answered_with_evidence subset; [] on full coverage
+      # - question_id: {id}
+      #   question: {text}
+      #   classification: {answered_abstractly | incomplete | unaddressed}
+      #   gap: {one-line}
+      #   fix: {what to add OR re-brief}
+
   # Visual half (step 6 d/e/f) — every block always present
   visual_quality:
     rating: {visual_quality}
+    pre_visual_cap: {excellent | acceptable}          # NEW 2026-05-28 — the ceiling imposed by §5a (g/h/i); excellent when all three gates clean
     weak_axes: []                                     # populated when any axis was rated weak; [] otherwise
       # - axis: {hierarchy | density | typography | table_ergonomics | generic_look}
       #   screens: [<list of screens where this axis was weak>]
       #   correction_note: {one-line from step 6 visual_quality_correction}
     anti_spreadsheet:
-      t4_failed: {true | false}                       # true when any screen fails Axis 5 T4 — caps visual_quality at acceptable
+      t4_failed: {true | false}                       # true when any screen fails ANY of T4a/T4b/T4c/T4d — caps visual_quality at acceptable
       failed_screens: []                              # screens where T4 failed; [] when t4_failed: false
+      failed_subtests: []                             # NEW 2026-05-28 — subset of [T4a, T4b, T4c, T4d] that failed across screens; [] when t4_failed: false
       detail: {one-line explanation when t4_failed: true; "n/a" when false}
   lift:
     negative_half: []                                 # mandatory array — [] on pass
@@ -342,9 +379,10 @@ violations:
 
 **Schema cross-check.** Before writing the manifest, verify:
 
-- `violations.hard_failures`, `violations.positive_assertions`, `violations.drift`, `violations.lift.negative_half`, `violations.lift.positive_half`, `violations.exemplar` — all six are present as arrays (may be `[]`).
-- `violations.visual_quality.weak_axes` is present as an array.
-- `violations.visual_quality.anti_spreadsheet.t4_failed` is a boolean, and `failed_screens` is an array consistent with that boolean (empty iff `t4_failed: false`).
+- `violations.hard_failures`, `violations.positive_assertions`, `violations.drift`, `violations.lift.negative_half`, `violations.lift.positive_half`, `violations.exemplar`, `violations.internal_consistency`, `violations.deliverables.violations`, `violations.questions.violations` — all nine are present as arrays (may be `[]`).
+- `violations.deliverables.coverage` and `violations.questions.coverage` are present as maps with one entry per deliverable / question in the brief (may NOT be empty if the brief enumerates any; entries themselves may classify as anything).
+- `violations.visual_quality.weak_axes` is present as an array. `violations.visual_quality.pre_visual_cap` is one of `{excellent, acceptable}`. `violations.visual_quality.rating` ≤ `pre_visual_cap` (the cap must hold).
+- `violations.visual_quality.anti_spreadsheet.t4_failed` is a boolean, `failed_screens` and `failed_subtests` are arrays consistent with that boolean (both empty iff `t4_failed: false`; `failed_subtests ⊆ [T4a, T4b, T4c, T4d]`).
 - `visual_review.visual_quality_axes` has all 5 axes, each with `rating` AND `evidence`.
 - `visual_review.macro_hierarchy` has an entry for every screen in `screens`, with `above_fold_allocation` summing to exactly 100.
 - For every entry in `exemplars.selected`, `consulted: true` AND `comparison.diffs` contains all 5 dimensions for every screen in `screens`. (`selected: []` is acceptable only when `waiver_reason` is set.)

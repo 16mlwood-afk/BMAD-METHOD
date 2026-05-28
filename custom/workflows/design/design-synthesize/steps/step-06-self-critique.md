@@ -1,16 +1,17 @@
 ---
 name: 'step-06-self-critique'
-description: 'Run three sub-checks (hard failures, positive allowlist, drift). Loop back to step 4 with correction notes on failure. Max 3 iterations.'
+description: 'Run nine sub-checks across three halves (policy compliance, brief faithfulness, visual lift). Loop back to step 4 with correction notes on failure. Max 3 iterations.'
 ---
 
 # Step 6: Self-Critique
 
-**Goal:** Verify the synthesized bundle clears two distinct bars:
+**Goal:** Verify the synthesized bundle clears three distinct bars. The brief-faithfulness half (added 2026-05-28) closes a structural false-positive in the previous two-half rubric — bundles that satisfied policy rules and looked self-coherent on the screenshot, but contradicted themselves internally, skipped brief deliverables, or only abstractly answered the brief's questions, were being labeled `pass / excellent / aligned` and propagated to `design-implement`.
 
 - **Policy half (a/b/c) — compliance.** Hard failures from the policy (a), the policy's contract-critical positive-assertion allowlist (b), and — in refine-screen mode only — the drift contract against the prior implementation (c).
-- **Visual half (d/e/f) — lift & taste.** Self-rated visual quality across hierarchy/density/typography/ergonomics (d), the two-sided lift test (e), and exemplar alignment (f). Passing the policy half is necessary but not sufficient — a bundle that satisfies every hard-failure rule and still reads as a generic spreadsheet has not done the work this step exists to enforce.
+- **Brief-faithfulness half (g/h/i) — contract.** Internal consistency of the bundle (g), coverage of the brief's explicit deliverables (h), and concrete evidence-backed answers to the brief's explicit questions (i). Runs BEFORE the visual half so it can cap `{visual_quality}` — a brief-incoherent bundle cannot be `excellent` regardless of how many visual axes earn `strong`.
+- **Visual half (d/e/f) — lift & taste.** Self-rated visual quality across hierarchy/density/typography/ergonomics (d), the two-sided lift test (e), and exemplar alignment (f). Passing policy + brief halves is necessary but not sufficient — a bundle that satisfies every hard-failure rule and answers every brief question and still reads as a generic spreadsheet has not done the work this step exists to enforce.
 
-On failure of any sub-check, return to step 4 with a precise correction note. Max 3 iterations across ALL sub-checks combined; on the 3rd failure, record the failure mode and proceed to step 7. Visual failures additionally set `{needs_human_review} = true` so step 7's hand-off line routes the user to human design review instead of `design-implement`.
+On failure of any sub-check, return to step 4 with a precise correction note. Max 3 iterations across ALL sub-checks combined; on the 3rd failure, record the failure mode and proceed to step 7. Brief-faithfulness or visual failures additionally set `{needs_human_review} = true` so step 7's hand-off line routes the user to human design review instead of `design-implement`.
 
 **Loop control:** This step is the ONLY step that loops. The loop target is step 4. The loop terminates at iteration 3 regardless of result. `{review_iterations}` separately tracks how many of those iterations were driven by visual sub-checks (d/e/f) — distinct from `{iteration_count}` which covers all loop returns.
 
@@ -29,7 +30,8 @@ On failure of any sub-check, return to step 4 with a precise correction note. Ma
 - **Violation arrays are mandatory outputs.** All six arrays — `{hard_failure_violations}`, `{positive_assertion_violations}`, `{drift_violations}`, `{negative_lift_violations}`, `{positive_lift_violations}`, `{exemplar_violations}` — MUST be initialized and emitted in the manifest, even when empty `[]`. An empty array is a falsifiable "no violations" claim that downstream consumers can audit; an omitted array is opaque and forbidden. Same rule for `{visual_quality_axes}` (per-axis rating + evidence string) and `{exemplar_comparisons}` (per-exemplar consulted flag + per-dimension diffs): always present, never omitted. A run that finishes step 7 without these structures is a workflow bug, not a passing run.
 - **Macro-hierarchy is a falsifiable claim, not a vibe.** Every screen MUST emit `{macro_hierarchy}[screen]` with `eye_lands_first` (a single named element) and `above_fold_allocation` (integer percentages summing to exactly 100). A sum ≠ 100, an unresolvable `eye_lands_first`, or a vague evidence string is a workflow bug — Axis 1 is forced to `weak` and the synthesizer must re-rate.
 - **Exemplars must be consulted, not just listed.** Every entry in `{exemplars}` MUST have `consulted: true` in `{exemplar_comparisons}` by the end of this step, with per-dimension diff strings (aligned or not — both are valid) for every screen. A `consulted: false` entry is a routing failure (not iteration-counted, same precedent as the skill-routing check) — return to step 4 to Read the unconsulted exemplars before re-emitting.
-- **Anti-spreadsheet hard floor.** Per §6 Axis 5 T4: a screen whose only differences from a plain styled `<table>` are pills and a summary line CANNOT earn `generic_look: strong`, and the bundle CANNOT earn `visual_quality: excellent`. This floor is the failure mode the rubric exists to catch — "policy-compliant spreadsheet" is the named failure, and it caps at `acceptable`.
+- **Anti-spreadsheet hard floor.** Per §6 Axis 5 T4: a screen whose only differences from a plain styled `<table>` are pills and a summary line CANNOT earn `generic_look: strong`, and the bundle CANNOT earn `visual_quality: excellent`. T4 is now four-part (second operating surface + collapse test + four-tier hierarchy + one-second test); see §6 Axis 5. This floor is the failure mode the rubric exists to catch — "policy-compliant spreadsheet" is the named failure, and it caps at `acceptable`.
+- **Brief-faithfulness pre-visual cap.** The (g/h/i) half runs BEFORE visual rating. Any failure in (g) internal consistency, (h) deliverable coverage, or (i) question coverage caps `{visual_quality}` at `acceptable` regardless of how the (d/e/f) rubric scores. This exists because the previous rubric let bundles ship as "excellent / pass" while contradicting their own active filter, skipping deliverables the brief asked for, or hand-waving the brief's numbered questions. The visual rubric measures taste; (g/h/i) measure faithfulness to the contract — the second condition is a precondition for claiming the first.
 - YOU MUST ALWAYS SPEAK OUTPUT in your agent communication style with the config `{communication_language}`.
 
 ---
@@ -149,6 +151,167 @@ Collect violations into `{drift_violations}`:
 
 A region that doesn't appear in either `targeted_changes` or `unchanged_regions` is an UNDECLARED region — surface as a drift violation: `region 'X' appears in bundle but is not declared in either targeted_changes or unchanged_regions. Declare it.`
 
+### 5a. PRE-VISUAL GATES — brief-faithfulness half (g/h/i)
+
+These three sub-checks run BEFORE the visual rubric (§6 d/e/f). Their purpose is to catch the failure mode the visual rubric structurally misses: a bundle that is self-rated `excellent` but is **internally inconsistent**, **fails to produce deliverables the brief asked for**, or **only abstractly answers the brief's questions**. The visual rubric can rate a single coherent table as `excellent`; these gates ask whether the bundle answers the contract the brief signed.
+
+A failure in (g/h/i) caps `{visual_quality}` regardless of the (d/e/f) rating below. Without this, a brief-incoherent bundle that happens to satisfy 5 visual axes ships as `pass / excellent / aligned` and propagates to `design-implement`.
+
+These gates were added 2026-05-28 after the `amazon-transactions` bundle (PR #800) shipped as `pass / excellent / aligned` while containing four contradictions, missing two of four brief §7 deliverables, and abstractly answering 3 of 7 brief §6 questions.
+
+#### Sub-check (g) — Internal consistency
+
+For each `<screen>.html` in the bundle, scan for the four pre-defined contradictions below. Every match is recorded in `{internal_consistency_violations}`. Even on pass, initialize the array `[]` explicitly.
+
+**Mandatory consistency checks:**
+
+| Check ID | What to look for | Failure example |
+|---|---|---|
+| `active_filter_matches_rows` | If an active-filter label or chip is selected (e.g., "Showing action required · 47"), the visible rows MUST belong to that filter. In-table section dividers introducing rows from OTHER status groups while the filter is active = failure. | Active filter "Action required" but table renders "Awaiting Xero" and "Reconciled" rows below in-table section dividers. |
+| `counts_not_duplicated_without_new_value` | Same count surfaced in multiple places must add information at each surface, not repeat. A sub-tab "Missing invoices 8" and a footer link "8 orders missing invoices →" with no different framing is duplication. | "8 missing invoices" appears in sub-tabs AND footer with identical text and no differentiation. |
+| `action_not_duplicated_across_three_surfaces` | A single user action surfaced in 3+ places is noise. Alert CTA + row action + cell-state-with-action for the same operation = failure (pick one or two with clear hierarchy). | "Map card 9012" appears as alert button + row action + cell badge text on the same page. |
+| `dividers_consistent_with_filter` | In-table section dividers (e.g., "Awaiting Xero push · 27 rows") MUST be consistent with the current filter mode. Showing "all status groups" via dividers while the filter says "only action required" is contradictory. | Filter chip "Action required" selected but in-table dividers introduce Awaiting + Reconciled groups. |
+
+For project-specific contradictions surfaced by the brief or the policy, append project-derived checks to `{internal_consistency_violations}` with the same shape.
+
+```
+{internal_consistency_violations} = [
+  { screen: <path>,
+    check: "active_filter_matches_rows" | "counts_not_duplicated_without_new_value" | "action_not_duplicated_across_three_surfaces" | "dividers_consistent_with_filter" | "<project_specific>",
+    detail: <one-line evidence naming the offending elements / values>,
+    fix: <one-line directive: remove the contradiction OR change the filter state> },
+  ...
+]
+```
+
+**Cap policy.** Any non-empty `{internal_consistency_violations}` forces:
+
+- `{visual_quality}` MAX cap: `acceptable` (cannot be `excellent`)
+- `{compliance_state}` (when otherwise pass) → `under_grounded`
+- `{needs_human_review} = true`
+- Handoff target routes to `design-review`, not `design-implement`
+
+This is structural — a contradictory bundle cannot be `excellent` regardless of how many visual axes earn `strong`. Internal coherence is a precondition for quality, not a separate axis.
+
+#### Sub-check (h) — Brief deliverables coverage
+
+Open `{brief_content}` and locate the deliverables list — typically a `## 7. Deliverable Format` / `## Deliverables` / `### Deliverables` section. Extract every numbered or bulleted deliverable.
+
+For each deliverable, classify:
+
+| Classification | Definition |
+|---|---|
+| `produced` | The deliverable exists as a concrete artifact in the bundle — a `<screen>.html` file, a rendered state variation, an explicit component spec. The synthesizer can point at the file/region that satisfies it. |
+| `prose_only` | The deliverable is referenced or described in the manifest (e.g., `interaction:` block describes a drawer's behavior) but no rendered screen / state / file exists for it. Description is not delivery. |
+| `missing` | Neither produced nor described. The brief asked; the bundle is silent. |
+
+Populate `{deliverable_coverage}`:
+
+```
+{deliverable_coverage} = {
+  <deliverable_id_or_label>: {
+    brief_section: <section reference, e.g., "§7.1">,
+    text: <verbatim deliverable text from brief>,
+    classification: "produced" | "prose_only" | "missing",
+    evidence: <one-line: which file/region produces it OR which manifest block describes it OR null if missing>,
+  },
+  ...
+}
+```
+
+**Examples that FAIL coverage:**
+
+- Brief §7 says "Visual designs at desktop width — page in its normal active state, plus the empty/no-results state for the primary worklist". Bundle has only `main.html` (active state). `empty_state` → `missing`.
+- Brief §7 says "Interaction notes — hover states, transitions, empty states, loading states, expanded-row or drawer detail behaviour, bulk-selection state, the unmapped-card block state, and the auto-match running state". Bundle's manifest describes some in the `interaction:` block but no rendered state files. Per-state classification: most → `prose_only`, some → `missing`.
+
+**Cap policy.** If ANY deliverable is classified `missing`, OR if MORE THAN HALF are classified `prose_only`:
+
+- `{visual_quality}` MAX cap: `acceptable`
+- `{compliance_state}` (when otherwise pass) → `under_grounded`
+- `{needs_human_review} = true`
+
+The bundle ships (so the user can inspect what WAS produced), but it cannot auto-handoff to `design-implement` — undelivered work would silently propagate as "design done" otherwise.
+
+Append to `{deliverable_violations}` for the manifest:
+
+```
+{deliverable_violations} = [
+  { deliverable: <text>, classification: "missing" | "prose_only", brief_section: <ref>, fix: <one-line: produce it OR mark waived in next brief revision> },
+  ...
+]
+```
+
+Even on full coverage, initialize `{deliverable_violations} = []` explicitly.
+
+#### Sub-check (i) — Brief questions answered
+
+Open `{brief_content}` and locate any numbered questions — typically in a `## 6. Design Ask` / "Questions your design should answer" / `### Questions` section. Extract each numbered question verbatim.
+
+For each question, classify the answer evidence in the bundle:
+
+| Classification | Definition |
+|---|---|
+| `answered_with_evidence` | The synthesizer can point at a concrete bundle element (region, component, state variation) that demonstrates the answer. E.g., Q="how does the design distinguish primary actions from background noise?" → evidence="primary 'Import transactions' is solid-dark; secondary buttons are neutral-outline at the same height, see header region of bundle/main.html". |
+| `answered_abstractly` | The synthesizer asserts the question is addressed but cannot cite a concrete bundle element. "The design supports bulk operations" with no shown bulk-selected state or affordance = abstract. |
+| `incomplete` | The question has multiple parts and the bundle addresses some but not all. E.g., Q asks for both single-row precision AND bulk throughput; bundle shows bulk bar but no bulk-quick-select affordance = incomplete. |
+| `unaddressed` | The bundle is silent on the question. |
+
+Populate `{question_coverage}`:
+
+```
+{question_coverage} = {
+  Q1: {
+    question: <verbatim text>,
+    classification: "answered_with_evidence" | "answered_abstractly" | "incomplete" | "unaddressed",
+    evidence: <one-line citing bundle region OR null>,
+    gap: <one-line naming what's missing — null when answered_with_evidence>,
+  },
+  ...
+}
+```
+
+**Cap policy.** If ANY question is `unaddressed` OR `answered_abstractly`, OR if MORE THAN ONE-THIRD are `incomplete`:
+
+- `{visual_quality}` MAX cap: `acceptable`
+- `{compliance_state}` (when otherwise pass) → `under_grounded`
+- `{needs_human_review} = true`
+
+A bundle that hand-waves the brief's explicit questions is not `excellent` regardless of how it looks. The brief's questions ARE the bundle's contract.
+
+Append to `{question_violations}` for the manifest:
+
+```
+{question_violations} = [
+  { question_id: <id>, question: <text>, classification: <one of the four>, gap: <one-line>, fix: <one-line: what to add OR re-brief if scope changed> },
+  ...
+]
+```
+
+Even on full coverage, initialize `{question_violations} = []` explicitly.
+
+#### 5a-aggregate. Compute the pre-visual cap
+
+After (g/h/i), compute the cap that constrains §6 (d) below:
+
+```python
+pre_visual_cap = "excellent"   # default; lowered by any failure below
+
+if len({internal_consistency_violations}) > 0:
+    pre_visual_cap = "acceptable"
+
+deliverable_missing_count = count(d for d in {deliverable_coverage}.values() if d.classification == "missing")
+deliverable_prose_only_count = count(d for d in {deliverable_coverage}.values() if d.classification == "prose_only")
+if deliverable_missing_count > 0 or deliverable_prose_only_count * 2 > len({deliverable_coverage}):
+    pre_visual_cap = "acceptable"
+
+question_unaddressed_count = count(q for q in {question_coverage}.values() if q.classification in ("unaddressed", "answered_abstractly"))
+question_incomplete_count = count(q for q in {question_coverage}.values() if q.classification == "incomplete")
+if question_unaddressed_count > 0 or question_incomplete_count * 3 > len({question_coverage}):
+    pre_visual_cap = "acceptable"
+```
+
+`{pre_visual_cap}` enters §6 composition as a hard ceiling: regardless of how many axes earn `strong`, `{visual_quality}` cannot exceed `{pre_visual_cap}`. (g/h/i) failures also enter the `under_grounded` calculation in §10.
+
 ### 6. Sub-check (d) — Visual-quality review
 
 **Evidence preamble (workflow.md Critical Rules → "High-confidence visual verdicts require visual evidence").** Before any rating below, record in `{evidence_basis}` for the manifest what you actually consulted:
@@ -216,16 +379,32 @@ For each axis, classify the screen as `strong | adequate | weak`. The test cases
   - **T1**: Real domain content from the brief's `{data_shape}` — invoices, VAT periods, suppliers, CDS records, GBP amounts. No placeholder data, no `John Doe`, no `$1,234.56`.
   - **T2**: Specific to this product — UK VAT finance-operations vocabulary in section titles, column headers, and empty-state copy. Could NOT be mistaken for a generic CRM/HR/admin tool.
   - **T3**: Operational narrative is present — the screen tells a story about what is happening (e.g., "12 invoices pending OCR · 3 anomalies · 1 overdue") — not just a list.
-  - **T4 (anti-spreadsheet)**: The screen contains at least one composition element that is NOT a styled `<table>`, a summary line, or status pills. Counter-examples that FAIL T4: a screen whose entire composition is a single `<table>` with status pills and a one-line totals row above; the operational analytics band is just a stack of counters with no chart/sparkline/state-grouped filter strip.
-- *Adequate* — passes T1 AND T2; T3 may be marginal; **T4 must still pass**.
-- *Weak* — placeholder data, OR could be a different product, OR no operational narrative, OR fails T4.
+  - **T4 (anti-spreadsheet — strengthened 2026-05-28)**: ALL FOUR of the following must hold. The previous one-element version was too easy to satisfy — a bundle could pass by adding any non-table component (a sub-tab row, a contextual bar) without doing real compositional work.
+    - **T4a — Second operating surface.** The screen introduces a meaningful second operating surface beyond the worklist table — a band, alert region, side panel, or detail extension — that **changes how the user reads or acts**. A second surface that only mirrors the table's contents (e.g., a summary line restating the row count) does NOT qualify; the second surface must give the user a different operation (state-grouped filtering, precondition resolution, batch-context decision, exception drill-down).
+    - **T4b — Collapse test.** Mentally remove status pills and the page header. The bundle must still have meaningful compositional structure. If what remains is a styled `<table>` plus a summary line and nothing else, T4 fails — the bundle's apparent design is the pill chrome, not the composition.
+    - **T4c — Four-tier hierarchy.** The screen exhibits visually distinguishable treatments for FOUR distinct operational tiers:
+      1. **Queue state** (what's in the pool overall — counts, totals, period)
+      2. **Selection / bulk state** (the cohort the user is acting on)
+      3. **Row-level action** (the work on a single record)
+      4. **Exception handling** (alerts, blocks, anomaly escalation visually distinct from routine rows)
+      Failing to distinguish any of the four = T4 fails. Tiers MAY be present but visually indistinguishable; that is the failure mode this catches.
+    - **T4d — One-second test.** A reasonable user looking at the screen for one second can name the page's primary job. "It's a table" does not pass; "it's stuck-charges-matched-to-receipts with the blocker surfaced" does. Phrase the implied one-second answer in `{visual_quality_axes}.generic_look.evidence` so the claim is auditable.
 
-**Anti-spreadsheet hard floor.** If a screen fails T4 (its only differences from a plain styled `<table>` are pills and a summary line), then:
+  Counter-examples that FAIL T4 (any one of T4a/T4b/T4c/T4d is sufficient to fail):
+    - The only second surface is a summary line that restates row counts (fails T4a).
+    - Removing the pills + header leaves a styled table with no other design decisions visible (fails T4b).
+    - Bulk-selection state and row-action state are visually identical, OR alert rows blend into routine rows (fails T4c).
+    - The page reads as "a table" before the operational job becomes clear (fails T4d).
+- *Adequate* — passes T1 AND T2; T3 may be marginal; **all four T4 sub-tests must still pass**.
+- *Weak* — placeholder data, OR could be a different product, OR no operational narrative, OR fails any T4 sub-test.
+
+**Anti-spreadsheet hard floor.** If a screen fails T4 (any of T4a/T4b/T4c/T4d), then:
 
 - `generic_look` CANNOT be rated `strong`. Cap at `adequate` at most; `weak` if T4 is the dominant failure.
 - The bundle's overall `{visual_quality}` CANNOT be `excellent`. Cap at `acceptable` regardless of other axis ratings.
+- Record the specific T4 sub-test(s) that failed in `{visual_quality_axes}.generic_look.evidence` (e.g., `"fails T4c: bulk-selection state and row-action state share the same dark background; no exception-handling tier distinct from routine rows"`).
 
-This floor is the failure mode the rubric exists to enforce. A bundle that satisfies every other axis but reads as a single styled table with pills has not done the work — it cannot be labeled "excellent".
+This floor is the failure mode the rubric exists to enforce. A bundle that satisfies every other axis but reads as a single styled table with pills (or as a kitchen-sink of micro-components without clear hierarchy) has not done the work — it cannot be labeled "excellent".
 
 #### Macro-hierarchy judgment (mandatory, every screen)
 
@@ -267,15 +446,25 @@ elif strong_count >= 3:        {visual_quality} = "excellent"
 else:                          {visual_quality} = "acceptable"
 ```
 
-Then apply the **anti-spreadsheet floor**:
+Then apply the **anti-spreadsheet floor** (now four sub-tests per T4):
 
 ```
-if any screen failed Axis 5 T4:
+if any screen failed Axis 5 T4 (any of T4a/T4b/T4c/T4d):
     if {visual_quality_axes}[generic_look].rating == "strong":
         downgrade {visual_quality_axes}[generic_look].rating to "adequate"  # T4 failure forbids strong
     if {visual_quality} == "excellent":
         {visual_quality} = "acceptable"                                      # T4 failure forbids excellent
     # the weak-count rule already prevents "excellent" when generic_look is weak; this floor adds the cap when T4 is the only generic_look problem
+```
+
+Then apply the **pre-visual cap** from §5a (g/h/i):
+
+```
+# {pre_visual_cap} ∈ {"excellent", "acceptable"} — computed at end of §5a aggregate
+if {pre_visual_cap} == "acceptable" and {visual_quality} == "excellent":
+    {visual_quality} = "acceptable"
+    # the brief-faithfulness half capped this — record the cause in {visual_quality_correction}
+    # so the user sees WHY excellent was withheld (consistency violations / missing deliverables / unanswered questions)
 ```
 
 Then apply the **macro-hierarchy cap**:
@@ -469,10 +658,25 @@ Hard failures ({N}): ...
 Positive assertions ({M}): ...
 Drift ({K}): ...
 
+[BRIEF-FAITHFULNESS HALF]
+Internal consistency ({CI} violations):
+  - bundle/{screen}: check={check_id}
+    detail: {one-line}
+    fix: {one-line — remove the contradiction OR change the filter state}
+Deliverable coverage ({DC} unmet of {DCT} total):
+  - {deliverable text}: classification={missing|prose_only}, brief_section={ref}
+    fix: produce it (named state / file) OR mark waived in next brief revision
+Question coverage ({QC} unmet of {QCT} total):
+  - Q{n}: {question text}
+    classification: {unaddressed|answered_abstractly|incomplete}
+    gap: {one-line — what's missing from the bundle}
+    fix: {one-line — what to add OR re-brief if scope changed}
+
 [VISUAL HALF]
-Visual quality ({visual_quality}): {visual_quality_correction or "n/a"}
+Visual quality ({visual_quality}, pre_visual_cap={cap}): {visual_quality_correction or "n/a"}
   - per-axis ratings: hierarchy={rating}, density={rating}, typography={rating}, table={rating}, generic-look={rating}
   - weak axes: {list}
+  - T4 sub-tests failed: {list of T4a/T4b/T4c/T4d or "none"}
 
 Lift over baseline ({visual_lift_passed ? "passed" : "failed"}):
   Negative half violations ({L}):
@@ -500,19 +704,27 @@ policy_violations = (
     len(positive_assertion_violations) +
     len(drift_violations)
 )
+brief_faithfulness_violations = (                                              # NEW (2026-05-28): §5a pre-visual gates
+    len({internal_consistency_violations}) +
+    len({deliverable_violations}) +
+    len({question_violations})
+)
 visual_violations = (
     (1 if {visual_quality} in ("acceptable", "weak") and {review_iterations} == 0 else 0) +
     (1 if not {visual_lift_passed} else 0) +
     (1 if {exemplar_alignment} == "deviated_unauthorized" else 0)
 )
-total_violations = policy_violations + visual_violations
+total_violations = policy_violations + brief_faithfulness_violations + visual_violations
 
 under_grounded = (
     len({skills_unloaded}) > 0 or                                              # workflow.md Critical Rules → "Synthesis honesty"
     any(mode == "path_only" for mode in {exemplars_consulted_mode}.values()) or # workflow.md Critical Rules → "Exemplar alignment requires actual visual consultation"
     {visual_quality} == "unverified-strong" or                                 # evidence-gated ceiling in §6 above
     {visual_lift_over_baseline} is None or                                     # positive-half lift not actually compared
-    {exemplar_alignment} == "unverified"                                       # propagated from §8 above
+    {exemplar_alignment} == "unverified" or                                    # propagated from §8 above
+    len({internal_consistency_violations}) > 0 or                              # NEW: §5a (g)
+    any(d.classification == "missing" for d in {deliverable_coverage}.values()) or  # NEW: §5a (h)
+    any(q.classification in ("unaddressed", "answered_abstractly") for q in {question_coverage}.values())  # NEW: §5a (i)
 )
 
 if total_violations == 0 and not under_grounded:
@@ -526,14 +738,19 @@ elif total_violations == 0 and under_grounded:
     GOTO step 7
 elif iteration_count < 3:
     # Track which loop iterations were driven by visual sub-checks (d/e/f only).
-    if visual_violations > 0 and policy_violations == 0:
+    # Brief-faithfulness (g/h/i) failures count as visual_iterations too because they
+    # cap visual_quality — a re-run that addresses them is effectively a visual re-pass.
+    if (visual_violations > 0 or brief_faithfulness_violations > 0) and policy_violations == 0:
         {review_iterations} += 1
-    elif visual_violations > 0:
-        {review_iterations} += 1   # visual contributed even if mixed
+    elif visual_violations > 0 or brief_faithfulness_violations > 0:
+        {review_iterations} += 1   # visual / brief-faithfulness contributed even if mixed
     correction_note = compose_combined_correction(
         hard_failure_violations,
         positive_assertion_violations,
         drift_violations,
+        internal_consistency_violations,    # NEW
+        deliverable_violations,             # NEW
+        question_violations,                # NEW
         visual_quality_correction,
         positive_lift_violations,
         negative_lift_violations,
@@ -541,21 +758,28 @@ elif iteration_count < 3:
     )
     GOTO step 4 with {correction_note}
 else:  # iteration_count == 3
-    # Policy failures win priority for compliance_state; visual failures additionally set needs_human_review.
+    # Policy failures win priority for compliance_state; brief-faithfulness + visual failures
+    # additionally set needs_human_review. Brief-faithfulness failures alone (no hard policy
+    # break, no visual break) route to under_grounded — the bundle is policy-clean but
+    # doesn't satisfy the brief's contract, so design-implement refuses.
     if hard_failure_violations:           {compliance_state} = "hard_failed"
     elif positive_assertion_violations:   {compliance_state} = "positive_failed"
     elif drift_violations:                {compliance_state} = "drift_failed"
     elif not {visual_lift_passed}:        {compliance_state} = "lift_failed"
     elif {exemplar_alignment} == "deviated_unauthorized":
                                           {compliance_state} = "exemplar_failed"
-    else:                                 {compliance_state} = "pass"   # only visual_quality=="weak" remained; no compliance_state change, but needs_human_review is set
-    # needs_human_review is set whenever any visual sub-check signals it (weak/unverified quality, lift failure/absence, exemplar deviation/unverified, or under_grounded)
+    else:                                 {compliance_state} = "pass"   # only visual_quality=="weak" or brief-faithfulness remained; no policy compliance_state change, but needs_human_review is set
+    # needs_human_review is set whenever any visual or brief-faithfulness sub-check signals it
     if ({visual_quality} in ("weak", "unverified-strong") or
         not {visual_lift_passed} or {visual_lift_over_baseline} is None or
         {exemplar_alignment} in ("deviated_unauthorized", "unverified") or
+        len({internal_consistency_violations}) > 0 or           # NEW
+        len({deliverable_violations}) > 0 or                    # NEW
+        len({question_violations}) > 0 or                       # NEW
         under_grounded):
         {needs_human_review} = true
-    # If only under_grounded conditions remain (no hard policy failures), compliance_state is under_grounded
+    # If only under_grounded conditions remain (no hard policy failures), compliance_state is under_grounded.
+    # Brief-faithfulness failures roll into under_grounded via the under_grounded calculation above.
     if {compliance_state} == "pass" and under_grounded:
         {compliance_state} = "under_grounded"
     print warning to user (see §11)
@@ -573,8 +797,13 @@ On `pass`:
   positive assertions:  0/{len(positive_allowlist)} assertions failed
   drift:                0 regions (refine-screen) or n/a (fresh-design)
 
+  [BRIEF-FAITHFULNESS HALF]
+  internal consistency: 0 contradictions
+  deliverable coverage: {produced}/{total} produced ({prose_only} prose-only, 0 missing)
+  question coverage:    {answered_with_evidence}/{total} with concrete evidence
+
   [VISUAL HALF]
-  visual quality:       {visual_quality}
+  visual quality:       {visual_quality}  (pre_visual_cap={cap})
   lift over baseline:   passed (negative + positive halves)
   exemplar alignment:   {exemplar_alignment}
 
@@ -593,8 +822,13 @@ On loop (iteration < 3):
   positive assertions:  {len(positive_assertion_violations)}/{len(positive_allowlist)}
   drift:                {len(drift_violations)}
 
+  [BRIEF-FAITHFULNESS HALF]
+  internal consistency: {len(internal_consistency_violations)} contradictions
+  deliverables:         {len(deliverable_violations)} unmet of {len(deliverable_coverage)}
+  questions:            {len(question_violations)} unmet of {len(question_coverage)}
+
   [VISUAL HALF]
-  visual quality:       {visual_quality} ({"refine pass triggered" if acceptable and review_iterations==0 else "no refine"})
+  visual quality:       {visual_quality} (pre_visual_cap={cap}, {"refine pass triggered" if acceptable and review_iterations==0 else "no refine"})
   lift over baseline:   {"passed" if visual_lift_passed else "failed (" + str(len(negative_lift_violations)) + " neg / " + str(len(positive_lift_violations)) + " pos)"}
   exemplar alignment:   {exemplar_alignment} ({len(exemplar_violations)} deviations)
 
@@ -610,8 +844,13 @@ On final-iteration failure (iteration == 3):
   positive assertions:  {len(positive_assertion_violations)}
   drift:                {len(drift_violations)}
 
+  [BRIEF-FAITHFULNESS HALF]
+  internal consistency: {len(internal_consistency_violations)} contradictions
+  deliverables:         {len(deliverable_violations)} unmet of {len(deliverable_coverage)}
+  questions:            {len(question_violations)} unmet of {len(question_coverage)}
+
   [VISUAL HALF]
-  visual quality:       {visual_quality}
+  visual quality:       {visual_quality} (pre_visual_cap={cap})
   lift over baseline:   {"passed" if visual_lift_passed else "failed"}
   exemplar alignment:   {exemplar_alignment}
 
@@ -643,6 +882,13 @@ After this step (when proceeding to step 7):
 - `{exemplar_alignment}` ∈ `{aligned, deviated_with_brief_authorization, deviated_unauthorized}`.
 - `{exemplar_comparisons}` populated for EVERY entry in `{exemplars}` (or `{}` when `exemplar_anchoring: waived`). Each entry has `consulted: true | false`, `consulted_at_step` (iteration number), and `diffs` keyed by `<screen_path>` with sub-entries for ALL FIVE dimensions (`hierarchy`, `density`, `top_band`, `table_framing`, `state_presentation`) each carrying `aligned: bool` and a non-empty `diff` string. A `consulted: false` entry that survived past step 6 is a workflow bug (routing failure should have looped step 4).
 - `{needs_human_review}` is a boolean. True whenever `{visual_quality} == "weak"`, `{visual_lift_passed} == false`, or `{exemplar_alignment} == "deviated_unauthorized"` at the final iteration.
-- All six violation arrays are present (may be empty `[]` — empty is the affirmative no-violations claim, omission is forbidden): `{hard_failure_violations}`, `{positive_assertion_violations}`, `{drift_violations}`, `{negative_lift_violations}`, `{positive_lift_violations}`, `{exemplar_violations}`. These feed the manifest's `violations:` section unconditionally.
+- All six visual + policy violation arrays are present (may be empty `[]` — empty is the affirmative no-violations claim, omission is forbidden): `{hard_failure_violations}`, `{positive_assertion_violations}`, `{drift_violations}`, `{negative_lift_violations}`, `{positive_lift_violations}`, `{exemplar_violations}`. These feed the manifest's `violations:` section unconditionally.
+- All three brief-faithfulness state structures are present (may be empty `[]` or `{}`):
+  - `{internal_consistency_violations}` — list per §5a (g)
+  - `{deliverable_coverage}` — map per §5a (h) (per-deliverable classification)
+  - `{deliverable_violations}` — list per §5a (h) (the `missing` + `prose_only` subset)
+  - `{question_coverage}` — map per §5a (i) (per-question classification)
+  - `{question_violations}` — list per §5a (i) (the non-`answered_with_evidence` subset)
+- `{pre_visual_cap}` ∈ `{"excellent", "acceptable"}` — computed at end of §5a aggregate; constrains the §6 visual rating ceiling.
 
 Any unset required variable is a workflow bug — halt before step 7.
