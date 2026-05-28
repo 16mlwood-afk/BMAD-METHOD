@@ -71,6 +71,7 @@ This uses **step-file architecture** for focused execution:
 - `{implementation_files}` - File paths for implementation reference only (designer may browse for technical context, not for layout inspiration)
 - `{brand_identity_path}` - Path to the project's brand identity document (if it exists)
 - `{brand_identity}` - Contents of the brand identity document — provides positive visual anchors, design tokens, component patterns, reference pages, and hard failures. When present, this is the PRIMARY source for design system context — it supersedes token extraction and generic guardrails.
+- `{policy_version}` - Integer version of `docs/design-policy.md` at brief-generation time (parsed from frontmatter `version:` field; `1` if no version field; `0` if no policy file). Stamped into the generated brief's `policy_version_required:` frontmatter so downstream consumers (design-synthesize, design-implement) can detect when the policy has moved past the brief's pinned version.
 - `{design_system}` - "branded" (brand identity exists) or "existing" (extract tokens from code) or "external" (external design system — e.g., created in Claude Design). Controls which variant of section 4 (Visual Direction) and section 5 (Hard Constraints) the brief uses.
 - `{design_system_name}` - If external: the name of the design system (e.g., "Meridian"). Empty otherwise.
 - `{design_tokens}` - Design tokens — from brand identity (preferred) or extracted from codebase

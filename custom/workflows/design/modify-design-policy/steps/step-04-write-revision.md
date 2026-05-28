@@ -69,6 +69,23 @@ If `{downstream_impact}` is empty, omit the last two sections and end at "Sectio
 
 In autonomous mode: same report format, no follow-up prompt.
 
+### 6. Auto-trigger apply-design-policy-change (autonomous mode only)
+
+When `autonomous_mode` is `true` AND `{downstream_impact}` is non-empty, do NOT stop at the report. Immediately invoke `/bmad:bmm:workflows:apply-design-policy-change` with the just-written policy file as input. The autonomy contract states: "Make expert-level decisions and proceed" — leaving impacted pages flagged but unactioned violates that contract.
+
+Pass the following context to the apply-workflow:
+
+- `{policy_path}` — the file just written
+- `{from_version}` = `{current_version}` (the pre-revision version)
+- `{to_version}` = `{current_version + 1}` (the new version)
+- `{downstream_impact}` — the list surfaced in §5
+
+The apply-workflow classifies each impacted page into restyle / component-refresh / full-handoff and emits scoped briefs. Those briefs become the next actionable artifact for the user, so the loop closes within a single autonomous run.
+
+In interactive mode (autonomous_mode = false): do NOT auto-invoke. The report's "Next step" line is the user's prompt to invoke manually if they want scoped briefs — they may prefer to inspect the policy diff first.
+
+**Halt condition:** If `apply-design-policy-change` is missing from the workflow set OR errors at startup, log the failure under "Sections changed" and continue — never silently swallow the auto-trigger. The user must know the loop did not close.
+
 ## SUCCESS METRICS:
 
 - Only the sections in `{proposed_deltas}` differ between the old and new file

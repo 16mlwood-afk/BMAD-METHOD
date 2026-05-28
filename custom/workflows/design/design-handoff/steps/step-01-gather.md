@@ -44,10 +44,12 @@ ls {planning_artifacts}/brand-identity.md 2>/dev/null
 - Read the entire file → `{brand_identity}` (variable name retained for backward compatibility)
 - Set `{brand_identity_path}` to the absolute path of whichever file was loaded
 - Set `{design_system}` = "branded"
+- Parse the frontmatter `version:` field of the loaded file → `{policy_version}` (integer). If no version field exists, default to `1`. This value is stamped into the generated brief's `policy_version_required` field in step-03 so downstream consumers can detect when the policy has moved past the brief's pinned version.
 
 **If neither is found:**
 - Set `{brand_identity}` = empty, `{brand_identity_path}` = empty
 - Set `{design_system}` = "existing" (may be overridden to "external" by user input)
+- Set `{policy_version}` = `0` (sentinel meaning "no policy in effect at brief time"; downstream consumers treat this as "no drift check possible — surface to user").
 
 ### 2. Identify the Feature
 

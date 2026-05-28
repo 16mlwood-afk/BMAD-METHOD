@@ -32,6 +32,7 @@ Single step: `steps/step-01-audit.md`. No fix phase. No verify phase.
 - `{peer_paths}` — 2–3 peer detail/summary views used as the quality bar
 - `{brand_identity}` — Contents of the project's brand identity document (if it exists). When present, provides the authoritative visual language — typography, colors, component patterns, and hard failures.
 - `{brand_identity_path}` — Path to the brand identity document
+- `{policy_version}` — Integer version of `docs/design-policy.md` at review time (parsed from frontmatter `version:` field; `1` if no version field; `0` if no policy file). Stamped into the screen-review artifact's `policy_version_required:` frontmatter in artifact mode so downstream consumers can detect when the policy has moved past the review's pinned version.
 - `{output_mode}` — `"interactive"` (default) emits the human-readable review in chat. `"artifact"` additionally writes a structured `screen-review-{slug}-{date}.md` file to `{implementation_artifacts}` that downstream workflows (notably `design-handoff` in refine-screen mode) can consume programmatically.
 - `{target_slug}` — kebab-case slug derived from the route (used for the artifact filename and to let design-handoff match the right artifact to the target feature)
 - `{artifact_path}` — Absolute path where the artifact is written (only set when `{output_mode}` = "artifact")
@@ -57,7 +58,7 @@ ls {project-root}/docs/design-policy.md 2>/dev/null
 ls {project-root}/_bmad-output/planning-artifacts/brand-identity.md 2>/dev/null
 ```
 
-If either is found, read and store as `{brand_identity}` (variable name retained for backward compatibility with downstream templates). Set `{brand_identity_path}` to the absolute path of whichever file was loaded.
+If either is found, read and store as `{brand_identity}` (variable name retained for backward compatibility with downstream templates). Set `{brand_identity_path}` to the absolute path of whichever file was loaded. Parse the file's frontmatter `version:` field into `{policy_version}` (integer, default `1` if no version field). When no policy file is found at all, set `{policy_version}` = `0` (sentinel for "no policy in effect at review time"). This value is stamped into the screen-review artifact's `policy_version_required` field in artifact mode so downstream consumers (refine-screen briefs, design-implement) can detect drift when the policy has moved past the review's pinned version.
 
 The project policy provides project-specific visual standards (exact typography, exact colors, exact component patterns) that are more authoritative than the generic `design-standards.md`. When both exist, the policy wins on specifics — use `design-standards.md` only for categories the policy doesn't cover (functional UX, accessibility, severity levels).
 
@@ -138,6 +139,7 @@ peer_paths:
   - <absolute path>
 generated_at: <ISO 8601 datetime>
 brand_identity_path: <path or empty>
+policy_version_required: <int — version of docs/design-policy.md this screen-review was authored against. Downstream (design-handoff in refine-screen mode, design-implement) MUST halt or warn if the current policy version exceeds this value, since rules ratified after this review may have re-classified violations. Default `0` if no policy exists.>
 measurement_method: <chrome-live | source-derived | screenshot-only>   # see step-01 §3
 measurement_caveat: |                                                  # REQUIRED when measurement_method != chrome-live; empty/null otherwise
   <one-paragraph statement of what was NOT measured live and why downstream

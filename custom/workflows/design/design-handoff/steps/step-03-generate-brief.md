@@ -113,6 +113,7 @@ supersedes: {supersedes_filename}        # empty when change_class is original
 superseded_by:                           # always empty on a freshly generated brief
 source_workflow: design-handoff
 source_run_date: {source_run_date}
+policy_version_required: {policy_version}     # version of docs/design-policy.md this brief was authored against. Downstream (design-synthesize, design-implement) MUST halt or warn if the current policy version exceeds this value, since rules ratified after this brief may invalidate its assumptions. Populate from the frontmatter of the policy file resolved in step-01 (default to `0` if no policy exists — `existing` design_system variant).
 last_modified_by: workflow
 last_modified_date: {date}
 

@@ -63,6 +63,7 @@ If `autonomous_mode` is `true` in config:
 - **Never halt or wait for user input.** Make expert-level decisions and proceed.
 - **Infer change axes** from the user's problem statement — pick the smallest set of sections that need to change.
 - **Skip the proposal confirmation** — write the revision directly and report what changed.
+- **Auto-trigger `apply-design-policy-change`** at the end of step-04 when `{downstream_impact}` is non-empty. The autonomy contract requires closing the loop within a single run — leaving impacted pages flagged but unactioned violates "make expert-level decisions and proceed." Pass `{policy_path}`, `{from_version}` = pre-revision version, `{to_version}` = new version, and `{downstream_impact}` to the apply-workflow. See step-04 §6 for the full contract.
 
 ---
 
