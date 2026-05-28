@@ -118,6 +118,17 @@
             "statusMessage": "Checking handoff backlog..."
           }
         ]
+      },
+      {
+        "name": "bmad-design-policy-drift",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "POLICY=\"$PWD/docs/design-policy.md\"; CHECKLIST=\"$PWD/docs/review-checklist.md\"; [ -f \"$POLICY\" ] && [ -f \"$CHECKLIST\" ] || exit 0; pv=$(awk '/^version:/ {print $2; exit}' \"$POLICY\"); cv=$(awk '/^policy_version:/ {print $2; exit}' \"$CHECKLIST\"); [ -z \"$pv\" ] || [ -z \"$cv\" ] && exit 0; if [ \"$pv\" != \"$cv\" ]; then printf '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"DESIGN POLICY DRIFT: design-policy.md is at v%s but review-checklist.md is pinned to policy_version %s. PR-time enforcement is %s versions behind. Update the checklist or run /bmad:bmm:workflows:apply-design-policy-change to scope the impact.\"}}\\n' \"$pv\" \"$cv\" \"$((pv - cv))\"; fi",
+            "timeout": 3,
+            "statusMessage": "Checking design policy drift..."
+          }
+        ]
       }
     ],
     "PostToolUse": [
