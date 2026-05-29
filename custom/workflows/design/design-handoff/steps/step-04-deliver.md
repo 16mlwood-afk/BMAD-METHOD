@@ -129,7 +129,7 @@ Brief lives in `_bmad-output/implementation-artifacts/` — BMAD workflow artifa
 
 - [ ] Brief renders as readable Markdown on the PR diff
 - [ ] Once merged, the consumer can read `{github_repo_url}/blob/main/{output_path_relative_to_repo_root}`
-- [ ] No need to run `./scripts/deploy-prod.sh` — doc-only change, no runtime impact
+- [ ] No deploy needed — doc-only change, no runtime impact. The BMAD deploy contract (`./scripts/bmad-deploy.sh`) would also no-op on this PR
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 EOF

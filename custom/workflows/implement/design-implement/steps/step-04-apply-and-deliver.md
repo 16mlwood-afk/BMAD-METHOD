@@ -1,6 +1,6 @@
 ---
 name: 'step-04-apply-and-deliver'
-description: 'Apply all deltas from the comparison grid to the implementation, run build, commit, push, create PR, merge, and deploy'
+description: 'Apply all deltas from the comparison grid to the implementation, run build, commit, push, create PR, and merge. Deploy is delegated to the BMAD deploy contract (see shared/deployment-to-prod.md) and is not part of this workflow.'
 ---
 
 # Step 4: Apply and Deliver
@@ -12,7 +12,7 @@ description: 'Apply all deltas from the comparison grid to the implementation, r
 - FULLY AUTONOMOUS. No user interaction. No menus. No halting.
 - Fix EVERY delta from Step 3's grid — Tier 1, Tier 2, and Tier 3. No "good enough."
 - After applying fixes, re-verify by re-reading the modified files. Do not trust that the edit was correct without checking.
-- Follow the project's CLAUDE.md for commit, PR, merge, and deploy procedures.
+- Follow the project's CLAUDE.md for commit, PR, and merge procedures. Deploy is NOT part of this workflow — see the BMAD deploy contract at `_bmad/bmm/workflows/shared/deployment-to-prod.md` and run `./scripts/bmad-deploy.sh` after merge.
 - YOU MUST ALWAYS SPEAK OUTPUT in your agent communication style with the config `{communication_language}`
 
 ## CONTEXT
@@ -125,7 +125,7 @@ EOF
 gh pr merge --squash --admin
 ```
 
-Then deploy per the project's CLAUDE.md instructions.
+After merge, the BMAD deploy contract handles deploy: run `./scripts/bmad-deploy.sh` (see `_bmad/bmm/workflows/shared/deployment-to-prod.md`). The contract decides whether to deploy or skip based on the project's `_bmad/bmm/config.yaml` `deploy:` block — this workflow does not.
 
 ### 8. Brand Identity Feedback
 
@@ -153,7 +153,7 @@ Design implementation complete.
 Baseline: {baseline_commit}
 Deltas fixed: {X}/{delta_count}
 PR: {pr_url}
-Deploy: {deploy_url}
+Deploy: handled by ./scripts/bmad-deploy.sh — run after merge per the BMAD contract
 
 Comparison grid: {artifact_path}
 ```
@@ -164,7 +164,7 @@ Comparison grid: {artifact_path}
 
 - Every delta from the comparison grid is fixed
 - Build passes
-- PR created, merged, and deployed
+- PR created and merged
 - Grid artifact updated with fix status
 - No regressions introduced
 
@@ -174,4 +174,3 @@ Comparison grid: {artifact_path}
 - Editing without re-reading to verify (edits can silently fail or land in the wrong location)
 - Changing `tailwind.config.js` when an arbitrary value would work
 - Committing without running `npm run build`
-- Forgetting to deploy after merge

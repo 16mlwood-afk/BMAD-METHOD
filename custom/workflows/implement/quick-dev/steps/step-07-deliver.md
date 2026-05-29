@@ -186,7 +186,7 @@ There is **no** "WORKTREE CLEANUP" in this step. Do not call `ExitWorktree` here
 
 ---
 
-## NO POST-DEPLOY USER HANDOFFS — CRITICAL
+## NO POST-MERGE USER HANDOFFS — CRITICAL
 
 **Never end the workflow by queuing the user with commands to run after deployment.** No "Next step (you run, after Railway deploys): ..." sections. No `source ~/.secrets && npx tsx scripts/...` blocks for the user to execute. No verification scripts the user is expected to kick off.
 
@@ -238,7 +238,6 @@ Delivery is done but the workflow is not complete. Proceed immediately to the de
 - PR merged to main (autonomous) or URL presented (non-autonomous)
 - Merge verified via `gh pr view` (worktree) or `git log` (standard)
 - Worktree still active (cleanup happens at end of step-08, not here)
-- Deployment noted if applicable
 
 ## FAILURE MODES
 
