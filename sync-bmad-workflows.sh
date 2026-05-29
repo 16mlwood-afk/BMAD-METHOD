@@ -3,6 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SOURCE="$SCRIPT_DIR/custom/workflows"
+SKILLS_SOURCE="$SCRIPT_DIR/custom/skills"
 HOOKS_SRC="$SCRIPT_DIR/src/modules/bmm/_module-installer/assets/hooks.json"
 WORKTREE_INCLUDE_SRC="$SCRIPT_DIR/src/modules/bmm/_module-installer/assets/worktreeinclude.template"
 CONFIG_DEFAULTS_SRC="$SCRIPT_DIR/src/modules/bmm/_module-installer/assets/config-defaults.yaml"
@@ -22,7 +23,7 @@ usage() {
   echo "  --check         Report drift without modifying anything"
   echo "  --force         Sync even if targets have local-only content (DESTRUCTIVE)"
   echo "  --pull PATH     Pull changes from a project back to the source of truth"
-  echo "  --worktree PATH Sync custom workflow dirs into a single worktree path"
+  echo "  --worktree PATH Sync custom workflow dirs + skills into a single worktree path"
   echo "                  (minimal — no hooks/commands/CLAUDE.md; git-tracked files propagate via checkout)"
   exit 1
 }
@@ -239,6 +240,63 @@ $line"
   echo "$count"
 }
 
+# Sync portable skills from custom/skills/ to a project's .claude/skills/.
+# Each top-level dir under SKILLS_SOURCE is mirrored to a same-named dir in the
+# target. In check mode, returns count of skills that differ from source.
+# Args: $1 = project root, $2 = mode ("check" or "sync")
+# Returns count via stdout.
+sync_skills_for_project() {
+  local project_root="$1" mode="$2"
+  local count=0
+
+  [[ ! -d "$SKILLS_SOURCE" ]] && { echo "0"; return; }
+
+  local skills_target="$project_root/.claude/skills"
+  for skill_dir in "$SKILLS_SOURCE"/*/; do
+    [[ ! -d "$skill_dir" ]] && continue
+    local skill_name skill_dst
+    skill_name="$(basename "$skill_dir")"
+    skill_dst="$skills_target/$skill_name"
+
+    if [[ ! -d "$skill_dst" ]] || ! diff -rq --exclude='.DS_Store' "$skill_dir" "$skill_dst" &>/dev/null; then
+      if [[ "$mode" == "sync" ]]; then
+        mkdir -p "$skill_dst"
+        rsync -a --delete --exclude='.DS_Store' "$skill_dir" "$skill_dst/"
+      fi
+      count=$((count + 1))
+    fi
+  done
+
+  echo "$count"
+}
+
+# Pull a project's .claude/skills/<name>/ contents back to custom/skills/<name>/
+# for any skill that already exists at the source. New project-local skills are
+# NOT auto-promoted to the fork — that requires an explicit user action.
+# Args: $1 = project root
+# Returns count via stdout.
+pull_skills_from_project() {
+  local project_root="$1"
+  local count=0
+
+  [[ ! -d "$SKILLS_SOURCE" ]] && { echo "0"; return; }
+
+  for skill_dir in "$SKILLS_SOURCE"/*/; do
+    [[ ! -d "$skill_dir" ]] && continue
+    local skill_name skill_src
+    skill_name="$(basename "$skill_dir")"
+    skill_src="$project_root/.claude/skills/$skill_name"
+    [[ ! -d "$skill_src" ]] && continue
+
+    if ! diff -rq --exclude='.DS_Store' "$skill_dir" "$skill_src" &>/dev/null; then
+      rsync -a --delete --exclude='.DS_Store' "$skill_src/" "$skill_dir/"
+      count=$((count + 1))
+    fi
+  done
+
+  echo "$count"
+}
+
 # --- REFERENCE PROJECT SYNC ---
 # Upstream-only workflow dirs (installed by BMAD CLI, no custom override).
 # These get synced from a reference project to all others so they stay consistent.
@@ -430,6 +488,13 @@ if [[ -n "$PULL_TARGET" ]]; then
     done
   fi
 
+  # Pull custom skills back to custom/skills/
+  skills_pulled=$(pull_skills_from_project "$project_root")
+  if [[ "$skills_pulled" -gt 0 ]]; then
+    echo "  OK    skills ($skills_pulled updated from project)"
+    pulled=$((pulled + skills_pulled))
+  fi
+
   echo ""
   if [[ $pulled -gt 0 ]]; then
     echo "Pulled $pulled dir(s) from $project. Review changes, then commit and re-sync."
@@ -442,11 +507,13 @@ fi
 # --- WORKTREE MODE ---
 # Minimal sync into a single worktree. Skips hooks, slash-commands, and CLAUDE.md
 # because those are git-tracked and propagate via the worktree's normal checkout.
-# Only writes the custom workflow dirs (SYNC_DIRS), which are NOT tracked in
-# project repos and would otherwise be missing in worktrees branched from origin.
+# Writes the custom workflow dirs (SYNC_DIRS) and portable skills, which are
+# NOT tracked in project repos and would otherwise be missing in worktrees
+# branched from origin.
 if [[ -n "$WORKTREE_TARGET" ]]; then
   WORKTREE_TARGET="${WORKTREE_TARGET%/}"
   # Accept either a project root or a _bmad/bmm/workflows path
+  wt_project_root="${WORKTREE_TARGET%/_bmad/bmm/workflows}"
   if [[ "$WORKTREE_TARGET" != */_bmad/bmm/workflows ]]; then
     WORKTREE_TARGET="$WORKTREE_TARGET/_bmad/bmm/workflows"
   fi
@@ -463,7 +530,11 @@ if [[ -n "$WORKTREE_TARGET" ]]; then
     copied=$((copied + 1))
   done
 
-  echo "OK    Worktree synced: $WORKTREE_TARGET ($copied dirs)"
+  skills_copied=$(sync_skills_for_project "$wt_project_root" "sync")
+
+  msg="OK    Worktree synced: $WORKTREE_TARGET ($copied dirs"
+  [[ "$skills_copied" -gt 0 ]] && msg="$msg, $skills_copied skill(s)"
+  echo "$msg)"
   exit 0
 fi
 
@@ -633,6 +704,16 @@ while IFS= read -r target || [[ -n "$target" ]]; do
       fi
     fi
 
+    # Check portable skills sync
+    skills_drift=$(sync_skills_for_project "$project_root" "check")
+    if [[ "$skills_drift" -gt 0 ]]; then
+      if ! $dirty; then
+        echo "STALE $project"
+        dirty=true
+      fi
+      echo "  ↳  skills ($skills_drift skill(s) missing/outdated)"
+    fi
+
     if $dirty; then
       stale=$((stale + 1))
     else
@@ -743,6 +824,12 @@ while IFS= read -r target || [[ -n "$target" ]]; do
       if [[ "$upstream_synced" -gt 0 ]]; then
         echo "  OK    upstream ($upstream_synced dir(s) synced from reference)"
       fi
+    fi
+
+    # Sync portable skills from custom/skills/
+    skills_synced=$(sync_skills_for_project "$project_root" "sync")
+    if [[ "$skills_synced" -gt 0 ]]; then
+      echo "  OK    skills ($skills_synced skill(s) synced)"
     fi
 
     # Auto-generate command files from workflow.md frontmatter (custom + upstream)

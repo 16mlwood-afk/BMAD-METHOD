@@ -277,7 +277,15 @@ If the workflow is producing UI-facing guidance, it MUST route through the relev
 
 ## APPROVAL GATES
 
-The workflow must pass these gates in order. Each gate is a hard checkpoint; failure halts the run and surfaces a specific diagnostic to the user. Step 1 owns gates 1–2; step 2 owns gate 3 setup; step 3 owns gates 3 and 4; gate 5 is for the next agent in the chain (post-implementation review).
+The workflow must pass these gates in order. Each gate is a hard checkpoint; failure halts the run and surfaces a specific diagnostic to the user. Step 1 owns gate 0 and gates 1–2; step 2 owns gate 3 setup; step 3 owns gates 3 and 4; gate 5 is for the next agent in the chain (post-implementation review).
+
+### Gate 0 — required skills available (step 1)
+
+For modes that emit UI-facing guidance (`design-from-brief`, `refine-screen` when concrete visual changes are proposed, `policy-lift`), the relevant skills declared in FRONTEND SKILL ROUTING must be present in the session's available-skills list before the workflow proceeds. Resolution order for the project frontend skill: (i) `frontend_skill:` in the input artifact's frontmatter; (ii) `frontend_skill:` in `{project-root}/_bmad/bmm/config.yaml`; (iii) the first available skill matching `frontend`, `website-building`, or `webapp`.
+
+If any required skill cannot be resolved, halt with: `"Required skill <name> not available in this project. Skills are distributed by ~/bmad-method-v6/sync-bmad-workflows.sh — run it from any session, then re-invoke this workflow. (Project-local skills must already exist under .claude/skills/; portable skills are seeded from ~/bmad-method-v6/custom/skills/.)"`
+
+This gate does not fire in `review-only` mode unless the review will emit concrete correction guidance (see FRONTEND SKILL ROUTING → `review-only`). It is the first gate to evaluate because every downstream gate's diagnostics depend on the skills being loaded — running gates 1–4 without the skill produces lower-quality halts and degrades the user's trust in the workflow.
 
 ### Gate 1 — input validity (step 1)
 Confirm:

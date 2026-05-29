@@ -69,7 +69,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "SYNC=\"$HOME/bmad-method-v6/sync-bmad-workflows.sh\"; [ -x \"$SYNC\" ] || exit 0; stale=$(\"$SYNC\" --check 2>/dev/null | grep -c \"^STALE\" || true); if [ \"$stale\" -gt 0 ]; then printf '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"BMAD DRIFT: %s project(s) have stale workflows. Run ~/bmad-method-v6/sync-bmad-workflows.sh or /project-health.\"}}\\n' \"$stale\"; fi",
+            "command": "SYNC=\"$HOME/bmad-method-v6/sync-bmad-workflows.sh\"; [ -x \"$SYNC\" ] || exit 0; check_output=$(\"$SYNC\" --check 2>/dev/null); stale=$(echo \"$check_output\" | grep -c \"^STALE\" || true); skill_drift=$(echo \"$check_output\" | grep -c \"↳  skills\" || true); if [ \"$stale\" -gt 0 ]; then assets=\"workflows\"; [ \"$skill_drift\" -gt 0 ] && assets=\"workflows/skills\"; printf '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"BMAD DRIFT: %s project(s) have stale %s. Run ~/bmad-method-v6/sync-bmad-workflows.sh or /project-health.\"}}\\n' \"$stale\" \"$assets\"; fi",
             "timeout": 30,
             "statusMessage": "Checking BMAD sync status..."
           }
