@@ -67,7 +67,9 @@ Onboarding plan for {project_name} ({project_phase}):
 Proceed?
 ```
 
-Wait for confirmation (or `--yes` to auto-proceed).
+**`[led]`** — Print the plan as a one-line announcement (not a question) and **proceed immediately**. Do not wait. The user reviews everything once at the end (step 06) and the delivery PR is the durable veto surface.
+
+**`[collaborative]`** — Wait for confirmation (or `--yes` to auto-proceed) before continuing.
 
 ## NEXT
 

@@ -4,6 +4,33 @@
 
 ---
 
+## 0. Consolidated review — `[led]` only
+
+This is the single review the `led` path promised. Present it as one block, then **proceed to delivery without blocking** (the user can interrupt; the delivery PR is the durable veto surface). In `collaborative` mode this content was already confirmed step-by-step — skip to §1.
+
+```
+Design system for {project_name} — Claude-led decisions (review & veto):
+
+CHOSEN DIRECTION: {direction.name}  [confidence: grounded | low-confidence]
+  Why this won: {direction.rationale}
+  Beat: {runner-up 1}, {runner-up 2}
+  Grounded in: {evidence signals — package.json/README/domain/existing UI}
+  {if low-confidence: Assumption I made: <the stretch>}
+
+DECISIONS:
+  Palette:     {core hexes}
+  Typography:  {families + usage}
+  Density/scale/radius/status: {summary}
+  Token surface aligned: {files touched, or "bundle only"}
+
+PREVIEW: {path to sample.html screenshot}
+
+→ Proceeding to deliver + Claude Design intake. Say "change <X>" to revise any
+  decision; I'll re-run from the affected step and re-deliver.
+```
+
+If `{direction.confidence}` = `low-confidence`, lead with the assumption so the user can correct intent before it propagates.
+
 ## 1. Delivery gate
 
 If `{delivery_mode}` = `skip` (config `delivery.onboard-design-system: skip` or `--no-deliver`): emit the `delivery_to_main` §5 skip warning, leave the GitHub link in the card marked `LOCAL ONLY` with the local-folder attach instructions, and jump to §3.

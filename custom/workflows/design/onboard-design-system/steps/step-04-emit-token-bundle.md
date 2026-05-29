@@ -22,7 +22,10 @@ Claude Design ingests best from the **real frontend**, so the project's actual t
 - **`svelte` / `vue`** → align the equivalent token file / global style.
 - **`none` (no framework yet, greenfield)** → the bundle in `{bundle_dir}` *is* the frontend surface for now. Set `{frontend_subfolder}` to `{bundle_dir}`'s repo-relative path.
 
-**Do not** scaffold framework code the project hasn't opted into. If aligning the real token surface means creating/altering app files, present the diff and get explicit approval first — that is app code, separate from the always-safe `{bundle_dir}` artifact. If the user declines, the bundle alone still serves the form.
+**Do not** scaffold framework code the project hasn't opted into — adding Tailwind/CSS-in-JS where none exists is structural, not theming, and is out of scope in both modes. Aligning *existing* token files (a present `tailwind.config.*`, an existing `globals.css`) is theming and in scope:
+
+- **`[led]`** — Apply the alignment to existing token files autonomously. These are app-code changes, so they flow through the step-06 delivery PR, which is the review/veto surface (and trivially revertable). Include them in the end-review summary.
+- **`[collaborative]`** — Present the diff and get explicit approval before altering any app file. If the user declines, the bundle alone still serves the form.
 
 ## 3. Render check
 

@@ -1,6 +1,6 @@
 ---
 name: onboard-design-system
-description: 'Onboard a brand-new design system for a project AND configure Claude Design to use it as the priority source. Use when a project has no visual theme yet and the user says "set up a new design system", "onboard a design theme", "configure Claude Design for this project", or "this project has no theme yet". Orchestrates create-design-policy (strategic) + brand-identity (tactical) + a code-shaped token bundle, delivers them to origin/main, then produces the exact intake the claude.ai/design "Set up your design system" form needs.'
+description: 'Onboard a brand-new design system for a project AND configure Claude Design to use it as the priority source. Claude-led by default — Claude makes the visual decisions autonomously and surfaces one end-of-run review; pass --collaborative for the propose-and-confirm path. Use when a project has no visual theme yet and the user says "set up a new design system", "onboard a design theme", "configure Claude Design for this project", or "this project has no theme yet". Orchestrates create-design-policy (strategic) + brand-identity (tactical) + a code-shaped token bundle, delivers them to origin/main, then produces the exact intake the claude.ai/design "Set up your design system" form needs.'
 main_config: '{project-root}/_bmad/bmm/config.yaml'
 
 # Related workflows
@@ -26,6 +26,27 @@ intake_template: '{project-root}/_bmad/bmm/workflows/design/onboard-design-syste
 2. **The code must be on `origin/main` before the link is pasted.** Claude Design fetches from GitHub. An un-delivered token bundle is invisible to it — this is the exact 2026-05-28 fail-find failure that `delivery-to-main.md` exists to prevent.
 
 This workflow is the only "set up a design system" front door that closes both gaps. `create-design-policy` alone produces a strategic document with nowhere to go; this workflow gives it a destination.
+
+---
+
+## MODE — CLAUDE-LED (DEFAULT) vs COLLABORATIVE
+
+This workflow runs in one of two modes. **`led` is the default.** Pass `--collaborative` (or set `onboard_design_system.mode: collaborative` in `{main_config}`) to switch.
+
+### `led` (default) — Claude drives, you review once
+
+Claude makes every **decision-autonomy** call without asking — palette, typography, density, spacing, radius, status colors, token values, sample components, file placement. It does **not** stop to propose-and-confirm at each step. The whole run produces the full artifact set and surfaces **one consolidated review at the end** (chosen direction + rationale + rendered preview + intake card), with a one-line veto/adjust path. The delivery PR (step 06) is the durable review surface.
+
+**The intent honesty rule — what keeps `led` inside the autonomy boundary.** The one thing Claude must not fabricate from nothing is **intent**: *what the product is, who it serves, the register*. In `led` mode Claude does not ask the user for it — it runs an **internal brainstorm grounded in real project evidence** (project name, `package.json`, README, route/domain names, any existing copy or data models) and commits to the single strongest direction. Two non-negotiables make this safe rather than reckless:
+
+1. **Ground or flag.** The internal brainstorm must cite the concrete signals it reasoned from. If signal is genuinely thin (empty repo, no copy, no domain hints), Claude still commits to a direction but **labels it low-confidence** in the end review and says exactly which assumption it made.
+2. **Surface the pick + the runners-up.** The end review names the chosen direction, *why* it won, and the 1-2 directions it beat — so the user can veto with full information. "Commit to one" is a reasoned pick presented for veto, never a silent guess.
+
+### `collaborative` (`--collaborative`) — propose and confirm
+
+The careful path: present the run plan and wait; dispatch to `create-design-policy`'s interactive brainstorm; propose palette/type for approval before writing; show token-surface diffs before applying. Every step gates on user confirmation. Use when the user wants to co-drive the visual direction.
+
+**Per-step behavior is marked `[led]` / `[collaborative]` in each step file.** Where a step is unmarked, behavior is identical in both modes (e.g., delivery-to-main is a safety floor in both).
 
 ---
 
@@ -62,11 +83,12 @@ This workflow **produces design-system artifacts, not design briefs.** Therefore
 
 ## CRITICAL RULES
 
-- **Discover, don't impose.** Every aesthetic value originates from the user, from `create-design-policy`'s brainstorm, or from auditing existing code — never from this workflow's defaults. This workflow contains no hardcoded visual preferences.
+- **Decide from evidence, surface for veto (`led`) — or discover, don't impose (`collaborative`).** In `led` mode Claude chooses every aesthetic value itself, but each choice must trace to project evidence or to a reasoned, named design rationale — never to a hardcoded default this workflow ships. In `collaborative` mode every value originates from the user or `create-design-policy`'s brainstorm. In both modes this workflow contains **no hardcoded visual preferences** — `led` autonomy is "Claude reasons and decides," not "Claude applies a built-in house style."
+- **Never fabricate intent silently.** Decision autonomy (palette, type, tokens) is Claude's to make. Intent autonomy (what the product *is* / who it serves) is not. In `led` mode Claude infers intent from real signals and commits, but must cite the signals and flag low-confidence per the intent honesty rule. Inventing a positioning from nothing and presenting it as fact is the one move this workflow forbids in every mode.
 - **Don't blur policy and integration.** Strategic intent lives in `create-design-policy`; this workflow orchestrates it but does not rewrite it. If the user wants to *change* an existing policy, route to `modify-design-policy`, not here.
 - **Code must be real and on main.** The token bundle must contain renderable values (no `{placeholder}` tokens shipped) and must be merged to `origin/main` before the GitHub link is surfaced. Halt rather than hand the user a link to a branch-only file.
 - **Never fabricate assets the user doesn't have.** `.fig` files, logos, and font files are user-supplied. If absent, the intake card marks them "(none yet — optional)" and proceeds. Do not invent file paths.
-- **Greenfield is creation, not extraction.** When the project has no UI, the system is *designed* (via `create-design-policy` brainstorm + user intent), not extracted. When the project has existing UI (brownfield/mixed), extract the implicit language first.
+- **Greenfield is creation, not extraction.** When the project has no UI, the system is *designed* — in `led` mode via Claude's evidence-grounded internal brainstorm, in `collaborative` mode via `create-design-policy` brainstorm + user intent. When the project has existing UI (brownfield/mixed), extract the implicit language first in both modes.
 - **The intake card is the finish line.** The workflow is not done at "files written". It is done when the user has a paste-ready card mapped to every form field and a delivered GitHub link.
 
 ---
@@ -82,6 +104,8 @@ This uses **step-file architecture** for focused execution:
 
 ### State Variables
 
+- `{mode}` — `led` (default) | `collaborative`. From `--collaborative` flag or `{main_config}` `onboard_design_system.mode`. Governs whether each step decides-and-proceeds or proposes-and-confirms.
+- `{direction}` — In `led` mode, the chosen visual direction + the named rationale + the runners-up it beat + the evidence signals it was grounded in + a confidence label (`grounded` | `low-confidence`). Surfaced in the end-of-run review.
 - `{project_phase}` — `greenfield` | `brownfield` | `mixed`. Read from `{main_config}`; if absent, inferred in step 01 (no real UI → greenfield).
 - `{has_design_policy}` — Whether `docs/design-policy.md` exists ("yes"/"no").
 - `{design_policy_path}` — Resolved path to the design policy.
@@ -106,6 +130,7 @@ Load config from `{main_config}` and resolve:
 
 - `project_name`, `user_name`, `communication_language`, `user_skill_level`
 - `project_phase` (default-infer in step 01 if unset)
+- `onboard_design_system.mode` (default `led`; `--collaborative` overrides to `collaborative`) → `{mode}`
 - `planning_artifacts`, `implementation_artifacts` path roots
 - `delivery.onboard-design-system` (default `auto`)
 
