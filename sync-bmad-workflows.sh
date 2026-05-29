@@ -4,6 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SOURCE="$SCRIPT_DIR/custom/workflows"
 SKILLS_SOURCE="$SCRIPT_DIR/custom/skills"
+SCRIPTS_SOURCE="$SCRIPT_DIR/custom/scripts"
 HOOKS_SRC="$SCRIPT_DIR/src/modules/bmm/_module-installer/assets/hooks.json"
 WORKTREE_INCLUDE_SRC="$SCRIPT_DIR/src/modules/bmm/_module-installer/assets/worktreeinclude.template"
 CONFIG_DEFAULTS_SRC="$SCRIPT_DIR/src/modules/bmm/_module-installer/assets/config-defaults.yaml"
@@ -262,6 +263,39 @@ sync_skills_for_project() {
       if [[ "$mode" == "sync" ]]; then
         mkdir -p "$skill_dst"
         rsync -a --delete --exclude='.DS_Store' "$skill_dir" "$skill_dst/"
+      fi
+      count=$((count + 1))
+    fi
+  done
+
+  echo "$count"
+}
+
+# Sync portable scripts from custom/scripts/ to a project's ./scripts/.
+# Each file under SCRIPTS_SOURCE is copied to scripts/<name> in the target,
+# preserving execute permissions. Per-file sync (not directory rsync) so the
+# project's existing scripts/ entries (e.g., deploy-prod.sh) are untouched.
+# In check mode, returns count of scripts that differ from source.
+# Args: $1 = project root, $2 = mode ("check" or "sync")
+# Returns count via stdout.
+sync_scripts_for_project() {
+  local project_root="$1" mode="$2"
+  local count=0
+
+  [[ ! -d "$SCRIPTS_SOURCE" ]] && { echo "0"; return; }
+
+  local scripts_target="$project_root/scripts"
+  for script_file in "$SCRIPTS_SOURCE"/*; do
+    [[ ! -f "$script_file" ]] && continue
+    local script_name script_dst
+    script_name="$(basename "$script_file")"
+    script_dst="$scripts_target/$script_name"
+
+    if [[ ! -f "$script_dst" ]] || ! cmp -s "$script_file" "$script_dst"; then
+      if [[ "$mode" == "sync" ]]; then
+        mkdir -p "$scripts_target"
+        cp -p "$script_file" "$script_dst"
+        chmod +x "$script_dst"
       fi
       count=$((count + 1))
     fi
@@ -531,9 +565,11 @@ if [[ -n "$WORKTREE_TARGET" ]]; then
   done
 
   skills_copied=$(sync_skills_for_project "$wt_project_root" "sync")
+  scripts_copied=$(sync_scripts_for_project "$wt_project_root" "sync")
 
   msg="OK    Worktree synced: $WORKTREE_TARGET ($copied dirs"
   [[ "$skills_copied" -gt 0 ]] && msg="$msg, $skills_copied skill(s)"
+  [[ "$scripts_copied" -gt 0 ]] && msg="$msg, $scripts_copied script(s)"
   echo "$msg)"
   exit 0
 fi
@@ -714,6 +750,16 @@ while IFS= read -r target || [[ -n "$target" ]]; do
       echo "  ↳  skills ($skills_drift skill(s) missing/outdated)"
     fi
 
+    # Check portable scripts sync
+    scripts_drift=$(sync_scripts_for_project "$project_root" "check")
+    if [[ "$scripts_drift" -gt 0 ]]; then
+      if ! $dirty; then
+        echo "STALE $project"
+        dirty=true
+      fi
+      echo "  ↳  scripts ($scripts_drift script(s) missing/outdated)"
+    fi
+
     if $dirty; then
       stale=$((stale + 1))
     else
@@ -830,6 +876,12 @@ while IFS= read -r target || [[ -n "$target" ]]; do
     skills_synced=$(sync_skills_for_project "$project_root" "sync")
     if [[ "$skills_synced" -gt 0 ]]; then
       echo "  OK    skills ($skills_synced skill(s) synced)"
+    fi
+
+    # Sync portable scripts from custom/scripts/ (bmad-deploy.sh, etc.)
+    scripts_synced=$(sync_scripts_for_project "$project_root" "sync")
+    if [[ "$scripts_synced" -gt 0 ]]; then
+      echo "  OK    scripts ($scripts_synced script(s) synced)"
     fi
 
     # Auto-generate command files from workflow.md frontmatter (custom + upstream)
