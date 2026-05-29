@@ -36,9 +36,12 @@ design_system_url_status: {pending-delivery | live | local-only}
 ## 2. Link code on GitHub
 
 - **Repo:** {repo_url}                          # status: {PENDING DELIVERY | live | LOCAL ONLY}
-- **Attach this frontend-focused subfolder:** {frontend_subfolder}
-- _Note:_ Claude copies selected files, not the whole codebase. The token bundle
-  lives at `{planning_artifacts}/design-system/` (tokens.css + sample.html).
+- **Attach ONLY this curated bundle subfolder:** {seed_subfolder}   # = {planning_artifacts}/design-system/
+- ⚠️ **Do NOT connect the whole repo or the live `src/` frontend dir.** The
+  "Set up your design system" form SEEDS a persistent workspace and generates a
+  reusable UI kit ONE-SHOT from whatever is attached — so attach only the curated,
+  current-UI-FREE bundle (tokens.css + sample.html). Connecting the live frontend
+  re-encodes current product screens into every future prototype.
 
 ## 3. Upload a .fig file
 

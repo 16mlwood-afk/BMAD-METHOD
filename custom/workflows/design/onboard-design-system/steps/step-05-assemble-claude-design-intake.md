@@ -13,9 +13,10 @@ Load `intake_template` and fill each field from the established artifacts (mappi
 **Company name and blurb (or name of design system)** → `{company_blurb}`
 One paragraph. Pull product-type + what-it-is from `design-policy.md`, register from `brand-identity.md` §1. Write it the way the form's example reads ("X: <what it is>, <surfaces it spans>"). Keep it concrete and free of marketing fluff.
 
-**Link code on GitHub** → `{repo_url}` + recommended subfolder
+**Link code on GitHub** → `{repo_url}` + the curated bundle subfolder
 - The repo URL from `{repo_url}`.
-- The **frontend-focused subfolder** to attach: `{frontend_subfolder}` (the form recommends a frontend subfolder for large codebases). For greenfield this is the bundle dir; for brownfield it's the app/src frontend dir, which now contains the aligned tokens.
+- The subfolder to attach: `{seed_subfolder}` — which resolves to the **curated bundle dir `{bundle_dir}` for ALL phases**, greenfield AND brownfield. The bundle already carries the aligned token values; the live app/`src/` frontend must NOT be the seed.
+- ⚠️ **Do not attach the whole repo or the live frontend dir.** Claude Design seeds a *persistent workspace* and generates a reusable UI kit from whatever is attached, so current product screens would be re-encoded into every future prototype. The subfolder is the curated current-UI-free vocabulary regardless of codebase size — bias-exclusion is the reason, not a size optimization.
 - ⚠️ This link is only valid **after step 06 delivers the bundle to `origin/main`.** The card marks it `PENDING DELIVERY` until step 06 confirms the merge, then flips it to the live URL.
 
 **Upload a .fig file** → user-supplied

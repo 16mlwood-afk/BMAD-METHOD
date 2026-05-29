@@ -151,6 +151,8 @@ deferred_violations:
 > **This brief:** `{github_repo_url}/blob/main/{output_path_relative_to_repo_root}`
 >
 > **Revision provenance** follows `brief-revision-policy.md` in the shared design workflow docs. Consumers (design-artifact-loop, design-synthesize) validate the provenance frontmatter at intake; do not hand-edit this brief into a scope or intent change — re-run `design-handoff` instead.
+>
+> **Why connecting the repo is safe here:** this brief is the bias filter — it deliberately omits the current layout, so reading the repo for the data model, tokens, and referenced files will not anchor you to the existing screens. This is distinct from Claude Design **system setup** (`onboard-design-system`), where the live repo / current screens must NEVER be the seed. Here, read the brief and the files it names, then design the information architecture fresh.
 
 This brief was generated from the codebase after implementation. It intentionally omits the current layout — you have full creative freedom to design from the data, purpose, and constraints below.
 

@@ -22,6 +22,15 @@ scratch" and I'll proceed.
 
 Do not infer a new visual direction the user did not ask for. Direction comes from step 02 (create-design-policy), the user, or — for brownfield — the existing code.
 
+## 1b. Orientation — how Claude Design setup works (sets up the whole run)
+
+Before scoping artifacts, fix the controlling fact: the claude.ai/design setup form is a **ONE-TIME seed of a persistent, self-generating workspace** whose **one-shot reusable UI kit is derived from whatever is connected** (see workflow.md → "HOW CLAUDE DESIGN SETUP ACTUALLY WORKS"). The consequent hard rule governs every later step:
+
+- The seed = the **curated, current-UI-free bundle ONLY** (tokens + an idealized component sample). **Never** the live app repo, its `src/` frontend, or current product screens.
+- For brownfield/mixed, extracting the existing UI's implicit language informs the **TOKENS/vocabulary** — it is NOT a license to seed the live frontend.
+
+Carry this into every step: "connect the frontend" is NOT a neutral default here; the only thing connected at setup is `{bundle_dir}`.
+
 ## 2. Detect project phase
 
 Read `project_phase` from `{main_config}`.

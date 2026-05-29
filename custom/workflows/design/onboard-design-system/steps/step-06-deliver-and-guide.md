@@ -53,12 +53,12 @@ Otherwise run the **`delivery_to_main` §3 sequence** for the artifacts produced
 6. Merge (`--squash --delete-branch`; `--admin` only per the project CLAUDE.md quota-exhausted escape, and only if no `src/` changes).
 7. Verify merge: `gh pr view <num> --json state,mergedAt,mergeCommit` → `MERGED` is authoritative (the local checkout error when `main` is held by the parent worktree is expected).
 8. Fast-forward main from the parent worktree so subsequent sessions see the artifacts.
-9. Capture the **live `origin/main` URL** of `{frontend_subfolder}` / the bundle.
+9. Capture the **live `origin/main` URL** of `{seed_subfolder}` — which is the curated bundle dir `{bundle_dir}`. **Before capturing, confirm the link points at the current-UI-free bundle, not the app `src/` frontend or the repo root.** If it points anywhere else, HALT and re-scope rather than surface a contaminating seed link.
 10. Exit the worktree (`action: remove`, `discard_changes: true` is normal after squash).
 
 ## 3. Finalize the intake card
 
-Flip the card's "Link code on GitHub" field from `PENDING DELIVERY` to the live `origin/main` URL captured in §2.9 (or the `LOCAL ONLY` attach path if delivery was skipped). Re-write `{intake_card_path}`.
+Flip the card's "Link code on GitHub" field from `PENDING DELIVERY` to the live `origin/main` URL captured in §2.9 (or the `LOCAL ONLY` attach path if delivery was skipped). **Confirm the URL points at the curated bundle subfolder `{bundle_dir}`, not the app frontend or repo root, before writing it into the card.** Re-write `{intake_card_path}`.
 
 ## 4. Guide the user through the form
 
@@ -67,16 +67,25 @@ Present the final walkthrough:
 ```
 ✅ Design system delivered to origin/main. Configure Claude Design now:
 
+  Setup is a ONE-TIME seed of a persistent workspace — Claude Design generates a
+  reusable UI kit from whatever you attach, and that kit is reused for EVERY future
+  prototype. So attach ONLY the curated bundle, never the whole repo or app frontend.
+
 1. Go to claude.ai/design → "Set up your design system"
 2. Company name + blurb:   <paste from card>
-3. Link code on GitHub:    <live repo URL>  (attach subfolder: <frontend_subfolder>)
+3. Link code on GitHub:    <live repo URL>
+   ▸ Attach ONLY this subfolder: {bundle_dir}   (the curated current-UI-free bundle)
+   ▸ Do NOT attach the whole repo or the app/src frontend — that re-encodes
+     current screens into every future prototype.
 4. .fig file:              <path | none — optional>
 5. Fonts/logos/assets:     <list | none — optional>
 6. Any other notes:        <paste from card>
 7. Click "Continue to generation"
 
 Claude Design will now treat THIS system as the priority source that outranks
-individual design-handoff briefs. Re-run this workflow's step 04-06 (or
+individual design-handoff briefs. (Connecting the live repo is fine LATER for
+per-page design-handoff work — there the brief is the bias filter — but never
+for this system-setup seed.) Re-run this workflow's step 04-06 (or
 modify-design-policy → here) whenever the system changes, so the GitHub source
 Claude Design reads stays current.
 ```
