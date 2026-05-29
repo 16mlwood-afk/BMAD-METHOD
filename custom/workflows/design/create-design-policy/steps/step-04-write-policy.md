@@ -80,8 +80,15 @@ For each section in the template, translate the gathered inputs into concrete po
 
 **Hard Failures** — from `{anti_references}` + AI fingerprint awareness
 - Non-negotiable anti-patterns
-- Reference the shared design-standards.md for the full AI fingerprint taxonomy
-- Add any project-specific hard failures
+- The policy MUST include at least one concrete hard failure traceable to each of the six AI Fingerprint Detection categories in `_bmad/bmm/workflows/design/shared/design-standards.md`:
+  1. **Layout Fingerprints** (e.g., stat-card rows, bento/magazine grids, hero strips above working tables)
+  2. **Typography Fingerprints** (e.g., uppercase tracking-wide labels, mismatched display+body pairings)
+  3. **Color & Visual Treatment Fingerprints** (e.g., AI-purple as primary accent, gradient backgrounds, glassmorphism)
+  4. **Component Fingerprints** (e.g., stat-card-with-icon, pastel pill-with-dot, animated number counters)
+  5. **Content & Copy Fingerprints** (e.g., marketing copy in tool chrome, emoji as UI elements, hover lift/scale transforms framed as "delight")
+  6. **Structural Fingerprints** (e.g., evenly modular card grids as primary page structure, compositions liftable into a generic SaaS admin)
+- For each category, either (a) reuse the example anti-pattern that matches the project's risk profile, or (b) write a project-specific variant. A policy that lists "see shared design-standards.md" for a category without naming a concrete failure for that category fails this step.
+- Add any project-specific hard failures on top (color counts, badge consistency rules, etc.).
 
 **Page Mode Rules** — from `{operational_bias}`
 - What "operational mode" pages look like
@@ -141,3 +148,5 @@ In autonomous mode: skip the confirmation prompt. State what was written and mov
 - Hardcoding values that belong in brand identity (hex codes, Tailwind classes)
 - Missing the page-mode rules section (operational vs analytical)
 - Not referencing the shared design standards for AI fingerprint rules
+- Hard Failures section lists fewer than six concrete anti-patterns (one per AI-fingerprint category), or substitutes "see shared design-standards.md" in place of a category-specific failure
+- Hard Failures section is generic enough to belong to any product (no project-specific anti-pattern reflecting `{anti_references}` or `{user_role}`)

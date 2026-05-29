@@ -126,13 +126,29 @@ Products whose visual approach we draw from. Be specific about WHAT to borrow.
 
 Non-negotiable. A design containing any of these fails review regardless of how good the rest is.
 
-1. {Hard failure — e.g., "Stat cards with icons as page openers"}
-2. {Hard failure — e.g., "Emoji used as UI elements (icons, status indicators, section markers)"}
-3. {Hard failure — e.g., "Gradient backgrounds on any application UI element"}
-4. {Hard failure — e.g., "Marketing/enthusiastic copy in tool chrome ('Welcome back!', 'Great job!')"}
-5. {Hard failure — e.g., "More than 4 distinct status colors in a single view"}
+The policy must cover all six AI-fingerprint categories from `_bmad/bmm/workflows/design/shared/design-standards.md` with at least one concrete, project-specific anti-pattern each. Reusing the seed example is allowed when it genuinely fits the project; rewriting is required when it doesn't. "See shared design-standards.md" is not a substitute for a concrete failure.
 
-For the full AI fingerprint taxonomy, see `_bmad/bmm/workflows/design/shared/design-standards.md`.
+**Layout fingerprints**
+1. {e.g., "Stat-card rows as page openers — use an inline summary line in the page header instead"}
+
+**Typography fingerprints**
+2. {e.g., "Uppercase tracking-wide labels in tool chrome — use sentence case at the policy's body size"}
+
+**Color & visual treatment fingerprints**
+3. {e.g., "AI-purple (`indigo-600` / `violet-500`) as primary accent; gradient backgrounds; glassmorphism"}
+
+**Component fingerprints**
+4. {e.g., "Pastel pill-with-leading-colored-dot for status — use the project's tinted-fill rectangular pill instead"}
+
+**Content & copy fingerprints**
+5. {e.g., "Emoji as UI icons; marketing copy in tool chrome ('Welcome back!', 'Great job!'); hover lift/scale framed as 'delight'"}
+
+**Structural fingerprints**
+6. {e.g., "Compositions that would work unchanged in a generic CRM or HR dashboard"}
+
+**Project-specific failures** (additional rows, numbered 7+) — anything from `Anti-references` or domain risk that isn't covered above. Examples: badge-shape inconsistency across surfaces, more than N distinct status colors, sidebar layout inside feature pages.
+
+For the full AI fingerprint taxonomy and detection criteria for each category, see `_bmad/bmm/workflows/design/shared/design-standards.md`.
 
 ---
 
