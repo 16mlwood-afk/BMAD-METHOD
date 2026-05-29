@@ -67,6 +67,25 @@ Some changes force changes elsewhere. Examples:
 
 Add ripple-effect sections to `{proposed_deltas}` only if leaving them out would create a contradictory policy. Note the ripple in the rationale.
 
+### 4b. Category-coverage guard for §8 Hard Failures
+
+If any proposed delta touches §8 Hard Failures (removal, rewrite, or replacement), simulate the post-delta §8 in memory and check that **at least one concrete anti-pattern remains for each of the six AI-fingerprint categories** in `_bmad/bmm/workflows/design/shared/design-standards.md`:
+
+1. Layout fingerprints (stat-card rows, bento/magazine grids, hero strips above tables)
+2. Typography fingerprints (uppercase tracking-wide, mismatched display+body)
+3. Color & visual treatment (AI-purple, gradients, glassmorphism)
+4. Component fingerprints (stat-card-with-icon, pastel pill-with-dot, animated counters, hover lift/scale)
+5. Content & copy (emoji as UI, marketing copy in tool chrome)
+6. Structural (modular card grids as primary structure, compositions liftable to a generic SaaS admin)
+
+If a delta would leave a category uncovered (no remaining hard failure traceable to that category), halt with: `"Proposed delta would leave AI-fingerprint category <N: name> uncovered in §8 Hard Failures. Either revise the delta to preserve a category failure, or add a replacement failure for category <N> in the same delta. create-design-policy enforces six-category coverage at birth (step-04); modify-design-policy must preserve it across edits."`
+
+This guard does NOT fire when:
+- The delta only adds new hard failures (coverage can only increase).
+- The delta is outside §8 entirely (Status System, Typography rules, etc. — these have their own ripple checks in step 4).
+
+This is a symmetric companion to create-design-policy step-04's category-coverage requirement. A policy that was born compliant cannot silently become non-compliant through an edit.
+
 ### 5. Identify downstream impact
 
 Scan for artifacts that consumed the old policy:
