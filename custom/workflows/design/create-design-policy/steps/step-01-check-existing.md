@@ -59,6 +59,20 @@ Summarize what you find: "The app currently uses [font], [color palette], [layou
 
 **CRITICAL INFERENCE GUARD:** Existing UI may provide implementation clues, but must NOT be treated as evidence of intended design policy unless documented elsewhere. The current UI reflects developer decisions, not design intent. Extract factual observations (which font is loaded, which colors are in the config) — do not infer strategic preferences from them. A developer choosing `rounded-lg` everywhere does not mean the project's policy is "rounded corners" — it means nobody wrote a policy yet.
 
+**Record the scan summary into `{codebase_scan_summary}`** so downstream steps can use it either as evolution context OR as the anti-reference baseline — the disposition decision (see below) governs which.
+
+### 3b. Initialize legacy-UI disposition
+
+Set `{legacy_ui_disposition}` based on the run context. This variable governs how steps 02 and 03 treat the codebase scan:
+
+- `unstated` (default) — no signal yet about how the user feels about the current UI. Step-02 will ask explicitly during the Anti-references question.
+- `evolve` — set this when (a) the user invoked the workflow with explicit intent to refine the current direction, OR (b) `{has_existing_policy}` = "yes" AND the user chose **update** in step 1. In `evolve` mode, the codebase scan flows into step-03 as one input among several (still bounded by the inference guard).
+- `reset` — set this when the run was invoked with explicit dissatisfaction with the current UI (the user said "I hate this", "make it not look like this", "complete redesign", or the workflow was invoked as part of an `onboard-design-system` run on a brownfield project where the client explicitly rejected the legacy look). In `reset` mode, the codebase scan is quarantined from step-03's direction-shaping context, and `{codebase_scan_summary}` is auto-appended to `{anti_references}` during step-02.
+
+If the invocation context is silent on this (the typical case — user just typed `/create-design-policy`), leave it at `unstated`. Step-02 will resolve it.
+
+**Why this matters:** without disposition tracking, the codebase scan sits in the LLM's context window with no labeled role. A user who has rejected the legacy UI still gets directions in step-03 that have been shaped by what's already on disk — subtle bias, hard to spot.
+
 ### 4. Present findings
 
 **If existing policy found:**

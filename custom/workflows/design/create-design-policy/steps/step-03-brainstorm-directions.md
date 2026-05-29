@@ -10,8 +10,20 @@
 ## CONTEXT BOUNDARIES:
 
 - Product type, user role, and any partial answers from step-02 are available
-- Existing codebase signals from step-01 are available
+- Existing codebase signals from step-01 are available, but governed by `{legacy_ui_disposition}` — see the inference guard below
 - The goal is to help the user DISCOVER their preference, not to design the UI
+
+## CRITICAL INFERENCE GUARD (restated from step-01):
+
+Existing UI may provide implementation clues, but must NOT be treated as evidence of intended design policy unless documented elsewhere. The current UI reflects developer decisions, not design intent. A developer choosing `rounded-lg` everywhere does not mean the project's policy is "rounded corners" — it means nobody wrote a policy yet.
+
+**Direction generation is the highest-risk step for legacy-UI bias.** The codebase scan from step-01 sits in your context window with no labeled role unless you give it one. Before generating directions, branch on `{legacy_ui_disposition}`:
+
+- **`reset`** — The user has explicitly rejected the current UI. The codebase scan is QUARANTINED from direction-shaping. Use it ONLY to (a) confirm the framework/stack so directions reference real tokens, and (b) cross-check that generated directions are concretely different from the current implementation. The directions themselves must be generated as if the project were greenfield: drawn from product type, user role, tone, reference products, and the named anti-references — including the `[from-scan]` anti-references step-02 derived from the rejected current UI. If a generated direction is plausibly an evolution of the current implementation, discard it and regenerate. Treat similarity to current UI as a failure signal, not a success signal.
+- **`evolve`** — The user wants to refine the current direction. The codebase scan informs the directions (the user's frame is "make this better," not "make this different"), but the inference guard still applies: extract factual observations as starting points, do not promote any current pattern to "intended policy" without the user's explicit endorsement.
+- **`unstated`** — Should not occur at step-03; step-02 resolves it. If you somehow arrive here with `unstated`, STOP and route back to step-02 to resolve.
+
+This guard is the load-bearing protection against the brownfield-bias failure mode: a client who hates the current UI getting a policy that looks suspiciously like an evolution of what they wanted to escape.
 
 ## YOUR TASK:
 

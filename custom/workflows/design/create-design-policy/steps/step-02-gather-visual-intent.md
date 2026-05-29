@@ -71,7 +71,7 @@ Set `{reference_products}` from the answer.
 
 ### 5. Anti-References
 
-**Question:** "What should this product NEVER look like?"
+**Question (part A — named comparables):** "What should this product NEVER look like?"
 
 Examples to prompt with:
 - "A startup landing page"
@@ -80,7 +80,24 @@ Examples to prompt with:
 - "An over-designed portfolio piece"
 - "A dated enterprise system from 2010"
 
-Set `{anti_references}` from the answer.
+**Question (part B — current implementation, REQUIRED when `{legacy_ui_disposition}` = "unstated"):**
+
+"How do you feel about the current implementation in this repo? If you want a clean break — say so. That becomes the strongest possible anti-reference, stronger than any named comparable, because it's the exact thing the new policy has to refuse. You can pick:
+
+- **Evolve** — the current direction is roughly right; we're refining within it.
+- **Reset** — the current UI is the thing I'm trying to get away from. Treat it as an anti-reference, not a starting point.
+- **No opinion** — I haven't seen the current UI; just use the named comparables."
+
+Resolve `{legacy_ui_disposition}` from the answer (default `evolve` if "no opinion"). The "Reset" answer is the highest-signal input this workflow accepts — it overrides any inference the codebase scan might suggest.
+
+**If `{legacy_ui_disposition}` = "reset"** (whether set here or pre-set in step-01):
+- Append `{codebase_scan_summary}` to `{anti_references}` with the framing: *"Anti-reference: the current implementation at `{project-root}`. Specific patterns to refuse: <bullet list from `{codebase_scan_summary}` — fonts, color choices, layout patterns, component treatments>."*
+- This is automatic — do not ask the user to enumerate every pattern in the existing UI. They already told you the whole thing is wrong; the scan provides the specifics.
+- Mark `{anti_references}` entries derived from the scan with `[from-scan]` so step-04 can cite them as "policy explicitly refuses the patterns observed at workflow time."
+
+Set `{anti_references}` from the combined answer.
+
+In autonomous mode: if the invocation context contains rejection language ("hate", "redesign", "fresh", "clean break", "complete redo"), set `{legacy_ui_disposition}` = "reset" without asking. If silent, default to `evolve` — autonomous resets must be explicitly signaled.
 
 ### 6. Operational vs Analytical Bias
 

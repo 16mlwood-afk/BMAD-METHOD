@@ -103,8 +103,12 @@ For each section in the template, translate the gathered inputs into concrete po
 - Add a note: "This policy is the strategic complement to `{brand_identity_path}`, which contains concrete design tokens."
 
 **If codebase has established patterns:**
-- Note which current patterns align with the policy
-- Note which current patterns the policy would change (these become design debt items)
+
+Branch on `{legacy_ui_disposition}` (set in step-01, resolved in step-02):
+
+- **`evolve`** — note which current patterns align with the policy, and which the policy would change (the changed ones become design debt items).
+- **`reset`** — do NOT do the alignment scan. By construction, the user rejected the current UI; treating any current pattern as "aligned with the policy" reintroduces exactly the bias steps 01-03 worked to exclude. Instead, write a "Patterns to retire" subsection that enumerates every notable pattern from `{codebase_scan_summary}` with a one-line note on what the new policy replaces it with. This becomes the design-debt backlog for the implementation handoff.
+- **`unstated`** — should not occur at step-04. If it does, halt and route back to step-02.
 
 ### 4. Write the file
 
