@@ -45,15 +45,32 @@ In 4-6 lines, summarize what the policy currently says about:
 
 This summary anchors the rest of the workflow and helps the user spot if the policy they're remembering matches the policy on disk.
 
+### 3b. Baseline category-coverage audit
+
+Before presenting the policy to the user, audit §5 Hard Failures (or whichever section the policy uses for hard failures) against the six AI-fingerprint categories from `_bmad/bmm/workflows/design/shared/design-standards.md`:
+
+1. Layout fingerprints (stat-card rows, bento/magazine grids, hero strips above tables)
+2. Typography fingerprints (uppercase tracking-wide, mismatched display+body)
+3. Color & visual treatment (AI-purple, gradients, glassmorphism)
+4. Component fingerprints (stat-card-with-icon, pastel pill-with-dot, animated counters, hover lift/scale)
+5. Content & copy (emoji as UI, marketing copy in tool chrome)
+6. Structural (modular card grids as primary structure, compositions liftable to a generic SaaS admin)
+
+For each category, scan the hard-failures section (and adjacent §3/§4 anti-pattern subsections) for at least one concrete anti-pattern traceable to it. Set `{baseline_gaps}` to the list of categories with no concrete coverage. Set `{baseline_audit_status}` to `"compliant"` if `{baseline_gaps}` is empty, otherwise `"has_gaps"`.
+
+This audit is informational at this step — it does not block. It exists so the user knows the policy's quality baseline before deciding what to change. step-02 still runs its delta-touching guard independently; the two cooperate but don't overlap.
+
 ### 4. Present and confirm
 
 "Loaded design policy at `{policy_path}` (version `{current_version}`). Current direction:
 
 `<summary from step 3>`
 
+`<if {baseline_audit_status} == "has_gaps", append:>` *Baseline audit:* §5 Hard Failures is missing concrete coverage for category(ies) `{baseline_gaps}`. This is informational — the policy still works, but it falls below the bar `create-design-policy` step-04 now sets for new policies. While you're here, you may want to add coverage for `{baseline_gaps}` in addition to your other changes. Tell me to include it and I'll add a delta for §5 in step-02.
+
 Tell me what you want to change. The more concrete the better — 'too casual' is workable, 'replace the badge system' is better."
 
-In autonomous mode: skip the prompt and proceed directly to step-02 using the user's original request as `{change_description}`.
+In autonomous mode: skip the prompt and proceed directly to step-02 using the user's original request as `{change_description}`. If `{baseline_audit_status} == "has_gaps"`, automatically expand `{change_description}` to include "and add a §5 hard failure for category(ies) `{baseline_gaps}` to bring the baseline to six-category coverage." This honors the autonomy contract — leaving a known gap unactioned in autonomous mode is the wrong default.
 
 ## NEXT STEP:
 
