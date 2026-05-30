@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "case \"$PWD\" in */.claude/worktrees/*) exit 0;; esac; count=$(ps -eo command 2>/dev/null | grep -c \"^claude\"); if [ \"$count\" -gt 1 ]; then printf \"{\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"UserPromptSubmit\\\",\\\"additionalContext\\\":\\\"PARALLEL SESSIONS DETECTED (%s CLI sessions active): You MUST call EnterWorktree before editing any files if you have not already. See CLAUDE.md ALWAYS Use Worktrees section.\\\"}}\\n\" \"$count\"; fi",
+            "command": "case \"$PWD\" in */.claude/worktrees/*) exit 0;; esac; count=$(ps -eo command 2>/dev/null | grep -c \"^claude\"); [ \"$count\" -le 1 ] && exit 0; MARK=\"$PWD/.claude/.parallel-warn-last\"; if [ -f \"$MARK\" ]; then   last=$(/usr/bin/stat -f %m \"$MARK\" 2>/dev/null || /usr/bin/stat -c %Y \"$MARK\" 2>/dev/null || echo 0);   now=$(/bin/date +%s);   age=$((now - last));   [ \"$age\" -lt 1800 ] && exit 0; fi; /bin/mkdir -p \"$PWD/.claude\" 2>/dev/null; /usr/bin/touch \"$MARK\" 2>/dev/null; printf '{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"PARALLEL SESSIONS DETECTED (%s CLI sessions active): You MUST call EnterWorktree before editing any files if you have not already. See CLAUDE.md ALWAYS Use Worktrees section.\"}}\\n' \"$count\"",
             "timeout": 5,
             "statusMessage": "Checking for parallel sessions..."
           }
@@ -33,9 +33,21 @@
         "hooks": [
           {
             "type": "command",
-            "command": "case \"$PWD\" in */.claude/worktrees/*) _wt_repo=\"${PWD%/.claude/worktrees/*}\"; _wt_rest=\"${PWD#*/.claude/worktrees/}\"; _wt_name=\"${_wt_rest%%/*}\"; _wt_root=\"${_wt_repo}/.claude/worktrees/${_wt_name}\"; case \"$CLAUDE_TOOL_INPUT_FILE_PATH\" in \"${_wt_root}\"/*|*/_bmad-output/*|*/.claude/*) exit 0;; /*) printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"BLOCKED: target %s is outside active worktree %s. Use a relative path; absolute paths to the main checkout silently slip out of worktree isolation.\"}}\\n' \"$CLAUDE_TOOL_INPUT_FILE_PATH\" \"$_wt_root\"; exit 0;; *) exit 0;; esac;; esac; case \"$CLAUDE_TOOL_INPUT_FILE_PATH\" in */_bmad-output/*|*/.claude/*) exit 0;; esac; count=$(ps -eo command 2>/dev/null | grep -c \"^claude\"); if [ \"$count\" -gt 1 ]; then printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"BLOCKED: %s parallel claude sessions detected and you are NOT in a worktree. Call EnterWorktree before editing files. See CLAUDE.md.\"}}\\n' \"$count\"; fi",
+            "command": "case \"$PWD\" in */.claude/worktrees/*) _wt_repo=\"${PWD%/.claude/worktrees/*}\"; _wt_rest=\"${PWD#*/.claude/worktrees/}\"; _wt_name=\"${_wt_rest%%/*}\"; _wt_root=\"${_wt_repo}/.claude/worktrees/${_wt_name}\"; case \"$CLAUDE_TOOL_INPUT_FILE_PATH\" in \"${_wt_root}\"/*|*/_bmad-output/*|*/.claude/*|/Users/*/bmad-method-v6/*) exit 0;; /*) printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"BLOCKED: target %s is outside active worktree %s. Use a relative path; absolute paths to the main checkout silently slip out of worktree isolation.\"}}\\n' \"$CLAUDE_TOOL_INPUT_FILE_PATH\" \"$_wt_root\"; exit 0;; *) exit 0;; esac;; esac; case \"$CLAUDE_TOOL_INPUT_FILE_PATH\" in */_bmad-output/*|*/.claude/*|/Users/*/bmad-method-v6/*) exit 0;; esac; count=$(ps -eo command 2>/dev/null | grep -c \"^claude\"); if [ \"$count\" -gt 1 ]; then printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"BLOCKED: %s parallel claude sessions detected and you are NOT in a worktree. Call EnterWorktree before editing files. See CLAUDE.md.\"}}\\n' \"$count\"; fi",
             "timeout": 5,
             "statusMessage": "Worktree guard..."
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "name": "bmad-bash-edit-guard",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "case \"$PWD\" in */.claude/worktrees/*) exit 0;; esac; cmd=\"$CLAUDE_TOOL_INPUT_COMMAND\"; [ -z \"$cmd\" ] && exit 0; echo \"$cmd\" | grep -qE \"(^|[[:space:]])(sed[[:space:]]+-i|awk[[:space:]]+-i[[:space:]]+inplace|tee([[:space:]]+-a)?[[:space:]]+[^/]|cat[[:space:]]*>>?[[:space:]]*[^/]|printf[[:space:]].*>>?[[:space:]]*[^/]|echo[[:space:]].*>>?[[:space:]]*[^/])\" || exit 0; echo \"$cmd\" | grep -qE \"(>|tee)[[:space:]]*(/tmp/|/dev/|/var/folders/|/var/tmp/|\\$TMPDIR|~/\\.|\\$HOME/\\.bmad-|/Users/[^/]+/bmad-method-v6/|/Users/[^/]+/\\.claude/|/Users/[^/]+/\\.secrets)\" && exit 0; echo \"$cmd\" | grep -qE \"sed[[:space:]]+-i[[:space:]]+.{0,4}[[:space:]]+(/tmp/|/dev/|/var/folders/|/var/tmp/|/Users/[^/]+/bmad-method-v6/|/Users/[^/]+/\\.claude/)\" && exit 0; count=$(ps -eo command 2>/dev/null | grep -c \"^claude\"); if [ \"$count\" -gt 1 ]; then printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"BLOCKED: %s parallel claude sessions detected and you are NOT in a worktree. This bash command looks like an edit-equivalent (sed -i / cat > / tee / etc.). Call EnterWorktree, OR if this is a cross-repo / cross-project edit, route through a per-repo worktree. See CLAUDE.md Cross-Repo Edits section.\"}}\\n' \"$count\"; fi",
+            "timeout": 5,
+            "statusMessage": "Bash edit-equivalent guard..."
           }
         ]
       },
@@ -69,7 +81,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "SYNC=\"$HOME/bmad-method-v6/sync-bmad-workflows.sh\"; [ -x \"$SYNC\" ] || exit 0; check_output=$(\"$SYNC\" --check 2>/dev/null); stale=$(echo \"$check_output\" | grep -c \"^STALE\" || true); skill_drift=$(echo \"$check_output\" | grep -c \"↳  skills\" || true); if [ \"$stale\" -gt 0 ]; then assets=\"workflows\"; [ \"$skill_drift\" -gt 0 ] && assets=\"workflows/skills\"; printf '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"BMAD DRIFT: %s project(s) have stale %s. Run ~/bmad-method-v6/sync-bmad-workflows.sh or /project-health.\"}}\\n' \"$stale\" \"$assets\"; fi",
+            "command": "SYNC=\"$HOME/bmad-method-v6/sync-bmad-workflows.sh\"; [ -x \"$SYNC\" ] || exit 0; check_output=$(\"$SYNC\" --check 2>/dev/null); stale=$(echo \"$check_output\" | grep -c \"^STALE\" || true); skill_drift=$(echo \"$check_output\" | grep -c \"\u21b3  skills\" || true); if [ \"$stale\" -gt 0 ]; then assets=\"workflows\"; [ \"$skill_drift\" -gt 0 ] && assets=\"workflows/skills\"; printf '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"BMAD DRIFT: %s project(s) have stale %s. Run ~/bmad-method-v6/sync-bmad-workflows.sh or /project-health.\"}}\\n' \"$stale\" \"$assets\"; fi",
             "timeout": 30,
             "statusMessage": "Checking BMAD sync status..."
           }

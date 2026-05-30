@@ -16,16 +16,21 @@ CHECK_ONLY=false
 FORCE=false
 PULL_TARGET=""
 WORKTREE_TARGET=""
+REAP_ONLY=false
+REAP_PATH=""
 
 usage() {
-  echo "Usage: $0 [--check] [--force] [--pull <path> | --worktree <path>]"
+  echo "Usage: $0 [--check] [--force] [--pull <path> | --worktree <path> | --reap [<path>]]"
   echo ""
   echo "  (no args)       Sync source → all targets (aborts if targets have local-only content)"
+  echo "                  Includes automatic stale-worktree reap on each target."
   echo "  --check         Report drift without modifying anything"
   echo "  --force         Sync even if targets have local-only content (DESTRUCTIVE)"
   echo "  --pull PATH     Pull changes from a project back to the source of truth"
   echo "  --worktree PATH Sync custom workflow dirs + skills into a single worktree path"
   echo "                  (minimal — no hooks/commands/CLAUDE.md; git-tracked files propagate via checkout)"
+  echo "  --reap [PATH]   Remove stale worktrees (merged on origin/main + clean working tree)."
+  echo "                  Without PATH: reaps all targets. With PATH: reaps that project only."
   exit 1
 }
 
@@ -39,6 +44,14 @@ while [[ $# -gt 0 ]]; do
     --worktree)
       [[ -z "${2:-}" ]] && { echo "ERROR: --worktree requires a path argument"; usage; }
       WORKTREE_TARGET="$2"; shift 2 ;;
+    --reap)
+      REAP_ONLY=true
+      # Optional path argument
+      if [[ -n "${2:-}" && "${2:0:1}" != "-" ]]; then
+        REAP_PATH="$2"; shift 2
+      else
+        shift
+      fi ;;
     -h|--help) usage ;;
     *) echo "ERROR: Unknown argument: $1"; usage ;;
   esac
@@ -299,6 +312,76 @@ sync_scripts_for_project() {
       fi
       count=$((count + 1))
     fi
+  done
+
+  echo "$count"
+}
+
+
+# ============================================================================
+# Stale-worktree reaper. Removes worktrees in <project>/.claude/worktrees/*
+# where (a) the branch is fully merged into origin/main AND (b) git status is
+# clean. Untracked-but-merged is also OK — those are usually sync artifacts.
+#
+# Args: $1 = project root, $2 = mode ("check" or "sync")
+# Returns count of reaped (or reapable, in check mode) worktrees via stdout.
+# ============================================================================
+reap_stale_worktrees_for_project() {
+  local project_root="$1" mode="$2"
+  local count=0
+  local worktrees_dir="$project_root/.claude/worktrees"
+  [[ ! -d "$worktrees_dir" ]] && { echo "0"; return; }
+
+  # Need git to inspect branches/status. Skip silently if not a repo.
+  git -C "$project_root" rev-parse --git-dir >/dev/null 2>&1 || { echo "0"; return; }
+
+  # Fetch origin/main once so the merged-check is accurate.
+  if [[ "$mode" == "sync" ]]; then
+    git -C "$project_root" fetch origin main --quiet >/dev/null 2>&1 || true
+  fi
+
+  # Resolve origin/main as a ref to compare against.
+  local main_sha
+  main_sha=$(git -C "$project_root" rev-parse origin/main 2>/dev/null ||              git -C "$project_root" rev-parse main 2>/dev/null || echo "")
+  [[ -z "$main_sha" ]] && { echo "0"; return; }
+
+  for wt_path in "$worktrees_dir"/*/; do
+    [[ ! -d "$wt_path" ]] && continue
+    wt_path="${wt_path%/}"
+    local wt_name
+    wt_name="$(basename "$wt_path")"
+
+    # Check that this is actually a registered worktree of the project.
+    git -C "$project_root" worktree list --porcelain 2>/dev/null |       grep -q "^worktree $wt_path$" || continue
+
+    # Get the branch the worktree is on.
+    local branch
+    branch=$(git -C "$wt_path" rev-parse --abbrev-ref HEAD 2>/dev/null)
+    [[ -z "$branch" || "$branch" == "HEAD" || "$branch" == "main" ]] && continue
+
+    # Branch must be fully merged into origin/main.
+    # Test: every commit on the branch is reachable from main.
+    local branch_sha
+    branch_sha=$(git -C "$wt_path" rev-parse HEAD 2>/dev/null)
+    [[ -z "$branch_sha" ]] && continue
+
+    # If branch_sha is reachable from main_sha → merged.
+    git -C "$project_root" merge-base --is-ancestor "$branch_sha" "$main_sha" 2>/dev/null || continue
+
+    # Working tree must be clean (no uncommitted modifications to tracked files).
+    # Untracked files are OK (often sync artifacts).
+    local dirty
+    dirty=$(git -C "$wt_path" status --porcelain 2>/dev/null | grep -E "^[ MARC]" | head -1)
+    [[ -n "$dirty" ]] && continue
+
+    if [[ "$mode" == "sync" ]]; then
+      # Remove worktree (git's own cleanup; handles branch deletion separately).
+      if git -C "$project_root" worktree remove --force "$wt_path" >/dev/null 2>&1; then
+        # Optionally delete the branch too (it's merged + worktree gone).
+        git -C "$project_root" branch -d "$branch" >/dev/null 2>&1 || true
+      fi
+    fi
+    count=$((count + 1))
   done
 
   echo "$count"
@@ -571,6 +654,45 @@ if [[ -n "$WORKTREE_TARGET" ]]; then
   [[ "$skills_copied" -gt 0 ]] && msg="$msg, $skills_copied skill(s)"
   [[ "$scripts_copied" -gt 0 ]] && msg="$msg, $scripts_copied script(s)"
   echo "$msg)"
+  exit 0
+fi
+
+# --- REAP MODE ---
+if [[ "$REAP_ONLY" == "true" ]]; then
+  if [[ -n "$REAP_PATH" ]]; then
+    # Single-project reap
+    if [[ ! -d "$REAP_PATH" ]]; then
+      echo "ERROR: $REAP_PATH not found"
+      exit 1
+    fi
+    project_root="$REAP_PATH"
+    [[ "$project_root" == */_bmad/bmm/workflows ]] && project_root="${project_root%/_bmad/bmm/workflows}"
+    count=$(reap_stale_worktrees_for_project "$project_root" "sync")
+    if [[ "$count" -gt 0 ]]; then
+      echo "OK    reaped $count stale worktree(s) from $(basename "$project_root")"
+    else
+      echo "OK    no stale worktrees in $(basename "$project_root")"
+    fi
+    exit 0
+  fi
+  # All-targets reap
+  if [[ ! -f "$TARGETS_FILE" ]]; then
+    echo "ERROR: $TARGETS_FILE not found"; exit 1
+  fi
+  total_reaped=0
+  while IFS= read -r target; do
+    [[ -z "$target" || "${target:0:1}" == "#" ]] && continue
+    project_root="$target"
+    [[ "$project_root" == */_bmad/bmm/workflows ]] && project_root="${project_root%/_bmad/bmm/workflows}"
+    [[ ! -d "$project_root" ]] && continue
+    count=$(reap_stale_worktrees_for_project "$project_root" "sync")
+    if [[ "$count" -gt 0 ]]; then
+      echo "OK    $(basename "$project_root"): reaped $count stale worktree(s)"
+      total_reaped=$((total_reaped + count))
+    fi
+  done < "$TARGETS_FILE"
+  echo ""
+  echo "Done: reaped $total_reaped stale worktree(s) across all targets."
   exit 0
 fi
 
@@ -882,6 +1004,12 @@ while IFS= read -r target || [[ -n "$target" ]]; do
     scripts_synced=$(sync_scripts_for_project "$project_root" "sync")
     if [[ "$scripts_synced" -gt 0 ]]; then
       echo "  OK    scripts ($scripts_synced script(s) synced)"
+    fi
+
+    # Reap stale worktrees (merged on origin/main + clean working tree).
+    reaped=$(reap_stale_worktrees_for_project "$project_root" "sync")
+    if [[ "$reaped" -gt 0 ]]; then
+      echo "  OK    reaped $reaped stale worktree(s)"
     fi
 
     # Auto-generate command files from workflow.md frontmatter (custom + upstream)

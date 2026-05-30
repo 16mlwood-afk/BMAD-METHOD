@@ -35,9 +35,20 @@
 - **One worktree per task.** Don't reuse a worktree from a previous task — create fresh from current HEAD.
 
 ### Worktree Enforcement Hooks
-- **UserPromptSubmit hook** — warns about parallel sessions, suppresses when already in a worktree (`$PWD` contains `/.claude/worktrees/`).
-- **PreToolUse hook (Edit|Write)** — hard-blocks file edits when parallel sessions detected and NOT in a worktree.
+- **UserPromptSubmit hook** — warns about parallel sessions, suppresses when already in a worktree (`$PWD` contains `/.claude/worktrees/`). Cooldown: emits at most once per 30 minutes per project (marker at `.claude/.parallel-warn-last`).
+- **PreToolUse hook (Edit|Write)** — hard-blocks file edits when parallel sessions detected and NOT in a worktree. Allowlisted paths: anything under `/Users/*/bmad-method-v6/` (fork — its own repo) and `_bmad-output/` / `.claude/` (artifact/state dirs that always exist outside worktrees).
+- **PreToolUse hook (Bash)** — hard-blocks bash commands that look like edit-equivalents (`sed -i`, `cat > FILE`, `tee FILE`, `awk -i inplace`, `printf/echo > FILE`) under the same conditions as Edit|Write. Targets in `/tmp/`, `/dev/`, fork paths, `.claude/`, and `~/.secrets` are still permitted.
+- **After admin-merge with worktree still active:** `gh pr merge --delete-branch` errors locally because the worktree references the branch. The remote merge succeeded; immediately call `ExitWorktree action: "remove" discard_changes: true` to clear the worktree, then fast-forward main from the parent checkout. The local error is harmless; don't chase it as a real failure.
 - Hooks count all `claude` processes system-wide (includes other projects). This is intentionally conservative — false positive (forced worktree when unnecessary) is safer than false negative (collision).
+
+### Cross-Repo Edits — when worktree pattern doesn't scale
+- Some tasks legitimately touch multiple repos at once: rolling a BMAD contract change across 13 projects, applying a small refactor to the fork + every consumer, syncing a CLAUDE.md template update everywhere.
+- Creating 13 separate worktrees for one script-driven rollout is not the right pattern. Instead:
+  - Use **bash-driven multi-repo edits**: a single shell script that loops projects, appends/sed-edits the config, commits, pushes, opens PR, admin-merges.
+  - Per-repo commit and per-repo PR (not one giant commit across repos).
+  - The bash edit-guard hook allows this implicitly when the edit-equivalents target paths outside the current project worktree.
+  - For doc-only / config-only PRs across many repos, `--admin` merge is acceptable per the BMAD deploy contract.
+- Fork edits (`~/bmad-method-v6/`) are explicitly allowlisted by the hook — you can Edit/Write fork files directly without a project-worktree gymnastic. The fork is its own git repo with its own delivery flow (`git push myfork custom` after `gh auth setup-git` is configured).
 
 ### ALWAYS Deliver Your Work — CRITICAL
 - **Work that isn't merged to main doesn't exist.** Never end a session with code sitting on an unmerged branch.
@@ -58,23 +69,21 @@
 
 - If the worktree branch name is generic (auto-generated), rename it to something descriptive (`feat/`, `fix/`, `refactor/`) before pushing.
 
-### ALWAYS Deploy After Merge — CRITICAL
-<!-- TODO: Replace with your deploy setup -->
-- **After merging a PR to main, trigger a production deploy.** Never leave merged code undeployed — the user expects changes to be live.
-- Deploy command: `railway up`
-<!-- Other options:
-- Auto-deploy: pushing to `main` triggers CI. Verify deploy is in progress rather than triggering a duplicate.
-- Fly.io: `fly deploy --remote-only`
-- Vercel: `vercel --prod`
-- Manual: describe the command here -->
-- Never ask the user to deploy manually — handle it yourself.
+### Deployment — BMAD contract
+- Deploys follow the universal BMAD deploy-to-prod contract: `_bmad/bmm/workflows/shared/deployment-to-prod.md`.
+- After merging a PR, run `./scripts/bmad-deploy.sh`. Never leave merged code undeployed.
+- The script reads `_bmad/bmm/config.yaml` → `deploy:` for project-specific values (platform, build command, dep installer, deploy command, irrelevant-paths filter, success_pattern).
+- `npm ci` / `pnpm install --frozen-lockfile` / `yarn install --immutable` are pre-authorized by the contract (lockfile-clean — cannot mutate `package.json`). The script auto-runs the configured one when `dep_state_check` is missing.
+- BMAD-managed dirty paths (`_bmad/`, `.claude/`, `_bmad-output/`, `docs/`) are filtered as deploy-irrelevant by default; only real code changes block a deploy.
+- **Admin-merge on code PRs** is allowed iff the failing required check is structurally unavailable (zero-step quota-exhausted: `conclusion: failure`, `steps: 0`, elapsed < 15s) AND `npm run build` (or equivalent) passed locally. Substantive CI failures never qualify.
+- Doc-only / config-only PRs can admin-merge freely and skip the deploy.
+- Opt-out: set `deploy.bmad_contract: skip` in `_bmad/bmm/config.yaml` for projects whose deploy doesn't fit the contract (auto-deploy-on-push platforms like Railway/Vercel, multi-step deploys, etc.). The script exits 99 (no-op) and the agent defers to the project's own CLAUDE.md.
 
-### CI Health Check — Verify Deploy Actually Happened
-- **After pushing to a branch or merging to main, check CI status:** `gh run list --limit 1 --json conclusion,name,createdAt --jq '.[0]'`
-- **If the latest run has `conclusion: "failure"` with zero steps (job completed in <15 seconds, no runner assigned), CI is down** — this is a GitHub Actions quota exhaustion, not a code problem. Do NOT debug your code or re-push.
-- **When CI is down, deploy manually** using the project's deploy command above. Never leave code undeployed because CI is broken.
-- **If CI fails WITH steps** (runner was assigned, steps executed), that IS a code problem — read the logs and fix it.
-- **Quick diagnosis:** `gh run view --json jobs --jq '.jobs[0] | {steps: (.steps | length), conclusion}'` — zero steps = quota issue, non-zero steps = real failure.
+### CI Health Check — diagnosis
+- After pushing/merging: `gh run list --limit 1 --json conclusion,name,createdAt --jq '.[0]'`.
+- If the latest run failed in <15s with zero steps → structural failure (GH Actions quota exhausted). The contract's admin-merge carve-out applies.
+- If CI failed WITH steps executed → substantive failure. Read the logs and fix; admin-merge is NOT allowed.
+- Diagnosis: `gh run view --json jobs --jq '.jobs[0] | {steps: (.steps | length), conclusion}'` — zero steps = structural, non-zero = substantive.
 
 ### Local Dev
 <!-- TODO: Replace with your dev server commands and port -->
