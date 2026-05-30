@@ -219,6 +219,12 @@ Next step (you run, after Railway deploys):
 
 ---
 
+## DEPLOY — via BMAD contract
+
+After merge, run `./scripts/bmad-deploy.sh` per the BMAD deploy contract (see `_bmad/bmm/workflows/shared/deployment-to-prod.md`). The script reads the project's `_bmad/bmm/config.yaml` → `deploy:` block and decides whether to deploy, skip (`bmad_contract: skip`), or halt. This workflow does NOT carry deploy logic — the contract owns deploy. If the script exits 99 (skip), the project has opted out and follows its own CLAUDE.md deploy choreography.
+
+---
+
 ## NEXT STEP
 
 Delivery is done but the workflow is not complete. Proceed immediately to the developer handoff:

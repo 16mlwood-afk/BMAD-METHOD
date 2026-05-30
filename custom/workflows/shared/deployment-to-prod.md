@@ -7,7 +7,7 @@ description: 'Universal post-merge deployment contract for BMAD-managed projects
 
 **Why this exists.** Every BMAD-managed project shares the same deploy choreography — merge → fast-forward → build → ship — but the friction points (CI quota exhaustion, dirty BMAD-managed paths, missing `node_modules`) are universal. Codifying the contract once and pushing the executable + the rules into every targeted project removes per-project rule-restating, per-session permission prompts, and the silent divergence that happens when one project's CLAUDE.md learns a lesson and the others don't.
 
-This contract is the sibling of `shared/delivery-to-main.md`: that document covers artifact delivery (markdown to `main`); this one covers code deployment (`main` to production).
+This contract is the sibling of `design/shared/delivery-to-main.md`: that document covers artifact delivery (markdown to `main`); this one covers code deployment (`main` to production). (Note the path asymmetry — `delivery-to-main.md` lives under `design/shared/` for historical reasons; `deployment-to-prod.md` sits at top-level `shared/` because its scope is universal. See orchestration-tuning report 2026-05-30 P2 #4 for the cleanup proposal.)
 
 ---
 
