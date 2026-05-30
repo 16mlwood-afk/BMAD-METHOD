@@ -19,22 +19,26 @@
 ## Agent Behavior Rules
 
 ### ALWAYS Use Worktrees — CRITICAL
+<!-- bmad:worktrees-required -->
 - **Call `EnterWorktree` at the start of EVERY session before editing any files.** Do not wait for the user to tell you about parallel sessions — you will not always know. The cost of an unnecessary worktree is near zero; the cost of a collision (silent overwrites, lost edits) is high.
 - The ONLY exception: the user explicitly tells you "you're the only session, skip worktree."
 - When spawning sub-agents via the `Agent` tool for work that edits files, always set `isolation: "worktree"` so each agent gets its own copy of the repo.
 - The user has authorized worktree usage as project policy — you do not need an explicit per-session request.
 
 ### Branch Naming Convention
+<!-- bmad:branch-naming -->
 - **Always use descriptive branch names.** Format: `<type>/<short-description>` (e.g., `feat/user-auth`, `fix/null-metadata`, `refactor/format-utils`).
 - Types: `feat/`, `fix/`, `refactor/`, `chore/`, `docs/`.
 - If `EnterWorktree` auto-generates a name, rename the branch before committing: `git branch -m <new-name>`.
 
 ### Worktree Hygiene
+<!-- bmad:worktree-hygiene -->
 - **Prune stale worktrees at session start.** Run `git worktree list` and compare against `.claude/worktrees/`. Orphaned directories or branches already merged to main are stale — remove them with `git worktree remove <path>`.
 - **Never leave a worktree behind after delivering work.** Always clean up via `ExitWorktree` after the PR is merged.
 - **One worktree per task.** Don't reuse a worktree from a previous task — create fresh from current HEAD.
 
 ### Worktree Enforcement Hooks
+<!-- bmad:worktree-hooks -->
 - **UserPromptSubmit hook** — warns about parallel sessions, suppresses when already in a worktree (`$PWD` contains `/.claude/worktrees/`). Cooldown: emits at most once per 30 minutes per project (marker at `.claude/.parallel-warn-last`).
 - **PreToolUse hook (Edit|Write)** — hard-blocks file edits when parallel sessions detected and NOT in a worktree. Allowlisted paths: anything under `/Users/*/bmad-method-v6/` (fork — its own repo) and `_bmad-output/` / `.claude/` (artifact/state dirs that always exist outside worktrees).
 - **PreToolUse hook (Bash)** — hard-blocks bash commands that look like edit-equivalents (`sed -i`, `cat > FILE`, `tee FILE`, `awk -i inplace`, `printf/echo > FILE`) under the same conditions as Edit|Write. Targets in `/tmp/`, `/dev/`, fork paths, `.claude/`, and `~/.secrets` are still permitted.
@@ -42,6 +46,7 @@
 - Hooks count all `claude` processes system-wide (includes other projects). This is intentionally conservative — false positive (forced worktree when unnecessary) is safer than false negative (collision).
 
 ### Cross-Repo Edits — when worktree pattern doesn't scale
+<!-- bmad:cross-repo-edits -->
 - Some tasks legitimately touch multiple repos at once: rolling a BMAD contract change across 13 projects, applying a small refactor to the fork + every consumer, syncing a CLAUDE.md template update everywhere.
 - Creating 13 separate worktrees for one script-driven rollout is not the right pattern. Instead:
   - Use **bash-driven multi-repo edits**: a single shell script that loops projects, appends/sed-edits the config, commits, pushes, opens PR, admin-merges.
@@ -51,6 +56,7 @@
 - Fork edits (`~/bmad-method-v6/`) are explicitly allowlisted by the hook — you can Edit/Write fork files directly without a project-worktree gymnastic. The fork is its own git repo with its own delivery flow (`git push myfork custom` after `gh auth setup-git` is configured).
 
 ### ALWAYS Deliver Your Work — CRITICAL
+<!-- bmad:deliver-work -->
 - **Work that isn't merged to main doesn't exist.** Never end a session with code sitting on an unmerged branch.
 <!-- TODO: Choose ONE delivery method and delete the other -->
 
@@ -70,6 +76,7 @@
 - If the worktree branch name is generic (auto-generated), rename it to something descriptive (`feat/`, `fix/`, `refactor/`) before pushing.
 
 ### Deployment — BMAD contract
+<!-- bmad:deploy-contract -->
 - Deploys follow the universal BMAD deploy-to-prod contract: `_bmad/bmm/workflows/shared/deployment-to-prod.md`.
 - After merging a PR, run `./scripts/bmad-deploy.sh`. Never leave merged code undeployed.
 - The script reads `_bmad/bmm/config.yaml` → `deploy:` for project-specific values (platform, build command, dep installer, deploy command, irrelevant-paths filter, success_pattern).
@@ -80,12 +87,14 @@
 - Opt-out: set `deploy.bmad_contract: skip` in `_bmad/bmm/config.yaml` for projects whose deploy doesn't fit the contract (auto-deploy-on-push platforms like Railway/Vercel, multi-step deploys, etc.). The script exits 99 (no-op) and the agent defers to the project's own CLAUDE.md.
 
 ### CI Health Check — diagnosis
+<!-- bmad:ci-health-check -->
 - After pushing/merging: `gh run list --limit 1 --json conclusion,name,createdAt --jq '.[0]'`.
 - If the latest run failed in <15s with zero steps → structural failure (GH Actions quota exhausted). The contract's admin-merge carve-out applies.
 - If CI failed WITH steps executed → substantive failure. Read the logs and fix; admin-merge is NOT allowed.
 - Diagnosis: `gh run view --json jobs --jq '.jobs[0] | {steps: (.steps | length), conclusion}'` — zero steps = structural, non-zero = substantive.
 
 ### Local Dev
+<!-- bmad:local-dev -->
 <!-- TODO: Replace with your dev server commands and port -->
 - **Start:** `npm run dev` (or `./dev.sh`, `docker compose up`, etc.)
 - **Port:** (e.g., 5173 for Vite, 3000 for Express, 8787 for Wrangler)
@@ -95,6 +104,7 @@
 - **This project is production-only.** Do not start a dev server, run `docker compose up`, or browse to `localhost`. All changes are tested via CI and deployed to Railway. -->
 
 ### Production Data Awareness
+<!-- bmad:production-data -->
 <!-- TODO: Set has_local_db to true/false and customize -->
 - **This project has no local database.** The dev server connects to the same production Railway Postgres as the deployed app. Every query, migration, and script hits real data.
 <!-- If you DO have a local DB, replace the above with:
@@ -103,6 +113,7 @@
 - **Before running scripts that modify data:** verify `DATABASE_URL` points where you expect. Never seed, wipe, or bulk-update without explicit user approval.
 
 ### Shared Resources
+<!-- bmad:shared-resources -->
 - **Database:** shared across all worktrees and sessions — a migration in one affects all others.
 - **Dev server:** only one instance per project at a time. Check before starting; don't stack a second on a different worktree.
 - **External services:** R2 buckets, webhooks, third-party APIs are shared. Worktrees isolate code, not infrastructure.
@@ -116,10 +127,12 @@
 - **Never delete `.db-wal` while a process has the DB open** — this causes data loss. Stop all processes first, then clean up. -->
 
 ### Stale Server Code — Check Before Debugging
+<!-- bmad:stale-server-code -->
 - **When investigating runtime bugs (unexpected API responses, missing features), first check whether the running server has the latest code.** Compare `ps -p <pid> -o etime` against recent `git log --oneline -5` timestamps. If commits landed after the server started, restart the server before investigating further.
 - Quick check: `curl` the affected endpoint and compare the response against the code on disk. If the response doesn't match, the server is stale.
 
 ### Pre-flight Check — Verify the Project Builds Before Committing
+<!-- bmad:preflight-build -->
 - **At the start of a session (or before your first commit), run the project's build/type check** to catch pre-existing errors: `tsc --noEmit`, `svelte-check`, `npm run build`, `pyright`, or whatever the project uses.
 - **If pre-existing errors exist, flag them to the user immediately** — don't silently skip them. These block pushes (via pre-push hooks) and rot quietly until someone tries to ship real work.
 - **If only your changes introduce new errors, fix them before committing.** If errors are pre-existing and unrelated to your task, note them in your response so the user can triage, then proceed with your work.
@@ -127,20 +140,24 @@
 <!-- Customize: replace the check command above with this project's actual command (e.g., `npm run check`, `npx tsc --noEmit`, `ruff check src/`) -->
 
 ### NEVER Hardcode Secrets — CRITICAL
+<!-- bmad:no-hardcoded-secrets -->
 - **Scripts must read secrets from the environment.** If a required env var is not set, the script must exit with a clear error message — never fall back to a hardcoded value.
 - Local secrets go in `~/.secrets` (sourced by `~/.zshrc`). If a Claude session can't see it, tell the user to set it — do NOT embed credentials in code.
 - Use `zsh -ic '...'` to access secrets from non-interactive shells.
 
 ### Do NOT search endlessly for files
+<!-- bmad:no-endless-search -->
 - If a glob/grep returns no results after 1-2 attempts, **stop searching and move on**.
 - Prefer `find` with `head` over repeated glob attempts when exploring unknown file structures.
 
 ### File discovery strategy
+<!-- bmad:file-discovery -->
 1. Try the most likely path first
 2. If not found, try ONE broader glob
 3. If still not found, **assume it doesn't exist and proceed**
 
 ### General efficiency
+<!-- bmad:general-efficiency -->
 - Read files you need, then start coding. Don't over-research.
 - If type-checking reveals only pre-existing errors unrelated to your changes, note them and move on.
 - **Don't ask permission for obvious next steps.** If tests pass and the work is done, push the branch and create the PR. If the user says "y" or "go ahead", that means execute — don't ask again.
