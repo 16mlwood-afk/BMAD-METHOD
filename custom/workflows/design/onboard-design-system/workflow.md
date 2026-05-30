@@ -9,7 +9,7 @@ design_handoff_workflow: '{project-root}/_bmad/bmm/workflows/design/design-hando
 design_synthesize_workflow: '{project-root}/_bmad/bmm/workflows/design/design-synthesize/workflow.md'
 brand_identity_template: '{project-root}/_bmad/bmm/workflows/design/brand-identity-template.md'
 design_standards: '{project-root}/_bmad/bmm/workflows/design/shared/design-standards.md'
-delivery_to_main: '{project-root}/_bmad/bmm/workflows/design/shared/delivery-to-main.md'
+delivery_to_main: '{project-root}/_bmad/bmm/workflows/shared/delivery-to-main.md'
 brief_revision_policy: '{project-root}/_bmad/bmm/workflows/design/shared/brief-revision-policy.md'
 intake_template: '{project-root}/_bmad/bmm/workflows/design/onboard-design-system/claude-design-intake-template.md'
 ---

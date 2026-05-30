@@ -90,6 +90,11 @@ modify-design-policy → here) whenever the system changes, so the GitHub source
 Claude Design reads stays current.
 ```
 
-## 5. Done
+## 5. Deploy via BMAD contract
+
+After merge (per delivery_to_main §3 above): run `./scripts/bmad-deploy.sh` per the BMAD deploy contract (see `_bmad/bmm/workflows/shared/deployment-to-prod.md`). The script reads the project's `_bmad/bmm/config.yaml` → `deploy:` block and decides whether to deploy, skip (`bmad_contract: skip`), or halt. This workflow ships design-system files; if any are deployment-relevant (e.g. token CSS imported by the build), the contract handles it. Workflows do NOT carry deploy logic — the contract owns deploy.
+
+
+## 6. Done
 
 The workflow is complete only when: artifacts are on `origin/main` (or explicitly local-only), the intake card has a live link, and the user has the field-by-field walkthrough. Surface the merged PR URL and the card path.

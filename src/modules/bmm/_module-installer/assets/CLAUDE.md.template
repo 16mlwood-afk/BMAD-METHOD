@@ -33,8 +33,9 @@
 
 ### Worktree Hygiene
 <!-- bmad:worktree-hygiene -->
-- **Prune stale worktrees at session start.** Run `git worktree list` and compare against `.claude/worktrees/`. Orphaned directories or branches already merged to main are stale — remove them with `git worktree remove <path>`.
-- **Never leave a worktree behind after delivering work.** Always clean up via `ExitWorktree` after the PR is merged.
+- **Auto-reap runs on every BMAD sync.** `sync-bmad-workflows.sh` invokes the reaper per-project; worktrees whose branch is fully merged AND whose working tree is **completely clean** (no untracked, no modified, no anything) are removed automatically.
+- **Manual reap for stale-but-not-strict-clean cases.** The auto-reaper is conservative by design — a previous incident showed lenient reaping can destroy uncommitted in-progress work. Worktrees with stray BMAD sync artifacts in the working tree won't auto-reap. Run `~/bmad-method-v6/sync-bmad-workflows.sh --reap` (all targets) or `--reap <project-path>` (one project) to clean those up; verify each worktree's branch and status first.
+- **Never leave a worktree behind after delivering work.** Always clean up via `ExitWorktree` after the PR is merged. The reaper is a safety net, not the primary cleanup mechanism.
 - **One worktree per task.** Don't reuse a worktree from a previous task — create fresh from current HEAD.
 
 ### Worktree Enforcement Hooks
