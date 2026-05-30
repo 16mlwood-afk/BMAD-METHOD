@@ -369,20 +369,30 @@ reap_stale_worktrees_for_project() {
     branch_sha=$(git -C "$wt_path" rev-parse HEAD 2>/dev/null)
     [[ -z "$branch_sha" ]] && continue
 
+    # Defensive: the branch must have at least one commit ahead of where it
+    # split from origin/main. A branch at exactly origin/main HEAD (zero commits
+    # of its own) is a fresh worktree with no work yet — reaping it can destroy
+    # uncommitted in-progress work whose author hasn't run git add yet.
+    local ahead_count
+    ahead_count=$(git -C "$project_root" rev-list --count origin/main.."$branch" 2>/dev/null || echo 0)
+    [[ "$ahead_count" -eq 0 ]] && continue
+
+    # All commits on the branch must be patch-equivalent to commits on
+    # origin/main. cherry outputs "+ <sha>" for unequivalent commits.
     local unmerged_count
     unmerged_count=$(git -C "$project_root" cherry origin/main "$branch" 2>/dev/null | grep -c "^+" || true)
     [[ "$unmerged_count" -gt 0 ]] && continue
 
-    # Working tree must be reap-clean: no uncommitted modifications to
-    # tracked files EXCEPT those under BMAD-managed / artifact paths
-    # (_bmad/, .claude/, _bmad-output/, docs/) — those are almost always
-    # sync artifacts and shouldn't block reaping. Untracked-anywhere is OK.
-    local dirty
-    dirty=$(git -C "$wt_path" status --porcelain 2>/dev/null | \
-            grep -E "^[ MARC]" | \
-            grep -vE "^[ MARC]+ (_bmad/|\.claude/|_bmad-output/|docs/)" | \
-            head -1)
-    [[ -n "$dirty" ]] && continue
+    # Working tree must be COMPLETELY clean — no untracked, no modified,
+    # no staged, no anything. The previous rule (tolerate BMAD-managed dirty
+    # paths) caused an incident: an agent's in-progress new files
+    # (InvoiceDrawer.svelte, a new endpoint route) were untracked, and
+    # their modified design-tuning state file lived under _bmad-output/
+    # which was filtered. The worktree was reaped → uncommitted work
+    # destroyed. Strict-clean is the only safe rule.
+    local any_dirty
+    any_dirty=$(git -C "$wt_path" status --porcelain 2>/dev/null | head -1)
+    [[ -n "$any_dirty" ]] && continue
 
     if [[ "$mode" == "sync" ]]; then
       # Remove worktree (git's own cleanup; handles branch deletion separately).
