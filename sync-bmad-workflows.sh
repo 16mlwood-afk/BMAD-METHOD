@@ -359,19 +359,29 @@ reap_stale_worktrees_for_project() {
     branch=$(git -C "$wt_path" rev-parse --abbrev-ref HEAD 2>/dev/null)
     [[ -z "$branch" || "$branch" == "HEAD" || "$branch" == "main" ]] && continue
 
-    # Branch must be fully merged into origin/main.
-    # Test: every commit on the branch is reachable from main.
+    # Branch must be effectively merged into origin/main. Use git cherry
+    # which detects patch-equivalent commits (handles squash-merges, where
+    # main's commit has a different SHA than the branch's tip). cherry
+    # outputs "+ <sha>" for commits in branch NOT equivalent to any in main,
+    # and "- <sha>" for commits with equivalents in main. If no "+" lines,
+    # the branch is fully reflected in main.
     local branch_sha
     branch_sha=$(git -C "$wt_path" rev-parse HEAD 2>/dev/null)
     [[ -z "$branch_sha" ]] && continue
 
-    # If branch_sha is reachable from main_sha → merged.
-    git -C "$project_root" merge-base --is-ancestor "$branch_sha" "$main_sha" 2>/dev/null || continue
+    local unmerged_count
+    unmerged_count=$(git -C "$project_root" cherry origin/main "$branch" 2>/dev/null | grep -c "^+" || true)
+    [[ "$unmerged_count" -gt 0 ]] && continue
 
-    # Working tree must be clean (no uncommitted modifications to tracked files).
-    # Untracked files are OK (often sync artifacts).
+    # Working tree must be reap-clean: no uncommitted modifications to
+    # tracked files EXCEPT those under BMAD-managed / artifact paths
+    # (_bmad/, .claude/, _bmad-output/, docs/) — those are almost always
+    # sync artifacts and shouldn't block reaping. Untracked-anywhere is OK.
     local dirty
-    dirty=$(git -C "$wt_path" status --porcelain 2>/dev/null | grep -E "^[ MARC]" | head -1)
+    dirty=$(git -C "$wt_path" status --porcelain 2>/dev/null | \
+            grep -E "^[ MARC]" | \
+            grep -vE "^[ MARC]+ (_bmad/|\.claude/|_bmad-output/|docs/)" | \
+            head -1)
     [[ -n "$dirty" ]] && continue
 
     if [[ "$mode" == "sync" ]]; then
