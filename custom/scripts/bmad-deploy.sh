@@ -183,6 +183,26 @@ if [[ ! -e "$PROJECT_ROOT/$dep_state_check" ]]; then
   fi
 fi
 
+# --- 4b. Auth pre-flight (fail fast BEFORE the build) ----------------------
+# Generic guard: when the deploy targets Cloudflare via wrangler, verify the
+# API token is valid up front. An expired/revoked CLOUDFLARE_API_TOKEN otherwise
+# only surfaces AFTER a full build, as a confusing wrangler stack trace
+# (API errors 9109 / 10000). Catching it here turns a wasted build + cryptic
+# failure into a fast, actionable message. Non-wrangler deploy targets skip this.
+case "$deploy_command" in
+  *wrangler*)
+    echo "→ Checking Cloudflare auth (wrangler whoami)…"
+    if ! npx wrangler whoami >/dev/null 2>&1; then
+      echo "✗ Cloudflare auth failed — wrangler cannot authenticate." >&2
+      echo "  CLOUDFLARE_API_TOKEN is missing, expired, or revoked (API 9109/10000)." >&2
+      echo "  Re-mint a token (Pages:Edit), set CLOUDFLARE_API_TOKEN in ~/.secrets," >&2
+      echo "  then restart the session OR re-source it for this run:" >&2
+      echo "      set -a; source ~/.secrets; set +a; ./scripts/bmad-deploy.sh" >&2
+      exit 18
+    fi
+    ;;
+esac
+
 # --- 5. Build --------------------------------------------------------------
 
 echo "→ Running build: $build_command"

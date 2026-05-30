@@ -157,11 +157,14 @@ A project's `deploy:` block is the entire BMAD contract surface. If a field is m
 15  config field malformed
 16  not a git repo
 17  no _bmad/bmm/config.yaml in project root
+18  Cloudflare auth pre-flight failed (wrangler deploy targets only; token invalid/expired)
 99  skip (bmad_contract: skip)
 1   bash error (unexpected)
 ```
 
-The agent reads the exit code and routes accordingly. 10/14/15/16/17 are user-fixable. 11/12/13 require investigation. 99 is silent success. 0 is success.
+The agent reads the exit code and routes accordingly. 10/14/15/16/17/18 are user-fixable (18 = re-mint CLOUDFLARE_API_TOKEN and update ~/.secrets). 11/12/13 require investigation. 99 is silent success. 0 is success.
+
+The auth pre-flight (§4b in the script) runs only when `deploy.deploy_command` contains `wrangler`, before the build, so an expired token fails in seconds with an actionable message instead of after a full build as a raw wrangler stack trace.
 
 ---
 
