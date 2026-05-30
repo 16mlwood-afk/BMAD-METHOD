@@ -145,6 +145,18 @@
     ],
     "PostToolUse": [
       {
+        "matcher": "EnterWorktree",
+        "name": "bmad-worktree-autosync",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "case \"$PWD\" in */.claude/worktrees/*) ;; *) exit 0;; esac; [ -d \"$PWD/_bmad/bmm/workflows\" ] || exit 0; SYNC=\"$HOME/bmad-method-v6/sync-bmad-workflows.sh\"; [ -x \"$SYNC\" ] || exit 0; output=$(\"$SYNC\" --worktree \"$PWD\" 2>&1 | /usr/bin/tail -1); case \"$output\" in   OK*)     printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"BMAD auto-sync (PostToolUse EnterWorktree): %s\"}}\\n' \"$output\";;   *)     printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"BMAD auto-sync attempted but did not report OK \u2014 manual sync may be needed: %s\"}}\\n' \"$output\";; esac",
+            "timeout": 30,
+            "statusMessage": "Auto-syncing BMAD workflows into worktree..."
+          }
+        ]
+      },
+      {
         "matcher": "Write|Edit",
         "name": "bmad-credential-scan",
         "hooks": [
