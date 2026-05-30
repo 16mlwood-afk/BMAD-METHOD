@@ -11,6 +11,9 @@ description: 'Apply all deltas from the comparison grid to the implementation, r
 
 - FULLY AUTONOMOUS. No user interaction. No menus. No halting.
 - Fix EVERY delta from Step 3's grid — Tier 1, Tier 2, and Tier 3. No "good enough."
+- **Apply is GRID-DRIVEN, never holistic.** Every fix traces to a specific `{comparison_grid}` row. "Rebuild the page until it looks like the design" is FORBIDDEN — it is the exact shortcut that silently drops enumerated deltas: it satisfies "looks right" at composition scale while leaving individual grid rows (a sender clause, a kbd hint, a sort control, a secondary label) unapplied. Walk the grid row by row; do not eyeball the whole.
+- **Every grid row ends this step with an explicit disposition: `applied` | `deferred(reason)` | `dropped(reason)`.** A row left with no disposition means the run is INCOMPLETE — you cannot declare done. `deferred`/`dropped` are legitimate (needs server data the load doesn't provide, genuinely out of scope, a judgment call) — but only when *named with a reason*, never by omission. This is the apply ledger (§5).
+- **The completion report MUST enumerate every non-applied delta with its reason (§9).** Zero non-applied deltas is stated explicitly ("all N deltas applied"); it is never left implicit. Silent partial implementation — shipping a count like "47/47" while the grid under-enumerated, or applying most rows and never listing the skipped ones — is the precise failure this step exists to prevent (accounting-tools /queries #900: 6 detail deltas dropped, caught only by user review, fixed in #903).
 - After applying fixes, re-verify by re-reading the modified files. Do not trust that the edit was correct without checking.
 - Follow the project's CLAUDE.md for commit, PR, and merge procedures. Deploy is NOT part of this workflow — see the BMAD deploy contract at `_bmad/bmm/workflows/shared/deployment-to-prod.md` and run `./scripts/bmad-deploy.sh` after merge.
 - YOU MUST ALWAYS SPEAK OUTPUT in your agent communication style with the config `{communication_language}`
@@ -72,12 +75,22 @@ If the build fails:
 3. Re-run `npm run build`
 4. If it fails again, diagnose more carefully — read the affected file region
 
-### 5. Update the Grid Artifact
+### 5. Apply Ledger — disposition every grid row
 
-Re-read each modified file. Update the comparison grid artifact from Step 3:
-- Change every fixed delta from its previous value to `✓ FIXED`
-- Leave any unfixed deltas (if any) clearly marked
-- Add a summary line at the bottom: `Fixed: {X}/{delta_count} deltas`
+Re-read each modified file, then walk the Step-3 grid **row by row** and give EVERY row an explicit disposition. The ledger is the proof the apply was grid-driven, not holistic — a grid with `{delta_count}` rows must end with `{delta_count}` dispositions.
+
+| Disposition | Meaning | Required note |
+|---|---|---|
+| `✓ applied` | The delta is now fixed in the implementation (re-verified by re-reading the file). | — |
+| `⊘ deferred` | Intentionally not applied this pass. | **Reason, one of:** `needs-data` (the page load / server doesn't provide the value — name the field), `out-of-scope` (explicitly outside this run's target), `judgment` (a product decision the implementer made — state it). |
+| `✗ dropped` | Cannot or will not apply at all. | **Reason** — why it's not implementable as specified. |
+
+Rules:
+- **No row without a disposition.** A grid row you neither applied nor explicitly deferred/dropped means the run is incomplete — go back and resolve it. "I didn't get to it" is not a disposition.
+- **`deferred`/`dropped` must carry a reason from the table above.** A bare "deferred" is the silent-drop in disguise.
+- Write the disposition into the grid artifact next to each row, and update the summary line at the bottom:
+  `Applied: {A}/{delta_count} · Deferred: {D} · Dropped: {X}` (A + D + X must equal `{delta_count}`).
+- The deferred + dropped rows are carried verbatim into the §9 completion report's mandatory "Deltas not applied" section — they are NOT allowed to live only in the artifact where the user won't see them.
 
 ### 6. Commit and Push
 
@@ -147,32 +160,44 @@ Output these as a `**Brand Identity Updates**` section in the completion report.
 
 ### 9. Report Completion
 
-Output:
+Output — the **"Deltas not applied" section is mandatory and never omitted.** If everything was applied, say so explicitly; if anything was deferred or dropped, every such delta is listed here with its reason (pulled from the §5 apply ledger). The user must be able to see, from the completion report alone and without opening the artifact, exactly what did NOT make it in.
 
 ```
 Design implementation complete.
 
 Baseline: {baseline_commit}
-Deltas fixed: {X}/{delta_count}
+Deltas: applied {A}/{delta_count} · deferred {D} · dropped {X}
 PR: {pr_url}
 Deploy: handled by ./scripts/bmad-deploy.sh — run after merge per the BMAD contract
 
 Comparison grid: {artifact_path}
+
+Deltas not applied:
+{if D + X == 0:}
+  None — all {delta_count} deltas applied.
+{else, one bullet per deferred/dropped row:}
+  - ⊘ {grid row id / short description} — deferred ({reason}: {detail})
+  - ✗ {grid row id / short description} — dropped ({reason})
 ```
+
+A completion report that prints a fixed-count but omits the "Deltas not applied" section is non-conformant — re-emit it. The whole point of this section is that a partial implementation announces itself instead of shipping silently as "done."
 
 ---
 
 ## SUCCESS METRICS
 
-- Every delta from the comparison grid is fixed
-- Build passes
-- PR created and merged
-- Grid artifact updated with fix status
-- No regressions introduced
+- **Every grid row has an explicit disposition** (`applied` / `deferred(reason)` / `dropped(reason)`) — `A + D + X == {delta_count}`, no undisposed rows
+- Apply was grid-driven (every fix traces to a row), not a holistic rebuild
+- Every applied delta is fixed and re-verified by re-reading the file
+- **The completion report's "Deltas not applied" section is present** — enumerating every deferred/dropped delta with its reason, or stating "None — all N applied"
+- Build passes; PR created and merged; grid artifact updated with dispositions; no regressions introduced
 
 ## FAILURE MODES
 
-- Fixing some deltas but not all ("the rest are minor" — fix them all)
+- **Holistic rebuild instead of grid-driven apply** — "make the page look like the design" satisfies composition while silently dropping enumerated rows (band sender clause, kbd hints, a sort control). This is the dominant leak and the reason the apply ledger exists (accounting-tools /queries #900).
+- **Reporting a count without the "Deltas not applied" list** — "47/47" or "deltas fixed: X" with no enumeration of what was deferred/dropped. A partial that omits the disclosure ships looking complete. The §9 section is mandatory.
+- **A bare `deferred` with no reason** — the silent drop wearing a label. Every deferral names `needs-data` / `out-of-scope` / `judgment` + detail.
+- Fixing some deltas but not all ("the rest are minor" — fix them all, or defer-with-reason)
 - Editing without re-reading to verify (edits can silently fail or land in the wrong location)
 - Changing `tailwind.config.js` when an arbitrary value would work
 - Committing without running `npm run build`
