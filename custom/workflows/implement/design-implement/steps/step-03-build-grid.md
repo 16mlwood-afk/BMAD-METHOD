@@ -14,6 +14,8 @@ description: 'Build the exhaustive component × property comparison grid and out
 - If a property cannot be determined, mark it as `?` with a note — never leave it blank.
 - Output the grid using the template at `{project-root}/_bmad/bmm/workflows/implement/design-implement/template.md`.
 - **The grid spans three axes — component × state × property — not two.** Step-01 cataloged states explicitly into `{design_states}`. Every (component, state, property) triple in `{design_components}[*].properties` must produce a grid row. A grid that omits a state declared in `{design_states}` is a step-03 failure, equivalent in severity to "components missing from the design".
+- **A fourth axis — implementation multiplicity — applies wherever `{impl_render_sites}` lists more than one implementation of a primitive.** Each implementation gets its own grid rows AND the implementations are cross-checked against each other (§2a). Two implementations of one primitive that resolve to different values is a Tier-1 delta even if one of them matches the design — a row and its drawer must not disagree on the same pill.
+- **Colours are compared as resolved values, numerically — never by class name or family.** Use `{impl_colors}`. "Both green," "both emerald-ish," "close enough" are banned verdicts (see §2 colour rule).
 - YOU MUST ALWAYS SPEAK OUTPUT in your agent communication style with the config `{communication_language}`
 
 ## CONTEXT
@@ -21,6 +23,8 @@ description: 'Build the exhaustive component × property comparison grid and out
 From Steps 1–2 you have:
 - `{design_components}` with every CSS property and value from the design
 - `{impl_components}` with every CSS property and resolved value from the implementation
+- `{impl_render_sites}` — every implementation of every primitive, keyed by primitive (the multiplicity input for §2a)
+- `{impl_colors}` — every colour (incl. default Tailwind palette) resolved to a concrete hex/oklch value
 - `{design_tokens}` — the design system's token values
 - `{impl_config}` — the Tailwind class resolution table
 
@@ -28,16 +32,16 @@ From Steps 1–2 you have:
 
 ### 1. Align Components
 
-Match each design component to its implementation counterpart. Build a mapping:
+Match each design primitive to its implementation counterpart**s** — plural. Using `{impl_render_sites}`, a primitive may map to more than one implementation. Build a mapping:
 
-| Design Component | Implementation File | Match Type |
-|-----------------|---------------------|------------|
+| Design Primitive | Implementation File(s) | Match Type |
+|-----------------|------------------------|------------|
 | QualityVerdict | QualityVerdict.svelte | exact |
+| status-pill | InvoiceStatusPill.svelte **+** InvoiceDrawer.svelte (inline `.pill`) **+** invoices/[id] header pill | exact (×3) |
 | SupplierHeatGrid | SupplierHeatGrid.svelte | exact |
-| InvoiceListSection | InvoiceListSection.svelte | exact |
 | ... | ... | ... |
 
-Flag any `MISSING` or `EXTRA` from Step 2.
+Flag any `MISSING` or `EXTRA` from Step 2. **Flag any primitive with ≥2 implementations** — those carry a mandatory §2a consistency pass.
 
 ### 2. Build the Comparison Grid
 
@@ -88,6 +92,26 @@ For every non-default state in `{design_states}[component]`, sweep AT MINIMUM:
 
 If the implementation collapses two states into one (e.g., `hover` and `selected` share the same `bg-muted` class), record one row per state with `Implementation = "bg-muted (shared with <other state>)"` and a delta describing the collision.
 
+### 2a. Implementation-consistency pass (shared primitives)
+
+For every primitive that `{impl_render_sites}` lists with **two or more implementations**, do NOT just compare each to the design independently. Compare the implementations **to each other**, property by property:
+
+| Primitive | Property | Impl A (file) | Impl B (file) | Impl C (file) | Consistent? |
+|-----------|----------|---------------|---------------|---------------|-------------|
+| status-pill | green bg | `#ecfdf5` (InvoiceStatusPill) | `#eef5f1` (drawer `.pill`) | `#e3efe9` (id header) | ✗ three greens |
+| status-pill | approved label | "Awaiting sync" | "Approved" | "Approved" | ✗ label split |
+| status-pill | radius | 6px | 5px | 6px | ✗ |
+
+**Any property where the implementations disagree is a Tier-1 delta (§4), even if one of them matches the design.** A shared primitive that renders differently across surfaces is broken by definition — the row and its detail drawer disagreeing on the same status is the exact failure this axis exists to catch. The fix is consolidation to one implementation, not patching each copy toward the design separately (which leaves the next copy to drift again).
+
+### 2b. Colour comparison is numeric — never nominal
+
+Every colour delta in the grid compares **resolved values from `{impl_colors}`**, not class names. For each colour pair:
+
+1. Resolve both sides to the same space (hex or oklch). A design `hsl(150 26% 95.5%)` and an impl `bg-emerald-50` become `#eef5f1` vs `#ecfdf5`.
+2. Compute a perceptual distance (ΔE, or a simple per-channel delta if ΔE is impractical). Treat **ΔE ≳ 3 (or any channel off by ≳ 5%)** as a real delta → Tier-2.
+3. **Banned verdicts:** "both green", "same family", "emerald ≈ sage", "close enough". Same hue family is not a match; only resolved-value proximity is. The invoices status-pill shipped emerald-where-the-design-said-sage precisely because the comparison stopped at "both pale green."
+
 ### 3. Count Deltas
 
 Count the number of rows where the Delta column is NOT `✓`:
@@ -105,6 +129,7 @@ Group deltas into three tiers:
 - **Missing states** (`STATE MISSING in impl` rows) — the implementation has no path into the design-required state (no `:hover` rule, no `data-state` branch, no conditional class)
 - **State collisions** — two distinct design states resolve to the same implementation treatment (e.g., `hover` and `selected` both rendering `bg-muted`)
 - **Hover-on-state fall-through** — `[data-state="failed"]:hover` cascading to the generic `:hover` rule and losing the state tint (the PR #827 failed-row-hover regression)
+- **Sibling-implementation divergence** (§2a) — two or more implementations of one primitive resolving to different values (colour, label, radius, size). Tier-1 **even if one of them matches the design**; the fix is consolidation to a single shared implementation, not patching each copy independently. This is the axis the invoices status-pill drift (3 forked pills) exposed.
 - Wrong grid column counts or definitions
 - Content text differences that change meaning
 
@@ -114,7 +139,7 @@ Group deltas into three tiers:
 - Padding/margin mismatches ≥ 4px
 - Width/height mismatches ≥ 8px on containers
 - SVG dimension mismatches
-- Color token mismatches
+- Color token mismatches — compared as **resolved values** (§2b), ΔE ≳ 3 or any channel off ≳ 5%. A Tailwind-palette colour and a raw-HSL design colour that resolve apart count here (e.g. `emerald-50` `#ecfdf5` vs design sage `#eef5f1`). "Same colour family" is not a defence.
 - **State-conditional color/opacity mismatches** — e.g., design specifies `bg-destructive/[0.10]` for failed rows; impl renders `bg-destructive/[0.06]`. Opacity-step differences ≥ 0.02 on state tints count as Tier 2 even if absolute opacity is small.
 - **State-conditional font-weight mismatches on null/empty data** — design specifies muted normal weight for `(unknown)` / `—` placeholders; impl inherits default font-weight. Counts as Tier 2 because the visual semantic (data presence vs absence) is broken.
 
@@ -142,14 +167,17 @@ Output:
 
 ```
 Comparison grid complete.
-Components compared: {count}
-States compared:     {total (component, state) pairs}
-Properties checked:  {total rows}
-Deltas found:        {delta_count}
+Components compared:  {count}
+Primitives w/ ≥2 impls: {count}   ← each ran the §2a consistency pass
+States compared:      {total (component, state) pairs}
+Properties checked:   {total rows}
+Deltas found:         {delta_count}
   Tier 1 (structural): {count}
-    of which state-axis: {count of missing-state + state-collision + hover-fall-through}
+    of which state-axis:    {count of missing-state + state-collision + hover-fall-through}
+    of which sibling-divergence: {count of §2a cross-implementation deltas}
   Tier 2 (visual):     {count}
     of which state-conditional: {count of state-tint + state-text-weight deltas}
+    of which colour (resolved ΔE): {count}
   Tier 3 (micro):      {count}
 ```
 
@@ -171,10 +199,14 @@ Read fully and follow: `{project-root}/_bmad/bmm/workflows/implement/design-impl
 - Grid artifact written to disk
 - `{delta_count}` is accurate
 - State-axis Tier-1 deltas (missing state, state collision, hover-on-state fall-through) are surfaced explicitly in the summary, not buried in the per-property rows
+- **Every primitive with ≥2 implementations ran the §2a consistency pass; sibling-divergence Tier-1 deltas surfaced explicitly in the summary**
+- **Every colour delta compared resolved values numerically (§2b), never by class name or family**
 
 ## FAILURE MODES
 
 - Comparing at the component level instead of the property level ("QualityVerdict looks right" — no, compare each property)
+- **Comparing a shared primitive against the design but not against its own other implementations.** A primitive built once as a shared component and again inline elsewhere can have one copy match the design while the copies disagree with each other — the §2a pass exists because that is the exact shape that shipped the invoices status-pill drift (table emerald vs drawer sage vs detail-header sage). One matching copy is not a pass.
+- **Nominal colour comparison** — calling `emerald-50` vs `hsl(150 26% 95.5%)` a match because "both are green." Resolve both and compute distance (§2b); same hue family is not a match.
 - **Comparing only the default state and assuming hover/focus/failed/empty inherit correctly.** This is the dominant historic leak (PR #827). Every state cataloged in step-01 gets its own grid rows. "The default matches" is not evidence the failed-state matches.
 - **Treating `:hover` and `[data-state]` as independent rather than compound.** A row that's both `failed` AND being hovered needs an explicit `[data-state="failed"]:hover` row in the grid — not an inference that "failed background" + "generic hover background" will combine correctly. They won't: generic hover usually wins the cascade and the state tint vanishes.
 - Using vague delta descriptions ("slightly different" — quantify it)

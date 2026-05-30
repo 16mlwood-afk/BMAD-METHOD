@@ -50,6 +50,8 @@ Process one component at a time. For each:
 
 **Order:** Fix Tier 1 (structural) first, then Tier 2 (visual), then Tier 3 (micro). Within a component, apply all tiers together — the ordering is for prioritization if something goes wrong, not for separate passes.
 
+**Sibling-implementation divergence (step-03 §2a Tier-1) is fixed by consolidation, not by patching each copy.** When a primitive has ≥2 implementations that disagree, the fix is to make every render site use ONE implementation (promote a shared component, delete the inline reimplementations), then align that single implementation to the design. Patching each copy toward the design separately leaves the duplication in place and the next edit re-forks it — you would be back here next run. If consolidation is genuinely out of scope for this pass, say so explicitly in the delivery notes and leave the divergence Tier-1-open rather than silently patching one copy.
+
 ### 3. Handle Tailwind Config Conflicts
 
 If the design requires a value that conflicts with the project's Tailwind config:
