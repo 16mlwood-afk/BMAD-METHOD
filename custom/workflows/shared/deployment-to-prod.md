@@ -69,6 +69,19 @@ A project declares its irrelevant globs in `deploy.deploy_irrelevant_paths`. The
 
 This is the rule that lets `bmad-deploy.sh` run successfully even when the BMAD sync has left the parent checkout dirty — those paths are universally irrelevant to the build.
 
+### 3a-stale. Stale-checkout guard (deploy from `origin/<default-branch>` HEAD)
+
+A deploy ships **the build of the current checkout**. If that checkout is behind `origin/<default-branch>`, the build is missing whatever commits landed on the branch since the checkout was taken — and deploying it **silently reverts those commits in production**. This is the parallel-session hazard: a feature worktree branched before another session's PR merged, built, and deployed, rolls back the other PR. (Observed in accounting-tools on 2026-05-30: a deploy from a stale feature worktree rolled back a just-merged worklist redesign; the repo was fine, production served stale code until a redeploy from the branch tip.)
+
+The guard fetches `origin/<default-branch>` (resolved from `deploy.default_branch`, default `main`) and compares **deploy-relevant content** against it. The comparison is a commit-to-commit **tree diff**, not commit ancestry — this is deliberate:
+
+- A freshly **squash-merged** worktree has a HEAD that diverges from `main` *by commit* (the squash is a new commit; the feature commit is orphaned) but is **identical by tree**. An ancestry/`rev-list` check would false-positive and refuse this legitimate deploy; the tree diff passes it.
+- A **stale** worktree, missing a merged PR's file changes, differs by tree → refused.
+
+The `deploy.deploy_irrelevant_paths` globs are reused as diff excludes, so a docs-only or `_bmad/`-only delta on `main` does not trip the guard. On a content difference the script exits **19** with the branch-tip redeploy recipe. If `origin/<default-branch>` can't be fetched (offline), the guard is skipped with a warning rather than blocking the deploy.
+
+**Operator rule:** deploy from a checkout at the current `origin/<default-branch>` tip — never from a feature worktree that may be behind it. The cheapest safe path with parallel sessions is a throwaway worktree: `git worktree add /tmp/deploy-head origin/<default-branch> && cd /tmp/deploy-head && ./scripts/bmad-deploy.sh`. Intentional off-`main` deploys go through `deploy-hotfix.sh` or `deploy.bmad_contract: skip`.
+
 ### 3b. Dep-state precondition
 
 The script checks for a tool that proves dependencies are installed (`deploy.dep_state_check`, defaulting to `node_modules/.bin/<build_tool>`). If missing, it runs `deploy.dep_install_command` automatically. The install command must be **lockfile-clean** (npm: `npm ci`; pnpm: `pnpm install --frozen-lockfile`; yarn: `yarn install --immutable`). The contract pre-authorizes these specific commands because they cannot mutate the lockfile or the package manifest — they only realize the locked state.
@@ -158,11 +171,12 @@ A project's `deploy:` block is the entire BMAD contract surface. If a field is m
 16  not a git repo
 17  no _bmad/bmm/config.yaml in project root
 18  Cloudflare auth pre-flight failed (wrangler deploy targets only; token invalid/expired)
+19  stale checkout — deploy-relevant content differs from origin/<default-branch> (§3a-stale)
 99  skip (bmad_contract: skip)
 1   bash error (unexpected)
 ```
 
-The agent reads the exit code and routes accordingly. 10/14/15/16/17/18 are user-fixable (18 = re-mint CLOUDFLARE_API_TOKEN and update ~/.secrets). 11/12/13 require investigation. 99 is silent success. 0 is success.
+The agent reads the exit code and routes accordingly. 10/14/15/16/17/18/19 are user-fixable (18 = re-mint CLOUDFLARE_API_TOKEN and update ~/.secrets; 19 = redeploy from the current origin/<default-branch> tip). 11/12/13 require investigation. 99 is silent success. 0 is success.
 
 The auth pre-flight (§4b in the script) runs only when `deploy.deploy_command` contains `wrangler`, before the build, so an expired token fails in seconds with an actionable message instead of after a full build as a raw wrangler stack trace.
 

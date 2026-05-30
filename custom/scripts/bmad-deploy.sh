@@ -167,6 +167,48 @@ if [[ ${#dirty_paths[@]} -gt 0 ]]; then
   echo "→ ${ignored_count} dirty path(s) matched deploy_irrelevant_paths and were ignored."
 fi
 
+# --- 3a. Stale-checkout guard ----------------------------------------------
+# A deploy ships the BUILD OF THE CURRENT CHECKOUT. If that checkout is behind
+# origin/<default-branch> — e.g. a feature worktree branched before a parallel
+# session's PR merged — the build is MISSING those commits, and deploying it
+# SILENTLY REVERTS them in production. (accounting-tools 2026-05-30: a deploy
+# from a stale worktree rolled back a just-merged worklist redesign.)
+#
+# The check compares deploy-relevant CONTENT (a commit-to-commit tree diff),
+# NOT commit ancestry — so a freshly squash-merged worktree, whose HEAD
+# diverges from main by commit but is identical by tree, still passes. The
+# deploy_irrelevant_paths globs are reused as diff excludes so a docs-only or
+# _bmad-only delta on main does not false-positive the guard.
+default_branch=$(cfg_get '.deploy.default_branch' 'main')
+
+if git fetch origin "$default_branch" --quiet 2>/dev/null \
+   && git rev-parse --verify --quiet "origin/${default_branch}^{commit}" >/dev/null; then
+
+  mapfile -t stale_irrelevant_globs < <(cfg_get_list '.deploy.deploy_irrelevant_paths')
+  stale_excludes=()
+  for glob in "${stale_irrelevant_globs[@]}"; do
+    [[ -z "$glob" ]] && continue
+    stale_excludes+=( ":(exclude)${glob}" )
+  done
+
+  if ! git diff --quiet HEAD "origin/${default_branch}" -- . "${stale_excludes[@]}" 2>/dev/null; then
+    behind=$(git rev-list --count "HEAD..origin/${default_branch}" 2>/dev/null || echo '?')
+    echo "✗ Stale checkout — deploy-relevant content differs from origin/${default_branch}." >&2
+    echo "  origin/${default_branch} has ${behind} commit(s) not in this checkout. Deploying now" >&2
+    echo "  would ship a build MISSING them and REVERT them in production." >&2
+    echo "" >&2
+    echo "  Deploy from the current ${default_branch} tip instead — e.g. a fresh worktree:" >&2
+    echo "      git fetch origin ${default_branch}" >&2
+    echo "      git worktree add /tmp/deploy-head origin/${default_branch}" >&2
+    echo "      cd /tmp/deploy-head && ./scripts/bmad-deploy.sh" >&2
+    echo "" >&2
+    echo "  (Intentional off-main deploy? Use deploy-hotfix.sh or set deploy.bmad_contract: skip.)" >&2
+    exit 19
+  fi
+else
+  echo "→ Stale-checkout guard skipped (could not fetch origin/${default_branch})." >&2
+fi
+
 # --- 4. Dep-state precondition ---------------------------------------------
 
 if [[ ! -e "$PROJECT_ROOT/$dep_state_check" ]]; then
