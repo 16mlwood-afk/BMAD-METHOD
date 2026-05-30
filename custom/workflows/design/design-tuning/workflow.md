@@ -22,9 +22,9 @@ design_review_workflow: '{project-root}/_bmad/bmm/workflows/design/design-review
 
 This uses **step-file architecture** for focused execution:
 
-- All steps are autonomous — no user interaction after the screenshot is provided
+- All steps are autonomous — no user interaction after the screenshot(s) and (optionally) the design artifact URL are provided
 - State persists via variables (see below)
-- Sequential progression: load context → analyze screenshot → generate correction
+- Sequential progression: load context (brief + policy + artifact source + canonical components) → analyze (artifact source for treatment, screenshot for composition) → generate correction
 - Iteration state persists across invocations via a state file on disk
 
 ### State Variables
@@ -44,6 +44,11 @@ This uses **step-file architecture** for focused execution:
 - `{fixed_violations}` — Violations that were present before but are now resolved
 - `{kept_elements}` — Elements that work well and should be preserved
 - `{correction_message}` — The paste-ready output for Claude Design
+- `{artifact_url}` — The Claude Design artifact/share URL (or local design-synthesize bundle dir) under review, if provided. The source-of-truth for treatment-level checks (ring/opacity, radius, spacing, color, dot presence). Read directly — never inferred from the screenshot.
+- `{artifact_source_dir}` — Local directory the artifact bundle was extracted to (step-01 §1c). Empty if no artifact source was provided.
+- `{artifact_css_catalog}` — Per-component CSS property catalog extracted from the artifact source for the components under review (the treatment values: `border-radius`, `box-shadow`/ring, `padding`, `font-*`, `letter-spacing`, exact color, presence of a leading dot). The exact-value baseline step-02's treatment lane compares against.
+- `{canonical_components}` — Map of treatment-class (status-pill, badge, filter-chip, drawer, button) → the canonical component in THIS project's codebase plus its extracted classes/values. The §13 cross-surface reference, read from code, NOT from policy prose. This is what the iter-4 V18 miss lacked.
+- `{treatment_evidence_mode}` — `bundle-exact` (artifact source ingested; treatment checks read exact values) or `screenshot-degraded` (no artifact source; treatment checks are downgraded to `unverified-treatment` and cannot be certified resolved). Mirrors design-review's `measurement_method` degraded-mode switch.
 
 ### Step Processing Rules
 
@@ -75,6 +80,13 @@ When this workflow encounters conflicting guidance, the order of authority is:
 
 **Rendered output beats source on rendering-level checks.** When the reviewer is evaluating a screenshot — and the source HTML/CSS (or a CSS comment claiming a behavior) disagrees with what the rendered pixels show — **the rendered pixels are authoritative**. A CSS rule like `.tile { border-left: 3px solid; background: transparent; }` may claim a single-shared-band rendering, but if the screenshot shows full-border rounded-corner cards, the rendering is the truth. The source disagreement is itself evidence — it signals a stylesheet override the reviewer hasn't traced, a markup mismatch, or a comment that no longer matches the code — and that disagreement is flagged as a sub-finding, not used to absolve the rendering. Reviewers reading the source instead of the rendering is the single most common failure mode this workflow exists to prevent. See step-02 §2's evidence-required rule and §1b's per-surface render inspection for the procedural enforcement.
 
+**The carve-out: a self-contained artifact bundle IS its own render — and pixels can't resolve sub-visible treatment.** The "rendered beats source" rule above guards against ONE specific danger: **untraced stylesheet override** in a live app, where the CSS you read may not be the CSS that wins at runtime. A Claude Design artifact bundle (or a design-synthesize bundle) has **no override surface** — it is self-contained; the JSX/`tokens.css`/inline styles you read ARE what renders, nothing overrides them. So the rule's premise does not hold for a bundle, and its conclusion does not apply. This splits the evidence model into two lanes:
+
+- **Treatment lane → artifact source is authoritative.** Ring presence and opacity (`ring-{c}/20` vs `/30` vs none), `border-radius`, `padding`, `font-size`/`font-weight`, `letter-spacing`, exact color tokens, presence of a leading status dot. These are *sub-visible or sub-pixel* — a 20%-opacity 1px inset ring is invisible in a screenshot, so eyeballing it is a guess. Read the value from the bundle and compare it to the canonical codebase component (`{canonical_components}`). **This is the lane the iter-4 Amazon V18 miss lived in:** the pill was scored "resolved" off a PNG when a `ring-rose-500/20` divergence was sub-visible; reading the bundle source would have caught it as an exact-value mismatch.
+- **Composition lane → screenshot is authoritative.** Layout, hierarchy, density, "is this a stat-card grid / bento / hero," whether an analytics band reads as subordinate. These are gestalt judgments the rendered image is genuinely the right input for, and the exact CSS would not tell you. The "rendered beats source" rule above governs this lane in full.
+
+When no artifact source is available (`{treatment_evidence_mode} == screenshot-degraded`), the treatment lane has no exact-value evidence — its checks are downgraded to `unverified-treatment` and CANNOT be certified resolved (same honesty posture as the coverage gate). Do not silently fall back to pixel-guessing a treatment and call it resolved — that is the exact failure this carve-out exists to prevent.
+
 ---
 
 ## INITIALIZATION
@@ -93,7 +105,8 @@ Load config from `{main_config}` and resolve:
 
 The user provides:
 
-- **Screenshot(s)** — dropped into the conversation (images from Claude Design's output)
+- **Screenshot(s)** — dropped into the conversation (images from Claude Design's output). Authoritative for **composition** (layout, hierarchy, density, card-grid/bento/hero gestalt, band subordination).
+- **Design artifact source** — *optional but strongly preferred*: the Claude Design artifact/share URL, or a local design-synthesize bundle directory. When present, treatment-level checks (ring opacity, border-radius, padding, font, color, dot presence) read the **actual CSS** from the artifact instead of guessing from pixels. Sub-visible details — a `ring-rose-500/20` inset ring is one pixel at 20% opacity, invisible in a PNG — are exactly what the screenshot cannot resolve and the source can. If the user pasted only a screenshot, ask once for the artifact URL; if unavailable, proceed in `screenshot-degraded` mode (treatment checks flagged unverifiable, per step-01 §1c).
 - **Design brief reference** — either explicit ("tune against design-brief-foo.md") or implicit (workflow finds the most recent design brief)
 - **Visual references** — either from a `visual-references-{feature}.md` file on disk, pasted inline from research (e.g., Perplexity output), or already stored in the state file from a previous iteration
 

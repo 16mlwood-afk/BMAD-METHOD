@@ -63,6 +63,48 @@ ls {implementation_artifacts}/../planning-artifacts/brand-identity.md 2>/dev/nul
 - Set `{brand_identity}` = empty, `{brand_identity_path}` = empty, `{policy_constraints}` = empty
 - Report: "No project design policy. Evaluating against brief constraints and generic guardrails. Consider running `create-design-policy` to make future runs deterministic."
 
+### 1c. Ingest the Design Artifact Source (treatment-check baseline)
+
+Treatment-level checks (ring/opacity, radius, padding, font, color, dot presence) must read the artifact's **actual CSS**, not the screenshot — a sub-visible detail like a `ring-rose-500/20` inset ring is invisible in a PNG. This step ingests that source. It is a degraded-mode switch, NOT a hard halt: with no source, treatment checks are flagged unverifiable and the composition lane still runs.
+
+Resolve `{artifact_url}` from, in order: (a) a URL/share link or bundle path the user passed this invocation, (b) an `Artifact under review:` line in the existing `{state_file_path}` (the canvas ID/URL is recorded there across iterations), (c) absent.
+
+**If a Claude Design artifact URL is available** — fetch and extract it using the **identical mechanism design-implement already documents** (do not reinvent it). Follow `{project-root}/_bmad/bmm/workflows/implement/design-implement/steps/step-01-ingest-design.md` §URL PATH (URL.1–URL.5):
+
+```bash
+curl -sL "{artifact_url}" -o /tmp/design-tuning-bundle.tar.gz
+mkdir -p /tmp/design-tuning-bundle && cd /tmp/design-tuning-bundle
+file ../design-tuning-bundle.tar.gz   # gzip tar | tar | bare HTML — branch as design-implement URL.1 describes
+# extract, then: find /tmp/design-tuning-bundle -name "*.html" -type f
+```
+
+Set `{artifact_source_dir}` to the extracted directory. If the download fails, retry once; if it fails again, do NOT halt — fall through to the screenshot-degraded branch below and record the fetch error.
+
+**If a local design-synthesize bundle directory is available** — set `{artifact_source_dir}` to it (no curl) and read `tokens.css` + the `<screen>.html` files per design-implement §BUNDLE PATH.
+
+**Once `{artifact_source_dir}` is set (either path):** catalog `{artifact_css_catalog}` — but scoped to the components under review, not the exhaustive design-implement grid. For each status pill / badge / filter chip / drawer / button / row that the brief or policy treats as a shared treatment, extract the treatment properties: `border-radius`, `box-shadow` / ring class + opacity, `padding`, `font-size`, `font-weight`, `letter-spacing`, `text-transform`, exact background/text color (resolved through tokens), and presence/absence of a leading colored dot. Record each as `{ component, property, raw_value, resolved_value, source_file:line }`. Set `{treatment_evidence_mode} = bundle-exact`.
+
+**If no artifact source is available** — set `{artifact_source_dir}` = empty, `{artifact_css_catalog}` = empty, `{treatment_evidence_mode} = screenshot-degraded`, and report:
+> "No design artifact source — treatment-level checks (ring/opacity, radius, spacing, color, dot) cannot be verified from screenshots alone and will be marked `unverified-treatment`. Provide the Claude Design artifact URL to verify them exactly. Composition checks proceed normally."
+
+### 1d. Resolve Canonical Codebase Components (the §13 cross-surface reference — read from code, not prose)
+
+The policy's §13 cross-surface-coherence rule (and any "match the {sibling surface}" constraint) names a *shared component language* — but the **authoritative definition of that language is the live component in this project's codebase, not the policy's prose description of it.** Reading the prose instead of the component is the iter-4 V18 failure: the policy said "ring-inset"; the canonical `/expenses` pill shipped a flat-reading faint ring; the workflow certified against the prose and missed the divergence.
+
+For each treatment-class the policy/brief marks as cross-surface-shared (status pill, badge, filter chip, drawer, button), locate the canonical component in the codebase and extract its real values into `{canonical_components}`. Search the project's actual source root (read it from config / repo layout — do NOT assume a stack; the example below is SvelteKit `src/`, adjust to the project):
+
+```bash
+# Status/badge primitives are usually centralized — start there, then the shared pill component, then the named sibling surface.
+# Adjust the search root + style syntax to the project (Tailwind classes, CSS modules, styled-components, etc.).
+grep -rIn "ring-1 ring-inset\|rounded-md\|rounded-full\|bg-.*-100 text-\|bg-.*-50 text-" <project-source-root> 2>/dev/null | grep -iE "badge|status|pill|chip"
+```
+
+Resolve, per class: the source file + the exact value the canonical component renders (for a Tailwind project, the class string, e.g. `status.ts badge() → bg-{c}-50 text-{c}-700 ring-1 ring-inset ring-{c}-500/30`; for CSS/other, the resolved declarations). When the codebase ships **more than one** treatment for the same class (e.g. a ring-inset primitive AND a flat sibling), that divergence is itself a finding — record BOTH in `{canonical_components}` and surface it: this is live policy↔code drift, and per `{project-root}` CLAUDE.md **code outranks the policy doc**. Do not pick the policy's version and move on; name the split so step-02 can flag it and the user can reconcile (`modify-design-policy`).
+
+If the project has no implementation yet (greenfield, no component to read), `{canonical_components}` is empty for that class — step-02 §2a's cross-surface compare is skipped, and the treatment lane still checks absolute values (radius, dot presence) against the policy. Note it; do not invent a canonical value.
+
+If no policy/brief constraint marks any treatment-class as cross-surface-shared, set `{canonical_components}` = empty and skip — there is no reference to compare against.
+
 ### 2. Extract Constraints from the Brief (derivative — not authoritative)
 
 Parse the brief and extract its stated constraints. **The brief is derivative of the policy loaded in step 1b.** Step-02 will contradiction-scan brief-derived constraints against `{policy_constraints}`; on conflict, policy wins.
@@ -148,6 +190,9 @@ Confirm at least these are populated:
 - `{brief_constraints}` ✓
 - `{corporate_guardrails}` ✓ (may be empty if not a corporate project — that's OK)
 - `{iteration_number}` ✓
+- `{treatment_evidence_mode}` ✓ (`bundle-exact` or `screenshot-degraded` — must be a deliberate value, set by §1c)
+- `{artifact_css_catalog}` ✓ (populated in `bundle-exact` mode; empty in `screenshot-degraded` — deliberate value)
+- `{canonical_components}` ✓ (populated if any treatment-class is cross-surface-shared; empty otherwise — deliberate value)
 
 **If `{brand_identity_path}` is empty in a project that appears to have a policy file you didn't find, STOP and report which paths you checked.** Silent fallback to brief-only mode is the loader-drift bug this workflow exists to prevent — surface it instead of swallowing it.
 
@@ -167,3 +212,5 @@ Load and follow: `{project-root}/_bmad/bmm/workflows/design/design-tuning/steps/
 - Visual references loaded from the best available source
 - Previous iteration state loaded (if exists)
 - Iteration number set correctly
+- Artifact source resolved (§1c) — `{treatment_evidence_mode}` is a deliberate `bundle-exact` or `screenshot-degraded`, never unset; in `bundle-exact` mode `{artifact_css_catalog}` carries the treatment values for the components under review
+- Canonical codebase components resolved (§1d) — `{canonical_components}` holds the real class strings of each cross-surface-shared treatment, read from code; any one-class-two-treatments split is recorded as policy↔code drift

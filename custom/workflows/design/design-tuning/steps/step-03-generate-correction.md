@@ -33,11 +33,15 @@ From steps 01–02:
 
 Based on the overall assessment from step-02 §7:
 
-- **Assessment = PASS** (0 hard failures AND `{coverage_partial} = false`): Generate an APPROVAL message. Skip to section 5.
+- **Assessment = PASS** (0 hard failures AND `{coverage_partial} = false` AND `{treatment_unverified} = false`): Generate an APPROVAL message. Skip to section 5.
 - **Assessment = FAIL** (1+ hard failures, regardless of coverage): Generate a correction message. Continue to section 2.
-- **Assessment = PARTIAL** (0 hard failures BUT `{coverage_partial} = true`): Generate a PARTIAL-STATUS message — list everything that's resolved, list the prior keepers that re-verified cleanly, and explicitly name the missing screens that block approval. The PARTIAL-STATUS path does NOT emit an APPROVAL and does NOT emit a corrective directive; it emits a "design is on track but cannot be approved until you provide screens X, Y, Z" status message. The user pastes that status message back to themselves (or to Claude Design as a "please render the missing screens" request) — it is not a correction to send Claude Design. See section 5b for the PARTIAL-STATUS template.
+- **Assessment = PARTIAL** (0 hard failures BUT `{coverage_partial} = true` OR `{treatment_unverified} = true`): Generate a PARTIAL-STATUS message — list everything that's resolved, list the prior keepers that re-verified cleanly, and explicitly name what blocks approval. Two blockers can land here:
+  - **Missing screens** (`{coverage_partial}`) — name the screens that must be rendered.
+  - **Treatment unverified** (`{treatment_unverified}`) — the artifact source was absent, so the treatment lane (ring/opacity, radius, spacing, color, dot) ran blind. Name it: "treatment checks unverified — provide the Claude Design artifact URL so ring/radius/color are read exactly, not eyeballed." This is the iter-4 V18 blocker: never certify a treatment from pixels.
 
-Refusing to emit APPROVAL on PARTIAL is the workflow's defense against approval-by-omission: a clean record on 3 of 5 screens is not evidence that screens 4 and 5 are clean.
+  The PARTIAL-STATUS path does NOT emit an APPROVAL and does NOT emit a corrective directive; it emits a "design is on track but cannot be approved until you provide X" status message. The user pastes that status message back to themselves (or to Claude Design as a "please render the missing screens" request) — it is not a correction to send Claude Design. See section 5a for the PARTIAL-STATUS template.
+
+Refusing to emit APPROVAL on PARTIAL is the workflow's defense against approval-by-omission: a clean record on 3 of 5 screens is not evidence that screens 4 and 5 are clean — and a pixel-eyeballed pill is not evidence the treatment matches.
 
 ### 2. Build the Correction Message
 
@@ -139,25 +143,30 @@ Update the state file with `status: approved`.
 
 ### 5a. Generate PARTIAL-STATUS Message (if assessment == PARTIAL)
 
-If `{assessment} == PARTIAL` (0 hard failures BUT `{coverage_partial} == true` — required screens are missing):
+If `{assessment} == PARTIAL` (0 hard failures BUT `{coverage_partial} == true` and/or `{treatment_unverified} == true`):
 
 ```markdown
 **Iteration {iteration_number}: PARTIAL — on track but cannot approve.**
 
-No hard failures and no scope-creep issues on the screens that WERE provided. The blocker is coverage: {N} screen(s) from the brief's required edge-state list have not been rendered or were not included in the screenshots provided.
+No hard failures on what could be verified. The blocker(s):
+{if coverage_partial:}— coverage: {N} screen(s) from the brief's required edge-state list were not rendered or not included.
+{if treatment_unverified:}— treatment unverified: no design artifact source this round, so ring/opacity, radius, spacing, color, and dot-presence could not be read exactly — they were eyeballed-only and are NOT certified.
 
-**Missing screens (block approval):**
+{if coverage_partial:}**Missing screens (block approval):**
 {For each item in missing_screens:}
 - {screen name as listed in the brief}
 
-**Status of the screens that WERE inspected:**
-{For each fixed_violations item from §6: "✓ {ID} resolved on {screen}"}
+{if treatment_unverified:}**Treatment checks blocked (block approval):**
+- Provide the Claude Design artifact URL (the share link / canvas). I'll fetch the bundle and compare ring/radius/color exactly against the canonical component, instead of guessing from the PNG. {list the treatment-class surfaces left unverified, e.g. "status pill, filter chip"}
+
+**Status of what WAS verified:**
+{For each fixed_violations item from §6: "✓ {ID} resolved on {screen} ({lane})"}
 {For each previous keeper that re-verified in §6a: "✓ {keeper} held"}
 
-**Next step:** drop screenshots of the missing screens here. I will not emit an approval until I have inspected every required screen — partial-coverage approval is the silent-failure mode this workflow exists to prevent (see workflow.md SOURCE-OF-TRUTH PRECEDENCE and step-02 §1a).
+**Next step:** {if coverage_partial: "drop screenshots of the missing screens"}{if both: " and "}{if treatment_unverified: "paste the Claude Design artifact URL"} here. I will not emit an approval until every required screen is inspected and every treatment is read from source — partial-coverage approval and pixel-eyeballed treatment are the silent-failure modes this workflow exists to prevent (see workflow.md SOURCE-OF-TRUTH PRECEDENCE, step-02 §1a and §0a).
 ```
 
-Update the state file with `status: partial-pending-coverage` and persist `{missing_screens}` so the next iteration can recognize the gap is closed when those screens arrive.
+Update the state file with `status: partial-pending-coverage` (or `partial-pending-treatment` if coverage is complete but treatment is unverified; `partial-pending-coverage-and-treatment` if both) and persist `{missing_screens}` + `{treatment_evidence_mode}` so the next iteration recognizes the gap is closed when the screens and/or the artifact URL arrive.
 
 ### 5b. Brand Identity Feedback (on approval only)
 
