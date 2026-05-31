@@ -75,6 +75,14 @@ If gaps are found post-implementation, report them clearly:
 | transportationType | populated | all null | SP-API does not return shippingSolution for these shipments |
 ```
 
+**Root cause for data fixes (REQUIRED when this change wrote to, corrected, or backfilled stored data).** Amending production data without fixing the code that produced the bad data is a failed quick-dev for a data-quality defect — the next write re-introduces it. Tick all three or the fix is incomplete:
+
+- [ ] **Producer identified.** The code that wrote the bad data (extractor, ingest, importer, sync, migration) was located — not just the rows it left behind.
+- [ ] **Producer fixed.** New writes are now correct at the source — OR it is documented in one sentence why the data can only be wrong historically and cannot recur (e.g., an upstream format that has since changed). "It's just old data" without that sentence does not qualify.
+- [ ] **Backfill is an adjunct, not the fix.** Any one-time correction of existing rows ran *after* the producer fix shipped, and was previewed before it mutated production.
+
+If you backfilled but did not touch the producing code, state explicitly why the defect cannot recur. If you cannot, return to step-03 — a data-only patch is not done.
+
 ### 6. Regression Surface (REQUIRED for brownfield/mixed; optional for greenfield)
 
 > **Skip this section ONLY if `project_phase: greenfield`.** For brownfield and mixed, this is a hard gate: production users depend on the existing behavior of any code you touched.

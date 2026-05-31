@@ -31,6 +31,8 @@ For each cluster in `{prioritized}`, decide the downstream workflow:
 
 When in doubt, route to quick-spec. It's the safer brownfield path — investigation is cheap, fabricated solutions are expensive.
 
+**Data-quality clusters are root-cause work, not data-patch work.** When a cluster is a data-quality defect — bad, missing, or inconsistent *stored* values (null fields, mislabeled records, format drift, double-counted rows) — the spec's primary deliverable is the fix to the *producing* pipeline (extractor, ingest, importer, sync, migration), NOT a production-data amendment. A one-time backfill of the existing bad rows is a secondary, adjunct task within the same spec — name it as such, never as the spec's sole content. A spec that proposes only "correct the data" will recur the moment the producer writes again. If the producing code isn't yet identified, route to **quick-spec** to find it before any backfill is specified.
+
 ### 2. Write Triage-Spec Artifacts
 
 For each cluster, write a short markdown file to `{implementation_artifacts}/triage-{cluster_id}-{YYYY-MM-DD}.md`:

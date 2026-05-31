@@ -19,6 +19,7 @@ description: 'Implement a Quick Tech Spec for small changes or features. Use whe
 
 - **Implementation autonomy yes; intent autonomy no.** The grounding gate (step-01) halts before any work begins if the input doesn't yield a verb + target. `autonomous_mode` does not unlock the gate — see "What autonomous mode covers" below.
 - **In brownfield (or mixed), the regression surface check is required.** §6 of step-04 stops being optional. A change that breaks an existing caller is failure, not "needs follow-up."
+- **Data-quality fixes resolve the source, not just the data.** When a task corrects bad, missing, or inconsistent *stored* data (null fields, mislabeled records, format drift), the code that produced it — extractor, ingest, importer, sync, migration — must be fixed in the same change so new writes are correct. A one-time data backfill is permitted ONLY as an adjunct to that source fix, never as the whole fix: a backfill without a producer fix re-introduces the defect on the next write. Step-04 §5 is the line.
 - **The work is implementation, not scope reconciliation.** If during execution the right scope is genuinely unclear — not just unfamiliar, actually ambiguous — halt and ask. Don't ship a guess.
 - **Tests run before delivery.** A green test confirms a hypothesis; an unrun test confirms nothing. Step-04's self-check is the line.
 - **The workflow's output lives on main, not on a branch.** Step-07 delivers — commit, push, merge — and a quick-dev run that ends on an unmerged branch is a quick-dev run that didn't happen.
