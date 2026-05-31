@@ -35,6 +35,22 @@ Group `{findings}` by `route` (for dom-render lane) or by file (for source-grep 
 
 Suppress the individual P1 findings on that route (they're rolled into the composite). Keep P0 / P2 / P3 findings on that route as-is.
 
+### 1b. Evaluate C-ARCHETYPE-01
+
+For each route in `{brief_archetype_map}`:
+
+- **If dom-render ran** (`{chrome_available}`): step-03 §3b already emitted any contradiction as a P1 finding. Surface it in the P1 section with the declared archetype and brief filename:
+
+  > Archetype mismatch on `{route}` — brief `{brief_filename}` declares `analytics_archetype: {archetype}`, but the rendered band ships {observed form}. {One-line expected form from `archetypes_path`.} Fix the band's form, or re-run `design-handoff` if the archetype itself is wrong (changing it is a material revision).
+
+- **If dom-render was skipped** (Chrome unavailable): form-fit cannot be measured mechanically — emit a human-judgment manual prompt instead, so the report never implies the band was verified:
+
+  ```
+  **[manual] C-ARCHETYPE-01** — Band form must match declared archetype.
+  - Route: {route}  ·  Brief: {brief_filename}  ·  Declared: {archetype}
+  - What to check: does the band actually take the `{archetype}` form (see shared/analytics-archetypes.md)? A `coverage` brief must show gaps as content, not a trend strip; `ranking` must be sorted; every band element must drill. Verify in a browser — dom-render did not run.
+  ```
+
 ### 2. Build manual-prompt section
 
 For each rule in `{checklist.human_judgment}` whose `affected_routes` intersects `{affected_routes}`, emit a manual prompt:
@@ -75,6 +91,7 @@ Always emit a coverage section:
 - source-grep: ran against {N} files, executed {M} rules, surfaced {K} findings.
 - dom-render: {ran against {R} routes / skipped — Chrome not available}.
 - human-judgment: {Q} rules surfaced as manual prompts.
+- archetype conformance (C-ARCHETYPE-01): {checked {P} route(s) against declared briefs / deferred to manual — dom-render skipped / no brief-declared bands in scope}. {List any affected routes with no brief, which were NOT checked.}
 - Rules with no diff context: {list of rule IDs that had nothing to check this PR}.
 ```
 

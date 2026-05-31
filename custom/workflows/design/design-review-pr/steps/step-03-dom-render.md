@@ -163,6 +163,63 @@ For each measurement, apply the rule threshold:
 
 For rules whose detection needs more than a single measurement (e.g., `S-STATUS-05` pastel-pill-with-dot, `S-STATUS-08` parity between list and detail views), run additional targeted scripts per the rule's Detection guidance.
 
+### 3b. Analytics band archetype conformance (C-ARCHETYPE-01)
+
+Run this ONLY for routes present in `{brief_archetype_map}`. Skip entirely otherwise.
+
+The band region is the content above (or beside) the primary `table`/`[role="table"]` that is not the table itself. Harvest its form signals in one round-trip:
+
+```javascript
+(() => {
+  const table = document.querySelector('table, [role="table"]');
+  if (!table) return JSON.stringify({ noTable: true });
+  const tableTop = table.getBoundingClientRect().top;
+  const inBand = (el) => { const r = el.getBoundingClientRect(); return r.bottom <= tableTop + 8 && r.width > 80; };
+
+  const svgSeries = [...document.querySelectorAll('svg')].filter(inBand)
+    .map(s => s.querySelectorAll('path, polyline, rect, line').length);
+  const band = [...document.querySelectorAll('section, div, header')].filter(inBand);
+  const text = band.map(e => e.textContent || '').join(' ').toLowerCase();
+
+  // form signals
+  const hasGapStrip = /gap|missing|uncovered|no statement|not imported/.test(text)
+    || [...document.querySelectorAll('[class*="hatch"],[class*="stripe"],[class*="diagonal"]')].some(inBand);
+  const bars = [...document.querySelectorAll('[class*="bar"], rect')].filter(inBand);
+  const bigNumbers = band.filter(e => /\b[\d.,]{1,}\b/.test(e.textContent || '') && parseFloat(getComputedStyle(e).fontSize) >= 28).length;
+  const sortedSignal = /top \d|ranked|highest|largest/.test(text);
+  const funnelSignal = /stage|step \d|drop|converted|funnel/.test(text);
+
+  // drill affordance: every band element of substance should be actionable
+  const interactiveInBand = band.filter(e =>
+    e.matches('a[href], button, [role="button"], [onclick]') ||
+    getComputedStyle(e).cursor === 'pointer' ||
+    e.querySelector('a[href], button, [role="button"]'));
+  const substantiveBand = band.filter(e => (e.textContent || '').trim().length > 12);
+
+  return JSON.stringify({
+    seriesCount: svgSeries.reduce((a, b) => a + b, 0),
+    panelCount: svgSeries.length,
+    hasGapStrip, barCount: bars.length, bigNumbers, sortedSignal, funnelSignal,
+    substantiveBandEls: substantiveBand.length,
+    drillableBandEls: interactiveInBand.length,
+  }, null, 2);
+})();
+```
+
+Compare the harvest against the declared `archetype` from `{brief_archetype_map}[route]`. Read `{archetypes_path}` for the authoritative form of each. Fire `C-ARCHETYPE-01` (P1) on a clear contradiction:
+
+| Declared archetype | Contradiction that fires C-ARCHETYPE-01 |
+|---|---|
+| `coverage` | `hasGapStrip` false AND `seriesCount` ≥ 3 (shipped a trend chart, not a completeness surface) |
+| `trend` | `panelCount` ≤ 1 with `seriesCount` ≥ 3 (single multi-series chart — taxonomy bans it; expects small multiples) |
+| `ranking` | `sortedSignal` false and bars present in arbitrary order |
+| `composition` | `panelCount` ≥ 3 or `seriesCount` ≥ 3 (split into many charts instead of one part-to-whole) |
+| `single-metric` | `bigNumbers` = 0, or ≥ 3 same-size metric blocks (a KPI-card wall, not one number) |
+| `flow` | `funnelSignal` false and no stage-to-stage structure detected |
+| any | `drillableBandEls` < `substantiveBandEls` → at least one ornamental band element with no drill target (cross-cutting rule in `{archetypes_path}`) — fire as P1 with the count of non-drillable elements |
+
+A contradiction is a P1 `change-requested` finding citing the brief filename and the declared archetype. When the harvest is ambiguous (signals don't clearly contradict but don't clearly confirm), do NOT fire — defer to the human-judgment prompt step-04 emits. False-firing this check trains reviewers to ignore it.
+
 ### 4. Apply established-pattern exceptions
 
 Same logic as step-02: if a flagged pattern appears in `≥3` routes already, downgrade by one tier and tag `established`.

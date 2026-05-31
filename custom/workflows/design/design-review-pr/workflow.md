@@ -30,7 +30,7 @@ Steps execute in order. Each step's output feeds the next.
 - `steps/step-01-scope.md` — Determine target (PR or local diff). Identify which routes / pages the changeset touches. Load the checklist.
 - `steps/step-02-source-scan.md` — Run all `source-grep` lane rules against the diff. Emit findings.
 - `steps/step-03-dom-render.md` — For each affected page (if Chrome is available), render and run `dom-render` lane rules. Emit findings.
-- `steps/step-04-deliver.md` — Aggregate findings, evaluate `C-COMPOSITE-01`, and produce the structured report.
+- `steps/step-04-deliver.md` — Aggregate findings, evaluate `C-COMPOSITE-01` and `C-ARCHETYPE-01`, and produce the structured report.
 
 ### State Variables
 
@@ -40,6 +40,14 @@ Steps execute in order. Each step's output feeds the next.
 - `{checklist}` — Parsed contents of `docs/review-checklist.md`
 - `{findings}` — Accumulating list of rule violations, each with: `rule_id`, `severity`, `file`, `line`, `evidence`, `suggested_fix`
 - `{chrome_available}` — Boolean. True if `mcp__claude-in-chrome__*` tools are loadable AND a base URL is reachable.
+- `{brief_archetype_map}` — Map of `{route → {archetype, band_provenance, brief_filename}}` for affected routes whose active brief declares an analytics band. Built in step-01 §7. Empty when no affected route has a brief-declared band. Drives the `C-ARCHETYPE-01` intrinsic check.
+
+### Workflow-intrinsic checks
+
+Two checks are NOT in `docs/review-checklist.md` — the workflow evaluates them itself:
+
+- **`C-COMPOSITE-01`** — fires when ≥3 distinct P1 fingerprints hit one route (evaluated in step-04 §1).
+- **`C-ARCHETYPE-01`** — fires when an analytics band's rendered *form* contradicts the `analytics_archetype` its active brief declared (e.g. brief says `coverage`, the page ships a multi-series trend chart with no gap affordance; brief says `ranking`, the list is unsorted; any band element has no drill target). This is the PR-time counterpart to `design-handoff` step-01 §5c + `shared/analytics-archetypes.md`: the brief picks a shape, this check verifies the implementation kept it. Brief-aware — it reads the declared contract, not just project policy. Evaluated in step-04 §1b.
 
 ---
 
@@ -51,6 +59,8 @@ Steps execute in order. Each step's output feeds the next.
 - `checklist_path` = `{project-root}/docs/review-checklist.md`
 - `policy_path` = `{project-root}/docs/design-policy.md`
 - `design_standards_path` = `{project-root}/_bmad/bmm/workflows/design/shared/design-standards.md`
+- `archetypes_path` = `{project-root}/_bmad/bmm/workflows/design/shared/analytics-archetypes.md`
+- `implementation_artifacts` = config-resolved `_bmad-output/implementation-artifacts/` (where active briefs live)
 
 ### Prerequisites (hard)
 

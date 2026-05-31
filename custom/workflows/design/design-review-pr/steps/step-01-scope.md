@@ -104,6 +104,23 @@ rg -c "status.*(?:purple|blue|indigo|violet)" src/routes/ | wc -l
 
 If a banned pattern appears in ≥3 distinct routes already, mark the rule as `established_exception` in `{checklist}`. Findings against it will be downgraded to `[note]` in step-04.
 
+### 7. Resolve declared analytics contracts
+
+For each route in `{affected_routes}`, find its active brief and capture the analytics shape it committed to. This is what `C-ARCHETYPE-01` checks the implementation against.
+
+```bash
+# Active briefs whose route matches an affected route, that declare a band
+grep -l "brief_status: active" {implementation_artifacts}/*brief*.md 2>/dev/null
+```
+
+For each matching active brief, read its Block B frontmatter:
+
+- If `band_provenance` ∈ {`inherited`, `recommended-new`} AND `route` matches an affected route, record `{route → {archetype: analytics_archetype, band_provenance, brief_filename}}` into `{brief_archetype_map}`.
+- If `band_provenance` is `none`/`recommended-drop`/absent (a pre-contract brief defaults to `none` — see `brief-revision-policy.md` §2 invariant 1a), skip — there is no declared band to enforce.
+- If an affected route has no active brief at all, do not invent a contract. Note it in `{findings.coverage_notes}` ("route X has no brief — archetype conformance not checked") so the report does not falsely imply the band was verified.
+
+If `{brief_archetype_map}` is empty, `C-ARCHETYPE-01` is a no-op this run; note it in coverage.
+
 ---
 
 ## OUTPUT
@@ -114,6 +131,7 @@ The workflow now has:
 - `{affected_routes}` — routes whose rendered output may have changed
 - `{checklist}` — parsed rule list, grouped by lane, with `established_exception` flags populated
 - `{chrome_available}` — boolean
+- `{brief_archetype_map}` — declared analytics archetype per affected route that has a brief-declared band (may be empty)
 
 Proceed to step-02.
 
