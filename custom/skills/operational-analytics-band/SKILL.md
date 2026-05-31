@@ -18,6 +18,7 @@ This skill applies `docs/design-policy.md` to **one specific surface**: the comp
    - §8 Precedence — tailwind tokens → this policy → shared BMAD design standards.
 2. **This skill interprets and applies those rules to the analytics band only.** Cite sections by number when explaining a decision or refusal.
 3. **The current product UI is not a source of truth.** Treat any live page as possible drift from policy. Where the live UI conflicts with `docs/design-policy.md`, the policy wins (§8 *Precedence*) — recommend changing the UI, not relaxing the rule.
+4. **Band *shape* comes from the archetype taxonomy.** `_bmad/bmm/workflows/design/shared/analytics-archetypes.md` (synced from BMAD shared standards — §8's bottom layer) is the vocabulary for what *form* a band takes. There are eight archetypes — `trend`, `distribution`, `composition`, `ranking`, `coverage`, `flow`, `single-metric`, `correlation` — chosen by the user's question. `docs/design-policy.md` still governs visual treatment; the taxonomy governs shape. The two compose: pick the shape from the taxonomy, render it per the policy.
 
 ## What the skill does
 
@@ -29,6 +30,15 @@ Before designing anything:
 - Ask: *what concrete user decision or action does an analytics band enable here?* If none, **recommend removing the band rather than filling space**. Empty real estate is preferable to decorative analytics.
 - If the only honest answer is "context" or "overview," that is a signal the page is operational and the band should be minimal or absent.
 
+### 1b. Choose the archetype — do NOT default to coverage→trend→readiness
+
+Once a band is justified, pick its **shape** from `analytics-archetypes.md` by the user's question — *before* designing anything. This is the step that keeps every band from collapsing into the same coverage-strip + microchart + counter row.
+
+- Name the question in the user's words ("which weeks are we missing statements for?" → `coverage`; "who are the top spenders?" → `ranking`; "where is the money concentrated?" → `composition`; "is this one number OK?" → `single-metric`).
+- Select the dominant archetype from the eight. A second archetype may appear as a subordinate pass, but it does not double the band's footprint.
+- **Time existing in the data does not make it a `trend` band.** Defaulting to a trend strip because the data has dates is the single most common failure — resist it.
+- `coverage → trend → readiness` is **one** composition (a coverage-dominant band with a secondary trend and a counter), legitimate when the question is genuinely about completeness over a period. It is not the universal band and must not be applied by reflex to ranking, composition, distribution, flow, or single-metric questions.
+
 ### 2. Preserve hierarchy
 
 On operational and hybrid-as-operational pages:
@@ -39,14 +49,17 @@ On operational and hybrid-as-operational pages:
 
 ### 3. Design compact evidence surfaces
 
-Prefer, in roughly this order of utility:
+The archetype chosen in §1b dictates the **lead form**; pick from the vocabulary below to render it. These are the available compact surfaces — not a fixed sequence to assemble every time:
 
-- **Coverage strips / timelines / progress tick marks** — a status meter for the underlying table data (per-week completeness, filing readiness across a period). Render as a single narrow strip (§2 *Coverage strip*).
-- **Micro bar charts / sparklines** — a single compact row aligned with the coverage strip, restrained heights and colors (§2 *Weekly spend / trend charts*).
-- **Focused counters or readiness summaries** — a short inline summary line ("243 invoices / 18 pending review / 3 blocked"), per §5's guidance against stat-card grids.
+- **Coverage strips / timelines / progress tick marks** — lead form for `coverage`: a status meter where the *gaps are the content* (per-week completeness, filing readiness). Render as a single narrow strip (§2 *Coverage strip*).
+- **Micro bar charts / small-multiple sparklines** — lead form for `trend`: a single compact row, restrained heights and colors, one panel per series rather than one multi-series chart (§2 *Weekly spend / trend charts*).
+- **Sorted bar lists** — lead form for `ranking`: top-N, capped and labelled ("top 8 of 142"), optional rank-delta arrows.
+- **A single stacked / 100% bar** — lead form for `composition`: part-to-whole in one bar, never a pie and never a time-stacked series.
+- **One large value + sparkline + threshold marker** — lead form for `single-metric`: one number in context, never a row of stat cards.
+- **Focused counters or readiness summaries** — a short inline summary line ("243 invoices / 18 pending review / 3 blocked"), per §5's guidance against stat-card grids. A supporting element, not a lead.
 - **Short, explicit drill hints** — e.g. *"click a week to filter the table"* — so the band's purpose is visible.
 
-Each element must tie to a clear action or drill path. Decorative charts are not allowed.
+See `analytics-archetypes.md` for the full question/form/drill/avoid of each archetype. Each element must tie to a clear action or drill path. Decorative charts are not allowed.
 
 ### 4. Wire drill-to-evidence behavior
 
@@ -68,11 +81,11 @@ When this skill is active, refuse the following patterns and propose the alterna
 
 1. **Refusal:** A row of 3–6 identical summary tiles/cards above the table (classic KPI row).
    **Why:** §5 — *Dashboard stat-card grids as page openers* is a hard failure and named AI fingerprint.
-   **Counter-offer:** A single shared evidence band with one coverage/readiness strip, one compact trend chart, and one focused readiness counter — each clearly tied to a table action, not framed as a summary card.
+   **Counter-offer:** A single shared evidence band whose lead form is the §1b archetype (a coverage strip, a sorted ranking list, a single composition bar, one contextualized metric, …) — each element clearly tied to a table action, not framed as a summary card.
 
 2. **Refusal:** "Three summary cards above table" as the default pattern, even if visually restrained.
    **Why:** Same §5 hard failure; the cardization is the problem, not the count.
-   **Counter-offer:** Combine the metrics into a single horizontally structured band that reads left-to-right as a short narrative — **coverage → trend → readiness** — without tile boundaries or card chrome.
+   **Counter-offer:** Combine into a single horizontally structured band built around the archetype's lead form, without tile boundaries or card chrome. (When the archetype is genuinely `coverage`, that band reads coverage → trend → readiness — but derive the composition from the archetype, don't impose that sequence on a ranking or composition question.)
 
 3. **Refusal:** Evenly modular analytics tiles with flat hierarchy that could appear in any SaaS admin.
    **Why:** §5 — *Bento or asymmetric "magazine" card layouts* and AI-fingerprint tropes; also §2 *Analytics visual weight* (band, not dashboard header).
