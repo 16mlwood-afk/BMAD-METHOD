@@ -121,6 +121,11 @@ last_modified_date: {date}
 mode: {handoff_mode}                     # fresh-design | refine-screen
 page_mode: {page_mode}                   # operational | analytical | detail
 route: {route}                           # primary route this brief targets
+band_provenance: {band_provenance}       # inherited | recommended-new | recommended-drop | none
+{# analytics_archetype is REQUIRED iff band_provenance ∈ {inherited, recommended-new}; omit the line entirely otherwise. #}
+{if has_analytics_band}
+analytics_archetype: {analytics_archetype}   # trend | distribution | composition | ranking | coverage | flow | single-metric | correlation
+{endif}
 {# In refine-screen mode the following four fields are REQUIRED. In fresh-design mode they MUST be omitted entirely. #}
 {if handoff_mode == "refine-screen"}
 screen_review_ref: {review_artifact_path_relative_to_repo_root}
@@ -306,67 +311,46 @@ This is an analytical page. The design should help the user understand patterns,
 
 ## 4b. Analytics Structure (if present)
 
-{Include this section ONLY if the feature has an analytics band, summary strip, or supporting chart layer above/beside the primary worklist. Skip entirely for pure data-entry, list-only, or detail pages with no analytics surface. Defines what each analytics layer is FOR so the designer does not improvise.}
+{Include this section ONLY if `{has_analytics_band}` is `true` (band_provenance ∈ inherited | recommended-new). Skip entirely for `none` and `recommended-drop`. This section defines what the analytics layer is FOR and what *shape* it takes, so the designer does not improvise — and does not default every band to the same trend-strip-of-small-multiples. The shape is governed by `{analytics_archetype}`, selected in step-01 §5c against `shared/analytics-archetypes.md`.}
 
-### A. Reading passes
+### A. Archetype & job
 
-The analytics surface should be designed as a sequence of three reading passes, each with a stated job:
+- **Archetype:** {analytics_archetype} — {one of: trend | distribution | composition | ranking | coverage | flow | single-metric | correlation}
+- **Band provenance:** {band_provenance} — {if recommended-new: "net-new — confirmed with user on {date}"}
+- **The one question this band answers (1 sentence):** {state it in the user's words — e.g. "which weeks are we missing statements for, and in which region?" Do NOT restate as a generic "show trends."}
+- **Why this archetype (grounding):** {name the data dimension AND the user question that selected it — e.g. "coverage: data has per-week × per-region completeness; the job is finding gaps, not reading a trend."}
 
-**Pass 1 — headline**
+### B. Reading passes (derived from the archetype)
 
-- **Job (1 sentence):** {e.g., "Tell the user total VAT at stake for this period and movement vs prior period in one inline sentence."}
-- **Metrics allowed:** {e.g., "total VAT at stake, delta vs prior period (absolute + percentage)."}
+Do not impose a fixed headline → trend-strip → table sequence. Read `shared/analytics-archetypes.md` for the selected archetype and let its **form** drive the passes. Specify each pass the band actually needs:
 
-**Pass 2 — trend strip**
+- **Lead pass — the form that answers the question fastest:** {the archetype's form, made concrete for this feature. For `coverage`: a completeness strip where the gaps are the content. For `ranking`: a sorted top-N bar list capped and labelled. For `composition`: a single 100%-bar. For `single-metric`: one value + sparkline + threshold. For `trend`: small-multiples with a stated Y-axis rule. State dimensions, ordering, and what is emphasised.}
+- **Secondary pass (only if a second archetype genuinely co-occurs):** {name it and keep it subordinate — e.g. "coverage is dominant; a faint per-region trend is secondary, not co-equal." Omit if the band is single-archetype.}
+- **Evidence pass — path to the rows:** {what the underlying records show that the lead pass cannot — exact values, states, drill affordances. Every band must preserve a path to evidence; a band that can't show its working is a dashboard.}
 
-- **Job (1 sentence):** {e.g., "Show within-source drift over the last 4 completed quarters; detect which source moved."}
-- **Primary question this strip answers:** {e.g., "Which sources changed meaningfully this period?"}
-- **Comparison type (pick one):**
-  - absolute magnitude across sources
-  - within-series pattern / drift only
-- **Small-multiples axis rule:**
-  - shared Y-axis across panels
-  - per-source Y-axis (pattern-only; absolute comparison deferred to table)
-- **Panel ordering rule:** {e.g., "Order panels by current-period total descending," or "fixed domain order: DE, FR, ES, …"}
+### C. Drill behaviour
 
-**Pass 3 — evidence table**
+Every analytics element must have a defined drill target — no ornamental elements (the cross-cutting rule from the archetypes file). For each element the band contains, state exactly where interaction goes:
 
-- **Job (1 sentence):** {e.g., "Let the user compare sources by amount and drill into underlying records."}
-- **What must be visible in the table that is not in the strip:** {e.g., "exact amounts per source × period, filing states, drill affordances."}
+- **Lead element(s):** {e.g. for coverage: "a gap mark opens the missing record's import action at `/route?week=…&region=…`"; for ranking: "a bar opens that entity at `/route?entity=…`"}
+- **Value / label / delta affordances:** {what each click does, in this feature's routes}
+- **Empty / inactive / gap state:** {what a no-data or gap cell does — open the resolving action, not a dead tooltip}
 
-### B. Drill behaviour
-
-Define exactly what each interactive element does. Every analytics element must have a defined drill target — no ornamental elements.
-
-- **Headline summary:** {e.g., "click opens the current period in `/route` with all sources."}
-- **Trend strip tile (sparkline card):**
-  - Tile click: {e.g., `/route?country=DE&period=Q1 2026`}
-  - Value click: {e.g., same as tile click}
-  - Delta click: {e.g., side-by-side view of current vs prior period for that source}
-- **Table cells:**
-  - Value cell (amount): {e.g., drill to `/route` filtered to that source × period}
-  - Label cell (source name): {e.g., `/route` filtered to that source across all periods}
-  - Delta cell: {e.g., comparison view of the two periods being compared}
-  - "No activity" / inactive cell: {e.g., open onboarding doc or show one-line tooltip}
-
-### C. Palette & status rules
+### D. Palette & status rules
 
 Specify whether the operational status palette extends into the analytics surface:
 
-- **Can the analytics strip use status colors?**
+- **Can the band use status colors?**
   - No — status palette is reserved for operational states only.
-  - Yes, but only for: {describe scope}.
-- **How are movement directions encoded?** {e.g., "Arrow glyph + typographic color (red = higher spend, green = lower spend). No colored pills, no tinted backgrounds for deltas."}
-- **Category encoding:** {e.g., "Sources are differentiated by label and panel position, never by hue."}
+  - Yes, but only for: {describe scope — e.g. "gap marks in the coverage strip may use the warning color, since a gap IS an actionable exception state."}
+- **How are movement / category encoded?** {prefer position, glyph, and typographic weight over hue — e.g. "direction by arrow glyph + typographic color; categories by label and position, never by fill hue. No colored pills, no tinted delta backgrounds."}
 
-### D. Prohibited analytics patterns (page-specific)
+### E. Prohibited analytics patterns (page-specific)
 
-Re-state or add any analytics-specific bans for this page beyond the global hard constraints in section 5:
+Re-state the cross-cutting bans from `shared/analytics-archetypes.md` plus any archetype-specific ones for this page, beyond the global hard constraints in section 5:
 
-- {e.g., "No stat-card row above the table."}
-- {e.g., "No single multi-series line chart; each source must have its own small multiple."}
-- {e.g., "No stacked columns; they hide small sources behind large ones."}
-- {e.g., "No KPI cards or dashboard tiles in the analytics band."}
+- No KPI / stat-card row above the table (dashboard fingerprint).
+- {archetype-specific — e.g. for trend: "no single multi-series line chart; each series its own small multiple; no stacked columns." For composition: "no pie/donut; no time-stacked bars." For coverage: "'all good' must not look identical to 'gaps present' at a glance." For ranking: "do not render all N — cap and label the cut."}
 
 ---
 
@@ -587,7 +571,8 @@ Before writing, verify:
   - external = names the system, no repo tokens
 - [ ] **Positive before negative** — visual direction and reference products come BEFORE hard failures and anti-patterns.
 - [ ] **Page mode is correct.** If `{page_mode}` = "analytical", section 4a (Analytics View Addendum) is present. If "operational", section 4a is omitted entirely.
-- [ ] **Section 4b is correct.** Section 4b (Analytics Structure) is present iff the feature has an analytics band / summary strip / supporting chart layer above or beside the primary worklist. When present, all four subsections (A reading passes, B drill behaviour, C palette & status rules, D prohibited patterns) are filled with feature-specific values — no template placeholders remain. Every analytics element named in A or B has a stated drill target in B (no ornamental elements). When the feature has no analytics surface, section 4b is omitted entirely.
+- [ ] **Section 4b is correct.** Section 4b (Analytics Structure) is present iff `{has_analytics_band}` is `true` (band_provenance ∈ inherited | recommended-new). When present, all five subsections (A archetype & job, B reading passes, C drill behaviour, D palette & status rules, E prohibited patterns) are filled with feature-specific values — no template placeholders remain. The archetype is named and matches `{analytics_archetype}` from step-01; subsection A grounds it (data dimension + user question); B's reading passes follow that archetype's form rather than a defaulted trend strip; every analytics element named in B or C has a stated drill target in C (no ornamental elements). When `{has_analytics_band}` is `false`, section 4b is omitted entirely.
+- [ ] **band_provenance is honest.** Frontmatter `band_provenance` is set. If `recommended-new` or `recommended-drop`, the recommendation was surfaced to the user for veto (not silently injected/removed). `analytics_archetype` is present in frontmatter iff `{has_analytics_band}` is `true`.
 - [ ] **File paths are correct** and relative to repo root.
 
 ### 4. Write the Brief
@@ -620,4 +605,5 @@ Show:
 - **Reconstructability test passes** — the brief constrains the designer to solving the user's problem, not reproducing this specific UI
 - Visual identity is complete for the variant (branded/existing/external)
 - Positive anchors precede negative constraints
-- **Analytics structure (section 4b) is filled when an analytics band exists** — reading passes have stated jobs, every interactive element has a defined drill target, palette rules and prohibited patterns are explicit. The designer cannot improvise the analytics layer.
+- **Analytics structure (section 4b) is filled when an analytics band exists** — the archetype is named and grounded (data dimension + user question), reading passes are derived from that archetype's form (not a defaulted trend strip), every interactive element has a defined drill target, palette rules and prohibited patterns are explicit. The designer cannot improvise the analytics layer.
+- **Band presence is a judgment, not an inheritance** — `band_provenance` is set; a `recommended-new` band reflects data + job (not the legacy render) and was veto-surfaced to the user. A bare-table feature whose job is pattern/coverage/ranking work is NOT silently shipped without a band.

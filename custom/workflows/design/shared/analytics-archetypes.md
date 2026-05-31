@@ -1,0 +1,85 @@
+# Analytics Archetypes
+
+Single source of truth for the *shape* of an analytics surface. Referenced by `design-handoff` (step-01 §5c selects the archetype; step-03 §4b specifies the band against it) and by any reviewer checking that an analytics band earns its space.
+
+## Why this file exists
+
+Before this taxonomy, the handoff brief described exactly one analytics shape — a time-series trend strip of small-multiples with a drill table — and dressed it up as the generic structure of "an analytics band." Every feature handed off came back looking the same: a row of column microcharts, coverage strips, a gap callout. That is one archetype out of many, and it is the wrong one for most jobs.
+
+An analytics surface has a *shape* the way a sentence has a verb. The shape is chosen by **the question the user is trying to answer**, not by what data happens to be available and not by what the legacy page already rendered. Time existing in the data does not make the job a trend job.
+
+## The selection rule (read this before picking)
+
+1. **Start from the user's question, not the data.** "Which client slipped this quarter?" is a *ranking + drift* question. "Are we missing any statements?" is a *coverage/exception* question. "Where is the money concentrated?" is a *composition* question. The same dataset answers different questions in different shapes.
+2. **Pick the dominant archetype.** Surfaces often touch two (e.g. coverage + drift). Name the dominant one — it governs the composition — and treat the second as a secondary pass, not a co-equal that doubles the band's footprint.
+3. **Ground or flag.** State the data dimension *and* the user question that selected the archetype. If you cannot name both, set `analytics_archetype: unclear` and halt/flag per the workflow's grounding gate. Do **not** default to `trend` — defaulting to trend is the exact failure this file exists to kill.
+
+## The archetypes
+
+Each entry: the **question** it answers · the **form** that answers it fastest · the **drill** path · what to **avoid**.
+
+### `trend` — movement over time
+- **Question:** How is X moving over time? Which series changed, and when?
+- **Form:** Small-multiple sparklines or a single compact line/column strip. Shared Y-axis for absolute comparison; per-series Y-axis when only the *pattern* matters (state which, and why).
+- **Drill:** A point/panel opens that period × segment in the worklist.
+- **Avoid:** One multi-series line chart that hides individual movement; stacked columns that bury small series.
+
+### `distribution` — spread and outliers
+- **Question:** How are values spread? Where do they cluster, and what's in the tail?
+- **Form:** Histogram, strip/box plot, or a value-banded strip (counts per band).
+- **Drill:** A band/bar opens the records inside that range.
+- **Avoid:** Reporting only a mean/median — the point of a distribution is the shape, not the center.
+
+### `composition` — part-to-whole
+- **Question:** What's the mix? What share does each part hold of the total?
+- **Form:** A single stacked bar, a 100%-bar, or a small ranked breakdown. Treemap only when parts span orders of magnitude (sparingly).
+- **Drill:** A segment opens the records in that part.
+- **Avoid:** Pie/donut charts; stacking a time-series (that's two archetypes fighting — split them).
+
+### `ranking` — order and rank movement
+- **Question:** Who's on top / at the bottom? Who moved up or down?
+- **Form:** A sorted horizontal bar list (top-N) with optional rank-delta arrows; a leaderboard row.
+- **Drill:** A ranked row opens that entity.
+- **Avoid:** Showing all N when the user only acts on the extremes — cap and label the cut ("top 8 of 142").
+
+### `coverage` — completeness and exceptions *(this is what most "ops band" attempts are reaching for)*
+- **Question:** What's missing, late, unreconciled, or off? What needs attention right now?
+- **Form:** A coverage strip with explicit gap marks, an exception counter, or a threshold-breach list. The gaps are the content — not decoration on a trend strip.
+- **Drill:** A gap/exception opens the offending record(s) or the action to resolve them.
+- **Avoid:** Burying the exceptions inside a pretty trend chart; making "all good" look identical to "3 gaps" at a glance.
+
+### `flow` — movement between stages
+- **Question:** Where do items drop or stall between stages of a process?
+- **Form:** A funnel or stage strip showing counts per stage and the drop delta between them.
+- **Drill:** A stage opens the items currently sitting at it.
+- **Avoid:** Implying a funnel when stages aren't actually sequential.
+
+### `single-metric` — one number, in context
+- **Question:** What's the one number, and is it OK?
+- **Form:** A large value + its sparkline + a target/threshold marker + delta vs prior. One headline, not a wall of KPI cards.
+- **Drill:** The number opens the period/records behind it.
+- **Avoid:** A row of stat cards (the classic dashboard-tile fingerprint). One metric, or promote to `ranking`/`composition` if there are really several.
+
+### `correlation` — relationship between two measures *(rare in operational UI)*
+- **Question:** Do X and Y move together?
+- **Form:** A small scatter or paired bars.
+- **Drill:** A point opens the underlying record.
+- **Avoid:** Reaching for this in a worklist context — it's almost always an analytical-page tool, not an operational band.
+
+## Cross-cutting rules (apply to every archetype)
+
+- **Every element drills.** No ornamental charts. If an element has no drill target, it doesn't belong in the band.
+- **The band stays subordinate to the worklist** on operational pages. The archetype governs the band's internal shape; it does not promote the band over the table.
+- **Status palette discipline.** Operational status colors stay reserved for operational states unless the brief explicitly extends them. Encode movement/category with position, glyph, and typographic weight before reaching for hue.
+- **No dashboard fingerprints.** No KPI-card walls, no bento/magazine grids, no animated counters — regardless of archetype.
+
+## `band_provenance` (set alongside the archetype)
+
+The archetype answers *what shape*. `band_provenance` answers *why this band exists at all* — and keeps `design-handoff`'s blank-canvas mandate honest:
+
+- **`inherited`** — the legacy page already had an analytics surface, and the data + job still justify it.
+- **`recommended-new`** — the legacy page had no band, but the data shape + user job warrant one. This is a *net-new scope recommendation* and MUST be surfaced for explicit user veto before it lands in the brief. Handoff recommends; it does not silently invent scope.
+- **`recommended-drop`** — the legacy page has a band, but the job is pure row-processing and the band is ornamental. Recommend removing it (also veto-surfaced).
+- **`none`** — no analytics surface; §4b is omitted from the brief.
+
+A band's presence is a *design judgment about the data and the job*, never an inheritance from the legacy render. See `design-handoff/steps/step-01-gather.md` §5b.

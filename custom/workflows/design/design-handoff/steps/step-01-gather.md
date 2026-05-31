@@ -131,23 +131,40 @@ Set `{page_mode}` based on the feature's **dominant user task**:
 
 If unclear, default to "operational."
 
-### 5b. Detect Analytics Band
+### 5b. Decide Whether an Analytics Band Belongs
 
-Set `{has_analytics_band}` to `true` or `false` based on whether the feature currently has — OR is intended to have — an analytics surface above or beside the primary worklist. This is independent of `{page_mode}`: operational pages can have an analytics band (summary strip above the table), and analytical pages are by definition analytics-led.
+This is a **design judgment about the data and the user's job — not a detection of what the legacy page renders.** `design-handoff` exists to start the designer from a blank canvas; inheriting band presence/absence from the current layout is the one place that mandate matters most. A bare legacy table sitting on time-series, multi-segment data where the user's real job is "spot which one slipped" *should* get a band even though the current page has none.
 
-**Signals for `true`:**
-- The current page has a coverage strip, trend strip, summary metrics, supporting charts, sparklines, small-multiples, or a per-segment readiness gauge above or beside the table.
-- The page server returns aggregate counts or period totals that are rendered separately from the row data.
-- The brief's user goals include "see how X compares across Y", "spot which segment moved", or "know totals at a glance" — patterns that need a visible aggregate layer.
-- `{page_mode}` = "analytical" (always `true`).
+So do NOT decide by inspecting the current render. Decide by answering three questions about the feature itself:
 
-**Signals for `false`:**
-- Pure data-entry forms, single-record detail views, settings pages, or list-only pages with no aggregate layer.
-- The feature surfaces no period-over-period comparison, no per-segment rollup, and no summary metrics distinct from the row data.
+1. **Aggregate dimension** — does the data carry a dimension the rows don't expose (time, segment, category, stage, completeness)?
+2. **Pattern job** — is part of the user's job pattern / comparison / anomaly / coverage work, rather than pure row-by-row processing?
+3. **Changes next action** — would seeing an aggregate layer change what the user does next (which rows they open, which exception they chase)?
 
-If `true`, section 4b (Analytics Structure) MUST be filled in step 3 with feature-specific reading-pass jobs, drill targets, palette rules, and prohibited patterns. If `false`, section 4b is omitted entirely from the brief.
+If the **pattern job** answer is yes, a band belongs — regardless of whether the legacy page had one.
 
-If unclear, default to `false`. A brief with a missing analytics section is recoverable; a brief with a placeholder analytics section the designer must ignore is worse than no section.
+Set `{band_provenance}` to record *why* the band exists (or doesn't), keeping the blank-canvas reasoning auditable:
+
+- **`inherited`** — the legacy page already had an analytics surface AND the data + job still justify it.
+- **`recommended-new`** — the legacy page had no band, but the three questions justify one. This is a **net-new scope recommendation**: surface it explicitly to the user for veto before it lands in the brief (one line — "this feature has no analytics surface today; the data + job warrant one of shape X — include it?"). Handoff recommends; it never silently invents scope.
+- **`recommended-drop`** — the legacy page has a band, but the job is pure row-processing and the band is ornamental. Recommend removing it (also veto-surfaced).
+- **`none`** — no analytics surface justified. Pure data-entry forms, single-record detail views, settings pages, list-only pages with no aggregate dimension. Section 4b is omitted entirely from the brief.
+
+`{has_analytics_band}` = `true` iff `{band_provenance}` ∈ {`inherited`, `recommended-new`}. When `true`, section 4b (Analytics Structure) MUST be filled in step 3. When `false` (`none` or `recommended-drop`), section 4b is omitted.
+
+`{page_mode}` = "analytical" forces `{has_analytics_band}` = `true` (an analytical page is analytics-led by definition); set `{band_provenance}` to `inherited` or `recommended-new` accordingly.
+
+If the three questions genuinely don't resolve, do not default to a band *or* to none silently — ask the user the one band question above. A guessed band is worse than an asked one.
+
+### 5c. Select the Analytics Archetype
+
+If `{has_analytics_band}` is `true`, set `{analytics_archetype}` by reading `shared/analytics-archetypes.md` and applying its selection rule. The archetype is the *shape* of the band, chosen by the **user's question**, not by the data's availability and not by the legacy render.
+
+- Name the dominant archetype: one of `trend`, `distribution`, `composition`, `ranking`, `coverage`, `flow`, `single-metric`, `correlation`.
+- **Ground or flag:** state the data dimension AND the user question that selected it (e.g. "coverage — data has a per-week × per-region completeness dimension; the user's job is 'which weeks are we missing statements for'"). If you cannot name both, set `{analytics_archetype}` to `unclear` and ask the user rather than defaulting to `trend`.
+- Defaulting to `trend` because time exists in the data is the exact failure this selection exists to prevent. Time in the data does not make the job a trend job.
+
+If `{has_analytics_band}` is `false`, `{analytics_archetype}` is empty.
 
 ### 6. Identify User Context
 
@@ -174,7 +191,9 @@ Confirm populated:
 - `{api_surface}` ✓
 - `{implementation_files}` ✓
 - `{page_mode}` ✓ ("operational" or "analytical")
-- `{has_analytics_band}` ✓ (`true` or `false`)
+- `{band_provenance}` ✓ (`inherited` | `recommended-new` | `recommended-drop` | `none`; net-new/drop recommendations veto-surfaced)
+- `{has_analytics_band}` ✓ (`true` iff band_provenance ∈ {inherited, recommended-new})
+- `{analytics_archetype}` ✓ (one of the eight, or `unclear` → asked; empty when no band)
 - `{user_context}` ✓
 - `{brand_identity}` ✓ (may be empty)
 - `{design_system}` ✓ ("branded", "existing", or "external")

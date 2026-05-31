@@ -66,6 +66,8 @@ last_modified_date: 2026-05-27
 mode: fresh-design                       # fresh-design | refine-screen
 page_mode: operational                   # operational | analytical | detail
 route: /my-feature                       # the primary route this brief targets
+band_provenance: none                    # inherited | recommended-new | recommended-drop | none
+analytics_archetype:                     # required iff band_provenance ∈ {inherited, recommended-new}; omit otherwise
 
 # Block B (refine-screen mode only — required when mode == refine-screen)
 screen_review_ref:                       # relative path to the consumed screen-review-*.md artifact
@@ -103,6 +105,8 @@ deferred_violations:                     # V-IDs from the artifact that are NOT 
 | `mode` | `fresh-design`, `refine-screen` | every brief | Which handoff mode produced this brief. Refine-screen briefs are bounded; fresh-design briefs are open creative scope. |
 | `page_mode` | `operational`, `analytical`, `detail` | every brief | The composition contract the design must satisfy. Drives §4a / §4b inclusion in the brief body. |
 | `route` | pathname string | every brief | The primary route this brief targets. Used by downstream consumers to verify the brief and the implementation target line up. |
+| `band_provenance` | `inherited`, `recommended-new`, `recommended-drop`, `none` | every brief | WHY an analytics band exists (or doesn't), decided by the feature's data + user job — **not** by the legacy render. `recommended-new`/`recommended-drop` are net-scope changes that must have been veto-surfaced to the user. Drives §4b inclusion: present iff `inherited` or `recommended-new`. Keeps `design-handoff`'s blank-canvas mandate auditable. |
+| `analytics_archetype` | `trend`, `distribution`, `composition`, `ranking`, `coverage`, `flow`, `single-metric`, `correlation` | iff `band_provenance` ∈ {inherited, recommended-new} | The *shape* of the analytics band, selected from the user's question (see `analytics-archetypes.md`). Omitted entirely when there is no band. Downstream consumers (design-synthesize, design-review-pr) read it to verify the band's form matches its stated archetype. |
 | `screen_review_ref` | relative path to `screen-review-*.md` | refine-screen only | The diagnostic artifact this refinement brief was generated from. Consumers re-resolve violation references against the cited artifact. |
 | `targeted_changes` | list of `{region, rationale}` objects | refine-screen only | Which regions of the screen the refinement will touch. Each rationale must cite the V-ID(s) from the artifact that justify the touch. |
 | `collapse_note` | free text | required iff a Vx+Vy collapse occurred (see design-handoff "Collapse allowance") | One-line statement of which V-IDs were collapsed and which design-requiring violation was promoted in their place. |
@@ -114,7 +118,7 @@ deferred_violations:                     # V-IDs from the artifact that are NOT 
 A brief is **valid** iff all of the following hold. Consumers reject briefs that violate any of them.
 
 1. **Field completeness — Block A.** All eleven Block-A fields are present. Empty strings are allowed only for `supersedes` and `superseded_by`.
-1a. **Field completeness — Block B.** `mode`, `page_mode`, and `route` are present in every brief. When `mode: refine-screen`, the additional fields `screen_review_ref`, `targeted_changes`, `unchanged_regions`, and `deferred_violations` are also present (the latter may be an empty list but the key must exist). `collapse_note` is conditional — required iff a collapse occurred, absent otherwise.
+1a. **Field completeness — Block B.** `mode`, `page_mode`, `route`, and `band_provenance` are present in every brief. `analytics_archetype` is present iff `band_provenance` ∈ {`inherited`, `recommended-new`} and absent otherwise. When `mode: refine-screen`, the additional fields `screen_review_ref`, `targeted_changes`, `unchanged_regions`, and `deferred_violations` are also present (the latter may be an empty list but the key must exist). `collapse_note` is conditional — required iff a collapse occurred, absent otherwise. **Backward compatibility:** a brief authored before the analytics-archetype contract (no `band_provenance` key) is interpreted as `band_provenance: none` — consumers MUST treat the absent field as `none` rather than halting, the same way an absent `policy_version_required` defaults to `0`. New briefs from `design-handoff` always emit it.
 2. **Workflow-generated ⇒ original or material.** `revision_mode: workflow_generated` requires `change_class ∈ {original, material_revision}`. A workflow-generated brief cannot be a `clarification`.
 3. **Manual ⇒ clarification only.** `revision_mode: manual_minor_revision` requires `change_class: clarification`. A hand-edited brief MUST NOT carry `change_class: material_revision` — that combination is the forbidden case (see §3).
 4. **Original ⇒ no predecessor.** `change_class: original` requires `supersedes` to be empty.
@@ -161,6 +165,7 @@ Most edits people *think* are minor are actually minor. The most common material
 - Adding or removing an entry from the brief's data model (§2) — design will hang information off that entity.
 - Changing the design ask questions (§6) — different questions produce different designs.
 - Changing `page_mode` (`operational` ↔ `analytical` ↔ `detail`) — these have different composition contracts.
+- Adding or removing the analytics band (`band_provenance` to/from `none`), or changing `analytics_archetype` — the band's presence and shape are composition decisions; design hangs a whole layer off them.
 - Changing the `routes` list — that's a different feature surface.
 - Adding or removing a hard constraint in §5.
 - Materially rewriting the user context (§3) in a way that would change density / register / urgency choices.
