@@ -7,7 +7,7 @@ description: Volatile state of the Mason-BMAD fork. Read by mason-bmad-workflow-
 
 > Update whenever you ship a change to the fork, absorb upstream, or change the shipped/designed status of a feature.
 
-**Last updated:** 2026-05-30 by Claude session (deploy contract: stale-checkout guard in bmad-deploy.sh §3a-stale + exit 19 — refuses deploys whose deploy-relevant content is behind origin/<default-branch>; tree-diff so squash-merged worktrees still pass; driven by accounting-tools 2026-05-30 stale-worktree deploy that reverted a merged worklist redesign in prod)
+**Last updated:** 2026-05-31 by taylor_work session (design-handoff analytics: archetype axis + band-presence-as-judgment, `commit 29f6c713`)
 
 ---
 
@@ -15,14 +15,15 @@ description: Volatile state of the Mason-BMAD fork. Read by mason-bmad-workflow-
 
 - **Upstream BMAD version tracked:** v6.8.0
 - **Fork base snapshot:** v6.7.x branch point (commit predating origin/main HEAD by 25)
-- **Commits behind origin/main:** 25
-- **Commits ahead of origin/main:** 120
+- **Commits behind origin/main:** 2
+- **Commits ahead of origin/main:** 143
 - **Last upstream sync attempted:** never since current `custom` branch was established — drift has been growing
 - **Last upstream commit:** 3bcd6c3c `chore(release): v6.8.0 [skip ci]` (2026-05-25)
-- **Last fork commit:** 0fb21cb8 `feat(modify-design-policy): symmetric six-category coverage guard in step-02` (2026-05-29)
+- **Last fork commit:** 29f6c713 `feat(design-handoff): analytics archetype axis + band-presence as judgment not inheritance` (2026-05-31)
 
 ## Shipped Features
 
+- [x] **design-handoff analytics archetype axis + band-as-judgment** — `custom/workflows/design/shared/analytics-archetypes.md` (new: 8 archetypes — trend/distribution/composition/ranking/coverage/flow/single-metric/correlation — each with question/form/drill/avoid + a "pick from the user's question, ground-or-flag, never default to trend" selection rule) + design-handoff step-01 §5b/§5c, step-03 §4b, workflow.md, brief-revision-policy.md Block B (commit `29f6c713`, 2026-05-31). **Defect A (archetype monoculture):** §4b prescribed ONE shape (headline → trend-strip-of-small-multiples → drill table) as if it were generic, with one domain's VAT/quarters examples baked into placeholders, so every handoff came back identical. Classed `contract-dimension-gap` — §4b was missing an archetype axis. §4b is now archetype-conditional (A archetype&job / B passes-from-form / C drill / D palette / E prohibited) and references the taxonomy. **Defect B (legacy-mirroring):** §5b decided band presence by inspecting the legacy render — contradicting design-handoff's blank-canvas mandate — so a bare-table feature with a pattern/coverage/ranking job got no band. §5b reframed detection→judgment (3 grounded questions on data + user job); new `{band_provenance}` = inherited|recommended-new|recommended-drop|none with recommended-new/drop veto-surfaced (intent-autonomy guard). Block B contract gains `band_provenance` (every brief) + `analytics_archetype` (iff band present); invariant 1a has a backward-compat clause (absent band_provenance ⇒ none) so existing active briefs survive intake Check 1. Driven by taylor_work 2026-05-31: a "Weekly spend & coverage" band shipped as the same trend-strip archetype as every other analytics handoff. **Broad re-sync to all 13 projects pending.**
 - [x] **Brief provenance contract** — 11-field frontmatter, 6 intake checks (commit `401e2d57`)
 - [x] **design-handoff predecessor + supersession logic** — part of brief-revision-policy
 - [x] **design-artifact-loop, design-synthesize, design-tuning intake checks** — wired to provenance contract
