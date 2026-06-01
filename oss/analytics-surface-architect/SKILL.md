@@ -3,7 +3,7 @@ name: analytics-surface-architect
 description: Decide HOW a dataset should be presented as an analytics surface — which shape (trend, distribution, composition, ranking, coverage, flow, single-metric, correlation) fits the user's question, why, and what was rejected. Use when choosing or auditing the shape of an analytics band, microchart row, dashboard tile, or evidence layer; when you need a grounded archetype + rationale for a design brief; or when someone asks "what shape should this data be?". Returns a structured decision (archetype + grounding + candidates-weighed + drill map). Do NOT use for visual treatment (color, type, spacing, tokens — that's your design system), for whether a screen needs analytics at all (that's an upstream product decision), or for backend/schema/data-pipeline work.
 metadata:
   short-description: Pick the analytics shape for a dataset and explain why
-  license: see LICENSE (choose before publishing)
+  license: MIT
 ---
 
 # Analytics Surface Architect

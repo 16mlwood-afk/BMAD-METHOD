@@ -59,7 +59,7 @@ Selecting the right analytics shape is a *reasoning* task with a strong wrong-de
 
 ## License
 
-**TBD — choose before publishing.** MIT or Apache-2.0 are both reasonable for a single-file skill. Add a `LICENSE` file at the package root and update the `license:` field in `SKILL.md` frontmatter to match.
+[MIT](./LICENSE) © 2026 Mason Wood. Use it, fork it, ship it — just keep the copyright notice.
 
 ## Provenance
 
