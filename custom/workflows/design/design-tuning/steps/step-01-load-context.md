@@ -26,6 +26,15 @@ Find `{brief_path}`:
   ls -t {implementation_artifacts}/design-brief-*.md | head -1
   ```
 
+**Worktree-resident briefs — CRITICAL (do NOT conclude "no brief" from the main-tree glob alone).** A brief authored via `design-handoff` is frequently written in a feature worktree and iterated on *before* it merges to main — so the glob above, which only sees the main checkout, returns nothing even though a current brief exists. The artifact under tuning is often built from exactly that unmerged brief. If (and only if) the main-tree glob finds nothing, sweep sibling worktrees before giving up:
+```bash
+ls -t {project-root}/.claude/worktrees/*/_bmad-output/implementation-artifacts/design-brief-*.md 2>/dev/null
+# match by frontmatter target_slug / route / feature to the surface under review; prefer brief_status: active
+```
+If a worktree-resident brief matches the surface under review, **use it** — it still passes through §1a provenance validation unchanged — and record `{brief_provenance_caveat} = "brief is worktree-resident (<branch>), not yet merged to main"` so step-03 surfaces it. A worktree-resident brief is the same source of truth as a merged one; the only difference is the caveat.
+
+Only after BOTH the main tree and the worktrees come up empty may you proceed brief-less — and a brief-less run is **degraded**, not normal. With no contract you have no list of legitimate fields, so before judging the artifact you MUST: (a) validate every field the artifact displays against the schema / `{project-root}` MCP, and (b) resolve documented **joins** (e.g. an order's import-account or route-warehouse name reached via an FK), not just the base table, before flagging any field as "invented." Calling a documented join "invented" is the brief-less failure this note exists to prevent.
+
 Read the full brief. Extract and store:
 
 - `{feature_name}` — from the brief's frontmatter `feature:` field
@@ -50,6 +59,12 @@ Check both possible locations for a project-level design system declaration, in 
 ls {project-root}/docs/design-policy.md 2>/dev/null
 ls {implementation_artifacts}/../planning-artifacts/brand-identity.md 2>/dev/null
 ```
+
+**Worktree-resident policy — same trap as the brief (§1 above).** A `docs/design-policy.md` created via `create-design-policy`/`onboard-design-system` is often authored in the same feature worktree as the brief and not yet merged. If both main-tree paths come up empty, sweep worktrees before declaring "no policy":
+```bash
+ls {project-root}/.claude/worktrees/*/docs/design-policy.md 2>/dev/null
+```
+If found, load it as `{brand_identity}`, set `{brand_identity_path}` to the worktree path, and append the same `worktree-resident, not yet on main` caveat. Concluding "no project policy" while one exists in a worktree is the loader-drift bug §5 of this step explicitly forbids — it silently drops every hard-failure check to brief-only/generic mode.
 
 **If either is found:**
 - Read the entire file and store as `{brand_identity}` (variable name retained for backward compatibility with downstream templates)
