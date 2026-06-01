@@ -1,10 +1,12 @@
 ---
 name: maintenance-triage
-description: 'Front door for production-driven work in brownfield projects. Take user reports, telemetry observations, error logs, dependency alerts — output small tech-specs ready for quick-dev. Use when the user says "what should I work on this week", "triage the backlog", or drops a list of production issues.'
+description: 'Front door for production-driven work in brownfield projects. Take user reports, telemetry observations, error logs, dependency alerts — classify each by shape and route it: code-shaped to quick-spec/quick-dev, design-shaped to a Claude Design paste prompt or design-review/design-elevation. Use when the user says "what should I work on this week", "triage the backlog", or drops a list of production issues.'
 main_config: '{project-root}/_bmad/bmm/config.yaml'
 
 quick_spec_workflow: '{project-root}/_bmad/bmm/workflows/implement/quick-spec/workflow.md'
 quick_dev_workflow: '{project-root}/_bmad/bmm/workflows/implement/quick-dev/workflow.md'
+design_review_workflow: '{project-root}/_bmad/bmm/workflows/design/design-review/workflow.md'
+design_elevation_workflow: '{project-root}/_bmad/bmm/workflows/design/design-elevation/workflow.md'
 ---
 
 # Maintenance Triage Workflow
@@ -32,7 +34,7 @@ Three-step linear flow:
 
 1. **step-01-gather-signals** — collect inputs. User-provided (default) or, where wired up, query project-specific signal sources (admin APIs, error logs).
 2. **step-02-cluster-and-prioritize** — group related signals, score by severity × frequency × effort.
-3. **step-03-emit-tech-specs** — for the top N items, produce small tech-specs. Each becomes input for quick-spec (if it needs more design) or direct quick-dev (if it's already clear).
+3. **step-03-emit-tech-specs** — for the top N items, decide each cluster's shape (code-shaped vs design-shaped) and produce a small triage-spec. Code-shaped → quick-spec (needs investigation) or quick-dev (already clear); design-shaped → a Claude Design paste prompt (surface + change clear) or design-review/design-elevation (needs design investigation). A design-shaped cluster must NOT be forced into a code spec.
 
 State variables: `{signals}`, `{clusters}`, `{prioritized}`, `{emitted_spec_paths}`.
 
