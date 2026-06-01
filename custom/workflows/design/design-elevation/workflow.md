@@ -27,7 +27,7 @@ This uses **step-file architecture** for focused execution:
 
 - Steps 01–03 are autonomous — they load the settled state, generate candidates, and rank/recommend without interaction.
 - **Step 03 ends in a deliberate halt** — the workflow presents the ranked candidates plus a recommended subset, then waits for the user to select what to build. This is the only halt in the design family, and it is intentional: expanding scope is an *intent* decision (see Autonomy Model below), so it must be user-driven.
-- Step 04 runs only after selection — it classifies each chosen enhancement and routes it back into the build loop.
+- Step 04 runs only after selection — it classifies each chosen enhancement on two axes (intent-change vs in-surface refinement, and design-shaped vs code-shaped) and routes it to where the work actually happens: a design-handoff re-brief, a focused Claude Design paste prompt, or quick-spec/code.
 - State persists via variables (see below) and a state file on disk, so re-invoking on the same surface remembers what was already proposed, selected, and rejected.
 
 ### State Variables
@@ -48,7 +48,7 @@ This uses **step-file architecture** for focused execution:
 - `{ranked_candidates}` — `{candidates}` scored against the leverage rubric and ordered.
 - `{recommended_subset}` — The focused subset (typically 1–3) the workflow recommends building, with a one-line rationale for the pairing.
 - `{selected_enhancements}` — The subset the user chose to build (set after the step-03 halt).
-- `{routing_plan}` — Per-selected-item classification (intent-change vs in-surface refinement) and the downstream workflow each is routed to.
+- `{routing_plan}` — Per-selected-item classification on both axes (intent-change vs in-surface refinement; design-shaped vs code-shaped) and the route each is sent to (design-handoff re-brief / focused Claude Design paste prompt / quick-spec or direct code).
 
 ### Step Processing Rules
 
