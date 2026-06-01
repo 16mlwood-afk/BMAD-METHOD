@@ -7,6 +7,7 @@ quick_spec_workflow: '{project-root}/_bmad/bmm/workflows/implement/quick-spec/wo
 quick_dev_workflow: '{project-root}/_bmad/bmm/workflows/implement/quick-dev/workflow.md'
 design_review_workflow: '{project-root}/_bmad/bmm/workflows/design/design-review/workflow.md'
 design_elevation_workflow: '{project-root}/_bmad/bmm/workflows/design/design-elevation/workflow.md'
+claude_design_prompt: '{project-root}/_bmad/bmm/workflows/design/shared/claude-design-prompt.md'
 ---
 
 # Maintenance Triage Workflow

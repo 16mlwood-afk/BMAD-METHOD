@@ -9,6 +9,7 @@ design_handoff_workflow: '{project-root}/_bmad/bmm/workflows/design/design-hando
 design_review_workflow: '{project-root}/_bmad/bmm/workflows/design/design-review/workflow.md'
 quick_spec_workflow: '{project-root}/_bmad/bmm/workflows/implement/quick-spec/workflow.md'
 brief_revision_policy: '{project-root}/_bmad/bmm/workflows/design/shared/brief-revision-policy.md'
+claude_design_prompt: '{project-root}/_bmad/bmm/workflows/design/shared/claude-design-prompt.md'
 ---
 
 # Design Elevation Workflow

@@ -52,23 +52,11 @@ For each intent-change, the brief is the artifact of record and it must be **sup
 
 ### 3a. Route design-shaped in-surface refinements to a focused Claude Design prompt
 
-The surface intent is unchanged, so this MUST NOT supersede the brief (that is the §2 intent-change path) and MUST NOT go to quick-spec (that produces a *code* spec for a *visual* change the design tool should author). Instead, emit a **focused, brief-descended design prompt** — a paste-ready enhancement prompt for Claude Design: the same connect-the-repo prompt design-handoff emits, scoped down to this one enhancement.
+The surface intent is unchanged, so this MUST NOT supersede the brief (that is the §2 intent-change path) and MUST NOT go to quick-spec (that produces a *code* spec for a *visual* change the design tool should author). Instead, emit a **focused, brief-descended Claude Design paste prompt**.
 
-The prompt must contain, in this order:
+**Build and save the prompt per `{project-root}/_bmad/bmm/workflows/design/shared/claude-design-prompt.md`** — the single source of truth for its structure (connect line, files to read, keep-as-is guard, the change + `{core_job}` facet, sibling pattern to borrow w/ grounding caveat, policy constraints), the save path (`{implementation_artifacts}/claude-design-prompt-{surface-slug}-{enhancement-slug}.md`), and the always-emit-never-invoke rule. Ground the "files to read" on `{built_surface_refs}` and reference `{brief_path}` + `{brief_provenance}` inside the artifact so it is traceable to the (unchanged) brief it descends from — a brief *descendant*, not a revision (no Block A, no supersede, no 6 intake checks).
 
-1. The repo + branch connect line (read it from the brief's "For Claude Design" block so the URL is exact).
-2. The specific files to read first — the `{built_surface_refs}` component(s)/route the enhancement touches, the relevant derivation/helper, `{brief_path}`, and `docs/design-policy.md`.
-3. A **"keep everything else exactly as-is"** guard naming what NOT to redesign.
-4. The precise interaction being deepened and the `{core_job}` facet it serves (grounded in the real surface, not an invented affordance).
-5. Any **sibling pattern to borrow** (the coherence lens from step-02) — name the sibling surface and the part to mirror — WITH a grounding caveat to copy the *layout/grammar*, not mismatched *data semantics*.
-6. The hard constraints from `{policy_constraints}` that apply (pill shape/4-tone, drawer pattern, accent/mono rules, named anti-defaults) so Claude Design stays conformant.
-
-Then:
-
-- **Save it** to `{implementation_artifacts}/claude-design-prompt-{surface-slug}-{enhancement-slug}.md` so it is copy-pasteable, and surface the prompt inline in the summary.
-- Reference `{brief_path}` + `{brief_provenance}` inside the artifact so it is traceable to the (unchanged) brief it descends from. This is a brief *descendant*, not a brief revision — no Block A, no supersede, no 6 intake checks.
 - State in `{routing_plan}`: "→ Claude Design prompt (in-surface refinement, design-shaped): [what region gets deepened] · artifact: [path]."
-- **Always emit + save the prompt** regardless of `autonomous_mode` — Claude Design is a human-in-the-loop external tool; the workflow's deliverable is the prompt, not a running of it. Do not attempt to invoke Claude Design.
 
 ### 3b. Route code-shaped in-surface refinements through quick-spec / code
 
