@@ -148,7 +148,9 @@ ls {planning_artifacts}/brand-identity.md 2>/dev/null
 
 Store the resolved path as `{policy_path}` and the contents as `{policy_content}`. Step 2 references both.
 
-**If the canonical path should exist for this project but the check returned nothing, STOP and report the path you tried.** Silent fallback to "no policy" mode is a loader-drift bug — surface it instead of swallowing it.
+**If neither path resolved, sweep sibling worktrees before concluding "no policy"** — a policy authored via `create-design-policy`/`onboard-design-system` is commonly in a feature worktree, not yet merged: `ls {project-root}/.claude/worktrees/*/docs/design-policy.md 2>/dev/null`. If found, set `{policy_path}` to the worktree path and note it is worktree-resident. This sweep is policy-only: the artifact-first brief/screen-review contract is unchanged — those still arrive by explicit handoff path and must NOT fall back to a discovered file (see §"Input" and step-01).
+
+**If the canonical path should exist for this project but the check (including the worktree sweep) returned nothing, STOP and report the paths you tried.** Silent fallback to "no policy" mode is a loader-drift bug — surface it instead of swallowing it.
 
 ### Input
 

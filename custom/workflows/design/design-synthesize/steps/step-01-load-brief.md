@@ -54,7 +54,7 @@ ls -t {implementation_artifacts}/${slug}*.md 2>/dev/null | head -3
 ```
 
 - If 1 match → set `{brief_path}` and proceed.
-- If 0 matches → halt with: `no brief matched slug "<slug>" under {implementation_artifacts}`.
+- If 0 matches → before halting, sweep sibling worktrees: a brief authored via `design-handoff` is commonly written in a feature worktree and iterated on before merge, so the main-tree glob misses it. `ls -t {project-root}/.claude/worktrees/*/_bmad-output/implementation-artifacts/${slug}*.md 2>/dev/null | head -3`. If exactly one matches, set `{brief_path}` to it and record `{brief_provenance_caveat} = "brief is worktree-resident, not yet merged to main"`. Only if the worktrees are also empty → halt with: `no brief matched slug "<slug>" under {implementation_artifacts} or any worktree`.
 - If 2+ matches → halt with the list and: `slug "<slug>" is ambiguous; pass the full filename`. Do NOT silently pick the newest — slug-as-prefix collisions are common (e.g., `data-quality` matches `data-quality-2026-05-26.md` and `data-quality-2026-05-27.md`).
 
 **Shape C — handoff block:**

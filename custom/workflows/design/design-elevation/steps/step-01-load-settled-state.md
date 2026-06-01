@@ -29,6 +29,8 @@ From the user's input, locate the actual implementation:
 
 Read `{project-root}/docs/design-policy.md` → `{policy_constraints}`. Capture especially its **named anti-defaults** — the patterns the policy explicitly forbids. These are hard rejects in step-02 regardless of how much leverage a candidate appears to have.
 
+**If `docs/design-policy.md` is absent on main, sweep sibling worktrees before proceeding without it** — a policy authored via `create-design-policy`/`onboard-design-system` is commonly worktree-resident and unmerged: `ls {project-root}/.claude/worktrees/*/docs/design-policy.md 2>/dev/null`. If found, read it and note it is worktree-resident (not yet on main). Elevating without the policy's named anti-defaults loaded means the step-02 reject gate runs blind.
+
 ### 3. Find and intake the artifacts of record
 
 Locate the surface's brief and screen-review (explicit if the user named them, else most-recent matching the surface):
@@ -36,7 +38,12 @@ Locate the surface's brief and screen-review (explicit if the user named them, e
 ```bash
 ls -t {implementation_artifacts}/design-brief-*.md 2>/dev/null | head -5
 ls -t {implementation_artifacts}/**/screen-review-*.md 2>/dev/null | head -5
+# if the main tree is empty, the brief/screen-review may be worktree-resident (authored via design-handoff, unmerged):
+ls -t {project-root}/.claude/worktrees/*/_bmad-output/implementation-artifacts/design-brief-*.md 2>/dev/null | head -5
+ls -t {project-root}/.claude/worktrees/*/_bmad-output/implementation-artifacts/**/screen-review-*.md 2>/dev/null | head -5
 ```
+
+When a worktree-resident brief/screen-review is used, record a `worktree-resident, not yet merged to main` caveat alongside `{brief_path}`. The 6 intake checks below still apply unchanged.
 
 If a brief is found → set `{brief_path}` and run the **6 intake checks** from `brief-revision-policy.md` §5 before using any field. Specifically:
 

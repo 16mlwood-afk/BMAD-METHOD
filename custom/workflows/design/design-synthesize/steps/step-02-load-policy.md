@@ -34,7 +34,7 @@ ls {planning_artifacts}/brand-identity.md 2>/dev/null
 
 - If `docs/design-policy.md` exists → set `{policy_path}` to it.
 - Else if `{planning_artifacts}/brand-identity.md` exists → set `{policy_path}` to it.
-- Else → halt with: `policy not found. Tried: docs/design-policy.md, {planning_artifacts}/brand-identity.md. Run create-design-policy or modify-design-policy to author one, or place a policy at one of these paths.`
+- Else → sweep sibling worktrees before halting (a policy authored via `create-design-policy`/`onboard-design-system` is commonly in a feature worktree, not yet merged): `ls {project-root}/.claude/worktrees/*/docs/design-policy.md 2>/dev/null`. If found, set `{policy_path}` to the worktree path and note it is worktree-resident (not yet on main). Only if that is also empty → halt with: `policy not found. Tried: docs/design-policy.md, {planning_artifacts}/brand-identity.md, .claude/worktrees/*/docs/design-policy.md. Run create-design-policy or modify-design-policy to author one, or place a policy at one of these paths.`
 
 ### 2. Load the policy contents
 
