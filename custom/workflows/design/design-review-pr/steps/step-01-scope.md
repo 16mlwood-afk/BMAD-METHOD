@@ -119,6 +119,18 @@ For each matching active brief, read its Block B frontmatter:
 - If `band_provenance` is `none`/`recommended-drop`/absent (a pre-contract brief defaults to `none` — see `brief-revision-policy.md` §2 invariant 1a), skip — there is no declared band to enforce.
 - If an affected route has no active brief at all, do not invent a contract. Note it in `{findings.coverage_notes}` ("route X has no brief — archetype conformance not checked") so the report does not falsely imply the band was verified.
 
+**Resolve the companion rationale (reasoning evidence).** For each route now in `{brief_archetype_map}`, also look for the analytics presentation rationale that records *why* the archetype was chosen (produced by `design-handoff` step-03b; spec `shared/analytics-rationale.md`):
+
+```bash
+# Active rationale whose accompanies_brief points at this brief
+grep -l "rationale_status: active" {implementation_artifacts}/design-rationale-*.md 2>/dev/null
+```
+
+Match the one whose frontmatter `accompanies_brief == {brief_filename}`. Record into the map entry a `rationale` sub-field:
+
+- **Found:** capture `{rationale_filename}`, its `analytics_archetype`, and whether its body carries the grounding pair (a data dimension AND a user question) and — when the data has a time dimension — the time-in-data check. This is what `C-ARCHETYPE-01` uses to verify the *reasoning* held, not just the rendered form.
+- **Not found:** set `rationale: none`. This is NOT a failure — the brief may predate the rationale feature, or the band may be `inherited` without a fresh run. Note it in `{findings.coverage_notes}` ("route X has a declared band but no rationale artifact — archetype *reasoning* not verifiable, only rendered form"). Never imply the reasoning was checked when no rationale exists. Same honesty posture as the no-brief case above.
+
 If `{brief_archetype_map}` is empty, `C-ARCHETYPE-01` is a no-op this run; note it in coverage.
 
 ---

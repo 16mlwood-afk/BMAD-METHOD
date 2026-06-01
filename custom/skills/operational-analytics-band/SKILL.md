@@ -18,7 +18,7 @@ This skill applies `docs/design-policy.md` to **one specific surface**: the comp
    - §8 Precedence — tailwind tokens → this policy → shared BMAD design standards.
 2. **This skill interprets and applies those rules to the analytics band only.** Cite sections by number when explaining a decision or refusal.
 3. **The current product UI is not a source of truth.** Treat any live page as possible drift from policy. Where the live UI conflicts with `docs/design-policy.md`, the policy wins (§8 *Precedence*) — recommend changing the UI, not relaxing the rule.
-4. **Band *shape* comes from the archetype taxonomy.** `_bmad/bmm/workflows/design/shared/analytics-archetypes.md` (synced from BMAD shared standards — §8's bottom layer) is the vocabulary for what *form* a band takes. There are eight archetypes — `trend`, `distribution`, `composition`, `ranking`, `coverage`, `flow`, `single-metric`, `correlation` — chosen by the user's question. `docs/design-policy.md` still governs visual treatment; the taxonomy governs shape. The two compose: pick the shape from the taxonomy, render it per the policy.
+4. **Band *shape* is selected by the `analytics-surface-architect` skill; the taxonomy is its vocabulary.** `_bmad/bmm/workflows/design/shared/analytics-archetypes.md` (synced from BMAD shared standards — §8's bottom layer) defines the eight forms — `trend`, `distribution`, `composition`, `ranking`, `coverage`, `flow`, `single-metric`, `correlation`. The `analytics-surface-architect` skill is the **selector** that picks the dominant one from the user's question (see §1b — defer to it, don't re-derive). `docs/design-policy.md` still governs visual treatment; the architect governs shape. The three compose: the architect picks the shape (vocabulary from the taxonomy), this skill places it subordinate to the worklist, the policy styles it.
 
 ## What the skill does
 
@@ -30,14 +30,13 @@ Before designing anything:
 - Ask: *what concrete user decision or action does an analytics band enable here?* If none, **recommend removing the band rather than filling space**. Empty real estate is preferable to decorative analytics.
 - If the only honest answer is "context" or "overview," that is a signal the page is operational and the band should be minimal or absent.
 
-### 1b. Choose the archetype — do NOT default to coverage→trend→readiness
+### 1b. Choose the archetype — defer to `analytics-surface-architect`
 
-Once a band is justified, pick its **shape** from `analytics-archetypes.md` by the user's question — *before* designing anything. This is the step that keeps every band from collapsing into the same coverage-strip + microchart + counter row.
+Once a band is justified, pick its **shape** *before* designing anything — this is the step that keeps every band from collapsing into the same coverage-strip + microchart + counter row. **Do not re-derive the selection here; defer to the `analytics-surface-architect` skill** — the single selection brain (the same one `design-handoff` invokes), so this skill, the handoff workflow, and PR-time enforcement all reason identically.
 
-- Name the question in the user's words ("which weeks are we missing statements for?" → `coverage`; "who are the top spenders?" → `ranking`; "where is the money concentrated?" → `composition`; "is this one number OK?" → `single-metric`).
-- Select the dominant archetype from the eight. A second archetype may appear as a subordinate pass, but it does not double the band's footprint.
-- **Time existing in the data does not make it a `trend` band.** Defaulting to a trend strip because the data has dates is the single most common failure — resist it.
-- `coverage → trend → readiness` is **one** composition (a coverage-dominant band with a secondary trend and a counter), legitimate when the question is genuinely about completeness over a period. It is not the universal band and must not be applied by reflex to ranking, composition, distribution, flow, or single-metric questions.
+- **Invoke `analytics-surface-architect` (mode: `select`)** with the data shape and the user's question. It returns the dominant archetype (one of the eight), grounded by the user's question, plus any subordinate archetype and the per-element drill map. It enforces ground-or-flag and refuses to default to `trend` because dates exist — so you don't restate that rule, you consume its result. If a `design-rationale-*` artifact already exists for this surface (handoff produced one), read it instead of re-selecting.
+- **This skill owns placement, not selection.** Take the architect's archetype and render it as a band that stays subordinate to the worklist (§2 below). A second archetype may appear as a subordinate pass but must not double the band's footprint.
+- `coverage → trend → readiness` is **one** composition (a coverage-dominant band with a secondary trend and a counter), legitimate only when the architect actually selects `coverage` for a completeness-over-a-period question. It is not the universal band — never apply it by reflex to a `ranking`, `composition`, `distribution`, `flow`, or `single-metric` selection.
 
 ### 2. Preserve hierarchy
 

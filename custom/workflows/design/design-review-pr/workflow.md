@@ -40,14 +40,14 @@ Steps execute in order. Each step's output feeds the next.
 - `{checklist}` — Parsed contents of `docs/review-checklist.md`
 - `{findings}` — Accumulating list of rule violations, each with: `rule_id`, `severity`, `file`, `line`, `evidence`, `suggested_fix`
 - `{chrome_available}` — Boolean. True if `mcp__claude-in-chrome__*` tools are loadable AND a base URL is reachable.
-- `{brief_archetype_map}` — Map of `{route → {archetype, band_provenance, brief_filename}}` for affected routes whose active brief declares an analytics band. Built in step-01 §7. Empty when no affected route has a brief-declared band. Drives the `C-ARCHETYPE-01` intrinsic check.
+- `{brief_archetype_map}` — Map of `{route → {archetype, band_provenance, brief_filename, rationale}}` for affected routes whose active brief declares an analytics band. Built in step-01 §7. The `rationale` sub-field (the companion `design-rationale-*` artifact, or `none`) carries the *reasoning* evidence — declared archetype + whether the choice was grounded — and lets `C-ARCHETYPE-01` check the decision was sound, not just the rendered form. Empty when no affected route has a brief-declared band. Drives the `C-ARCHETYPE-01` intrinsic check.
 
 ### Workflow-intrinsic checks
 
 Two checks are NOT in `docs/review-checklist.md` — the workflow evaluates them itself:
 
 - **`C-COMPOSITE-01`** — fires when ≥3 distinct P1 fingerprints hit one route (evaluated in step-04 §1).
-- **`C-ARCHETYPE-01`** — fires when an analytics band's rendered *form* contradicts the `analytics_archetype` its active brief declared (e.g. brief says `coverage`, the page ships a multi-series trend chart with no gap affordance; brief says `ranking`, the list is unsorted; any band element has no drill target). This is the PR-time counterpart to `design-handoff` step-01 §5c + `shared/analytics-archetypes.md`: the brief picks a shape, this check verifies the implementation kept it. Brief-aware — it reads the declared contract, not just project policy. Evaluated in step-04 §1b.
+- **`C-ARCHETYPE-01`** — fires when an analytics band's rendered *form* contradicts the `analytics_archetype` its active brief declared (e.g. brief says `coverage`, the page ships a multi-series trend chart with no gap affordance; brief says `ranking`, the list is unsorted; any band element has no drill target). This is the PR-time counterpart to `design-handoff` step-01 §5c + `shared/analytics-archetypes.md`: the brief picks a shape (via the `analytics-surface-architect` skill), this check verifies the implementation kept it. Brief-aware — it reads the declared contract, not just project policy. **Rationale-aware too:** when the companion `design-rationale-*` artifact exists, it additionally verifies the *decision* was sound — the rationale's archetype matches the brief (P1 on divergence) and the choice was grounded (a `[note]` when reasoning is thin) — so a band that renders as declared but was chosen on an ungrounded guess is still surfaced. Reasoning verification is disclosed, never assumed: a declared band with no rationale is reported as "rendered-form checked, reasoning not verifiable." Evaluated in step-04 §1b.
 
 ---
 

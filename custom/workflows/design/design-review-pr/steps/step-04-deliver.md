@@ -51,6 +51,18 @@ For each route in `{brief_archetype_map}`:
   - What to check: does the band actually take the `{archetype}` form (see shared/analytics-archetypes.md)? A `coverage` brief must show gaps as content, not a trend strip; `ranking` must be sorted; every band element must drill. Verify in a browser — dom-render did not run.
   ```
 
+**Reasoning check (rationale-aware).** The above verifies the rendered form matches the *declared* archetype. When the route's map entry has a `rationale` (resolved in step-01 §7), also verify the declaration itself was *sound* — a band can render exactly as declared while the declaration was an ungrounded guess. This consumes the `design-rationale-*` artifact; do it for each route whose `rationale != none`:
+
+- **Cross-artifact consistency (P1 on mismatch).** The rationale's `analytics_archetype` MUST equal the brief's declared `analytics_archetype`, and its `accompanies_brief` MUST name this active brief. A mismatch means the artifacts diverged — typically the brief was hand-edited to a different archetype without re-running `design-handoff` (a forbidden material-change-as-hand-edit), or the rationale is stale:
+
+  > Archetype record divergence on `{route}` — brief `{brief_filename}` declares `{archetype}` but its rationale `{rationale_filename}` records `{rationale_archetype}`. The decision record and the brief disagree; re-run `design-handoff` so the brief, rationale, and rendered band describe one archetype (changing the archetype is a material revision).
+
+- **Reasoning completeness (note, not P1).** Confirm the rationale actually grounds the choice — the data-dimension + user-question pair is present, and the time-in-data check is present when the data carries time. If grounding is missing or the time-check is absent on time-bearing data, surface a `[note]` (not a hard finding — the band may still be correct; this flags an unaudited decision, not a defect):
+
+  > {note} Archetype reasoning thin on `{route}` — rationale `{rationale_filename}` declares `{archetype}` without a grounded data-dimension + user-question pair{, and no time≠trend check despite time in the data}. Render matches, but the *choice* wasn't justified; worth a human look.
+
+- **No rationale** (`rationale: none`): do nothing here — step-01 §7 already disclosed in coverage that reasoning was not verifiable for this route. Never emit a reasoning finding when there is no rationale to read.
+
 ### 2. Build manual-prompt section
 
 For each rule in `{checklist.human_judgment}` whose `affected_routes` intersects `{affected_routes}`, emit a manual prompt:
@@ -91,7 +103,7 @@ Always emit a coverage section:
 - source-grep: ran against {N} files, executed {M} rules, surfaced {K} findings.
 - dom-render: {ran against {R} routes / skipped — Chrome not available}.
 - human-judgment: {Q} rules surfaced as manual prompts.
-- archetype conformance (C-ARCHETYPE-01): {checked {P} route(s) against declared briefs / deferred to manual — dom-render skipped / no brief-declared bands in scope}. {List any affected routes with no brief, which were NOT checked.}
+- archetype conformance (C-ARCHETYPE-01): {checked {P} route(s) against declared briefs / deferred to manual — dom-render skipped / no brief-declared bands in scope}. {List any affected routes with no brief, which were NOT checked.} Reasoning verified against rationale for {S} of {P} route(s); {list routes with a declared band but no rationale artifact — reasoning NOT verifiable, only rendered form}.
 - Rules with no diff context: {list of rule IDs that had nothing to check this PR}.
 ```
 
