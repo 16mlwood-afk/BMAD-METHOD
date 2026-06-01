@@ -83,6 +83,7 @@ This uses **step-file architecture** for focused execution:
 - `{feature_name}` - Name of the feature being handed off
 - `{feature_scope}` - "new" (design from scratch) or "redesign" (improve existing)
 - `{feature_purpose}` - What the feature does and why it exists — NOT how it is currently laid out
+- `{must_support_capabilities}` - The jobs the operator must be able to accomplish on this surface beyond the primary goals, captured as outcomes (NOT UI mechanics) in step-01 §4. These are requirements the blank-canvas redesign must satisfy even though the brief withholds the current layout — the anti-bias strip removes the *arrangement*, never the *capability*. Rendered into the brief's §1 (Feature Purpose). Guards the failure where a redesign returns "more basic" than the screen it replaced because a secondary capability (e.g. attach-source-receipt, verify-field-against-source, bypass-staging) was never named and so was silently dropped. Empty when the surface has none beyond the primary goals.
 - `{data_shape}` - Domain entities and their primitive fields, in domain language — NOT the page server's return type. Captured by walking up from DB schema, not down from the UI response. See step-01 for procedural capture rules.
 - `{api_surface}` - Endpoints and response shapes the frontend can call
 - `{implementation_files}` - File paths for implementation reference only (designer may browse for technical context, not for layout inspiration)

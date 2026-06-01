@@ -110,10 +110,18 @@ Data source: GET /api/endpoint → domain entities (see {data_shape})
 User goals: [domain outcomes, NOT UI clicks.
   GOOD: "spot countries near deadline", "answer 'what's blocking filing today?'"
   BAD:  "click bulk-mark filed", "switch the active quarter"]
+Must-support capabilities: [the jobs the operator must be able to ACCOMPLISH on this
+  surface beyond the primary goals above — as outcomes, NOT UI mechanics. These are
+  requirements the design must satisfy even though this brief withholds the current
+  layout; name the secondary capabilities a blank-canvas redesign most easily drops.
+  Set `{must_support_capabilities}` (empty only if there genuinely are none).
+  GOOD: "attach the source receipt to the order", "verify each AI-extracted field
+        against the source it came from", "bypass staging review for a trusted record"
+  BAD:  "drag-drop zone in the right rail", "a skip-staging checkbox", "a two-pane split"]
 Data volume: [typical count — "usually 10-50 items", "1,400+ records per quarter"]
 ```
 
-Do NOT include "Main component", "Child components", "Current sections", "Current tabs", or "Key interactions." Do NOT phrase user goals as UI actions.
+Do NOT include "Main component", "Child components", "Current sections", "Current tabs", or "Key interactions." Do NOT phrase user goals or capabilities as UI actions. **The line between a forbidden interaction and a required capability is the arrangement, not the verb:** strip *how the current UI does it* (the control, the layout, the mechanic — "a skip-staging checkbox in the toolbar"), but keep *what the operator must be able to accomplish* (the job — "bypass staging for a trusted record"). The blank-canvas mandate forbids inheriting the *arrangement*; it does not license dropping a *capability*. A capability the brief never names is silently dropped from the redesign — the design tool cannot reinstate what it was never told to support, which is exactly how a redesign comes back "more basic" than the screen it replaced.
 
 ### 5. Determine Page Mode
 
@@ -147,6 +155,10 @@ So decide the **primary composition** the same way §5b decides the band: by the
 2. **Per-item cost** — is the dominant cost *scanning many rows* (favours a table), or a *decision / comparison on one item* that needs width — image, candidates, evidence side-by-side (which a ~400px right-side drawer physically cannot hold at legible size)?
 3. **Dominant loop** — does the operator live *in the list* (scan → pick → glance → next), or *in one item at a time* (read → decide → advance)? A one-item loop is served by a focused full-surface composition, not list + drawer.
 
+The three questions above decide list-bearing modes. **For `detail` mode there is no list to select from — the operator is already inside one record — so the fit turns on the record's *interaction verb*, not list-vs-item.** Ask one more question:
+
+4. **Interaction verb (`detail` mode)** — is the record surface's job (a) **data entry** (create / fill a new record), (b) **passive review** (read or confirm an existing record's fields), or (c) **verification against a source** (confirm extracted, imported, OCR'd, or scraped field values against the originating document — an order-confirmation email, a receipt image, a customs PDF, a parsed web page)? For (a) and (b) the grouped-fields record view fits. For (c) the operator's eye must move **value ↔ source**, so the source has to be **co-present** with the fields — which a plain grouped-fields record view does not provide. A verify-against-source surface wants a **source-co-present verification layout** (extracted record and source rendered together, the source sticky), and is therefore `recommended-alt`. The in-system exemplar is the **CDS customs page** (extracted record left / source PDF right, per-line values highlighted on the document). The cost of missing this: a "capture form" that discards the source the moment it is consumed, breaking the verify loop the surface exists for.
+
 Set `{composition_provenance}`:
 
 - **`policy-default`** — the page-mode's default composition fits the job. The common case. (Most operational pages really are scan-to-select worklists; most detail pages really are record views.)
@@ -156,7 +168,7 @@ Set `{composition_provenance}`:
 
 **Capture the reasoning.** Set `{composition_rationale}` to the three answers + the named alt composition + (for `recommended-alt`) the veto outcome (`accepted | declined | pending`), so step-03 §4a renders the override with its justification and the deviation stays auditable. If the three questions genuinely don't resolve, do not silently default — ask the user the one composition question above.
 
-This check applies to every mode but bites hardest on `operational` (the table-first default is the most over-applied). For `detail`, the record-view default almost always fits (`policy-default`). For `analytical`, chart-led usually fits, but a surface whose real job is a single ranked decision can still warrant `recommended-alt`.
+This check applies to every mode but bites differently per mode. `operational` is where the table-first default is most over-applied — questions 1 and 3 decide it. `detail` is `policy-default` for data-entry and passive-review surfaces, but `recommended-alt` when the verb is verification-against-a-source (question 4) — the source must be co-present, which the record-view default does not provide. This is the detail-mode analogue of the operational table-vs-resolve miss, and just as easy to wave through, because the bare record view *feels* like correctly following the system. `analytical` is usually chart-led, but a surface whose real job is a single ranked decision can still warrant `recommended-alt`.
 
 ### 5b. Decide Whether an Analytics Band Belongs
 
