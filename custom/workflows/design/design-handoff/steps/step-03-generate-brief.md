@@ -323,28 +323,28 @@ This is a detail page — a drawer or full-page view of **one record**. The desi
 
 ## 4b. Analytics Structure (if present)
 
-{Include this section ONLY if `{has_analytics_band}` is `true` (band_provenance ∈ inherited | recommended-new). Skip entirely for `none` and `recommended-drop`. This section defines what the analytics layer is FOR and what *shape* it takes, so the designer does not improvise — and does not default every band to the same trend-strip-of-small-multiples. The shape is governed by `{analytics_archetype}`, selected in step-01 §5c against `shared/analytics-archetypes.md`.}
+{Include this section ONLY if `{has_analytics_band}` is `true` (band_provenance ∈ inherited | recommended-new). Skip entirely for `none` and `recommended-drop`. This section defines what the analytics layer is FOR and what *shape* it takes, so the designer does not improvise — and does not default every band to the same trend-strip-of-small-multiples. The shape is governed by `{analytics_archetype}`, selected in step-01 §5c by the `analytics-surface-architect` skill (its taxonomy SoT is `shared/analytics-archetypes.md`). The fields below are rendered from that skill's captured decision object — do NOT re-derive them here.}
 
 ### A. Archetype & job
 
 - **Archetype:** {analytics_archetype} — {one of: trend | distribution | composition | ranking | coverage | flow | single-metric | correlation}
 - **Band provenance:** {band_provenance} — {if recommended-new: "net-new — confirmed with user on {date}"}
 - **The one question this band answers (1 sentence):** {state it in the user's words — e.g. "which weeks are we missing statements for, and in which region?" Do NOT restate as a generic "show trends."}
-- **Why this archetype (grounding):** {name the data dimension AND the user question that selected it — e.g. "coverage: data has per-week × per-region completeness; the job is finding gaps, not reading a trend."}
+- **Why this archetype (grounding):** {from `{archetype_winner_reason}` — names the data dimension AND the user question that selected it, e.g. "coverage: data has per-week × per-region completeness; the job is finding gaps, not reading a trend."}
 
 ### B. Reading passes (derived from the archetype)
 
 Do not impose a fixed headline → trend-strip → table sequence. Read `shared/analytics-archetypes.md` for the selected archetype and let its **form** drive the passes. Specify each pass the band actually needs:
 
 - **Lead pass — the form that answers the question fastest:** {the archetype's form, made concrete for this feature. For `coverage`: a completeness strip where the gaps are the content. For `ranking`: a sorted top-N bar list capped and labelled. For `composition`: a single 100%-bar. For `single-metric`: one value + sparkline + threshold. For `trend`: small-multiples with a stated Y-axis rule. State dimensions, ordering, and what is emphasised.}
-- **Secondary pass (only if a second archetype genuinely co-occurs):** {name it and keep it subordinate — e.g. "coverage is dominant; a faint per-region trend is secondary, not co-equal." Omit if the band is single-archetype.}
+- **Secondary pass (only if a second archetype genuinely co-occurs):** {from `{archetype_secondary}` — name it and keep it subordinate, e.g. "coverage is dominant; a faint per-region trend is secondary, not co-equal." Omit if `{archetype_secondary}` is `none`.}
 - **Evidence pass — path to the rows:** {what the underlying records show that the lead pass cannot — exact values, states, drill affordances. Every band must preserve a path to evidence; a band that can't show its working is a dashboard.}
 
 ### C. Drill behaviour
 
-Every analytics element must have a defined drill target — no ornamental elements (the cross-cutting rule from the archetypes file). For each element the band contains, state exactly where interaction goes:
+Every analytics element must have a defined drill target — no ornamental elements (the cross-cutting rule from the archetypes file). Render this from `{archetype_drill_map}` (the skill's element → drill-target map); for each element the band contains, state exactly where interaction goes:
 
-- **Lead element(s):** {e.g. for coverage: "a gap mark opens the missing record's import action at `/route?week=…&region=…`"; for ranking: "a bar opens that entity at `/route?entity=…`"}
+- **Lead element(s):** {from `{archetype_drill_map}` — e.g. for coverage: "a gap mark opens the missing record's import action at `/route?week=…&region=…`"; for ranking: "a bar opens that entity at `/route?entity=…`"}
 - **Value / label / delta affordances:** {what each click does, in this feature's routes}
 - **Empty / inactive / gap state:** {what a no-data or gap cell does — open the resolving action, not a dead tooltip}
 
@@ -359,10 +359,10 @@ Specify whether the operational status palette extends into the analytics surfac
 
 ### E. Prohibited analytics patterns (page-specific)
 
-Re-state the cross-cutting bans from `shared/analytics-archetypes.md` plus any archetype-specific ones for this page, beyond the global hard constraints in section 5:
+Render the page-specific bans from `{archetype_prohibited}` (the skill's `prohibited` list), plus the cross-cutting bans from `shared/analytics-archetypes.md`, beyond the global hard constraints in section 5:
 
 - No KPI / stat-card row above the table (dashboard fingerprint).
-- {archetype-specific — e.g. for trend: "no single multi-series line chart; each series its own small multiple; no stacked columns." For composition: "no pie/donut; no time-stacked bars." For coverage: "'all good' must not look identical to 'gaps present' at a glance." For ranking: "do not render all N — cap and label the cut."}
+- {from `{archetype_prohibited}` — archetype-specific, e.g. for trend: "no single multi-series line chart; each series its own small multiple; no stacked columns." For composition: "no pie/donut; no time-stacked bars." For coverage: "'all good' must not look identical to 'gaps present' at a glance." For ranking: "do not render all N — cap and label the cut."}
 
 ---
 

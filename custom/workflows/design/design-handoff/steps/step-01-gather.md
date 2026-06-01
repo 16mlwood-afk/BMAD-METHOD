@@ -166,22 +166,32 @@ If the three questions genuinely don't resolve, do not default to a band *or* to
 
 ### 5c. Select the Analytics Archetype
 
-If `{has_analytics_band}` is `true`, set `{analytics_archetype}` by reading `shared/analytics-archetypes.md` and applying its selection rule. The archetype is the *shape* of the band, chosen by the **user's question**, not by the data's availability and not by the legacy render.
+Skip this section entirely if `{has_analytics_band}` is `false` — `{analytics_archetype}` and all the capture fields below stay empty.
 
-- Name the dominant archetype: one of `trend`, `distribution`, `composition`, `ranking`, `coverage`, `flow`, `single-metric`, `correlation`.
-- **Ground or flag:** state the data dimension AND the user question that selected it (e.g. "coverage — data has a per-week × per-region completeness dimension; the user's job is 'which weeks are we missing statements for'"). If you cannot name both, set `{analytics_archetype}` to `unclear` and ask the user rather than defaulting to `trend`.
-- Defaulting to `trend` because time exists in the data is the exact failure this selection exists to prevent. Time in the data does not make the job a trend job.
+When `{has_analytics_band}` is `true`, the archetype selection is delegated to the **`analytics-surface-architect` skill** — the single brain for this decision, so handoff, design-review-pr, and any human all reason the same way instead of re-deriving it. Do not hand-reason the archetype inline when the skill is available.
 
-If `{has_analytics_band}` is `false`, `{analytics_archetype}` is empty.
+**Invoke the skill (mode: `select`).** Load `analytics-surface-architect` via the Skill tool and pass it:
+- the **data shape** (`{data_shape}` — the domain entities and their dimensions from §3),
+- the **user's question** in their words (from `{feature_purpose}` / `{user_context}` — the single thing the band must answer),
+- the **page mode** (`{page_mode}`).
 
-**Capture the deliberation — the road not taken is the point.** The brief records only the winning archetype. The rationale artifact (step-03b) records how you got there, so set:
+The skill runs its selection procedure (start from the question, ground-or-flag, weigh candidates incl. an explicit ruling on `trend` when time is in the data, pick one dominant + at most one subordinate, map every element to a drill target) and returns its **decision object**. Capture it field-for-field — the names already match what step-03b and §4b consume:
 
-- `{archetype_candidates}` — the archetypes you genuinely weighed, each tagged `chosen | secondary | rejected` with a one-line reason. Include the winner, any true secondary, and **at minimum the most tempting rejected alternative** (for time-bearing data that is almost always `trend`). This becomes the candidates table in step-03b §3.
-- `{archetype_winner_reason}` — why the winner won, naming BOTH the data dimension AND the user question that selected it (the same ground-or-flag pair from the selection rule).
-- `{archetype_secondary}` — the subordinate archetype if a second genuinely co-occurs, else `none`.
-- `{time_present_check}` — set only if the data carries a time dimension: one line stating why this is (or is not) a `trend` job. This is the explicit anti-default record; if time is present and you did NOT pick `trend`, this line is the proof you resisted the monoculture, and step-03b surfaces it prominently.
+| Skill output field | Capture into | Consumed by |
+|---|---|---|
+| `archetype` | `{analytics_archetype}` (one of the eight, or `unclear`) | frontmatter, §4b, rationale |
+| `candidates` | `{archetype_candidates}` (chosen / secondary / rejected + why) | rationale §3 table |
+| `winner_reason` | `{archetype_winner_reason}` | rationale §3 |
+| `secondary` | `{archetype_secondary}` (or `none`) | rationale §3 |
+| `time_present_check` | `{time_present_check}` (set iff time in data) | rationale §3 |
+| `drill_map` | `{archetype_drill_map}` | §4b C, rationale §3 evidence |
+| `prohibited` | `{archetype_prohibited}` | §4b E, rationale §4 |
 
-If `{has_analytics_band}` is `false`, all four are empty.
+**Ground-or-flag is preserved through the skill:** if it returns `archetype: unclear` (it could not name BOTH a data dimension and a user question), do NOT default to `trend` — ask the user the one resolving question the skill surfaced, then re-invoke. A guessed archetype is worse than an asked one.
+
+**Fallback (skill not available).** If the `analytics-surface-architect` skill is not present in this project (e.g. an older sync), apply `shared/analytics-archetypes.md`'s selection rule directly — identical logic — and populate the same capture fields by hand: name the dominant archetype from the eight; ground-or-flag (data dimension AND user question, else `unclear` → ask); record the candidates weighed with the most-tempting rejected alternative (for time-bearing data, almost always `trend`); the winner reason; the secondary or `none`; and the time-in-data check. The skill is the preferred path because it makes the road-not-taken and the drill map mandatory outputs rather than easily-skipped prose, but handoff must not hard-fail when it is absent.
+
+Either path populates the same state, so step-03b renders identically. `{analytics_archetype}` empty ⇒ no band.
 
 ### 6. Identify User Context
 
@@ -211,7 +221,7 @@ Confirm populated:
 - `{band_provenance}` ✓ (`inherited` | `recommended-new` | `recommended-drop` | `none`; net-new/drop recommendations veto-surfaced)
 - `{has_analytics_band}` ✓ (`true` iff band_provenance ∈ {inherited, recommended-new})
 - `{analytics_archetype}` ✓ (one of the eight, or `unclear` → asked; empty when no band)
-- **Analytics reasoning capture** ✓ (populated iff `{has_analytics_band}` is `true`; all empty otherwise) — `{page_mode_rationale}`, `{band_decision_log}`, `{archetype_candidates}`, `{archetype_winner_reason}`, `{archetype_secondary}`, `{time_present_check}`. These feed the rationale artifact in step-03b; capturing the deliberation here is what makes the presentation decision auditable instead of discarded.
+- **Analytics reasoning capture** ✓ (populated iff `{has_analytics_band}` is `true`; all empty otherwise) — `{page_mode_rationale}`, `{band_decision_log}`, and the archetype decision object captured from the `analytics-surface-architect` skill in §5c: `{archetype_candidates}`, `{archetype_winner_reason}`, `{archetype_secondary}`, `{time_present_check}`, `{archetype_drill_map}`, `{archetype_prohibited}`. These feed the rationale artifact (step-03b) and §4b; capturing the deliberation here is what makes the presentation decision auditable instead of discarded.
 - `{user_context}` ✓
 - `{brand_identity}` ✓ (may be empty)
 - `{design_system}` ✓ ("branded", "existing", or "external")

@@ -62,7 +62,7 @@ This exists because the brief is a **bias filter** (it withholds the current lay
 - **One-way linkage.** The rationale's `accompanies_brief` names the brief; the brief never references the rationale. Claude Design reads the brief, never the rationale.
 - **Delivered together.** step-04 stages both in one commit/PR so a brief on `main` always has its rationale beside it.
 
-The reasoning is captured in step-01 (§5/§5b/§5c) at decision time, rendered by step-03b. Capturing it where the decision is made is what turns a discarded deliberation into an auditable record.
+The archetype reasoning is produced by the `analytics-surface-architect` skill (invoked in step-01 §5c — the single selection brain, so handoff, design-review-pr, and a human all reason the same way), captured at decision time, and rendered by step-03b. Capturing it where the decision is made is what turns a discarded deliberation into an auditable record. The skill is the preferred path; §5c falls back to applying `shared/analytics-archetypes.md` inline if the skill isn't synced into the project.
 
 ---
 
@@ -94,14 +94,16 @@ This uses **step-file architecture** for focused execution:
 - `{page_mode}` - "operational" (process rows, review items, take actions), "analytical" (understand patterns, trends, anomalies across a dataset), or "detail" (read/edit one record — a drawer or full-page extension of an operational list). The full three-value enum the whole brief contract uses (`brief-revision-policy.md` Block B; consumed by `design-synthesize` / `design-implement`). Selected in step-01 §5; governs §4a composition and §4b analytics inclusion (detail never carries a band).
 - `{band_provenance}` - `inherited` | `recommended-new` | `recommended-drop` | `none`. WHY an analytics band exists (or doesn't). Decided in step-01 §5b by data + user job, NOT by inspecting the legacy render — `design-handoff`'s blank-canvas mandate means a bare-table feature whose job is pattern/coverage/ranking work gets a band recommendation (`recommended-new`, veto-surfaced) even when the current page has none. Drives §4b inclusion: present iff `inherited` or `recommended-new`.
 - `{has_analytics_band}` - `true` iff `{band_provenance}` ∈ {`inherited`, `recommended-new`}. Gates whether section 4b (Analytics Structure) is emitted.
-- `{analytics_archetype}` - The *shape* of the analytics band, selected in step-01 §5c against `shared/analytics-archetypes.md` from the user's question (not the data's availability): one of `trend`, `distribution`, `composition`, `ranking`, `coverage`, `flow`, `single-metric`, `correlation` (or `unclear` → ask). Empty when there is no band. Prevents every band defaulting to the same trend-strip-of-small-multiples.
-- **Analytics reasoning capture** (populated in step-01 iff `{has_analytics_band}`; rendered into the rationale artifact by step-03b; empty otherwise):
-  - `{page_mode_rationale}` - the concrete signal that selected `operational` vs `analytical` (§5).
-  - `{band_decision_log}` - the three band-belongs questions answered for this feature, plus the veto outcome for `recommended-new`/`recommended-drop` (§5b).
-  - `{archetype_candidates}` - the archetypes weighed, each tagged `chosen | secondary | rejected` with a one-line reason — the road not taken (§5c).
-  - `{archetype_winner_reason}` - why the winner won, naming the data dimension AND the user question (§5c).
-  - `{archetype_secondary}` - the subordinate archetype if a second co-occurs, else `none` (§5c).
-  - `{time_present_check}` - when time is in the data, the explicit "this is / isn't a trend job" line — the anti-default record (§5c).
+- `{analytics_archetype}` - The *shape* of the analytics band: one of `trend`, `distribution`, `composition`, `ranking`, `coverage`, `flow`, `single-metric`, `correlation` (or `unclear` → ask). Empty when there is no band. **Selected in step-01 §5c by invoking the `analytics-surface-architect` skill** (the single selection brain; `shared/analytics-archetypes.md` is its taxonomy SoT). Chosen from the user's question, never the data's availability. Prevents every band defaulting to the same trend-strip-of-small-multiples.
+- **Analytics reasoning capture** — the `analytics-surface-architect` decision object, captured in step-01 §5c (populated iff `{has_analytics_band}`; rendered into the rationale artifact by step-03b and §4b; empty otherwise):
+  - `{page_mode_rationale}` - the concrete signal that selected `operational` vs `analytical` (§5; not from the skill).
+  - `{band_decision_log}` - the three band-belongs questions answered for this feature, plus the veto outcome for `recommended-new`/`recommended-drop` (§5b; not from the skill).
+  - `{archetype_candidates}` - skill `candidates`: the archetypes weighed, each `chosen | secondary | rejected` + a one-line reason — the road not taken.
+  - `{archetype_winner_reason}` - skill `winner_reason`: why the winner won, naming the data dimension AND the user question.
+  - `{archetype_secondary}` - skill `secondary`: the subordinate archetype if a second co-occurs, else `none`.
+  - `{time_present_check}` - skill `time_present_check`: when time is in the data, the explicit "this is / isn't a trend job" line — the anti-default record.
+  - `{archetype_drill_map}` - skill `drill_map`: every band element → its drill target (feeds §4b C and the rationale evidence pass).
+  - `{archetype_prohibited}` - skill `prohibited`: the page-specific shape bans (feeds §4b E and rationale §4).
 - `{rationale_output_path}` / `{rationale_output_filename}` / `{rationale_path_relative_to_repo_root}` - the analytics rationale artifact written by step-03b (only when `{has_analytics_band}`). Companion to the brief; delivered in the same commit by step-04.
 - `{constraints}` - Hard constraints the designer must respect (responsive breakpoints, data density, accessibility)
 - `{user_context}` - Who uses this feature, what they're trying to accomplish, frequency of use
@@ -240,7 +242,7 @@ Constraints on the collapse:
 
 Read fully and follow each step file in sequence:
 
-1. `{project-root}/_bmad/bmm/workflows/design/design-handoff/steps/step-01-gather.md` — gather feature purpose, data shape, user context. When an analytics band is in play, also capture the page-mode / band / archetype *reasoning* (§5/§5b/§5c), not just the conclusions.
+1. `{project-root}/_bmad/bmm/workflows/design/design-handoff/steps/step-01-gather.md` — gather feature purpose, data shape, user context. When an analytics band is in play, §5c **invokes the `analytics-surface-architect` skill** to select the archetype and capture its full decision object (candidates weighed, drill map, prohibited) — the reasoning, not just the conclusion.
 2. `{project-root}/_bmad/bmm/workflows/design/design-handoff/steps/step-02-audit-design.md` — audit the current design system / extract tokens / locate reference pages.
 3. `{project-root}/_bmad/bmm/workflows/design/design-handoff/steps/step-03-generate-brief.md` — write the brief to `{output_path}` with full Block A + Block B frontmatter.
 3b. `{project-root}/_bmad/bmm/workflows/design/design-handoff/steps/step-03b-emit-rationale.md` — **conditional: only when `{has_analytics_band}` is `true`.** Write the analytics presentation rationale (`design-rationale-{target_slug}-{date}.md`) — the human-facing record of HOW the page-mode/band/archetype were chosen. Skipped entirely for no-band features.

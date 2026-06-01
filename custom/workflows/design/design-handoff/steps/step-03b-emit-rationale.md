@@ -28,7 +28,8 @@ description: 'Emit the analytics presentation rationale — a human-facing recor
 
 From step-01:
 - `{page_mode}`, `{band_provenance}`, `{has_analytics_band}`, `{analytics_archetype}`
-- `{page_mode_rationale}`, `{band_decision_log}`, `{archetype_candidates}`, `{archetype_winner_reason}`, `{archetype_secondary}`, `{time_present_check}`
+- The `analytics-surface-architect` decision object (captured in §5c): `{archetype_candidates}`, `{archetype_winner_reason}`, `{archetype_secondary}`, `{time_present_check}`, `{archetype_drill_map}`, `{archetype_prohibited}`
+- `{page_mode_rationale}`, `{band_decision_log}`
 - `{feature_name}`, `{user_name}`
 
 From step-03:
@@ -81,8 +82,8 @@ Write `{rationale_output_path}` using the template in `shared/analytics-rational
 - Frontmatter: `accompanies_brief` = `{output_filename}`; `supersedes` = `{rationale_supersedes_filename}`; `superseded_by` empty; the decision-summary trio (`page_mode`, `band_provenance`, `analytics_archetype`) from state.
 - §1 from `{page_mode}` + `{page_mode_rationale}`; include the hybrid note iff `page_mode == operational` (band present + operational mode = the hybrid case).
 - §2 from `{band_decision_log}` + `{band_provenance}`; include the veto line iff `band_provenance ∈ {recommended-new, recommended-drop}`.
-- §3 from `{archetype_candidates}` (the table), `{archetype_winner_reason}`, `{archetype_secondary}`; include the time-in-data check block iff `{time_present_check}` is set.
-- §4 from the rejected rows of `{archetype_candidates}` plus the cross-cutting bans (no KPI wall, etc.).
+- §3 from `{archetype_candidates}` (the table), `{archetype_winner_reason}`, `{archetype_secondary}`; include the time-in-data check block iff `{time_present_check}` is set; the evidence/drill detail comes from `{archetype_drill_map}`.
+- §4 from `{archetype_prohibited}` (the skill's page-specific shape bans) plus the cross-cutting bans (no KPI wall, etc.). If `{archetype_prohibited}` is empty (fallback path with none captured), derive from the rejected rows of `{archetype_candidates}`.
 
 ### 4. Self-Review
 
