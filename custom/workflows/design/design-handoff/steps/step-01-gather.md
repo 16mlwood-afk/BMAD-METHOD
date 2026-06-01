@@ -121,17 +121,21 @@ Set `{page_mode}` based on the feature's **dominant user task**:
 
 - **"operational"** — the user processes, reviews, approves, reconciles, files, or resolves records. The page is a worklist. The design should prioritize throughput, scanability, and status visibility. Most pages are operational.
 - **"analytical"** — the user discovers trends, compares segments, diagnoses anomalies, explains changes, or moves from summary insight to supporting evidence. The page is an analysis tool.
+- **"detail"** — the user reads or edits the fields of **one record**. The page is a drawer or full-page extension of an operational list (the thing you reach by drilling INTO a worklist row), not a queue and not an analysis tool. The design should prioritize legible single-record layout, field grouping, and inline edit/action affordances. Composition is neither table-first nor chart-led — it is a record view. (Per project policy §6/§7: "a drawer or full-page extension of an operational list, never a re-skin.")
 
 **Signals for analytical:** user goals center on "understand", "compare", "spot trends", "review performance", "analyze", "diagnose", or the data has time-series dimensions and the user's job is pattern discovery rather than row processing.
 
-**Hybrid handling:** Some pages mix both modes.
+**Signals for detail:** the route is single-entity (ends in `/[id]`, `/[slug]`, a record drawer), the primary surface is ONE record's fields rather than a multi-row table, and the page is reached by drilling from a worklist. A detail page almost never carries an analytics band — a single record has no aggregate dimension (§5b will resolve `band_provenance: none`).
+
+**Hybrid handling:** Some pages mix modes.
 - If analysis exists to support immediate row-level action (e.g., a summary chart above a worklist), keep the page in **operational** mode.
 - If row-level detail exists mainly to verify or explain summarized behavior (e.g., a trend chart with a drill-down table), keep the page in **analytical** mode.
+- A page that contains a worklist AND a per-row detail surface is **operational** — `detail` is for a page whose dominant (often only) job is the single record.
 - The dominant user task determines the mode — not the presence of a chart or a table.
 
-If unclear, default to "operational."
+If unclear, default to "operational." These three values are the full `page_mode` enum the whole brief contract uses (`brief-revision-policy.md` Block B; consumed by `design-synthesize` / `design-implement`) — emit one of them, never a fourth.
 
-**Capture the reasoning (not just the label).** Set `{page_mode_rationale}` to the concrete signal that selected the mode — the user-goal phrasing or data property that decided it (e.g. "user goal is 'spot which week slipped' → pattern discovery, not row processing"). This is recorded verbatim in the analytics rationale artifact (step-03b) when a band exists; capturing it now means the deliberation is not thrown away once the binary label is set. (Skip the capture only when `{has_analytics_band}` resolves to `false` below — no rationale artifact is emitted then.)
+**Capture the reasoning (not just the label).** Set `{page_mode_rationale}` to the concrete signal that selected the mode — the user-goal phrasing or data property that decided it (e.g. "user goal is 'spot which week slipped' → pattern discovery, not row processing"). This is recorded verbatim in the analytics rationale artifact (step-03b) when a band exists; capturing it now means the deliberation is not thrown away once the mode label is set. (Skip the capture only when `{has_analytics_band}` resolves to `false` below — no rationale artifact is emitted then.)
 
 ### 5b. Decide Whether an Analytics Band Belongs
 
@@ -203,7 +207,7 @@ Confirm populated:
 - `{data_shape}` ✓
 - `{api_surface}` ✓
 - `{implementation_files}` ✓
-- `{page_mode}` ✓ ("operational" or "analytical")
+- `{page_mode}` ✓ ("operational", "analytical", or "detail")
 - `{band_provenance}` ✓ (`inherited` | `recommended-new` | `recommended-drop` | `none`; net-new/drop recommendations veto-surfaced)
 - `{has_analytics_band}` ✓ (`true` iff band_provenance ∈ {inherited, recommended-new})
 - `{analytics_archetype}` ✓ (one of the eight, or `unclear` → asked; empty when no band)

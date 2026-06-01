@@ -307,6 +307,18 @@ This is an analytical page. The design should help the user understand patterns,
 
 **Evidence rule:** Analytics pages may be chart-led, but they must still preserve a clear path to underlying records or evidence. Every chart, metric, or summary should let the user drill into the rows behind it. An analytical page that cannot show its working is a dashboard.
 
+**--- If `{page_mode}` = "detail" ---**
+
+This is a detail page — a drawer or full-page view of **one record**. The design should optimize for reading and editing a single record's fields, not for processing a queue or analyzing a dataset. The user arrived here by drilling from a worklist; this view is the extension of that list, never a re-skin of it.
+
+**Design principles:**
+- Group fields by the user's mental model of the record, not by database table order. Make the record's identity and current state legible at the top.
+- Inline edit and per-record actions are first-class — surface them where the field lives, not in a distant toolbar.
+- Density is moderate (between a dense worklist row and a relaxed analytical page) — the user is reading one record carefully, not scanning hundreds.
+- No analytics band: a single record has no aggregate dimension. If the record has child collections (line items, history), those are supporting tables, not an analytics surface.
+
+**Composition:** Record-view composition — neither table-first nor chart-led. The visual treatment (typography, badges, spacing) follows the visual system in section 4; this section governs mode. Per project policy §6/§7, a detail view is an extension of its operational list, not a standalone redesign.
+
 ---
 
 ## 4b. Analytics Structure (if present)
@@ -477,6 +489,9 @@ If `{page_mode}` = **operational:**
 If `{page_mode}` = **analytical:**
 > Design this page for a user whose main job is to understand what changed, why it changed, and where to investigate further.
 
+If `{page_mode}` = **detail:**
+> Design this page for a user whose main job is to read and act on one record — understand its current state, edit its fields, and take the next action on it — having arrived here from a worklist.
+
 **Scope directives (append after the framing sentence):**
 
 - **new + branded:** "Section 4 defines this app's visual identity — match it exactly. Information architecture and interaction design are yours."
@@ -493,6 +508,7 @@ If `{page_mode}` = **analytical:**
 **Page-mode rule for questions:**
 - Operational questions should be about processing, review, exception handling, and workflow progress.
 - Analytical questions should be about trend detection, comparison, anomaly diagnosis, and drill-to-evidence.
+- Detail questions should be about single-record legibility, field grouping, inline edit/action affordances, and how state and next-action are surfaced on one record.
 - Questions must not mention current tabs, panels, cards, sections, or grouping structures from the existing implementation.
 
 **Good questions for operational pages:**
@@ -570,7 +586,7 @@ Before writing, verify:
   - existing = visual direction statement + real tokens + anti-pattern list
   - external = names the system, no repo tokens
 - [ ] **Positive before negative** — visual direction and reference products come BEFORE hard failures and anti-patterns.
-- [ ] **Page mode is correct.** If `{page_mode}` = "analytical", section 4a (Analytics View Addendum) is present. If "operational", section 4a is omitted entirely.
+- [ ] **Page mode is correct.** `{page_mode}` is one of the three contract values (`operational | analytical | detail`) — never a fourth. Section 4a (Page Mode) contains exactly the block for the resolved mode and no other (the operational, analytical, OR detail block). Frontmatter `page_mode` matches the 4a block. A `detail` page must NOT carry an analytics band (§4b absent, `band_provenance: none`).
 - [ ] **Section 4b is correct.** Section 4b (Analytics Structure) is present iff `{has_analytics_band}` is `true` (band_provenance ∈ inherited | recommended-new). When present, all five subsections (A archetype & job, B reading passes, C drill behaviour, D palette & status rules, E prohibited patterns) are filled with feature-specific values — no template placeholders remain. The archetype is named and matches `{analytics_archetype}` from step-01; subsection A grounds it (data dimension + user question); B's reading passes follow that archetype's form rather than a defaulted trend strip; every analytics element named in B or C has a stated drill target in C (no ornamental elements). When `{has_analytics_band}` is `false`, section 4b is omitted entirely.
 - [ ] **band_provenance is honest.** Frontmatter `band_provenance` is set. If `recommended-new` or `recommended-drop`, the recommendation was surfaced to the user for veto (not silently injected/removed). `analytics_archetype` is present in frontmatter iff `{has_analytics_band}` is `true`.
 - [ ] **File paths are correct** and relative to repo root.

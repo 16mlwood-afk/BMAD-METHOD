@@ -55,7 +55,7 @@ analytics_archetype: {analytics_archetype}
 - **Dominant user task:** {one sentence — what the user is primarily doing on this page}
 - **Signal that selected it:** {page_mode_rationale — the concrete signal from step-01 §5, e.g. "user goal is 'spot which week slipped' → pattern discovery, not row processing"}
 - **Composition consequence:** {operational → table-first; analytical → chart-led}
-- **Note on the other axis:** Page mode is binary — it decides *table-first vs chart-led composition only*, not whether analytics appear at all. That is the separate band decision in §2.
+- **Note on the other axis:** Page mode (here `operational` or `analytical` — a `detail` view carries no band, so it never reaches this artifact) decides *composition only*, not whether analytics appear at all. That is the separate band decision in §2.
   {If `page_mode == operational` AND a band exists, ADD: "This is the hybrid case — an operational worklist that still carries a supporting analytics band. The band axis (§2), not the mode, carries the analytical weight; the band stays subordinate to the worklist."}
 
 ## 2. Does an analytics band belong? → `{band_provenance}`
