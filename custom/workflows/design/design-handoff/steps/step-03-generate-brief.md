@@ -121,6 +121,7 @@ last_modified_date: {date}
 mode: {handoff_mode}                     # fresh-design | refine-screen
 page_mode: {page_mode}                   # operational | analytical | detail
 route: {route}                           # primary route this brief targets
+composition_provenance: {composition_provenance}   # policy-default | recommended-alt (decided in §5a; recommended-alt names a job-fit composition in §4a and was veto-surfaced)
 band_provenance: {band_provenance}       # inherited | recommended-new | recommended-drop | none
 {# analytics_archetype is REQUIRED iff band_provenance ∈ {inherited, recommended-new}; omit the line entirely otherwise. #}
 {if has_analytics_band}
@@ -284,7 +285,15 @@ Fields are in domain language. Grouping, derivation, and presentation are design
 
 ## 4a. Page Mode
 
-{Include ONE of the following based on `{page_mode}`:}
+{First, if `{composition_provenance}` = "recommended-alt", emit the composition-override block below — it leads §4a and supersedes the "Composition:" line of the page-mode block that follows. If `{composition_provenance}` = "policy-default", OMIT the override block entirely and emit only the page-mode block.}
+
+**--- Composition override (include ONLY if `{composition_provenance}` = "recommended-alt") ---**
+
+> **Primary composition for this surface: {named job-fit composition from `{composition_rationale}`} — NOT the `{page_mode}` default.**
+>
+> This surface is `{page_mode}` (it {one-line work description}), but its job is {dispensed / comparison-first / single-item — from the §5a answers}, so the policy's default {table-first worklist / chart-led / record-view} composition is the wrong *primary* shape. Design the primary surface as **{named composition}**. {One or two sentences making it concrete for this feature — e.g. "a full-width single-item decision surface the operator streams through, with the worklist demoted to a deliberate triage/backlog view, not the home screen."} The visual system in section 4 still governs all treatment; this overrides only the *composition*, decided from the job per design-handoff §5a (confirmed with the user on {date}). Where the page-mode block below states a default "Composition:", THIS block wins.
+
+{Then include ONE of the following based on `{page_mode}`:}
 
 **--- If `{page_mode}` = "operational" ---**
 
@@ -589,6 +598,7 @@ Before writing, verify:
 - [ ] **Page mode is correct.** `{page_mode}` is one of the three contract values (`operational | analytical | detail`) — never a fourth. Section 4a (Page Mode) contains exactly the block for the resolved mode and no other (the operational, analytical, OR detail block). Frontmatter `page_mode` matches the 4a block. A `detail` page must NOT carry an analytics band (§4b absent, `band_provenance: none`).
 - [ ] **Section 4b is correct.** Section 4b (Analytics Structure) is present iff `{has_analytics_band}` is `true` (band_provenance ∈ inherited | recommended-new). When present, all five subsections (A archetype & job, B reading passes, C drill behaviour, D palette & status rules, E prohibited patterns) are filled with feature-specific values — no template placeholders remain. The archetype is named and matches `{analytics_archetype}` from step-01; subsection A grounds it (data dimension + user question); B's reading passes follow that archetype's form rather than a defaulted trend strip; every analytics element named in B or C has a stated drill target in C (no ornamental elements). When `{has_analytics_band}` is `false`, section 4b is omitted entirely.
 - [ ] **band_provenance is honest.** Frontmatter `band_provenance` is set. If `recommended-new` or `recommended-drop`, the recommendation was surfaced to the user for veto (not silently injected/removed). `analytics_archetype` is present in frontmatter iff `{has_analytics_band}` is `true`.
+- [ ] **composition_provenance is honest.** Frontmatter `composition_provenance` is set (`policy-default` or `recommended-alt`). If `recommended-alt`: §4a leads with the composition-override block naming the job-fit composition (no template placeholders remain), the override was veto-surfaced to the user (not silently imposed), and `{page_mode}` still honestly names the *work type* (the override changed composition, not mode — the page can be `operational` with a non-table composition). If `policy-default`: no override block appears and §4a is the plain page-mode block. The composition was decided from the §5a job questions, NOT inherited from the policy default or the legacy render.
 - [ ] **File paths are correct** and relative to repo root.
 
 ### 4. Write the Brief
