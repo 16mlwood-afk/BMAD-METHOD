@@ -592,6 +592,13 @@ Show:
 >
 > {If external, append: "Apply the {design_system_name} design system — ignore CSS tokens in the repo's style files."}
 
+If `{has_analytics_band}` is `true`, add one line: "An analytics presentation rationale (the reasoning behind the page-mode, band, and archetype choices) will be written alongside this brief and delivered with it." Do NOT inline that reasoning into the brief or this summary — it lives in the rationale artifact.
+
+### 6. Next Step
+
+- **If `{has_analytics_band}` is `true`:** load and follow `{project-root}/_bmad/bmm/workflows/design/design-handoff/steps/step-03b-emit-rationale.md` to write the analytics presentation rationale, THEN proceed to step-04.
+- **If `{has_analytics_band}` is `false`:** skip step-03b entirely and proceed directly to step-04 (deliver).
+
 ---
 
 ## SUCCESS METRICS

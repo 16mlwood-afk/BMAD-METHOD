@@ -23,6 +23,11 @@ From step-03:
 - `{github_repo_url}` — for verification
 - `{feature_name}`, `{target_slug}`, `{handoff_mode}` — for commit / PR text
 
+From step-03b (only when `{has_analytics_band}` is `true`):
+- `{rationale_output_path}` — absolute path to the analytics rationale on disk
+- `{rationale_path_relative_to_repo_root}` — for the final surface
+- If `{has_analytics_band}` is `false`, no rationale file exists — every "rationale" reference below is a no-op.
+
 From config:
 - `{delivery_mode}` — `auto` (default) or `skip` (from `_bmad/bmm/config.yaml`'s `delivery.design-handoff` field, if set)
 - `{user_name}`
@@ -64,8 +69,12 @@ esac
 
 ### 3. Stage and Commit the Brief
 
+Stage the brief, and the rationale too when one was written (`{has_analytics_band}` is `true`) — both belong in the same commit so a brief on `main` always has its rationale beside it.
+
 ```bash
 git add {output_path}
+# Only when {has_analytics_band} is true:
+git add {rationale_output_path}
 ```
 
 Compose the commit message. Use this template (HEREDOC form to preserve formatting):
@@ -76,7 +85,8 @@ docs(design-handoff): {handoff_mode} brief for {feature_name}
 
 {2-3 line description: what the brief is, what consumer will read it, what scope it covers.
 For refine-screen briefs: cite the screen-review artifact this brief derives from.
-For fresh-design briefs: cite the feature scope and target route.}
+For fresh-design briefs: cite the feature scope and target route.
+If {has_analytics_band} is true: add a line noting the commit also includes the analytics presentation rationale (design-rationale-{target_slug}-{date}.md) — the record-of-decision behind the page-mode/band/archetype choices.}
 
 Co-Authored-By: design-handoff workflow via Claude Code
 EOF
@@ -120,6 +130,7 @@ gh pr create --title "docs(design-handoff): {handoff_mode} brief for {feature_na
 - {1-2 line description of what this brief is}
 - {Consumer that will read it (Claude Design, design-synthesize, design-implement)}
 - {Scope: refine-screen V1-V3 with edge-state variants, OR fresh-design with N open questions}
+- {If {has_analytics_band} is true: "Includes an analytics presentation rationale (design-rationale-…) — a human-facing record of WHY the page-mode/band/archetype were chosen. Not a design input; Claude Design reads the brief only."}
 
 ## Why this is doc-only
 
@@ -192,6 +203,9 @@ Emit the final hand-off block:
 
   PR:           {pr_number} ({pr_url}) — MERGED
   Brief on main: {github_repo_url}/blob/main/{output_path_relative_to_repo_root}
+  {If {has_analytics_band} is true, add:}
+  Rationale:    {github_repo_url}/blob/main/{rationale_path_relative_to_repo_root}
+                (why the analytics presentation was chosen — read this, don't hand it to Claude Design)
 
 To hand off to {consumer}:
   "Connect to {github_repo_url} and read {output_path_relative_to_repo_root}

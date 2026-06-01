@@ -51,6 +51,21 @@ Consumers (`design-artifact-loop`, `design-synthesize`) validate the provenance 
 
 ---
 
+## ANALYTICS PRESENTATION RATIONALE — companion artifact
+
+When a brief carries an analytics band (`{has_analytics_band}` is `true`), this workflow emits a **second** artifact beside the brief: `design-rationale-{target_slug}-{date}.md`. It documents *how* the analytics presentation was decided — the page-mode signal, the band-belongs answers, the archetype candidates weighed, the shapes rejected, and the explicit time≠trend check. The brief records the winning choices; the rationale records the deliberation behind them.
+
+This exists because the brief is a **bias filter** (it withholds the current layout so the designer starts blank) — so the reasoning cannot live inside the brief without breaking that mandate. Key rules (full spec in `shared/analytics-rationale.md`):
+
+- **Conditional.** No band → no rationale file. Never emitted for a plain operational worklist.
+- **Not a brief.** Out of scope for `brief-revision-policy.md` — no Block A, no 6 intake checks, no consumer validation. It carries only its own `rationale_status`/`supersedes`/`superseded_by` lineage, derived 1:1 from the brief it accompanies.
+- **One-way linkage.** The rationale's `accompanies_brief` names the brief; the brief never references the rationale. Claude Design reads the brief, never the rationale.
+- **Delivered together.** step-04 stages both in one commit/PR so a brief on `main` always has its rationale beside it.
+
+The reasoning is captured in step-01 (§5/§5b/§5c) at decision time, rendered by step-03b. Capturing it where the decision is made is what turns a discarded deliberation into an auditable record.
+
+---
+
 ## WORKFLOW ARCHITECTURE
 
 This uses **step-file architecture** for focused execution:
@@ -80,6 +95,14 @@ This uses **step-file architecture** for focused execution:
 - `{band_provenance}` - `inherited` | `recommended-new` | `recommended-drop` | `none`. WHY an analytics band exists (or doesn't). Decided in step-01 §5b by data + user job, NOT by inspecting the legacy render — `design-handoff`'s blank-canvas mandate means a bare-table feature whose job is pattern/coverage/ranking work gets a band recommendation (`recommended-new`, veto-surfaced) even when the current page has none. Drives §4b inclusion: present iff `inherited` or `recommended-new`.
 - `{has_analytics_band}` - `true` iff `{band_provenance}` ∈ {`inherited`, `recommended-new`}. Gates whether section 4b (Analytics Structure) is emitted.
 - `{analytics_archetype}` - The *shape* of the analytics band, selected in step-01 §5c against `shared/analytics-archetypes.md` from the user's question (not the data's availability): one of `trend`, `distribution`, `composition`, `ranking`, `coverage`, `flow`, `single-metric`, `correlation` (or `unclear` → ask). Empty when there is no band. Prevents every band defaulting to the same trend-strip-of-small-multiples.
+- **Analytics reasoning capture** (populated in step-01 iff `{has_analytics_band}`; rendered into the rationale artifact by step-03b; empty otherwise):
+  - `{page_mode_rationale}` - the concrete signal that selected `operational` vs `analytical` (§5).
+  - `{band_decision_log}` - the three band-belongs questions answered for this feature, plus the veto outcome for `recommended-new`/`recommended-drop` (§5b).
+  - `{archetype_candidates}` - the archetypes weighed, each tagged `chosen | secondary | rejected` with a one-line reason — the road not taken (§5c).
+  - `{archetype_winner_reason}` - why the winner won, naming the data dimension AND the user question (§5c).
+  - `{archetype_secondary}` - the subordinate archetype if a second co-occurs, else `none` (§5c).
+  - `{time_present_check}` - when time is in the data, the explicit "this is / isn't a trend job" line — the anti-default record (§5c).
+- `{rationale_output_path}` / `{rationale_output_filename}` / `{rationale_path_relative_to_repo_root}` - the analytics rationale artifact written by step-03b (only when `{has_analytics_band}`). Companion to the brief; delivered in the same commit by step-04.
 - `{constraints}` - Hard constraints the designer must respect (responsive breakpoints, data density, accessibility)
 - `{user_context}` - Who uses this feature, what they're trying to accomplish, frequency of use
 - `{reference_pages}` - Existing pages in the app that have good design to reference — from brand identity (preferred)
@@ -217,7 +240,8 @@ Constraints on the collapse:
 
 Read fully and follow each step file in sequence:
 
-1. `{project-root}/_bmad/bmm/workflows/design/design-handoff/steps/step-01-gather.md` — gather feature purpose, data shape, user context.
+1. `{project-root}/_bmad/bmm/workflows/design/design-handoff/steps/step-01-gather.md` — gather feature purpose, data shape, user context. When an analytics band is in play, also capture the page-mode / band / archetype *reasoning* (§5/§5b/§5c), not just the conclusions.
 2. `{project-root}/_bmad/bmm/workflows/design/design-handoff/steps/step-02-audit-design.md` — audit the current design system / extract tokens / locate reference pages.
 3. `{project-root}/_bmad/bmm/workflows/design/design-handoff/steps/step-03-generate-brief.md` — write the brief to `{output_path}` with full Block A + Block B frontmatter.
-4. `{project-root}/_bmad/bmm/workflows/design/design-handoff/steps/step-04-deliver.md` — commit, push, PR, merge to `main`, surface the merged URL. Skippable via `--no-deliver`.
+3b. `{project-root}/_bmad/bmm/workflows/design/design-handoff/steps/step-03b-emit-rationale.md` — **conditional: only when `{has_analytics_band}` is `true`.** Write the analytics presentation rationale (`design-rationale-{target_slug}-{date}.md`) — the human-facing record of HOW the page-mode/band/archetype were chosen. Skipped entirely for no-band features.
+4. `{project-root}/_bmad/bmm/workflows/design/design-handoff/steps/step-04-deliver.md` — commit, push, PR, merge to `main`, surface the merged URL. Stages the rationale alongside the brief when one was written. Skippable via `--no-deliver`.

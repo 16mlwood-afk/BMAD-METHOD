@@ -14,6 +14,8 @@ An analytics surface has a *shape* the way a sentence has a verb. The shape is c
 2. **Pick the dominant archetype.** Surfaces often touch two (e.g. coverage + drift). Name the dominant one — it governs the composition — and treat the second as a secondary pass, not a co-equal that doubles the band's footprint.
 3. **Ground or flag.** State the data dimension *and* the user question that selected the archetype. If you cannot name both, set `analytics_archetype: unclear` and halt/flag per the workflow's grounding gate. Do **not** default to `trend` — defaulting to trend is the exact failure this file exists to kill.
 
+> **The selection is recorded, not just made.** When `design-handoff` picks an archetype, the deliberation — candidates weighed, why the winner won, what was rejected, and the explicit time≠trend check — is captured in step-01 §5c and written to a companion **rationale artifact** (`design-rationale-{slug}-{date}.md`, spec in `shared/analytics-rationale.md`). The brief carries only the conclusion; the rationale carries the reasoning so a human can audit how the dataset's presentation was chosen. A reviewer checking that a band earns its space can read the rationale to see whether the ground-or-flag rule was actually honored.
+
 ## The archetypes
 
 Each entry: the **question** it answers · the **form** that answers it fastest · the **drill** path · what to **avoid**.

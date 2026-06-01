@@ -131,6 +131,8 @@ Set `{page_mode}` based on the feature's **dominant user task**:
 
 If unclear, default to "operational."
 
+**Capture the reasoning (not just the label).** Set `{page_mode_rationale}` to the concrete signal that selected the mode — the user-goal phrasing or data property that decided it (e.g. "user goal is 'spot which week slipped' → pattern discovery, not row processing"). This is recorded verbatim in the analytics rationale artifact (step-03b) when a band exists; capturing it now means the deliberation is not thrown away once the binary label is set. (Skip the capture only when `{has_analytics_band}` resolves to `false` below — no rationale artifact is emitted then.)
+
 ### 5b. Decide Whether an Analytics Band Belongs
 
 This is a **design judgment about the data and the user's job — not a detection of what the legacy page renders.** `design-handoff` exists to start the designer from a blank canvas; inheriting band presence/absence from the current layout is the one place that mandate matters most. A bare legacy table sitting on time-series, multi-segment data where the user's real job is "spot which one slipped" *should* get a band even though the current page has none.
@@ -156,6 +158,8 @@ Set `{band_provenance}` to record *why* the band exists (or doesn't), keeping th
 
 If the three questions genuinely don't resolve, do not default to a band *or* to none silently — ask the user the one band question above. A guessed band is worse than an asked one.
 
+**Capture the reasoning.** When `{has_analytics_band}` is `true`, set `{band_decision_log}` to the three questions answered for THIS feature — each a one-liner of `yes/no + the specific dimension / job / next-action`, exactly as they'll appear in step-03b §2. If `{band_provenance}` is `recommended-new` or `recommended-drop`, also record the veto outcome (`accepted | declined | pending`) so the rationale can state that the scope recommendation was surfaced, not silently injected.
+
 ### 5c. Select the Analytics Archetype
 
 If `{has_analytics_band}` is `true`, set `{analytics_archetype}` by reading `shared/analytics-archetypes.md` and applying its selection rule. The archetype is the *shape* of the band, chosen by the **user's question**, not by the data's availability and not by the legacy render.
@@ -165,6 +169,15 @@ If `{has_analytics_band}` is `true`, set `{analytics_archetype}` by reading `sha
 - Defaulting to `trend` because time exists in the data is the exact failure this selection exists to prevent. Time in the data does not make the job a trend job.
 
 If `{has_analytics_band}` is `false`, `{analytics_archetype}` is empty.
+
+**Capture the deliberation — the road not taken is the point.** The brief records only the winning archetype. The rationale artifact (step-03b) records how you got there, so set:
+
+- `{archetype_candidates}` — the archetypes you genuinely weighed, each tagged `chosen | secondary | rejected` with a one-line reason. Include the winner, any true secondary, and **at minimum the most tempting rejected alternative** (for time-bearing data that is almost always `trend`). This becomes the candidates table in step-03b §3.
+- `{archetype_winner_reason}` — why the winner won, naming BOTH the data dimension AND the user question that selected it (the same ground-or-flag pair from the selection rule).
+- `{archetype_secondary}` — the subordinate archetype if a second genuinely co-occurs, else `none`.
+- `{time_present_check}` — set only if the data carries a time dimension: one line stating why this is (or is not) a `trend` job. This is the explicit anti-default record; if time is present and you did NOT pick `trend`, this line is the proof you resisted the monoculture, and step-03b surfaces it prominently.
+
+If `{has_analytics_band}` is `false`, all four are empty.
 
 ### 6. Identify User Context
 
@@ -194,6 +207,7 @@ Confirm populated:
 - `{band_provenance}` ✓ (`inherited` | `recommended-new` | `recommended-drop` | `none`; net-new/drop recommendations veto-surfaced)
 - `{has_analytics_band}` ✓ (`true` iff band_provenance ∈ {inherited, recommended-new})
 - `{analytics_archetype}` ✓ (one of the eight, or `unclear` → asked; empty when no band)
+- **Analytics reasoning capture** ✓ (populated iff `{has_analytics_band}` is `true`; all empty otherwise) — `{page_mode_rationale}`, `{band_decision_log}`, `{archetype_candidates}`, `{archetype_winner_reason}`, `{archetype_secondary}`, `{time_present_check}`. These feed the rationale artifact in step-03b; capturing the deliberation here is what makes the presentation decision auditable instead of discarded.
 - `{user_context}` ✓
 - `{brand_identity}` ✓ (may be empty)
 - `{design_system}` ✓ ("branded", "existing", or "external")
