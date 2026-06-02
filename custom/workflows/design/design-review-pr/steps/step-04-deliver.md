@@ -63,6 +63,22 @@ For each route in `{brief_archetype_map}`:
 
 - **No rationale** (`rationale: none`): do nothing here — step-01 §7 already disclosed in coverage that reasoning was not verifiable for this route. Never emit a reasoning finding when there is no rationale to read.
 
+### 1c. Evaluate C-IDENTFMT-01 (canonical-identifier formatting)
+
+For each route in `{affected_routes}`:
+
+- **If dom-render ran** (`{chrome_available}`): step-03 §3c already emitted any contradiction as a P1 finding. Surface it in the P1 section quoting the divergent strings:
+
+  > Identifier formatting inconsistent on `{route}` — the `{class}` record renders as {variant A} and {variant B} on the same surface (policy §13 "Canonical identifier": one consistent form everywhere; do not reformat per surface). Normalize at the render boundary to one form{, e.g. the label form already used for the sibling class}.
+
+- **If dom-render was skipped** (Chrome unavailable): the cross-surface comparison cannot be made mechanically. If the step-02 source arm surfaced advisory C-IDENTFMT-01 candidates, fold them in; otherwise emit a human-judgment manual prompt so the report never implies identifier formatting was verified:
+
+  ```
+  **[manual] C-IDENTFMT-01** — Canonical identifiers must render one consistent form everywhere.
+  - Routes: {affected_routes}  ·  Source-arm candidates: {list or "none surfaced"}
+  - What to check: does each canonical-identifier class (supplier, marketplace, ASIN/SKU, order number) render in ONE casing/label form across cells and the list↔drawer? Any raw enum (AMAZON_ES) shown where a human label is expected? Policy §13. Verify in a browser — dom-render did not run.
+  ```
+
 ### 2. Build manual-prompt section
 
 For each rule in `{checklist.human_judgment}` whose `affected_routes` intersects `{affected_routes}`, emit a manual prompt:
@@ -104,6 +120,7 @@ Always emit a coverage section:
 - dom-render: {ran against {R} routes / skipped — Chrome not available}.
 - human-judgment: {Q} rules surfaced as manual prompts.
 - archetype conformance (C-ARCHETYPE-01): {checked {P} route(s) against declared briefs / deferred to manual — dom-render skipped / no brief-declared bands in scope}. {List any affected routes with no brief, which were NOT checked.} Reasoning verified against rationale for {S} of {P} route(s); {list routes with a declared band but no rationale artifact — reasoning NOT verifiable, only rendered form}.
+- identifier formatting (C-IDENTFMT-01): {checked {R} route(s) in dom-render §3c / deferred to manual — dom-render skipped, source-arm surfaced {C} advisory candidate(s)}. §13(a) canonical-identifier consistency.
 - Rules with no diff context: {list of rule IDs that had nothing to check this PR}.
 ```
 

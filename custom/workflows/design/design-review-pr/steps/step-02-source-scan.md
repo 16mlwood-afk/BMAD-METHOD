@@ -76,6 +76,19 @@ These are starting points — refine per rule. The exact patterns belong in the 
 - **`G-TYPO-05` (emoji as icon):** Match Unicode emoji ranges (e.g., `[\u{1F300}-\u{1FAFF}]`). Suppress matches inside `*.test.ts`, `*.fixture.*`, `mocks/**`.
 - **`E-EXEMPLAR-*`:** Run only if `{diff_files}` includes anything under `_bmad-output/` or a path matching `*exemplar*`.
 
+### 5. Standing check: C-IDENTFMT-01 — canonical-identifier formatting (source arm, advisory)
+
+This is the cheap source-side arm of the §13(a) "Canonical identifier" check (policy §13: a record *"reads, formats … the same way everywhere … do not relabel, reformat, or re-key the same record per surface."*). The authoritative arm is dom-render §3c; this arm exists so the check is not silently skipped when Chrome is unavailable. It is **advisory** — it surfaces *candidates* to confirm in dom-render or via the step-04 human-judgment prompt, not P0/P1 findings on its own (raw regex cannot prove a cross-surface inconsistency).
+
+Run against `{diff_files}` only:
+
+| Signal | Pattern (PCRE2) | Why it's a candidate |
+|---|---|---|
+| Raw enum/code in template text | SCREAMING_SNAKE token (`\b[A-Z][A-Z0-9]+_[A-Z0-9_]+\b`) inside a JSX/Svelte text node or `>{ … }<` interpolation, NOT inside a `class=`/`className=`/`data-*`/import/`const X =` enum *definition* | a stored enum (`AMAZON_ES`) rendered verbatim where a human label is expected |
+| Unformatted identifier interpolation | an identifier-class field (`\b(supplier\|marketplace\w*\|asin\|sku\|orderNumber\|externalOrderId)\b`) interpolated directly (`{…}`) into rendered text **without** passing through a known display formatter (`format`, `titleCase`, `prettify`, `label`, `display`) | inconsistency risk — one surface formats, another renders raw |
+
+For each candidate, emit an **advisory** finding: `rule_id: C-IDENTFMT-01`, `severity: P2`, `lane: source-grep`, `advisory: true`, with `suggested_fix: "Render <field> through the project's display-format helper and confirm it matches how the same record renders on sibling surfaces; confirm in dom-render §3c or the C-IDENTFMT-01 human prompt."` Suppress matches inside `*.test.*`, `*.fixture.*`, `mocks/**`, enum/const *definitions*, and `data-*` attributes (per the over-broad-regex failure mode). If `{diff_files}` touches no rendered identifier text, record C-IDENTFMT-01 source-arm as "no diff context" for step-04 coverage.
+
 ---
 
 ## OUTPUT

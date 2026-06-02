@@ -220,6 +220,57 @@ Compare the harvest against the declared `archetype` from `{brief_archetype_map}
 
 A contradiction is a P1 `change-requested` finding citing the brief filename and the declared archetype. When the harvest is ambiguous (signals don't clearly contradict but don't clearly confirm), do NOT fire — defer to the human-judgment prompt step-04 emits. False-firing this check trains reviewers to ignore it.
 
+### 3c. Canonical-identifier formatting conformance (C-IDENTFMT-01)
+
+The authoritative arm of the §13(a) check — policy §13 "Canonical identifier": a record *"reads, formats … and links the same way everywhere it appears … do not relabel, reformat, or re-key the same record per surface."* §3b covers §13's *component-treatment* half; this covers its *identifier-formatting* half. Run on every route in `{affected_routes}` (no brief map needed — it reads the rendered page).
+
+Harvest the rendered string of each canonical-identifier class wherever it appears, in one round-trip. Identify identifier cells heuristically (monospace/`tabular-nums`/`id`/`code` classes, ASIN/SKU shapes `\b[A-Z0-9]{10}\b`, and columns whose header matches supplier/marketplace/order/sku):
+
+```javascript
+(() => {
+  const norm = (s) => (s || '').trim();
+  // collect candidate identifier strings from table cells, headers, and any open drawer/detail panel
+  const cells = [...document.querySelectorAll('td, th, [role="cell"], [class*="mono"], [class*="tabular"], dd, dt')];
+  const buckets = {}; // class -> Set of distinct rendered forms
+  const add = (cls, val) => { if (!val) return; (buckets[cls] ||= new Set()).add(val); };
+  const RX = {
+    asin_sku: /^[A-Z0-9]{8,14}$/,
+    marketplace: /^(amazon|amzn)[ _-]?[a-z]{2}$|^AMAZON_[A-Z]{2}$|^Amazon\s+[A-Z]{2}$/i,
+    snake_enum: /^[A-Z][A-Z0-9]+_[A-Z0-9_]+$/, // raw enum leakage, any class
+  };
+  for (const el of cells) {
+    const t = norm(el.textContent);
+    if (!t || t.length > 40) continue;
+    if (RX.asin_sku.test(t)) add('asin_sku', t);
+    if (RX.marketplace.test(t)) add('marketplace', t);
+    // supplier: short single-token alpha in a column whose header says supplier — approximate by low-card alpha tokens
+    if (/^[a-z][a-z .&-]{1,24}$/.test(t) || /^[A-Z][A-Za-z .&-]{1,24}$/.test(t)) add('alpha_token', t);
+    if (RX.snake_enum.test(t)) add('raw_enum_rendered', t);
+  }
+  // casing-variant detection: same token, different case, in the same class
+  const variants = {};
+  for (const [cls, set] of Object.entries(buckets)) {
+    const byLower = {};
+    for (const v of set) (byLower[v.toLowerCase().replace(/[ _-]/g,'')] ||= new Set()).add(v);
+    const clashed = Object.values(byLower).filter((s) => s.size > 1).map((s) => [...s]);
+    if (clashed.length) variants[cls] = clashed;
+  }
+  return JSON.stringify({
+    rawEnumRendered: [...(buckets.raw_enum_rendered || [])],
+    casingVariants: variants,            // e.g. { marketplace: [["AMAZON_ES","Amazon UK"]], alpha_token: [["amazon","Amazon"]] }
+  }, null, 2);
+})();
+```
+
+Fire `C-IDENTFMT-01` (P1 `change-requested`) on a clear result:
+
+| Signal | Fires when |
+|---|---|
+| Casing/format variant within a canonical-identifier class | `casingVariants` has an entry for a canonical class (marketplace, asin_sku, supplier) — the same record class rendered two ways across cells or the list↔drawer boundary |
+| Raw-enum leakage | `rawEnumRendered` non-empty AND a sibling surface renders the same class as a human label (e.g. `AMAZON_ES` rendered while `Amazon UK` appears elsewhere) |
+
+Quote the divergent strings verbatim in the finding and cite policy §13 (and §4 for casing). A single isolated `alpha_token` casing variant that is not a canonical-identifier class is at most P3 — do not P1 a one-off. When the harvest is ambiguous (e.g. `alpha_token` clashes that may be distinct real values, not the same record), do NOT fire — defer to the step-04 human-judgment prompt. False-firing trains reviewers to ignore the check.
+
 ### 4. Apply established-pattern exceptions
 
 Same logic as step-02: if a flagged pattern appears in `≥3` routes already, downgrade by one tier and tag `established`.

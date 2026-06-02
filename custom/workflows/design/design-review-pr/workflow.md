@@ -30,7 +30,7 @@ Steps execute in order. Each step's output feeds the next.
 - `steps/step-01-scope.md` — Determine target (PR or local diff). Identify which routes / pages the changeset touches. Load the checklist.
 - `steps/step-02-source-scan.md` — Run all `source-grep` lane rules against the diff. Emit findings.
 - `steps/step-03-dom-render.md` — For each affected page (if Chrome is available), render and run `dom-render` lane rules. Emit findings.
-- `steps/step-04-deliver.md` — Aggregate findings, evaluate `C-COMPOSITE-01` and `C-ARCHETYPE-01`, and produce the structured report.
+- `steps/step-04-deliver.md` — Aggregate findings, evaluate `C-COMPOSITE-01`, `C-IDENTFMT-01`, and `C-ARCHETYPE-01`, and produce the structured report.
 
 ### State Variables
 
@@ -44,9 +44,10 @@ Steps execute in order. Each step's output feeds the next.
 
 ### Workflow-intrinsic checks
 
-Two checks are NOT in `docs/review-checklist.md` — the workflow evaluates them itself:
+Three checks are NOT in `docs/review-checklist.md` — the workflow evaluates them itself:
 
 - **`C-COMPOSITE-01`** — fires when ≥3 distinct P1 fingerprints hit one route (evaluated in step-04 §1).
+- **`C-IDENTFMT-01`** — fires when a canonical-identifier class (supplier, marketplace, ASIN/SKU, order number) renders in more than one casing/label form across cells or the list↔drawer boundary, or when a raw enum/code (`AMAZON_ES`) is rendered where a human label is expected. This operationalizes policy §13's **"Canonical identifier"** clause (*"reads, formats … the same way everywhere … do not relabel, reformat, or re-key the same record per surface"*) — the text-formatting twin of the status-badge-consistency hard failure. Three-arm: a cheap **source-grep** advisory (step-02 §5, so it isn't silently skipped when Chrome is down), the authoritative **dom-render** check (step-03 §3c, P1 on a clear cross-surface divergence), and a **human-judgment** fallback prompt when dom-render is skipped (step-04 §1c). Evaluated/aggregated in step-04 §1c.
 - **`C-ARCHETYPE-01`** — fires when an analytics band's rendered *form* contradicts the `analytics_archetype` its active brief declared (e.g. brief says `coverage`, the page ships a multi-series trend chart with no gap affordance; brief says `ranking`, the list is unsorted; any band element has no drill target). This is the PR-time counterpart to `design-handoff` step-01 §5c + `shared/analytics-archetypes.md`: the brief picks a shape (via the `analytics-surface-architect` skill), this check verifies the implementation kept it. Brief-aware — it reads the declared contract, not just project policy. **Rationale-aware too:** when the companion `design-rationale-*` artifact exists, it additionally verifies the *decision* was sound — the rationale's archetype matches the brief (P1 on divergence) and the choice was grounded (a `[note]` when reasoning is thin) — so a band that renders as declared but was chosen on an ungrounded guess is still surfaced. Reasoning verification is disclosed, never assumed: a declared band with no rationale is reported as "rendered-form checked, reasoning not verifiable." Evaluated in step-04 §1b.
 
 ---

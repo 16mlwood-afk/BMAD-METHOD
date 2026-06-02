@@ -134,6 +134,8 @@ Example harvest script:
 
 Scan the rendered text (from step 2) for repeated values — note which ones appear in multiple regions. Duplicated data is a density red flag.
 
+**Identifier rendering (all modes — feeds the §13a check in §5).** Separately from duplicated-data, capture *how each canonical-identifier class is formatted* wherever it appears. For each class present — supplier, buy/sell marketplace, ASIN / SKU / product code, order / shipment / batch number, currency, date — record the literal rendered string(s) from the visible text: e.g. supplier `amazon` in the table but `Amazon` in a header; `marketplaceBuy` rendered `AMAZON_ES` (raw enum) while `marketplaceSell` renders `Amazon UK`. This is plain rendered text, so it is capturable in every mode (`chrome-live`, `source-derived`, `screenshot-only`) — there is no degraded-mode excuse to skip it. Store the per-class rendered forms for the §5 consistency compare.
+
 ### 4. Locate Source + Peers
 
 - Pick a distinctive visible string from the page (a unique heading, an uncommon label, a specific button label).
@@ -150,6 +152,7 @@ With measurements + source in hand, compare the page under review against the pe
 
 - **Hierarchy:** Do the top 3 visually heaviest elements match the page's primary decision? Or is weight spent on low-value chrome (breadcrumbs, meta, labels)?
 - **Information architecture:** Are related concepts grouped? Is any data duplicated across regions (from step 3)? Is there a region that answers no user question?
+- **Identifier & value formatting (§13a — canonical identifier):** Using the per-class rendered forms captured in step 3, does each canonical-identifier class render in ONE consistent casing / label form everywhere it appears — across cells, columns, and the page↔drawer boundary? Policy §13 ("Canonical identifier") requires a record to *"read, format … the same way everywhere … do not relabel, reformat, or re-key the same record per surface."* Flag (a) **inconsistency** — the same class rendered two ways (`amazon` vs `Amazon`; `AMAZON_ES` vs `Amazon UK`); and (b) **raw-enum / code leakage** — a SCREAMING_SNAKE or internal code (`AMAZON_ES`) rendered verbatim where a human label is expected. This is plain rendered text (works in every measurement mode); cite policy §13 (and §4 for casing). A systemic inconsistency in a canonical-identifier class is a `hard failure`; an isolated one-off label slip is `minor`.
 - **Density:** `scrollWidth` vs `clientWidth` — is the page leaking horizontal overflow? Are cards nested (card-in-card)? Is a 12-col grid rendered with only 2–3 fields per row (dead space)? Are KPI tiles showing values that are mostly `0` or `null`?
 - **Peer gaps:** What pattern does each peer use — sticky header, two-column split, inline meta row, pill nav — that this page doesn't? Name the pattern and the peer.
 - **Brand identity alignment (when `{brand_identity}` exists):** Does the page match the brand's stated visual language? Check:
