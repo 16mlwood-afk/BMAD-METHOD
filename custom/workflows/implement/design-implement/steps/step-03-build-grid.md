@@ -112,6 +112,23 @@ Every colour delta in the grid compares **resolved values from `{impl_colors}`**
 2. Compute a perceptual distance (ΔE, or a simple per-channel delta if ΔE is impractical). Treat **ΔE ≳ 3 (or any channel off by ≳ 5%)** as a real delta → Tier-2.
 3. **Banned verdicts:** "both green", "same family", "emerald ≈ sage", "close enough". Same hue family is not a match; only resolved-value proximity is. The invoices status-pill shipped emerald-where-the-design-said-sage precisely because the comparison stopped at "both pale green."
 
+### 2c. Content-lane flag — formatter-driven identifier cells (do NOT pixel-match against the mock bundle)
+
+This grid certifies **treatment** (CSS) — it is blind to the **content lane** (what a value-formatter renders), and that blindness is structural, not an oversight: design-implement compares against the design *bundle*, which carries **seeded mock data**. A canonical-identifier cell whose text comes from a formatter or enum→label map is wrong only on a *real-data variant the bundle never contained* — so the bundle string-match (`UK → UK` mock vs `UK → UK` impl) returns `✓` while the live render (`US → amazon_us`, a leaked raw enum) is broken. Treating that `✓` as conformance is the exact miss this section exists to prevent (inbound-flow `/orders`: the live `marketplaceCode` fell through to the raw `amazon_us` enum; the bundle's mock `UK → UK` made the cell "pass").
+
+For every cell in `{impl_identifier_cells}` (step-02 §3d — `value_source: formatter | enum-map` AND a canonical-identifier class):
+
+1. **Do NOT assign the cell's *value* a treatment `✓` or a value-delta.** Its CSS still gets normal grid rows (radius, font, colour — those ARE bundle-verifiable); only the rendered *string* is exempt from the bundle comparison.
+2. **Add one content-lane row** to the grid instead, with this fixed shape — it is NOT a Tier-1/2/3 delta (those are fixable here; this is not):
+
+   | Component | State | Property | Design | Implementation | Delta |
+   |-----------|-------|----------|--------|----------------|-------|
+   | {cell} | — | `content-lane: identifier value ({class})` | mock `{bundle value}` — NOT authoritative | `{formatter_ref}` (real-data variants not in bundle) | `CONTENT-LANE-UNVERIFIED → route to design-review / design-tuning (live)` |
+
+3. **Never "verify" it by reading the bundle harder.** A mock bundle physically cannot contain the production enum forms; the only authoritative evidence is the LIVE page with real data. That evidence is `design-review`'s §13(a) check and `design-tuning` step-02 §2b — not this workflow. Reading the bundle and declaring the identifier "matches" is the failure, not the verification.
+
+Count these as `{content_unverified_count}` (separate from `{delta_count}` — they are routed items, not deltas applied here). They carry into the step-04 apply ledger as `deferred(content-lane)` and into the §9 completion report's mandatory disclosure, so the run announces "these identifier cells were NOT content-verified — run design-review / design-tuning against the live page" rather than implying the grid covered them.
+
 ### 3. Count Deltas
 
 Count the number of rows where the Delta column is NOT `✓`:
@@ -179,6 +196,8 @@ Deltas found:         {delta_count}
     of which state-conditional: {count of state-tint + state-text-weight deltas}
     of which colour (resolved ΔE): {count}
   Tier 3 (micro):      {count}
+Content-lane unverified (routed, NOT deltas): {content_unverified_count}
+  → formatter/enum-driven identifier cells; route to design-review / design-tuning (live page)
 ```
 
 ---
@@ -201,6 +220,7 @@ Read fully and follow: `{project-root}/_bmad/bmm/workflows/implement/design-impl
 - State-axis Tier-1 deltas (missing state, state collision, hover-on-state fall-through) are surfaced explicitly in the summary, not buried in the per-property rows
 - **Every primitive with ≥2 implementations ran the §2a consistency pass; sibling-divergence Tier-1 deltas surfaced explicitly in the summary**
 - **Every colour delta compared resolved values numerically (§2b), never by class name or family**
+- **Every formatter/enum-driven canonical-identifier cell (`{impl_identifier_cells}`) carries a `content-lane: CONTENT-LANE-UNVERIFIED` row (§2c) — its value was NOT pixel-matched against the mock bundle, and `{content_unverified_count}` is surfaced separately in the summary**
 
 ## FAILURE MODES
 
@@ -213,3 +233,4 @@ Read fully and follow: `{project-root}/_bmad/bmm/workflows/implement/design-impl
 - Forgetting to resolve Tailwind classes through the config before comparing
 - Missing properties that exist in the design but weren't cataloged in Step 1
 - Claiming `✓` when values are "close enough" — 10px ≠ 4px even if both are "rounded"
+- **Pixel-matching a formatter-driven identifier cell against the mock bundle and calling it `✓`.** The bundle's mock `UK → UK` matching the impl's `UK → UK` is NOT evidence the formatter handles the real `amazon_us` / `amazon.de` / stray-`GB` variants — those never appear in a mock bundle. Such a cell is `content-lane: CONTENT-LANE-UNVERIFIED` (§2c) and routed to the live-page workflows, never certified here. This is the inbound-flow `/orders` raw-enum leak the content lane exists to catch.

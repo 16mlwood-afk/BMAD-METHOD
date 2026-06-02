@@ -82,8 +82,10 @@ Re-read each modified file, then walk the Step-3 grid **row by row** and give EV
 | Disposition | Meaning | Required note |
 |---|---|---|
 | `✓ applied` | The delta is now fixed in the implementation (re-verified by re-reading the file). | — |
-| `⊘ deferred` | Intentionally not applied this pass. | **Reason, one of:** `needs-data` (the page load / server doesn't provide the value — name the field), `out-of-scope` (explicitly outside this run's target), `judgment` (a product decision the implementer made — state it). |
+| `⊘ deferred` | Intentionally not applied this pass. | **Reason, one of:** `needs-data` (the page load / server doesn't provide the value — name the field), `out-of-scope` (explicitly outside this run's target), `judgment` (a product decision the implementer made — state it), `content-lane` (a formatter/enum-driven identifier cell from step-03 §2c — its rendered value cannot be verified against a mock-data bundle; routed to design-review / design-tuning on the LIVE page). |
 | `✗ dropped` | Cannot or will not apply at all. | **Reason** — why it's not implementable as specified. |
+
+Every `content-lane` row from step-03 §2c (`{content_unverified_count}` of them) is disposed `⊘ deferred(content-lane)` — its CSS may well have been applied, but its *value-formatting* is explicitly NOT certified here. Do not silently `✓` it; do not drop it. It carries into §9 under "Content-lane verification owed (live page)" with the routing command, so the run hands the content lane off out loud instead of implying the grid covered it.
 
 Rules:
 - **No row without a disposition.** A grid row you neither applied nor explicitly deferred/dropped means the run is incomplete — go back and resolve it. "I didn't get to it" is not a disposition.
@@ -178,9 +180,20 @@ Deltas not applied:
 {else, one bullet per deferred/dropped row:}
   - ⊘ {grid row id / short description} — deferred ({reason}: {detail})
   - ✗ {grid row id / short description} — dropped ({reason})
+
+Content-lane verification owed (live page):
+{if content_unverified_count == 0:}
+  None — no formatter/enum-driven identifier cells on this surface.
+{else:}
+  {content_unverified_count} identifier cell(s) had their CSS aligned but their RENDERED VALUE
+  not certified (mock-data bundle cannot exercise the real enum/label variants). Verify on the
+  live page before trusting them:
+  - {cell} — {identifier_class}, value from {formatter_ref}
+  → run:  /bmad:bmm:workflows:design-review   (live Chrome §13(a) check)
+     or:  /bmad:bmm:workflows:design-tuning   (step-02 §2b, live screenshots)
 ```
 
-A completion report that prints a fixed-count but omits the "Deltas not applied" section is non-conformant — re-emit it. The whole point of this section is that a partial implementation announces itself instead of shipping silently as "done."
+A completion report that prints a fixed-count but omits the "Deltas not applied" section is non-conformant — re-emit it. The whole point of this section is that a partial implementation announces itself instead of shipping silently as "done." The **"Content-lane verification owed" section is equally mandatory** and never omitted: design-implement aligning a marketplace/supplier/ASIN cell's CSS is NOT the same as certifying it renders the right value on real data — that lane belongs to the live-page workflows, and the report must say so rather than let "implementation complete" imply the identifier values were checked.
 
 ---
 
@@ -190,13 +203,15 @@ A completion report that prints a fixed-count but omits the "Deltas not applied"
 - Apply was grid-driven (every fix traces to a row), not a holistic rebuild
 - Every applied delta is fixed and re-verified by re-reading the file
 - **The completion report's "Deltas not applied" section is present** — enumerating every deferred/dropped delta with its reason, or stating "None — all N applied"
+- **The completion report's "Content-lane verification owed (live page)" section is present** — every `content-lane` deferral (step-03 §2c) enumerated with its formatter ref + the design-review / design-tuning routing, or stating "None"
 - Build passes; PR created and merged; grid artifact updated with dispositions; no regressions introduced
 
 ## FAILURE MODES
 
 - **Holistic rebuild instead of grid-driven apply** — "make the page look like the design" satisfies composition while silently dropping enumerated rows (band sender clause, kbd hints, a sort control). This is the dominant leak and the reason the apply ledger exists (accounting-tools /queries #900).
 - **Reporting a count without the "Deltas not applied" list** — "47/47" or "deltas fixed: X" with no enumeration of what was deferred/dropped. A partial that omits the disclosure ships looking complete. The §9 section is mandatory.
-- **A bare `deferred` with no reason** — the silent drop wearing a label. Every deferral names `needs-data` / `out-of-scope` / `judgment` + detail.
+- **A bare `deferred` with no reason** — the silent drop wearing a label. Every deferral names `needs-data` / `out-of-scope` / `judgment` / `content-lane` + detail.
+- **Letting "implementation complete" imply the identifier *values* were checked.** design-implement aligns a marketplace/supplier/ASIN cell's CSS against the bundle; it does NOT verify the formatter renders the right value on real data (the bundle is mock data). Omitting the "Content-lane verification owed" section ships that false implication — it is the design-implement counterpart of the inbound-flow `/orders` raw-enum leak that the grid's mock-data comparison could never catch.
 - Fixing some deltas but not all ("the rest are minor" — fix them all, or defer-with-reason)
 - Editing without re-reading to verify (edits can silently fail or land in the wrong location)
 - Changing `tailwind.config.js` when an arbitrary value would work

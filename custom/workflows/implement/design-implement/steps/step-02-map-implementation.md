@@ -124,6 +124,14 @@ Record every distinct implementation as its own row, tagged with its file and th
 
 Store the full set as `{impl_render_sites}`, keyed by primitive and listing every implementation found. This is the input to step-03's implementation-consistency check.
 
+**3d. Tag the value-source of each cell (content-lane input).** For every render site, record where its **displayed text** comes from — this is cheap (you have already read the file) and feeds step-03 §2c. Tag each site:
+
+- `value_source: literal` — the text is a static literal in the JSX/markup (a column header, a button label, a placeholder). The bundle's mock string and the impl's string are directly comparable.
+- `value_source: formatter` — the text is produced by a formatter function (`fmtMoney`, `fmtDate`, `marketplaceCode(...)`, `resolveMarketplace(...).code`, a `*-display` helper).
+- `value_source: enum-map` — the text maps a stored enum/code to a label (a `Record<enum, label>` lookup, a `switch`, an `IMPORT_SOURCE[...]`-style table).
+
+Flag every site that is `formatter` or `enum-map` **AND** renders a **canonical-identifier class** (marketplace, supplier, ASIN/SKU, order/batch/shipment number, currency, date, status label) as an **identifier cell**. These are the cells whose value design-implement **cannot certify against a mock-data bundle** (the mock value exercises one variant; the real enum forms — `amazon_us`, `amazon.de`, a stray `GB` — never appear in the bundle). Record them in `{impl_identifier_cells}` (a sub-list of `{impl_render_sites}`: `{ primitive, file, identifier_class, value_source, formatter_ref }`). Do NOT try to resolve "the right label" here — step-03 §2c only needs to know which cells are formatter-driven so they are routed, not pixel-matched.
+
 ### 4. Handle Missing or Extra Components
 
 - **In design but not implementation:** Mark as `MISSING — needs creation`. Note what the component does.
@@ -159,6 +167,7 @@ Read fully and follow: `{project-root}/_bmad/bmm/workflows/implement/design-impl
 - Tailwind config read and class resolution table built
 - **Every colour (incl. default Tailwind palette) resolved to a concrete hex/oklch value — `{impl_colors}` populated**
 - **Every render site of every primitive enumerated (not just the named component) — `{impl_render_sites}` populated, multi-implementation primitives captured in full**
+- **Every render site tagged with its value-source (§3d); formatter/enum-driven canonical-identifier cells captured in `{impl_identifier_cells}` for step-03 §2c routing**
 - Every CSS property on every implementation component cataloged with resolved values
 - Missing/extra components flagged
 - `{impl_components}` and `{impl_config}` populated
