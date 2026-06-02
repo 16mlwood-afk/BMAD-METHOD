@@ -82,6 +82,7 @@ Before finalizing, verify:
 - [ ] Visual references restated (if applicable) — Claude Design loses context between messages
 - [ ] Message is addressed to Claude Design, not to the user
 - [ ] No ambiguous language ("consider", "maybe", "you might want to") — use imperatives ("fix", "remove", "change to")
+- [ ] Content-lane (§13a identifier/value-formatting) findings are phrased as **render-boundary display-format normalization** ("render `marketplaceBuy` as the label form 'Amazon ES', matching the sell-side 'Amazon UK'"), naming one consistent target form per identifier class — NOT as a data/schema change (stored enums are untouched). Quote the divergent rendered strings.
 
 ### 4. Persist Iteration State
 

@@ -120,6 +120,16 @@ If the project has no implementation yet (greenfield, no component to read), `{c
 
 If no policy/brief constraint marks any treatment-class as cross-surface-shared, set `{canonical_components}` = empty and skip — there is no reference to compare against.
 
+### 1e. Resolve Documented Identifier & Value Formats (the §13a content-lane anchor)
+
+This is the companion to §1d. Where §1d reads the *treatment* (CSS) of cross-surface-shared components, this reads the documented *display form* of cross-surface-shared **identifiers** — what step-02 §2b compares the rendered strings against. It is cheap and best-effort; the §2b internal-consistency check (part a) does not depend on it, so an empty result here never blocks the content lane.
+
+1. **Enumerate `{identifier_classes}`** — the canonical-identifier classes the surface renders, drawn from the brief's §2 Domain Data tables and the policy's §13 "Canonical identifier" examples: supplier, buy/sell marketplace, ASIN / SKU / product code, order / shipment / batch number, currency, date. These are the records §13 requires to read and format identically on every surface.
+
+2. **Extract `{identifier_format_expectations}`** — a map of `{ class → documented display form }`, read from the brief §2 Notes column where it documents a human label form (e.g. `marketplaceBuy` → *"label, e.g. 'Amazon DE'"*; `asin` → *monospace code, verbatim*). Capture only what the brief/policy actually documents — do **not** invent a canonical form. Where a class has no documented form, leave it unset: §2b part (a) still enforces internal consistency across surfaces for it.
+
+If the brief has no §2 Domain Data table (brief-less or minimal-brief run), set both to empty and note it — §2b runs on internal consistency alone.
+
 ### 2. Extract Constraints from the Brief (derivative — not authoritative)
 
 Parse the brief and extract its stated constraints. **The brief is derivative of the policy loaded in step 1b.** Step-02 will contradiction-scan brief-derived constraints against `{policy_constraints}`; on conflict, policy wins.
@@ -208,6 +218,7 @@ Confirm at least these are populated:
 - `{treatment_evidence_mode}` ✓ (`bundle-exact` or `screenshot-degraded` — must be a deliberate value, set by §1c)
 - `{artifact_css_catalog}` ✓ (populated in `bundle-exact` mode; empty in `screenshot-degraded` — deliberate value)
 - `{canonical_components}` ✓ (populated if any treatment-class is cross-surface-shared; empty otherwise — deliberate value)
+- `{identifier_classes}`, `{identifier_format_expectations}` ✓ (from §1e — populated where the brief §2 documents identifier classes/forms; empty otherwise — a deliberate value, not unchecked. §2b's internal-consistency check runs even when empty.)
 
 **If `{brand_identity_path}` is empty in a project that appears to have a policy file you didn't find, STOP and report which paths you checked.** Silent fallback to brief-only mode is the loader-drift bug this workflow exists to prevent — surface it instead of swallowing it.
 
@@ -229,3 +240,4 @@ Load and follow: `{project-root}/_bmad/bmm/workflows/design/design-tuning/steps/
 - Iteration number set correctly
 - Artifact source resolved (§1c) — `{treatment_evidence_mode}` is a deliberate `bundle-exact` or `screenshot-degraded`, never unset; in `bundle-exact` mode `{artifact_css_catalog}` carries the treatment values for the components under review
 - Canonical codebase components resolved (§1d) — `{canonical_components}` holds the real class strings of each cross-surface-shared treatment, read from code; any one-class-two-treatments split is recorded as policy↔code drift
+- Documented identifier/value formats resolved (§1e) — `{identifier_classes}` enumerates the canonical-identifier classes on the surface and `{identifier_format_expectations}` holds any documented display form from the brief §2; both deliberate values (empty is allowed and does not block §2b)

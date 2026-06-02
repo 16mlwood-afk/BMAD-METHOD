@@ -25,6 +25,7 @@ From step 01:
 - `{brief_constraints}`, `{corporate_guardrails}`, `{visual_references}` — derived from brief (may have drift)
 - `{previous_violations}`
 - `{treatment_evidence_mode}`, `{artifact_css_catalog}`, `{canonical_components}` — from step-01 §1c/§1d; drive the treatment lane in §0a/§1b/§2/§2a
+- `{identifier_classes}`, `{identifier_format_expectations}` — from step-01 §1e; drive the content lane in §0a/§1b/§2b (the §13(a) identifier-formatting check). Both may be empty; the content lane's part (a) internal-consistency check runs regardless.
 
 The user has provided screenshot(s) of Claude Design's output in the conversation. When `{treatment_evidence_mode} == bundle-exact`, the actual artifact CSS was also ingested in step-01 §1c.
 
@@ -47,17 +48,21 @@ For each drift found:
 
 If `{brief_drift}` is non-empty at the end of this step, mark the run with `policy_overrides_brief = true` so step-03 surfaces the drift to the user along with the correction message.
 
-### 0a. Route Every Check into an Evidence Lane (treatment vs composition)
+### 0a. Route Every Check into an Evidence Lane (treatment · composition · content)
 
-Before checking anything, classify each check by the kind of evidence that can settle it. Workflow.md's SOURCE-OF-TRUTH PRECEDENCE carve-out establishes two lanes; this step enforces them.
+Before checking anything, classify each check by the kind of evidence that can settle it. There are **three lanes but only two evidence sources** — this matters: workflow.md's SOURCE-OF-TRUTH PRECEDENCE carve-out is a binary (artifact *source* vs rendered *pixels*), and the third lane added below sits firmly on the *rendered* side, so the carve-out is preserved intact, not split into three.
 
-**Treatment lane (evidence = artifact source, exact).** Any check that turns on a sub-visible or sub-pixel value: ring presence/opacity (`ring-{c}/20` vs `/30` vs none), `border-radius`, `padding`, `font-size`/`weight`, `letter-spacing`, `text-transform`, exact background/text color, presence of a leading status dot, badge shape (`rounded-md` vs `rounded-full`).
+**Treatment lane (evidence source = artifact source, exact).** Any check that turns on a sub-visible or sub-pixel value: ring presence/opacity (`ring-{c}/20` vs `/30` vs none), `border-radius`, `padding`, `font-size`/`weight`, `letter-spacing`, `text-transform`, exact background/text color, presence of a leading status dot, badge shape (`rounded-md` vs `rounded-full`).
 - If `{treatment_evidence_mode} == bundle-exact`: settle these by comparing the value in `{artifact_css_catalog}` against the matching `{canonical_components}` entry. Quote both values. A screenshot is NOT acceptable evidence here — it physically cannot resolve a 20%-opacity ring or a 1px radius delta.
 - If `{treatment_evidence_mode} == screenshot-degraded`: you have no exact-value evidence. Mark every treatment-lane check `unverified-treatment` (not pass, not fail) and carry it into `{current_violations}` as severity `unverified`. Per §7 the run cannot certify these treatments resolved. Do not pixel-guess and call it resolved — that IS the iter-4 V18 miss.
 
-**Composition lane (evidence = screenshot, gestalt).** Layout, hierarchy, density, card-grid/bento/hero detection, whether an analytics band reads as subordinate, off-screen columns, cramming/overflow. The screenshot is authoritative; the "rendered beats source" rule governs in full.
+**Composition lane (evidence source = screenshot, gestalt).** Layout, hierarchy, density, card-grid/bento/hero detection, whether an analytics band reads as subordinate, off-screen columns, cramming/overflow. The screenshot is authoritative; the "rendered beats source" rule governs in full.
 
-Tag each finding `lane: treatment` or `lane: composition` so step-03 and the state file record which evidence settled it.
+**Content lane (evidence source = screenshot, the literal rendered strings).** The *values* a surface renders, read as text: identifier casing and label form (`amazon` vs `AMAZON_ES` vs `Amazon UK`), unit/format consistency (currency, dates, quantities), and whether the same canonical-identifier class is rendered one consistent way across every cell and surface (policy §13 "Canonical identifier"). This is **screenshot-evidenced and screenshot-authoritative** — you settle it by *reading the rendered text and comparing the strings to each other*, never by reaching for the artifact source. Two consequences:
+  - It shares the composition lane's evidence *source* (the screenshot), so it does **not** introduce a third evidence kind and does **not** touch the treatment/source-precedence model. It is a distinct *check family* (reading literal values) split out from composition (reading spatial gestalt) so that value-formatting defects stop falling between the two and getting bucketed "data, out of scope" — the gap that let an identifier-casing inconsistency ship.
+  - Because pixels fully settle it, the content lane runs **at full strength even when `{treatment_evidence_mode} == screenshot-degraded`**. Its findings are real violations, never `unverified` — a degraded run has no excuse to miss a casing inconsistency. (The §2b check is the home for this lane.)
+
+Tag each finding `lane: treatment`, `lane: composition`, or `lane: content` so step-03 and the state file record which evidence settled it.
 
 ### 1. Inventory the Screenshots
 
@@ -89,22 +94,26 @@ Based on the brief's `{page_mode}` and whether an analytics band is present, pop
 - Status pill — inspect for: shape (`rounded-md` vs `rounded-full`), saturated fill vs tint, leading colored dot.
 - Filter chip bar — inspect for: chip shape, chip count beyond search + filters + sort, ad-hoc color on chips.
 - Row anatomy — inspect for: secondary-signal placement (status cell vs document cell vs other), hover-gated actions promoted to rest, per-row card framing vs hairline separators.
+- Identifier & value formatting (content lane) — read the rendered strings: is each canonical-identifier class (supplier, marketplace, ASIN/SKU, order number) rendered in one consistent casing/label form across every cell and across the list↔drawer? Are currency / dates / quantities formatted consistently? This is the §2b surface.
 
 **For `operational` mode without analytics band:**
 - Page header — inspect for: hero strip, banner panel, marketing intro, stat-card opener.
 - Status pill — same as above.
 - Filter chip bar — same as above.
 - Row anatomy — same as above.
+- Identifier & value formatting (content lane) — same as above; the §2b surface.
 
 **For `analytical` mode:**
 - Chart panels — inspect for: card grid framing (each chart in its own bordered card with identical chrome), KPI cards as page opener, hero summary.
 - Filter row — same as operational.
 - Evidence table — row anatomy as above.
+- Identifier & value formatting (content lane) — axis labels, legend keys, and the evidence-table identifier columns render each canonical class one consistent way; the §2b surface.
 
 **For `detail` mode (drawer or full-page):**
 - Header — inspect for: hero, gradient, oversized identifier.
 - Body sections — inspect for: card-grid framing of field groups, KPI cards inside the detail view, more than 3-4 groups.
 - Footer / action region — inspect for: rounded-full primary CTA, more than one primary action, oversized action region.
+- Identifier & value formatting (content lane) — the identifiers in the detail view render the same way they do on the list row that opened it (no relabel/reformat per surface); the §2b surface.
 
 Record the per-surface inspection results — even when "no violation" — as evidence rows that step-03 will reference. A clean inspection is `surface: pipeline-strip; verified-at: screen-01 zoom; finding: shared band, border-left only` rather than a silent pass.
 
@@ -175,6 +184,25 @@ Two failure modes this section explicitly guards:
 - **Policy prose ≠ canonical component.** If `{canonical_components}` recorded a policy↔code split in step-01 §1d (the codebase ships two treatments for one class), do NOT resolve the check against the policy's wording. Per `{project-root}` CLAUDE.md, code outranks the policy doc — compare against the live canonical component, and surface the split as its own finding so the user reconciles it (`modify-design-policy`). Scoring against prose is the exact inversion that shipped V18.
 - **`screenshot-degraded` mode.** With no artifact source there is no value to compare. Record the §13 treatment check as `unverified-treatment` and state plainly that cross-surface coherence could not be verified without the artifact URL — never infer "matches the sibling" from a screenshot.
 
+### 2b. Cross-Surface Identifier & Value Formatting (§13a — the casing/label-consistency check)
+
+§2a operationalizes one half of policy §13 — the "shared component language" clause (pill/chip/drawer *treatment*). This section operationalizes the **other** half: §13's **"Canonical identifier"** clause — *"a record reads, formats … and links the same way everywhere it appears … Do not relabel, reformat, or re-key the same record per surface."* That clause had no check before; the gap let the same brand/marketplace ship in three casings on one surface (`amazon` / `AMAZON_ES` / `Amazon UK`) and pass as "0 hard failures" because casing-of-data-values belonged to no lane. This is a **content-lane** check (§0a): screenshot-evidenced, screenshot-authoritative, and it **runs at full strength in `screenshot-degraded` mode** — never downgrade it to `unverified` because the artifact source was absent. Reading the rendered strings is all the evidence it needs.
+
+**The identifier classes.** Enumerate the canonical-identifier classes present in the surface (from `{identifier_classes}` if step-01 §1e populated it; otherwise read them off the screenshot): supplier, buy/sell marketplace, ASIN / SKU / product code, order / shipment / batch number, currency, date. These are the records §13 says must read and format identically everywhere.
+
+Run two checks per class:
+
+**(a) Internal consistency — always runs, no brief data required.** Within the provided screenshots, does the class render in ONE consistent casing / label form across every cell, column, and the list↔drawer boundary? Compare the rendered strings *to each other*. Divergence (e.g. supplier `amazon` lowercase in the table but `Amazon` title-case in the drawer; or `marketplaceBuy` as `AMAZON_ES` while `marketplaceSell` renders `Amazon UK`) is a §13(a) violation on its own — this is the primary catch and it needs nothing but the pixels. Raw enum/code leakage where a human label is expected (`AMAZON_ES` rendered verbatim) is a sub-case: flag it as both an inconsistency and an unfinished-value defect.
+
+**(b) Documented-format match — runs when `{identifier_format_expectations}` is populated.** For each class the brief §2 documents a display form for (e.g. `marketplaceBuy` documented as a label "e.g. 'Amazon DE'"), does the rendered value match that documented form? A rendered `AMAZON_ES` against a documented `"Amazon DE"` label form is a violation even if it were internally consistent. The brief §2 example is an anchor, not authority — policy §13/§4 is; (a) holds regardless of whether (b) has data.
+
+**Severity (content lane):**
+- Default **issue**.
+- Escalate to **hard-failure** when the inconsistency is in a *canonical-identifier class* (§13-governed: supplier / marketplace / ASIN-SKU / order number) AND it is *systemic* (recurs across rows or across the list↔drawer boundary, not a single stray label) AND/OR it directly contradicts a brief §2 documented format. A systemic §13(a) identifier inconsistency is the same severity tier as the §5 "inconsistent status-badge shapes/colors between surfaces" hard failure — the badge version was already a hard failure; the text version is its missing twin.
+- A single isolated label-casing slip stays an **issue** — do not FAIL a run on one stray string.
+
+Record each finding `category: policy-conformance (§13a)`, `lane: content`, evidence = the screenshot region(s) showing the divergent renderings (quote the actual strings). Carry into `{current_violations}` per §7.
+
 ### 3. Check Brief-Specific Constraints
 
 Walk through `{brief_constraints}` and check each one:
@@ -233,12 +261,14 @@ Store:
 
 - `{current_violations}` — all violations found, each with:
   - ID (V1, V2, V3...)
-  - Category (corporate-guardrail | brief-constraint | visual-reference | ai-fingerprint | policy-conformance)
+  - Category (corporate-guardrail | brief-constraint | visual-reference | ai-fingerprint | policy-conformance | policy-conformance (§13a))
   - Severity (hard-failure | issue | unverified)
-  - Lane (treatment | composition — per §0a)
-  - Description (what the brief/policy says vs. what the mockup shows — for treatment, quote both exact values)
-  - Evidence (per §2 evidence-class rule: `screenshot` region for composition; `source-exact` value-vs-canonical for treatment; `source` for source-level rows)
+  - Lane (treatment | composition | content — per §0a)
+  - Description (what the brief/policy says vs. what the mockup shows — for treatment, quote both exact values; for content, quote the divergent rendered strings)
+  - Evidence (per §2 evidence-class rule: `screenshot` region for composition AND content; `source-exact` value-vs-canonical for treatment; `source` for source-level rows)
   - Status (new | persisting-from-V{N} | regressed-from-V{N} | missed-since-V{N})
+
+  **Content-lane findings are real in `screenshot-degraded` mode — never `unverified`.** The content lane is screenshot-evidenced (§0a), so the absence of an artifact source does not blind it. A `screenshot-degraded` run that found an identifier-formatting inconsistency records it at full severity (issue or hard-failure per §2b), and a content hard-failure makes the assessment FAIL like any other. `{treatment_unverified}` covers only the treatment lane; it does not soften content findings.
 - `{fixed_violations}` — violations from previous iteration that are now resolved
 - `{kept_elements}` — list of elements that work well, each carrying the evidence that re-verified it this iteration (§6a)
 - `{coverage_partial}` and `{missing_screens}` — populated by §1a if any required screens are absent from the provided screenshots
@@ -262,6 +292,7 @@ Load and follow: `{project-root}/_bmad/bmm/workflows/design/design-tuning/steps/
 - Per-surface render inspection (§1b) populated `{render_surfaces}` with at least the surfaces named for the current `{page_mode}` + analytics-band combination
 - Every corporate guardrail checked **with evidence cited per the §2 evidence-class rule** (render-region for render-level rows; source-or-render for source-class rows); no `Y/N` without backing evidence
 - Every brief constraint checked
+- **Cross-surface identifier & value formatting checked (§2b) — every canonical-identifier class verified for one consistent rendered form across cells and the list↔drawer boundary; run even in `screenshot-degraded` mode**
 - Every visual reference checked (if applicable)
 - Comparison against previous iteration completed (if applicable)
 - **Prior keepers re-verified (§6a) — every keeper held, regressed, or was demoted to missed-since-V{N}**
@@ -277,5 +308,7 @@ Load and follow: `{project-root}/_bmad/bmm/workflows/design/design-tuning/steps/
 - Not comparing against previous iteration when state exists
 - **Trusting source HTML/CSS or a CSS comment over the rendered screenshot on render-level checks.** A `.tile { border-left: 3px solid; background: transparent; }` rule that claims a shared band but renders as a card grid means the rendering is the truth and the source disagreement is itself evidence. See workflow.md SOURCE-OF-TRUTH PRECEDENCE block.
 - **Recording an `N` on a §2 row without citing screenshot region.** An N answer from inference is unverified — promote to "unverified" and block APPROVAL until filled in.
+- **Bucketing a value-formatting defect as "data, out of scope."** Identifier casing, label form, raw-enum leakage, and unit/format consistency are the **content lane** (§0a/§2b), not "data" — they are screenshot-settleable §13(a) conformance checks. Filing them out of scope is the exact gap that let `amazon` / `AMAZON_ES` / `Amazon UK` ship on one surface.
+- **Downgrading a content finding to `unverified` because there was no artifact source.** The content lane is screenshot-evidenced; `screenshot-degraded` does not blind it. Record content findings at full severity regardless of `{treatment_evidence_mode}`.
 - **Approving on partial screen coverage.** §1a's coverage gate exists to prevent approval-by-omission; honor it.
 - **Treating keepers as append-only.** §6a re-verifies every prior keeper — a calcified wrong-since-V1 claim must be demoted as soon as inspection at zoom proves it.
