@@ -166,7 +166,7 @@ Cross-reference the `{render_surfaces}` populated in §1b: for each surface, the
 | Icon overload | Icons on every label, heading, and menu item | Y/N + region |
 | Hover scale | Scale transforms on card hover instead of background/border change | Y/N + region |
 | Animated counters | Number counters that animate up to their value | Y/N + region |
-| Excessive badge colors | More than 4 distinct badge/status colors | Y/N + region |
+| Excessive / off-palette / rainbow status colors | Count distinct status-MEANING colors across **EVERY element that encodes state — not just pills/badges**: progress-bar / meter / pipeline / lifecycle-stage segments, row tints, leading dots, chart series, coverage strips. Fires when: (a) **>4 distinct status colors** total across all such elements; (b) an **off-palette status hue** (per project policy — e.g. purple/blue/orange/teal/pink used to encode state); (c) a **rainbow stage mapping** — a multi-segment progress/lifecycle bar giving each stage its own hue instead of position/order/weight; (d) the **same state in different tones across elements** (a state that is amber as a pill but pink as a progress segment — §3/§13 "same state, same tone everywhere"). Inspect progress/meter/segment colors as status colors — they are; scoping this check to "badges" is the blind spot that lets a 3-colour reconciliation bar (pink/orange/green) pass while the pills read clean. | Y/N + region |
 
 **Self-test:** Would someone guess this design is AI-generated? If yes, that is itself a violation.
 
