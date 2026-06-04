@@ -1,102 +1,75 @@
 ---
 name: design-tuning-checklist
-description: 'Guardrail violation checks — used by step-02 to systematically evaluate each screenshot'
+description: 'Role-keyed guardrail checklist — a quick companion to step-02. Project-specific VALUES (palette, fonts, radii, status colors, badge treatment) live in the project design policy, never here.'
 ---
 
 # Design Tuning Checklist
 
-## Brand Identity Alignment (when brand identity exists)
+> **This checklist is project-agnostic and role-keyed.** It names the *roles* to inspect and the *rules* that govern each, but it deliberately holds **no project-specific values** — no palette, no font names, no radius/shadow numbers, no badge-treatment specifics. Those are read from the project's `docs/design-policy.md` (loaded in step-01 §1b) at run time. Hardcoding one project's values here is exactly the drift this rewrite removed.
+>
+> **Inspect by semantic ROLE, not element type.** The recurring failure is a rule that governs a role (status indicator, CTA, identifier, analytics viz, surface fill, drawer) slipping through because it appeared on an element the reviewer wasn't looking at — a band's stat-row content, a progress bar's status colors. For every role below, inspect the rule *wherever it appears*, not only on the canonical element. See step-02 §1b "Role catch-all" for the authoritative procedure.
 
-### Visual Personality
-- [ ] Design register matches the brand identity's stated personality (e.g., "dense, precise, restrained" — not airy, playful, or marketing-adjacent)
-- [ ] Data density matches the stated preference (e.g., "high — tables over cards")
-- [ ] Design does NOT feel like any of the "what it's NOT" items from the brand identity
+## Role: status indicator
 
-### Typography (exact match required)
-- [ ] Primary font matches brand identity (e.g., Inter Variable, not system sans-serif)
-- [ ] Monospace font used ONLY for specified contexts (financial numbers, codes, IDs) — never decorative
-- [ ] Body text size matches the brand's specified scale (e.g., 13px, not 14px)
-- [ ] Heading letter-spacing matches (e.g., negative tracking, not default)
-- [ ] No more than 3 font sizes per component
+Includes pills, badges, dots, row tints, left-borders, **progress / meter / lifecycle-stage segments, chart series, coverage strips** — anything whose color or shape encodes state.
 
-### Color (exact match required)
-- [ ] Background color matches brand identity (e.g., off-white hsl(0,0%,98%), not pure white or cream)
-- [ ] Semantic status colors match the brand's palette (e.g., emerald/amber/rose/stone/indigo)
-- [ ] Badge pattern matches exactly (e.g., ring-inset, not filled or outlined)
-- [ ] No colors outside the brand's defined palette without justification
-- [ ] Domain-specific colors (if applicable) match the brand's assignments
+- [ ] Shape and treatment match the project policy's status pattern (loaded from policy; e.g. rectangular pill vs capsule, tint vs saturated fill, leading dot present/absent)
+- [ ] Total distinct status colors across **all** state-encoding elements stays within the policy cap
+- [ ] No off-palette status hue (no hue the policy excludes from the status set)
+- [ ] No rainbow stage mapping — a multi-segment lifecycle/progress bar distinguishes stages by position/order/weight, not by giving each its own hue
+- [ ] Tone matches meaning — failure tone (red, where the policy defines one) is reserved for genuine failures; pending/awaiting/unmatched use the attention tone, never the failure tone
+- [ ] The same state reads in the same tone on every element and every surface (list ↔ drawer ↔ sibling pages)
+- [ ] One primary status per row; secondary signals are quieter (muted text/icon), never a second equal-weight pill
 
-### Component Patterns (exact match required)
-- [ ] Card style matches (border, shadow, radius, padding — check each value)
-- [ ] Button style matches (height, radius, press effect)
-- [ ] Table styling matches (header style, row hover, alignment, monospace columns)
-- [ ] Navigation matches (header height, tab style, active state)
-- [ ] Status indicators match (badges, left borders, confidence bars)
+## Role: primary action / CTA
 
-### Reference Page Alignment
-- [ ] Design would look at home alongside the brand's listed reference pages
-- [ ] Same visual register as the gold-standard pages
+Any button, wherever it sits — header, row, footer, bulk bar.
 
-### Hard Failures (from brand identity section 8)
-- [ ] None of the numbered hard failure items are present in the design
+- [ ] Primary CTA shape matches policy (e.g. rectangular, not capsule/`rounded-full`)
+- [ ] At most one primary action per row; others move to overflow/drawer
+- [ ] Bulk actions use the policy's bulk-action pattern (e.g. a transient floating bar), not an inline/header toolbar or a button row above the table
 
-### AI Sensitivity (from brand identity section 9)
-- [ ] None of the project-specific sensitivity patterns are present
+## Role: canonical identifier
 
----
+ASIN/SKU, order/batch number, supplier, marketplace, product/prep-center code, currency, date.
 
-## Generic Guardrails (when no brand identity exists, or as supplement)
+- [ ] Each identifier class renders in one consistent casing/label form across every cell and across the list ↔ drawer boundary
+- [ ] No raw enum/code leakage where a human label is expected
+- [ ] Format (monospace for IDs, etc.) matches the policy and is consistent with sibling surfaces
 
-### Aesthetic
-- [ ] Background is pure white or cool neutral gray — no cream, warm, or off-white tints
-- [ ] Single neutral sans-serif family — no personality or display fonts
-- [ ] Monospace used ONLY for IDs, codes, and tabular numbers — never in headings, labels, or navigation
-- [ ] Color used functionally (state indication) — not for personality or branding
-- [ ] Dark mode uses true dark neutrals — not navy or deep blue
+## Role: analytics visualization
 
-### Voice
-- [ ] Functional labeling — no marketing copy or aspirational headlines
-- [ ] All UI elements are self-explanatory — no unexplained badges, no icons without labels
-- [ ] No truncated text without a tooltip or expand affordance
-- [ ] No editorial numbering ("01 —") or playful section names
+Bands, strips, charts, meters on operational/analytical pages.
 
-### AI Design Tool Fingerprints
-- [ ] No bento grid layout (asymmetric mixed-size card grids)
-- [ ] No hero section on internal pages — content starts immediately
-- [ ] No dashboard metric card grid as the page opener
-- [ ] Dense layout — appropriate padding and section gaps for a tool UI
-- [ ] No purple/violet primary color (unless assigned to a specific domain concept)
-- [ ] No gradient text, gradient backgrounds, or glassmorphism
-- [ ] Border radius appropriate for the brand (typically ≤ 10px on containers)
-- [ ] No heavy decorative card shadows — elevation reserved for overlays/modals
-- [ ] No gradient or colored dividers — 1px solid border only
-- [ ] No per-item colored nav icons — monochrome, color = state only
-- [ ] No semantic card fills (green card = good, red card = bad) — use badges, not fills
-- [ ] No chatty empty states with illustrations
-- [ ] No icon overload — icons only where they add recognition speed
-- [ ] No hover scale transforms on cards — use background/border changes
-- [ ] No animated number counters
-- [ ] Status colors within the brand's stated limit (typically 4-5 max)
+- [ ] Subordinate to the table — ≤ one compact row; the table keeps the majority of above-the-fold height
+- [ ] Content is a *visualization* (coverage strip / trend / meter), not a row of summary count figures (those belong in the inline header summary line)
+- [ ] Reads as a single shared band — not a row of per-panel cards (per-tile border/fill/shadow = card-grid violation)
+- [ ] Every element drills somewhere — no ornamental figures
 
-### Self-Test
+## Role: surface fill / layout
+
+- [ ] No status-colored card fills (green card / red card); status lives in badges, not fills
+- [ ] No sidebar inside the feature page; full-width content
+- [ ] No hero strip, banner, or marketing intro above the working table
+- [ ] No centered card-on-gray layout
+- [ ] No gradient/glassmorphism backgrounds; container radius and shadow within policy limits
+
+## Role: detail drawer / overflow
+
+Applies even on an operational/analytical page (the §7 default pattern).
+
+- [ ] No KPI cards, charts, or mini-dashboard inside the drawer
+- [ ] No more than the policy's max field groups (typically 3–4)
+- [ ] Same surface/typography/status system as the list — not a form from another app
+
+## Cross-cutting (read from policy)
+
+- [ ] Typography: within the policy's font family/size/casing rules — no uppercase tracking-wide tool chrome, no all-caps headers, monospace only where the policy allows
+- [ ] Icons: no emoji as UI icons; no icon-on-every-label overload; no colored-icon-circle clusters / 3-feature icon rows
+- [ ] Voice: functional labeling, no marketing copy, no editorial numbering
+- [ ] No AI-tool fingerprints the policy names (animated counters, hover scale, gradient dividers, etc.)
+
+## Self-test
+
 - [ ] A reasonable observer would NOT guess this design is AI-generated
-
----
-
-## Brief-Specific Constraints
-
-- [ ] Navigation matches the app's existing structure — not invented or redesigned
-- [ ] Viewport width matches the brief's responsive target
-- [ ] Layout handles the stated data volume without overflow or cramming
-- [ ] Stated user actions are accommodated (filters, bulk operations, etc.)
-- [ ] Design tokens are consistent with stated values (if using existing system)
-- [ ] No invented elements (branding, product names, version numbers, features not in the brief)
-- [ ] Content fills the available container width — not a narrow centered card on a gray background
-
-## Visual Reference Alignment
-
-- [ ] Table structure aligns with the referenced product pattern
-- [ ] Status badge treatment matches the specified approach
-- [ ] Filter bar follows the referenced pattern
-- [ ] Row density and spacing align with the specified targets
-- [ ] Color strategy matches the referenced approach (restrained, state-only)
+- [ ] The design would look at home beside the policy's named reference pages
