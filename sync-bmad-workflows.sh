@@ -5,6 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SOURCE="$SCRIPT_DIR/custom/workflows"
 SKILLS_SOURCE="$SCRIPT_DIR/custom/skills"
 SCRIPTS_SOURCE="$SCRIPT_DIR/custom/scripts"
+AGENTS_SOURCE="$SCRIPT_DIR/custom/agents"
 HOOKS_SRC="$SCRIPT_DIR/src/modules/bmm/_module-installer/assets/hooks.json"
 WORKTREE_INCLUDE_SRC="$SCRIPT_DIR/src/modules/bmm/_module-installer/assets/worktreeinclude.template"
 CONFIG_DEFAULTS_SRC="$SCRIPT_DIR/src/modules/bmm/_module-installer/assets/config-defaults.yaml"
@@ -309,6 +310,61 @@ sync_scripts_for_project() {
         mkdir -p "$scripts_target"
         cp -p "$script_file" "$script_dst"
         chmod +x "$script_dst"
+      fi
+      count=$((count + 1))
+    fi
+  done
+
+  echo "$count"
+}
+
+# Sync custom agent personas from custom/agents/ to a project. Each *.md under
+# AGENTS_SOURCE is mirrored to _bmad/bmm/agents/<name>.md AND a thin slash-command
+# wrapper is (re)generated at .claude/commands/bmad/bmm/agents/<name>.md so the
+# persona is invokable as /bmad:bmm:agents:<name>. The wrapper just loads the
+# agent file — same shape the upstream installer emits for built-in agents.
+# A custom agent counts as drifted if either the persona file OR its wrapper
+# differs from what this run would write. Args: $1 = project root, $2 = mode.
+# Returns count via stdout.
+sync_agents_for_project() {
+  local project_root="$1" mode="$2"
+  local count=0
+
+  [[ ! -d "$AGENTS_SOURCE" ]] && { echo "0"; return; }
+
+  local agents_target="$project_root/_bmad/bmm/agents"
+  local cmds_target="$project_root/.claude/commands/bmad/bmm/agents"
+  for agent_file in "$AGENTS_SOURCE"/*.md; do
+    [[ ! -f "$agent_file" ]] && continue
+    local agent_name agent_dst wrapper_dst wrapper_content
+    agent_name="$(basename "$agent_file" .md)"
+    agent_dst="$agents_target/$agent_name.md"
+    wrapper_dst="$cmds_target/$agent_name.md"
+
+    wrapper_content="---
+name: '$agent_name'
+description: '$agent_name agent'
+---
+
+You must fully embody this agent's persona and follow all activation instructions exactly as specified. NEVER break character until given an exit command.
+
+<agent-activation CRITICAL=\"TRUE\">
+1. LOAD the FULL agent file from @_bmad/bmm/agents/$agent_name.md
+2. READ its entire contents - this contains the complete agent persona, menu, and instructions
+3. Execute ALL activation steps exactly as written in the agent file
+4. Follow the agent's persona and menu system precisely
+5. Stay in character throughout the session
+</agent-activation>"
+
+    local drifted=0
+    { [[ ! -f "$agent_dst" ]] || ! cmp -s "$agent_file" "$agent_dst"; } && drifted=1
+    { [[ ! -f "$wrapper_dst" ]] || [[ "$(cat "$wrapper_dst" 2>/dev/null)" != "$wrapper_content" ]]; } && drifted=1
+
+    if [[ "$drifted" -eq 1 ]]; then
+      if [[ "$mode" == "sync" ]]; then
+        mkdir -p "$agents_target" "$cmds_target"
+        cp -p "$agent_file" "$agent_dst"
+        printf '%s\n' "$wrapper_content" > "$wrapper_dst"
       fi
       count=$((count + 1))
     fi
@@ -669,10 +725,12 @@ if [[ -n "$WORKTREE_TARGET" ]]; then
 
   skills_copied=$(sync_skills_for_project "$wt_project_root" "sync")
   scripts_copied=$(sync_scripts_for_project "$wt_project_root" "sync")
+  agents_copied=$(sync_agents_for_project "$wt_project_root" "sync")
 
   msg="OK    Worktree synced: $WORKTREE_TARGET ($copied dirs"
   [[ "$skills_copied" -gt 0 ]] && msg="$msg, $skills_copied skill(s)"
   [[ "$scripts_copied" -gt 0 ]] && msg="$msg, $scripts_copied script(s)"
+  [[ "$agents_copied" -gt 0 ]] && msg="$msg, $agents_copied agent(s)"
   echo "$msg)"
   exit 0
 fi
@@ -902,6 +960,16 @@ while IFS= read -r target || [[ -n "$target" ]]; do
       echo "  ↳  scripts ($scripts_drift script(s) missing/outdated)"
     fi
 
+    # Check custom agent personas sync
+    agents_drift=$(sync_agents_for_project "$project_root" "check")
+    if [[ "$agents_drift" -gt 0 ]]; then
+      if ! $dirty; then
+        echo "STALE $project"
+        dirty=true
+      fi
+      echo "  ↳  agents ($agents_drift agent(s) missing/outdated)"
+    fi
+
     if $dirty; then
       stale=$((stale + 1))
     else
@@ -1024,6 +1092,12 @@ while IFS= read -r target || [[ -n "$target" ]]; do
     scripts_synced=$(sync_scripts_for_project "$project_root" "sync")
     if [[ "$scripts_synced" -gt 0 ]]; then
       echo "  OK    scripts ($scripts_synced script(s) synced)"
+    fi
+
+    # Sync custom agent personas from custom/agents/ (+ generate slash wrappers)
+    agents_synced=$(sync_agents_for_project "$project_root" "sync")
+    if [[ "$agents_synced" -gt 0 ]]; then
+      echo "  OK    agents ($agents_synced agent(s) synced)"
     fi
 
     # Reap stale worktrees (merged on origin/main + clean working tree).
