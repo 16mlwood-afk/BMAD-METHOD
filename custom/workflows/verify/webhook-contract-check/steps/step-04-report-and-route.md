@@ -5,7 +5,7 @@ description: 'Produce the honest contract report (both dimensions per field), th
 
 # Step 4: Report and Route
 
-**Goal:** Produce a structured, honest contract report — every field with BOTH its match verdict and its rollout-safety class — and then **route each finding to the side that owns the fix** (sender repo or receiver repo) via `quick-spec`. This workflow does not change code. The deliverable is a report plus per-side routing slips that make the safe deploy ordering explicit.
+**Goal:** Write a structured, honest contract report — every field with both its match verdict and its rollout-safety class — then route each finding to the side that owns the fix (sender repo or receiver repo) via `quick-spec`. This workflow changes no code. The deliverable is a report plus per-side routing slips that make the safe deploy ordering explicit.
 
 ---
 
@@ -22,7 +22,7 @@ From previous steps:
 
 ## REPORT FIRST, ROUTING SECOND — house rule
 
-Write the honest report **before** generating any routing slip — mirror `wire-check`'s "honest report first, fixes second." The report is the record of what the contract actually is right now; do not soften or rewrite it after routing. Routing is a separate, additive act.
+Write the honest report before you generate any routing slip — same as `wire-check`'s "honest report first, fixes second." The report is the record of what the contract actually is right now. Don't soften or rewrite it after routing. Routing is a separate, additive act.
 
 ---
 
@@ -95,7 +95,7 @@ _Every field in the contract appears in this ledger. A field absent from the led
 
 ## ROUTE PER SIDE — the fix posture
 
-**This workflow detects and reports; it does not edit across the boundary.** Auto-editing two repos on different deploy clocks is the unsafe operation this workflow exists to prevent. Instead, for each finding, generate a **routing slip** addressed to the **single owning side**, to be executed by that repo's own `quick-spec` → `quick-dev` in that repo's own worktree.
+**This workflow detects and reports; it does not edit across the boundary.** Editing two repos on different deploy clocks is the unsafe move this workflow is built to prevent. For each finding, generate a routing slip addressed to the single owning side, to be run by that repo's own `quick-spec` → `quick-dev` in its own worktree.
 
 ### Per-side routing rules
 
@@ -109,7 +109,7 @@ _Every field in the contract appears in this ledger. A field absent from the led
 
 ### Routing-slip shape
 
-For each finding, emit a copy-pasteable slip the owning repo's session can run:
+For each finding, emit a copy-pasteable slip the owning repo's session can run as-is:
 
 ```
 **Route → {owning side} repo**
@@ -121,23 +121,23 @@ Constraint: {ordering constraint — which side deploys first}.
 Source report: {report_file_path}
 ```
 
-If `autonomous_mode` and the owning side is **the same project** this workflow is running in, you may invoke `quick-spec` directly for that side. If the owning side is a **different repo/deploy**, you emit the slip for a human or that repo's session to run — **you do not reach across and edit it.**
+If `autonomous_mode` is on and the owning side is the same project this workflow is running in, you may invoke `quick-spec` directly for that side. If the owning side is a different repo or deploy, emit the slip for a human or that repo's session to run — you do not reach across and edit it.
 
 ### Per-finding disposition (silent-partial-implementation guard)
 
-Every finding must end with an explicit disposition: **routed-to-sender**, **routed-to-receiver**, **acknowledged-no-action** (intentional / not relevant to the consumer), or **needs-product-decision** (ambiguous whether the consumer needs the field). No finding may be silently dropped from the routing pass. State the count: `findings == dispositions`.
+Every finding ends with an explicit disposition: **routed-to-sender**, **routed-to-receiver**, **acknowledged-no-action** (intentional, or not relevant to the consumer), or **needs-product-decision** (unclear whether the consumer needs the field). No finding drops out of the routing pass silently. State the count: `findings == dispositions`.
 
 ---
 
 ## WORKED EXAMPLE (sender-strict / receiver-lenient catch)
 
-> **Context.** Mid-rollout, the sender (a scraper/extension emitting order payloads) starts wrapping its payload in a new envelope field `schemaVersion: 2` to signal a forthcoming data-shape change. The receiver endpoint validates the body with a `.strict()` Zod schema that lists the known envelope keys (`event`, `sentAt`, `data`) and **rejects** unknown keys. The receiver has not yet been updated to tolerate `schemaVersion`.
+> **Context.** Mid-rollout, the sender (a scraper/extension emitting order payloads) starts wrapping its payload in a new envelope field, `schemaVersion: 2`, to flag a forthcoming data-shape change. The receiver validates the body with a `.strict()` Zod schema that lists the known envelope keys (`event`, `sentAt`, `data`) and **rejects** unknown keys. It hasn't been updated to tolerate `schemaVersion` yet.
 >
-> **Step 1** captures a live payload — it carries `schemaVersion: 2` — and a test POST with an extra key returns `400`. Receiver unknown-field posture = **reject**.
+> **Step 1** captures a live payload carrying `schemaVersion: 2`, and a test POST with an extra key returns `400`. Receiver unknown-field posture = **reject**.
 >
-> **Step 2** match verdict: `schemaVersion` is **Sender-only** (receiver has no slot).
+> **Step 2** match verdict: `schemaVersion` is **Sender-only** — the receiver has no slot for it.
 >
-> **Step 3** rollout-safety: addition + receiver rejects unknowns → **rollout-unsafe-addition**. If the sender ships `schemaVersion` first, every webhook 400's. Owning side = **receiver**. Ordering constraint = "receiver must ship leniency (accept-and-ignore `schemaVersion`) BEFORE the sender emits it."
+> **Step 3** rollout-safety: addition plus a receiver that rejects unknowns → **rollout-unsafe-addition**. Ship `schemaVersion` from the sender first and every webhook 400's. Owning side = **receiver**. Ordering constraint = "receiver must ship leniency (accept-and-ignore `schemaVersion`) BEFORE the sender emits it."
 >
 > **Step 4** routes:
 >
@@ -151,7 +151,7 @@ Every finding must end with an explicit disposition: **routed-to-sender**, **rou
 > Source report: _bmad-output/implementation-artifacts/webhook-contract-check-order-scraper-receiver-2026-06-06.md
 > ```
 >
-> The workflow does **not** edit the sender to stop emitting, nor reach into the receiver repo and add leniency itself. It reports the unsafe ordering and routes the fix to the receiver with the deploy-order constraint stated — which is exactly the catch the sender-strict / receiver-lenient discipline is meant to produce before anything ships.
+> The workflow doesn't edit the sender to stop emitting, and it doesn't reach into the receiver repo to add leniency itself. It reports the unsafe ordering and routes the fix to the receiver with the deploy-order constraint stated. That's exactly the catch sender-strict / receiver-lenient is meant to produce before anything ships.
 
 ---
 
@@ -188,9 +188,9 @@ Contract intact and rollout-safe — nothing to route.
 
 ## FAILURE MODES
 
-- Auto-editing the sender or receiver instead of routing (the boundary-crossing edit this workflow exists to prevent)
-- Routing a finding to both sides, or to neither — each finding has exactly one owning side
-- Omitting the ordering constraint on a rollout-unsafe finding (the constraint IS the value of the finding)
+- Auto-editing the sender or receiver instead of routing — the boundary-crossing edit this workflow exists to prevent
+- Routing a finding to both sides, or to neither. Each finding has exactly one owning side.
+- Omitting the ordering constraint on a rollout-unsafe finding. The constraint is the value of the finding.
 - Dropping a field from the ledger or a finding from the disposition count (silent-partial-implementation)
-- Rewriting the report to look cleaner after routing (the original verdict is the record)
+- Rewriting the report to look cleaner after routing. The original verdict is the record.
 - Reporting only mismatches and forgetting the rollout-unsafe-but-matched fields

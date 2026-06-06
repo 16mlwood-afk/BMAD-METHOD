@@ -6,7 +6,7 @@ nextStepFile: './step-04-report-and-route.md'
 
 # Step 3: Classify Rollout-Safety
 
-**Goal:** This is the dimension `wire-check` does not have and the reason this workflow exists. A field can match perfectly across the boundary and STILL be unsafe to ship, because the sender and the receiver deploy on **different clocks**. For each field, layer a **rollout-safety class** on top of the match verdict from step 2, applying the team's **sender-strict / receiver-lenient** discipline. The output is a per-field verdict carrying BOTH the match/mismatch AND the rollout-safety class.
+**Goal:** This is the dimension `wire-check` doesn't have, and it's why this workflow exists. A field can match perfectly across the boundary and still be unsafe to ship, because the sender and receiver deploy on different clocks. For each field, layer a **rollout-safety class** on top of the step-2 match verdict, applying the team's **sender-strict / receiver-lenient** discipline. The output is a per-field verdict carrying both the match/mismatch and the rollout-safety class.
 
 ---
 
@@ -22,45 +22,45 @@ From previous steps:
 
 ## THE DISCIPLINE (read before classifying)
 
-**Sender-strict / receiver-lenient during the rollout window.** Because the two deploys land at different times, every schema change must be safe regardless of *which side ships first within the rollout window*. The two invariants:
+**Sender-strict / receiver-lenient during the rollout window.** The two deploys land at different times, so every schema change has to be safe no matter which side ships first inside that window. Two invariants:
 
-1. **Receiver-lenient-first for additions.** Before the sender starts emitting a new field, the receiver must already **tolerate** it (ignore unknown fields, or treat the new field as optional). If the sender ships first and the receiver still **rejects** unknown fields, every payload 4xx's the moment the sender deploys. The receiver's leniency must land **first**.
-2. **Sender-strict-last for removals.** The sender must keep emitting a field for as long as the receiver still **requires** it. If the sender stops emitting first while the receiver still requires the field, every payload fails validation. The receiver must drop the requirement **first**; only then may the sender stop emitting.
+1. **Receiver-lenient-first for additions.** Before the sender starts emitting a new field, the receiver must already tolerate it — ignore unknown fields, or treat the new field as optional. If the sender ships first while the receiver still rejects unknown fields, every payload 4xx's the moment the sender deploys. The receiver's leniency lands **first**.
+2. **Sender-strict-last for removals.** The sender keeps emitting a field for as long as the receiver still requires it. If the sender stops first while the receiver still requires the field, every payload fails validation. The receiver drops the requirement **first**; only then may the sender stop emitting.
 
-The hinge is the **receiver's unknown-field posture** captured in step 1. A receiver that *ignores* unknowns is already lenient — additions are safe. A receiver that *rejects* unknowns (`.strict()`) is the dangerous case — additions are unsafe until it is made lenient.
+Everything turns on the receiver's unknown-field posture from step 1. A receiver that ignores unknowns is already lenient, so additions are safe. A receiver that rejects unknowns (`.strict()`) is the dangerous case: additions are unsafe until it's made lenient.
 
 ---
 
 ## EXECUTION SEQUENCE
 
-For each field in `{contract}`, assign exactly one rollout-safety class. Decision procedure:
+Assign exactly one rollout-safety class to each field in `{contract}`. Decision procedure:
 
-### A. Additions (a field the SENDER emits that is new relative to the receiver)
+### A. Additions (a field the SENDER emits that's new relative to the receiver)
 
-Applies to **Sender-only** fields and to any field newly added on the sender side.
+Covers **Sender-only** fields and any field newly added on the sender side.
 
-- If the receiver **ignores / passthrough-tolerates** unknown fields → **rollout-safe**. The receiver already swallows it; the sender may ship.
-- If the receiver **rejects** unknown fields (strict validation) and does NOT yet have a slot → **rollout-unsafe-addition**. The sender shipping first will cause the receiver to reject the payload. **The receiver must be made lenient FIRST.** Flag.
-- If the receiver **coerces** (e.g., silently casts) → treat as rollout-safe for *acceptance* but record a step-2 type-mismatch if the coercion changes meaning.
+- Receiver **ignores / passthrough-tolerates** unknown fields → **rollout-safe**. It already swallows the field; the sender may ship.
+- Receiver **rejects** unknown fields (strict validation) and has no slot for it yet → **rollout-unsafe-addition**. Ship the sender first and the receiver rejects the payload. **The receiver must be made lenient FIRST.** Flag it.
+- Receiver **coerces** (e.g. silently casts) → treat it as rollout-safe for acceptance, but record a step-2 type-mismatch if the coercion changes meaning.
 
 ### B. Removals (a field the RECEIVER still requires that the SENDER no longer emits)
 
-Applies to **Receiver-only** fields where the receiver marks the field **required**.
+Covers **Receiver-only** fields the receiver marks **required**.
 
-- Receiver **requires** the field, sender no longer emits it → **rollout-unsafe-removal**. The sender ship will fail receiver validation. **The receiver must drop the requirement (or make it optional) FIRST**, then the sender may stop emitting. Flag.
-- Receiver treats the field as **optional**, sender no longer emits it → **rollout-safe**. The receiver tolerates absence; the sender may stop.
+- Receiver **requires** the field, sender no longer emits it → **rollout-unsafe-removal**. The sender ship will fail receiver validation. **The receiver must drop the requirement (or make it optional) FIRST**; then the sender may stop emitting. Flag it.
+- Receiver treats the field as **optional**, sender no longer emits it → **rollout-safe**. The receiver tolerates its absence, so the sender may stop.
 
 ### C. Steady-state matches & mismatches
 
-- **Matched** field, no change in flight → **rollout-safe** (it is the current contract).
-- **Mismatched** field (name/type/shape/enum disagreement from step 2) → the mismatch is a present break regardless of ordering. Class it by what fixing it requires: if the fix adds tolerance on the receiver → **rollout-unsafe-addition** (receiver-first); if the fix changes what the sender emits to match a still-strict receiver → note it as a present break to route, and apply the addition rule to whichever side moves.
-- **Enum addition** on the sender (new member the receiver's validator doesn't accept) → if receiver rejects unknown enum values → **rollout-unsafe-addition** (receiver must accept the new value first). If receiver passes through unknown enum values → **rollout-safe**.
+- **Matched** field, no change in flight → **rollout-safe**. It's the current contract.
+- **Mismatched** field (name/type/shape/enum disagreement from step 2) → the mismatch is a present break, ordering aside. Class it by what the fix needs: if the fix adds tolerance on the receiver → **rollout-unsafe-addition** (receiver-first); if the fix changes what the sender emits to match a still-strict receiver → record it as a present break to route, and apply the addition rule to whichever side moves.
+- **Enum addition** on the sender (a new member the receiver's validator doesn't accept) → if the receiver rejects unknown enum values → **rollout-unsafe-addition** (receiver accepts the new value first). If the receiver passes unknown enum values through → **rollout-safe**.
 
 ---
 
 ## PER-FIELD VERDICT (BOTH dimensions — mandatory)
 
-Every field now carries a two-part verdict. Neither part may be omitted.
+Every field now carries a two-part verdict. Don't omit either part.
 
 | Rollout-safety class | Meaning | Owning side to fix |
 | --- | --- | --- |
@@ -79,13 +79,13 @@ Ordering constraint: {e.g. "receiver must ship leniency before sender emits"; "�
 Evidence: {live payload + observed receiver response | inferred}
 ```
 
-Update `{findings}` so every entry carries BOTH dimensions. A field that reaches step 4 with only a match verdict and no rollout-safety class is an incomplete finding — the whole point of this workflow is the second dimension.
+Update `{findings}` so every entry carries both dimensions. A field that reaches step 4 with only a match verdict and no rollout-safety class is an incomplete finding. The second dimension is what this workflow is for.
 
 ---
 
 ## DISPOSITION CHECK (silent-partial-implementation guard)
 
-Before leaving this step, confirm **every field in `{contract}` has an explicit two-part verdict.** Count: `fields in contract == fields with a (match, rollout-safety) pair`. If any field lacks a verdict, it was silently dropped — go back and classify it. No field may reach the report unaccounted for.
+Before leaving this step, confirm **every field in `{contract}` has an explicit two-part verdict.** Count it: `fields in contract == fields with a (match, rollout-safety) pair`. If any field lacks a verdict, it got silently dropped — go back and classify it. No field reaches the report unaccounted for.
 
 ---
 
@@ -105,8 +105,8 @@ Proceed immediately to `{project-root}/_bmad/bmm/workflows/verify/webhook-contra
 
 ## FAILURE MODES
 
-- Classifying rollout-safety from the schema's *claimed* strictness when a live POST showed the receiver actually ignores unknowns (or vice versa) — live posture wins
-- Treating a perfectly-matched field as "nothing to flag" when an in-flight addition makes it unsafe (match and rollout-safety are independent dimensions)
+- Classifying rollout-safety from the schema's claimed strictness when a live POST showed the receiver actually ignores unknowns (or the reverse). The observed posture wins.
+- Treating a perfectly-matched field as "nothing to flag" when an in-flight addition makes it unsafe. Match and rollout-safety are independent dimensions.
 - Calling a sender-side addition safe without confirming the receiver tolerates unknowns
-- Forgetting removals — a sender that *stops* emitting a still-required field is just as unsafe as an unsupported addition
+- Forgetting removals. A sender that stops emitting a still-required field is just as unsafe as an unsupported addition.
 - Leaving any field with only a match verdict and no rollout-safety class (silent-partial-implementation)

@@ -6,7 +6,7 @@ nextStepFile: './step-03-classify-rollout-safety.md'
 
 # Step 2: Walk the Contract, Field-by-Field
 
-**Goal:** For every field in the contract inventory, compare what the SENDER puts on the wire against what the RECEIVER expects — the same exactness `wire-check` applies between layers, now applied across the service boundary. Classify each field **matched** or **mismatched** (this step) so step 3 can layer the rollout-safety verdict on top.
+**Goal:** For every field in the contract inventory, compare what the SENDER puts on the wire against what the RECEIVER expects. Apply the same exactness `wire-check` uses between layers, but across the service boundary. Here you classify each field **matched** or **mismatched**; step 3 layers the rollout-safety verdict on top.
 
 ---
 
@@ -23,46 +23,46 @@ From step 1:
 
 ## EXECUTION SEQUENCE
 
-For each field in `{contract}`, perform these checks **by reading the actual code / observing the live payload** (not by assumption). Live value beats inferred value at every check.
+Run these checks against each field in `{contract}` by reading the actual code or observing the live payload, never by assumption. A live value beats an inferred one at every check.
 
 ### Check 1: Name & Casing Match
 
-- [ ] The key the sender emits is byte-for-byte the key the receiver reads — case-sensitive, exact.
-- [ ] No `camelCase` vs `snake_case` split across the boundary (`processedCount` emitted, `processed_count` expected → mismatch; the receiver gets `undefined`/missing and, depending on posture, either ignores it or rejects).
+- [ ] The key the sender emits is byte-for-byte the key the receiver reads. Case-sensitive, exact.
+- [ ] No `camelCase` vs `snake_case` split across the boundary. Emit `processedCount`, expect `processed_count`, and it's a mismatch: the receiver sees the field as missing and, depending on posture, either ignores or rejects it.
 - [ ] Envelope keys match too (`schemaVersion` vs `schema_version`, `sentAt` vs `timestamp`).
 
 ### Check 2: Type Match
 
 - [ ] The JSON type the sender serializes is the type the receiver requires: `string` vs `number` (an ID emitted as `123` but validated as `"123"`), `boolean` vs stringified `"true"`, `Date` object vs ISO-8601 string vs epoch number.
-- [ ] Numeric precision / format: cents-as-integer vs decimal string; a timestamp as ISO string vs epoch ms.
+- [ ] Numeric precision and format: cents-as-integer vs decimal string, a timestamp as ISO string vs epoch ms.
 
 ### Check 3: Shape Match
 
-- [ ] Array vs scalar (`[]` vs single object), nested object vs flat, `[]` vs `null` for "no items" (the canonical empty-collection mismatch).
-- [ ] Null-handling: does the sender emit `null`, omit the key, or emit `[]`? Does the receiver tolerate all three or only one?
+- [ ] Array vs scalar (`[]` vs single object), nested object vs flat, `[]` vs `null` for "no items" — the canonical empty-collection mismatch.
+- [ ] Null-handling: does the sender emit `null`, omit the key, or emit `[]`? And does the receiver tolerate all three, or only one?
 
 ### Check 4: Required vs Optional Match
 
-- [ ] Every field the **receiver requires** is **always emitted** by the sender (not conditionally). A receiver-required field that the sender emits only on one branch is a latent break.
-- [ ] Conversely note fields the receiver treats as optional but the sender always sends — fine for matching, but relevant to step 3's rollout analysis.
+- [ ] Every field the receiver requires is always emitted by the sender, not just on some branches. A receiver-required field the sender emits on only one branch is a latent break.
+- [ ] Also note fields the receiver treats as optional but the sender always sends. That's fine for matching, but it feeds step 3's rollout analysis.
 
 ### Check 5: Enum / Value-Domain Match
 
-- [ ] Every enum value the sender can emit is a value the receiver accepts. A new enum member added on the sender (`status: "partially_received"`) that the receiver's validator doesn't list is a mismatch — and, per step 3, a rollout hazard.
+- [ ] Every enum value the sender can emit is one the receiver accepts. A new sender-side member (`status: "partially_received"`) that the receiver's validator doesn't list is a mismatch — and, per step 3, a rollout hazard.
 - [ ] Value-domain constraints: string length caps, format regexes (email, UUID), numeric ranges the receiver enforces that the sender doesn't guarantee.
 
 ### Check 6: One-Sided Fields
 
 For each field present on only one end:
 
-- [ ] **Sender-only** (sender emits, receiver has no slot): whether this breaks depends entirely on the receiver's unknown-field posture — defer the verdict to step 3, but record it here as a one-sided field.
-- [ ] **Receiver-only** (receiver expects, sender never emits): if the receiver *requires* it → this is a break right now; if optional → record for step 3.
+- [ ] **Sender-only** (sender emits, receiver has no slot): whether this breaks comes down entirely to the receiver's unknown-field posture. Record it here as a one-sided field and let step 3 settle the verdict.
+- [ ] **Receiver-only** (receiver expects, sender never emits): if the receiver requires it, that's a break right now; if it's optional, record it for step 3.
 
 ---
 
 ## CLASSIFICATION (match dimension)
 
-After walking, give each field a **match verdict**. (The rollout-safety class is added in step 3 — every field will carry BOTH.)
+After the walk, give each field a match verdict. Step 3 adds the rollout-safety class, so every field ends up carrying both.
 
 | Match verdict | Meaning |
 | --- | --- |
@@ -102,9 +102,9 @@ Proceed immediately to `{project-root}/_bmad/bmm/workflows/verify/webhook-contra
 
 ## FAILURE MODES
 
-- Comparing only fields the sender emits and never checking what the receiver *requires* but never receives (the receiver-only break)
+- Comparing only the fields the sender emits, and never checking what the receiver requires but never receives — the receiver-only break
 - Assuming names match without reading both the emission key and the validation key
 - Missing the `[]` vs `null` empty-collection mismatch
 - Treating a new sender-side enum value as fine without checking the receiver's accepted set
-- Marking a field "matched" from two schemas when a live payload would have shown a coercion or a casing drift
-- Resolving a sender-only field's verdict here instead of deferring it to the rollout-safety analysis (its safety depends on the receiver's unknown-field posture)
+- Marking a field "matched" from two schemas when a live payload would have exposed a coercion or a casing drift
+- Settling a sender-only field's verdict here instead of leaving it to the rollout-safety analysis — its safety hinges on the receiver's unknown-field posture
