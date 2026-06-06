@@ -31,6 +31,7 @@ Wiring fields between layers of a single app is `wire-check` — use it, it will
 
 ## CRITICAL RULES
 
+- **The contract of record is the charter.** The standard you verify against is `{project-root}/_bmad/bmm/workflows/shared/webhook-contract-charter.md` — the sender/receiver duties, the sender-strict / receiver-lenient rollout-order rule, and the breaking-change taxonomy all live there, declaratively. A per-boundary contract (if one exists) *refines* the charter for this specific pair and may override a named clause with rationale; the charter governs wherever the boundary contract is silent. Name the clause you're applying in each finding (e.g. "receiver duty R3: fail loud, no silent fallback" or "rollout-unsafe-removal: sender-last not honored").
 - **Correctness lives across the boundary, not on either side alone.** A green sender suite and a green receiver suite tell you nothing if they encode two different envelopes, or if both are right but the sender ships first. Check sender-output against receiver-input at the boundary, and check the order in which they're allowed to change.
 - **Be exact about format and shape.** `camelCase` vs `snake_case`, `string` vs `number`, `Date` vs ISO string, `[]` vs `null`, required vs optional, enum-value drift — these are the contract bugs. "Looks similar" is not the same as equal. Be precise about casing and shape on both sides.
 - **Live the payload; don't infer it.** When you can, capture an actual emitted payload from the sender and watch the receiver's real validation behavior — does it reject, ignore, or coerce an unknown field? Static analysis guesses; a real payload and a real 200/4xx don't. Each side's schema is a hypothesis until a live payload carries it across.
@@ -77,7 +78,7 @@ If `autonomous_mode` is `true` in config, the following rules apply to ALL steps
 
 ### Input & Grounding Gate
 
-The input is the sender emission site plus the receiver endpoint, or a contract artifact that names both — an OpenAPI/JSON-schema doc, a webhook spec, a prior contract report.
+The input is the sender emission site plus the receiver endpoint, or a contract artifact that names both — an OpenAPI/JSON-schema doc, a webhook spec, a prior contract report. If no per-boundary contract artifact exists, the charter (`{project-root}/_bmad/bmm/workflows/shared/webhook-contract-charter.md`) is the default contract of record: verify against its rules and note in the report that no boundary-specific contract was found (and that minting one — via the charter's per-boundary template — is the recommended follow-up).
 
 **Before exiting INITIALIZATION you MUST be able to state both of these in plain English. If you can't, the input isn't groundable — HALT.**
 
