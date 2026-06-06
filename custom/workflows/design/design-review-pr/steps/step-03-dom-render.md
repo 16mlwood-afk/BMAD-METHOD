@@ -88,6 +88,28 @@ const measurements = await mcp.chrome.javascript_tool({ code: HARVEST_SCRIPT });
   );
   result.distinctBadgeColors = badgeColors.size;
 
+  // ----- S-STATUS-03 (broadened): status color across ALL state-encoding elements, not just badges -----
+  // The badge selector above misses status color rendered OUTSIDE a pill — a progress/lifecycle/
+  // coverage bar segment, a row tint, a dot. A 3-segment reconciliation bar mapping each stage to
+  // its own hue is a status-color set with zero badges; scoping the count to badges lets it pass.
+  const statusBgEls = [...badges, ...document.querySelectorAll('[class*="seg"],[class*="stage"],[class*="meter"],[class*="track"],[class*="dot"],[data-stage],[data-tone]')];
+  const statusBgColors = new Set(
+    statusBgEls.map((el) => getComputedStyle(el).backgroundColor)
+      .filter((c) => c && c !== 'rgba(0, 0, 0, 0)' && c !== 'transparent'),
+  );
+  result.distinctStatusColorsAllEls = statusBgColors.size;
+
+  // ----- S-STATUS-09: rainbow stage mapping inside a single progress/lifecycle bar -----
+  // A multi-segment bar must distinguish stages by position/width, not by giving each its own hue
+  // (policy §3 "no rainbow status mappings"). Catches the per-bar case that the page-wide count
+  // (≥5) misses because one bar's 3 hues stay under the page cap.
+  const segBars = [...document.querySelectorAll('[class*="recon"],[class*="progress"],[class*="lifecycle"],[class*="flow"],[class*="-bar"],[class*="segmented"]')];
+  result.rainbowBars = segBars
+    .map((bar) => new Set([...bar.querySelectorAll('[class*="seg"],[data-stage],span,div')]
+      .map((s) => getComputedStyle(s).backgroundColor)
+      .filter((c) => c && c !== 'rgba(0, 0, 0, 0)' && c !== 'transparent')).size)
+    .filter((n) => n >= 3).length;
+
   // ----- L-LAYOUT-03 / A-ANALYTICS-03: stat-card row above table -----
   const tables = document.querySelectorAll('table, [role="table"]');
   result.statCardsAboveTable = [...tables].map((table) => {
@@ -101,7 +123,17 @@ const measurements = await mcp.chrome.javascript_tool({ code: HARVEST_SCRIPT });
     // Detect "row of similar-sized cards" — same height, side-by-side
     const heights = above.map((c) => Math.round(c.getBoundingClientRect().height));
     const sameHeightCount = heights.filter((h) => h === heights[0]).length;
-    return { tableTop: rect.top, cardsAbove: above.length, sameHeightCardsAbove: sameHeightCount };
+    // stat-row-in-disguise: a row of big-number blocks above the table, regardless of card framing.
+    // The cards filter above sees zero when a stat row is unframed (no rounded+border); this catches
+    // the count figures themselves so a flattened "3 big numbers" band still fires.
+    const bigAbove = [...document.querySelectorAll('div, span, p, dd, strong')].filter((c) => {
+      const r = c.getBoundingClientRect();
+      const fs = parseFloat(getComputedStyle(c).fontSize);
+      const t = (c.textContent || '').trim();
+      return r.top >= aboveBox.top && r.bottom <= aboveBox.bottom && r.width > 40
+        && fs >= 22 && c.children.length <= 1 && /[\d.,]/.test(t) && t.length <= 16;
+    });
+    return { tableTop: rect.top, cardsAbove: above.length, sameHeightCardsAbove: sameHeightCount, bigNumberBlocksAbove: bigAbove.length };
   });
 
   // ----- T-TABLE-04: horizontal overflow on tables -----
@@ -154,8 +186,9 @@ For each measurement, apply the rule threshold:
 |---|---|
 | G-TYPO-02 | `distinctSizes` ≥ 4 in any component → P1 finding |
 | G-COLOR-06 | `distinctBgs` ≥ 3 in a single panel → P2 finding |
-| S-STATUS-03 | `distinctBadgeColors` ≥ 5 → P1 finding |
-| L-LAYOUT-03 / A-ANALYTICS-03 | `sameHeightCardsAbove` ≥ 3 → P1 finding |
+| S-STATUS-03 | `distinctBadgeColors` ≥ 5 **OR** `distinctStatusColorsAllEls` ≥ 5 → P1 finding (status color counted across ALL state-encoding elements — pills, progress/meter/segments, dots, tints — not just badges) |
+| S-STATUS-09 | `rainbowBars` ≥ 1 → P1 finding (a single progress/lifecycle bar maps ≥3 stages to ≥3 distinct hues — rainbow stage mapping, policy §3 "no rainbow status mappings"; stages must read by position/width, not hue) |
+| L-LAYOUT-03 / A-ANALYTICS-03 | `sameHeightCardsAbove` ≥ 3 **OR** `bigNumberBlocksAbove` ≥ 3 → P1 finding (a stat-card row OR an unframed row of big-number stat figures above the table — the figures are the tell, framing is not required) |
 | T-TABLE-04 | `tableOverflows` non-empty → P0 finding |
 | A-ANALYTICS-06 | `tableFraction` < 0.6 on operational pages → P1 finding |
 | L-LAYOUT-07 | `singleChildCards` non-empty → P2 finding |
@@ -216,6 +249,7 @@ Compare the harvest against the declared `archetype` from `{brief_archetype_map}
 | `composition` | `panelCount` ≥ 3 or `seriesCount` ≥ 3 (split into many charts instead of one part-to-whole) |
 | `single-metric` | `bigNumbers` = 0, or ≥ 3 same-size metric blocks (a KPI-card wall, not one number) |
 | `flow` | `funnelSignal` false and no stage-to-stage structure detected |
+| any except `single-metric` | `bigNumbers` ≥ 3 AND weak visualization signal (`!hasGapStrip` AND `barCount` < 2 AND `seriesCount` < 2 AND `!funnelSignal`) → the band's content is a row of big-number figures, not a visualization (stat-row-in-disguise — the `bigNumbers` harvest was previously read only for `single-metric`, so a `coverage`/`flow`/`ranking` band rendered as 3 big counts passed). A legitimate band of any archetype renders a strip/chart/meter; the counts belong in the inline header summary line, not the band. |
 | any | `drillableBandEls` < `substantiveBandEls` → at least one ornamental band element with no drill target (cross-cutting rule in `{archetypes_path}`) — fire as P1 with the count of non-drillable elements |
 
 A contradiction is a P1 `change-requested` finding citing the brief filename and the declared archetype. When the harvest is ambiguous (signals don't clearly contradict but don't clearly confirm), do NOT fire — defer to the human-judgment prompt step-04 emits. False-firing this check trains reviewers to ignore it.
