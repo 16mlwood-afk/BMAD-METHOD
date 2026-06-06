@@ -98,6 +98,7 @@ Based on the brief's `{page_mode}` and whether an analytics band is present, pop
   - **analytics visualization** — band, strip, chart, meter: subordinate to the table, ≤ one compact row (table keeps ~60–70% of above-the-fold height), and its content is a *visualization*, not summary figures (the §2 "Dashboard card grid" row).
   - **surface fill** — card/panel background: no status-colored card fills, no gradient/glassmorphism.
   - **detail drawer / overflow** — a right-side drawer, modal, or expanded row carries the `detail`-mode checks below **even on an operational or analytical page**. A drawer on an operational page is the §7 default pattern and MUST be inspected for KPI-cards-in-drawer, an inner mini-dashboard, and >3–4 field groups. (Operational/analytical surface lists historically named no drawer surface, so §7 drawer hard failures went unchecked on the common operational-with-drawer page.)
+  - **selector / dropdown** — a `select`, combobox, or dropdown menu (§11, *discouraged*): must render as a light neutral floating menu (not an oversized decorative card/pill), mark the current selection explicitly (checkmark), and not bury a high-frequency action behind a click. Fire as `issue`, not hard failure.
 - **Severity routing — no finding defaults to "issue" by omission.** Every surface finding raised here MUST be carried into §2 against a named row (which fixes its severity — every AI-fingerprint / §5 row is a hard failure) OR tagged with an explicit severity in §7. A §1b finding left with no §2 mapping and no explicit severity tag silently becomes a soft "issue" — that is the under-grading hole that let a stat bar be scored an "issue." Do not leave a finding untagged.
 
 **For `operational` mode with analytics band:**
@@ -148,6 +149,7 @@ Cross-reference the `{render_surfaces}` populated in §1b: for each surface, the
 | Monospace abuse | Monospace used in headings, labels, navigation, or section titles (OK in IDs, codes, tabular numbers) | render | Y/N + region |
 | Decorative color | Color used for personality or branding rather than functional state indication | render | Y/N + region |
 | Dark mode tint | Navy, deep blue, or warm dark — must be true dark neutrals if dark mode is shown | render | Y/N + region |
+| Dropdown treatment (§11) | A dropdown / select / menu rendered as an oversized decorative card or pill rather than a light, neutral floating menu; no checkmark or explicit current-selection marker; or a high-frequency action buried behind it. Dropdowns are discouraged — `issue` severity, not hard failure. | render | Y/N + region |
 
 **Voice checks:**
 
@@ -182,6 +184,8 @@ Cross-reference the `{render_surfaces}` populated in §1b: for each surface, the
 | Sidebar inside a feature page | A left/right app-shell-style nav rail or a filter sidebar **inside** the feature page. Feature pages are full-width; filters live in the persistent top chip bar, not a sidebar, modal, collapsed drawer, or column-header dropdown. | Y/N + region |
 | Status meaning↔tone mismatch | A pending / awaiting / unmatched / not-yet-reconciled / review state rendered in the RED (failure) tone — or any status whose tone contradicts its meaning. Red is reserved for genuine failures (error / blocked / failed import); attention/pending = yellow; ready/received/reconciled = green; default/queued = gray. Map by meaning, not by stage. | Y/N + region |
 | Uppercase tracking-wide / all-caps | `text-xs uppercase tracking-wide` tool-chrome labels, all-caps section headers, or editorial caps. Sentence case at the project body size is the default. | Y/N + region or file:line |
+| Icon clusters / colored-icon circles | A 3-feature icon row, a cluster of colored icon circles, or an icon set in a tinted/colored circle as decoration (§5 named AI trope). Distinct from "Icon overload" (an icon on *every* label) — this is the decorative icon-in-a-circle fingerprint. | Y/N + region |
+| Centered card-on-gray | A centered card/panel floating on a gray or neutral background as the page layout (the settings-page / auth-form / empty-state shell). Feature pages are full-width; content fills the container (§5). | Y/N + region |
 
 **Self-test:** Would someone guess this design is AI-generated? If yes, that is itself a violation.
 
