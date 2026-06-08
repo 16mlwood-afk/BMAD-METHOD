@@ -240,6 +240,24 @@ Fields are in domain language. Grouping, derivation, and presentation are design
 
 {Copy section 3 from brand identity — core palette, semantic colors, badge pattern, domain colors}
 
+### Feature State → Color Mapping
+
+{After copying the Color System, generate a compact **Feature State → Color Mapping table** that names every meaningful state on THIS feature and maps it to exactly one of the four status tokens. This is the anti-rainbow contract — it makes explicit that no state gets a unique color outside the four-tone system.
+
+Prefix the table with this constraint block:
+> ⚠️ **Strict 4-color cap — every state on this feature maps to exactly one of these four rows.** The categorical tag palette (`--tag-*`) is banned here. Funnel drop-off reason chips do NOT each get a unique color — they map to yellow (expected drop-off) or red (genuine failure).
+
+Then generate the table from the feature's actual states (replace the examples with this feature's real states):
+
+| State | Color | Token |
+|---|---|---|
+| {error/failure states, e.g. "enrichment error", "processing failed", "blocked"} | Red | `--status-danger` / `--status-danger-muted` |
+| {attention/unresolved states, e.g. "unmatched", "needs review", "no buy-box", "unprofitable", "pricing stale"} | Yellow | `--status-warning` / `--status-warning-muted` |
+| {success/complete states, e.g. "matched", "reconciled", "enriched", "ranked winner", "received"} | Green (muted) | `--status-success-muted` |
+| {resting/neutral states, e.g. "pending", "queued", "in-flight", "not started"} | Gray | `--status-neutral` / `--status-neutral-muted` |
+
+Move any feature-specific color-mapping guidance HERE rather than burying it inside the policy copy block above. This table is the primary color-constraint signal Claude Design receives and must be impossible to miss.}
+
 ### Component Patterns
 
 {Copy section 4 from brand identity — tables, badges, buttons, status indicators with exact class names or token references as written in the policy}
@@ -584,6 +602,15 @@ Technical context only — NOT layout or design references.
 | File | What it contains |
 |------|-----------------|
 | {3-5 key files} | {type definitions, API handlers, CSS tokens if applicable} |
+
+{If `{design_system}` = "branded" AND `docs/design-policy.md` contains migration notes flagging non-compliant components, add this block immediately after the file table:
+
+⚠️ **Token values only — do NOT anchor to existing component styling.** The policy flags these implementations as currently non-compliant; reading their code will bias Claude Design toward the wrong patterns:
+{For each non-compliance named in the policy migration notes, e.g.:}
+- `StatusBadge` — currently `rounded-full` with a leading Lucide icon; policy §3 requires `rounded-md`, no icon, no dot
+- Categorical `--tag-*` palette in `tokens.css` — exceeds the 4-color operational status cap; status communication uses only `--status-danger/warning/success/neutral`
+
+Read token VALUES (colors, `--radius-md`) from `tokens.css` — anchor to those. Do NOT anchor to the shape, size, icon, or decoration pattern of any component whose compliance is a migration target.}
 
 ---
 
