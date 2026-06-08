@@ -91,6 +91,7 @@ Capture `{data_shape}` in **domain-entity table form** (see step-03 template). I
 - What endpoints does the frontend call? → `{api_surface}`
 - What does each response look like? (reference the data shape)
 - What mutations are available? (POST/PUT/DELETE endpoints)
+- **Ingest / entry-point audit:** For each entity type the feature displays, ask: *how does a new record enter the system?* Is there an upload, import, manual-create, webhook, or scraper that populates it? A production page-level affordance that seeds the pipeline (e.g. a "Upload wholesale price list" button) is a **capability**, not just a technical endpoint — capture it in `{must_support_capabilities}` (as an outcome) AND in `{api_surface}` (as the mutation). Miss it and the redesign can browse records but never create them. This is the most common single-capability loss in redesign-scope briefs.
 
 **Implementation Files:**
 - List relevant file paths → `{implementation_files}`
