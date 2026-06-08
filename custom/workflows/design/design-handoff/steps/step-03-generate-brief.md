@@ -378,6 +378,27 @@ Render the page-specific bans from `{archetype_prohibited}` (the skill's `prohib
 
 ---
 
+## 4c. Surface Topology
+
+{Include this section ONLY when `{surface_topology_verdict}` is NOT `single-page-appropriate`. Omit entirely — no heading, no placeholder — when the verdict is `single-page-appropriate`.}
+
+{`{surface_topology_notes}` — the recommended topology for this feature, as assessed in step-01 §5d. This section informs the designer that the feature they are designing is one surface in a multi-surface feature — not the whole story. The surrounding context shapes composition, navigation affordances, and what belongs on THIS surface vs. another.}
+
+**This brief covers:** `{route}` — {one-line job description for the primary route only}.
+
+{Render only the applicable conditional block below; omit the others:}
+
+{If `needs-detail-route`:}
+**Recommended: detail route (separate brief):** `{feature_prefix}/[id]` — the per-item deep-dive; full evaluation evidence, record-level actions, field-depth content that does not fit a drawer or list row. This brief does not cover that surface. {Note whether a second brief was generated in this session or is pending.}
+
+{If `needs-tab-views`:}
+**View structure within this route:** {List the tab names and the operator job each one owns. The designer must accommodate this view structure in the IA. Tab names should describe the operator job, not just the content category.}
+
+{If `needs-sibling-route`:}
+**Recommended: sibling route (separate brief):** `{sibling_route}` — {the operator job it owns, distinct from the primary route}. This brief does not cover that surface. {Note whether a second brief was generated in this session or is pending.}
+
+---
+
 ## 5. Hard Constraints
 
 {Use ONE of the following variants based on `{design_system}`:}
@@ -604,6 +625,7 @@ Before writing, verify:
 - [ ] **composition_provenance is honest.** Frontmatter `composition_provenance` is set (`policy-default` or `recommended-alt`). If `recommended-alt`: §4a leads with the composition-override block naming the job-fit composition (no template placeholders remain), the override was veto-surfaced to the user (not silently imposed), and `{page_mode}` still honestly names the *work type* (the override changed composition, not mode — the page can be `operational` with a non-table composition). If `policy-default`: no override block appears and §4a is the plain page-mode block. The composition was decided from the §5a job questions, NOT inherited from the policy default or the legacy render.
 - [ ] **Must-support capabilities are captured, not dropped.** §1 lists every job from `{must_support_capabilities}` as an outcome (not a UI mechanic), OR the subsection is omitted because the surface genuinely has none beyond the primary goals. A redesign-scope brief especially must not silently shed a capability the current screen has — the blank-canvas mandate strips the *arrangement*, never the *job* (step-01 §4). If a capability could not be expressed without naming current UI, it is still listed as an outcome, not discarded.
 - [ ] **Ingest / entry-point not dropped.** Cross-check the step-01 ingest audit: for each entity type the feature displays, was the source of new records captured? If a production page-level affordance seeds the pipeline (upload, import, manual-create), it appears as a capability in §1 (outcome, not mechanic) AND as a mutation in §2 API Surface. A brief that enables browsing records but omits their creation path is incomplete — and this gap survives "capabilities not dropped" scans because the capability was never added to `{must_support_capabilities}`, not removed from it.
+- [ ] **Surface topology captured.** `{surface_topology_verdict}` is set from step-01 §5d. When not `single-page-appropriate`, §4c is present in the brief and describes the recommended topology correctly — which job each surface owns, whether related routes already exist, and whether a sub-brief is pending. When `single-page-appropriate`, §4c is omitted entirely — no heading, no placeholder text. In non-autonomous mode, the topology recommendation was surfaced to the user before the brief was written.
 - [ ] **Detail composition fit was checked (not assumed).** For `page_mode: detail`, `composition_provenance` reflects the §5a interaction-verb question: `policy-default` for data-entry / passive-review surfaces, `recommended-alt` (source-co-present verification layout) when the verb is verification-against-a-source. A verify-against-source detail surface left at `policy-default` is the miss this check exists to catch.
 - [ ] **File paths are correct** and relative to repo root.
 

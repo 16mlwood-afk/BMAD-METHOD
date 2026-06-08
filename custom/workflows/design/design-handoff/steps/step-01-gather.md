@@ -227,6 +227,43 @@ The skill runs its selection procedure (start from the question, ground-or-flag,
 
 Either path populates the same state, so step-03b renders identically. `{analytics_archetype}` empty ⇒ no band.
 
+### 5d. Surface Topology Assessment
+
+**The question:** Given everything gathered above, is this feature's scope correctly bounded at a single route — or does the data depth, capability breadth, or user job structure suggest multiple surfaces?
+
+**Reason from the evidence, not from thresholds.** You have already captured: the data model (entities and their depth), the user goals, the capabilities list, the data volumes, and the existing routes in `{implementation_files}`. Work through these four questions from the gathered evidence:
+
+**1. How many distinct user jobs live on this route?**
+Count from `{must_support_capabilities}` and the primary goals. Jobs that operate at fundamentally different depths — a triage queue and a deep-dive evidence panel, a batch management view and the items within it — are structural signals, not just UX variety. If the same route is expected to do two distinct jobs at different depths, ask whether splitting is the better architectural choice.
+
+**2. What is the realistic capacity of the primary surface?**
+A right-drawer holds a moderate-depth record view. A full-page detail view holds more — but there is a ceiling. If the per-item evidence layer (fields, charts, sub-tables, provenance panels) would span several full-page scroll-sections, the item record has outgrown a secondary panel and warrants its own route. Check whether `/[feature]/[id]` already exists in `{implementation_files}`.
+
+**3. Are there sub-entities that belong on a sibling route?**
+Import batches, audit history, configuration records, and provenance tables are frequently embedded in a primary surface when they'd be better served by an adjacent route — `/[feature]/batches`, `/[feature]/history`, `/[feature]/config`, etc. Check whether such routes already exist or are implied by the implementation. A sibling route serves a distinct operator job and does NOT require a return to the primary surface mid-task.
+
+**4. Would tab/view navigation help — or just add chrome?**
+Tab-level views are appropriate when the surface has two or three genuinely distinct slices of the same primary data that users switch between deliberately — not as a workaround for content overflow. The test: can you name the operator job that owns each tab? "Active queue" and "batch history" pass. "Main" and "Other" fail. If tabs would just partition what should be one coherent view, they are chrome. If they represent distinct operator modes, they earn their place.
+
+**Verdict — one of:**
+
+| Verdict | When to use |
+|---------|------------|
+| `single-page-appropriate` | All jobs are coherently served from one route. Scope, depth, and volume fit the surface. |
+| `needs-detail-route` | The per-item depth warrants its own route (`/[feature]/[id]`). The primary route covers the queue/list; the item's full evaluation belongs on a second route. Most common for data-heavy operational surfaces. |
+| `needs-tab-views` | Two or three genuinely distinct operator modes on the same primary data justify top-level tab navigation within the current route. The tabs represent mode-switching, not content overflow. |
+| `needs-sibling-route` | A distinct sub-feature (batch management, history, configuration) belongs on its own adjacent route rather than embedded in the primary surface. |
+
+**When the verdict is not `single-page-appropriate`:**
+Describe the recommended topology in 2-4 sentences: which route covers which job. Note any routes that already exist in `{implementation_files}` for this feature prefix.
+
+Before generating the brief, surface to the user:
+> *"The gathered scope suggests this feature spans multiple surfaces. This brief will cover `{route}` ([primary job]). Also recommended: a brief for [other routes + their jobs]. Generate now, or continue with primary only?"*
+
+In autonomous mode, proceed with the primary brief and surface the topology in §4c of the generated brief.
+
+Set `{surface_topology_verdict}` and `{surface_topology_notes}`.
+
 ### 6. Identify User Context
 
 Set `{user_context}`:
@@ -257,6 +294,8 @@ Confirm populated:
 - `{has_analytics_band}` ✓ (`true` iff band_provenance ∈ {inherited, recommended-new})
 - `{analytics_archetype}` ✓ (one of the eight, or `unclear` → asked; empty when no band)
 - **Analytics reasoning capture** ✓ (populated iff `{has_analytics_band}` is `true`; all empty otherwise) — `{page_mode_rationale}`, `{band_decision_log}`, and the archetype decision object captured from the `analytics-surface-architect` skill in §5c: `{archetype_candidates}`, `{archetype_winner_reason}`, `{archetype_secondary}`, `{time_present_check}`, `{archetype_drill_map}`, `{archetype_prohibited}`. These feed the rationale artifact (step-03b) and §4b; capturing the deliberation here is what makes the presentation decision auditable instead of discarded.
+- `{surface_topology_verdict}` ✓ (one of: `single-page-appropriate` | `needs-detail-route` | `needs-tab-views` | `needs-sibling-route`)
+- `{surface_topology_notes}` ✓ (recommended topology in 2-4 sentences; empty string when verdict is `single-page-appropriate`)
 - `{user_context}` ✓
 - `{brand_identity}` ✓ (may be empty)
 - `{design_system}` ✓ ("branded", "existing", or "external")
