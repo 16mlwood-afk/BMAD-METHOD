@@ -191,9 +191,20 @@ Content-lane verification owed (live page):
   - {cell} — {identifier_class}, value from {formatter_ref}
   → run:  /bmad:bmm:workflows:design-review   (live Chrome §13(a) check)
      or:  /bmad:bmm:workflows:design-tuning   (step-02 §2b, live screenshots)
+
+Capabilities removed (orphaned actions):
+{Derive this MECHANICALLY, do not recall it. If the apply DELETED or REPLACED any component
+file (a redesign that swaps the surface — not a pure in-place restyle), then for every server
+action / mutation those removed files imported or called, grep the post-apply tree for remaining
+callers. Any action now with ZERO callers is a capability the redesign dropped — list it.}
+{if no components were deleted/replaced, OR every action the removed code called still has a caller:}
+  None — no capability lost (no components removed, or every action the removed code called is still wired).
+{else, one bullet per now-orphaned action:}
+  - {action name} — was called by {deleted file}; now has zero callers ⇒ the {one-line capability, e.g. "manual EAN→ASIN remap"} is no longer reachable in the UI.
+  → If the drop is intended, confirm it. If not, it was a silent capability loss — restore the affordance (the backend action is intact) or route it through /bmad:bmm:workflows:design-handoff to redesign the capability deliberately.
 ```
 
-A completion report that prints a fixed-count but omits the "Deltas not applied" section is non-conformant — re-emit it. The whole point of this section is that a partial implementation announces itself instead of shipping silently as "done." The **"Content-lane verification owed" section is equally mandatory** and never omitted: design-implement aligning a marketplace/supplier/ASIN cell's CSS is NOT the same as certifying it renders the right value on real data — that lane belongs to the live-page workflows, and the report must say so rather than let "implementation complete" imply the identifier values were checked.
+A completion report that prints a fixed-count but omits the "Deltas not applied" section is non-conformant — re-emit it. The whole point of this section is that a partial implementation announces itself instead of shipping silently as "done." The **"Content-lane verification owed" section is equally mandatory** and never omitted: design-implement aligning a marketplace/supplier/ASIN cell's CSS is NOT the same as certifying it renders the right value on real data — that lane belongs to the live-page workflows, and the report must say so rather than let "implementation complete" imply the identifier values were checked. The **"Capabilities removed (orphaned actions)" section is equally mandatory** whenever the apply deleted or replaced components: a redesign that swaps the surface can silently strip a capability whose action call lived in a removed file and was never a grid delta (the EOS batch-detail EAN→ASIN remap — `overrideWholesaleAsinAction` left with zero callers — is the canonical miss). The grid-driven apply ledger cannot catch this because the lost capability was never a row in the grid; the orphaned-action grep is the backstop, and it must reach the report, not stay silent.
 
 ---
 
@@ -204,6 +215,7 @@ A completion report that prints a fixed-count but omits the "Deltas not applied"
 - Every applied delta is fixed and re-verified by re-reading the file
 - **The completion report's "Deltas not applied" section is present** — enumerating every deferred/dropped delta with its reason, or stating "None — all N applied"
 - **The completion report's "Content-lane verification owed (live page)" section is present** — every `content-lane` deferral (step-03 §2c) enumerated with its formatter ref + the design-review / design-tuning routing, or stating "None"
+- **The completion report's "Capabilities removed (orphaned actions)" section is present whenever the apply deleted/replaced components** — derived by grepping for now-zero-caller actions among those the removed files invoked, or stating "None — no capability lost". A surface-swapping redesign never ships without this disclosure.
 - Build passes; PR created and merged; grid artifact updated with dispositions; no regressions introduced
 
 ## FAILURE MODES
@@ -212,6 +224,7 @@ A completion report that prints a fixed-count but omits the "Deltas not applied"
 - **Reporting a count without the "Deltas not applied" list** — "47/47" or "deltas fixed: X" with no enumeration of what was deferred/dropped. A partial that omits the disclosure ships looking complete. The §9 section is mandatory.
 - **A bare `deferred` with no reason** — the silent drop wearing a label. Every deferral names `needs-data` / `out-of-scope` / `judgment` / `content-lane` + detail.
 - **Letting "implementation complete" imply the identifier *values* were checked.** design-implement aligns a marketplace/supplier/ASIN cell's CSS against the bundle; it does NOT verify the formatter renders the right value on real data (the bundle is mock data). Omitting the "Content-lane verification owed" section ships that false implication — it is the design-implement counterpart of the inbound-flow `/orders` raw-enum leak that the grid's mock-data comparison could never catch.
+- **Deleting/replacing components without the orphaned-action check.** A surface-swapping redesign removes files that called server actions; if the new surface doesn't re-wire one, that capability is silently gone — and because it was never a grid row, the apply ledger can't catch it. The grid-driven apply makes this *more* likely, not less, by focusing attention on enumerated deltas. The orphaned-action grep + the "Capabilities removed" disclosure is the backstop; skipping it is how the EOS batch-detail EAN→ASIN remap shipped as a silent loss.
 - Fixing some deltas but not all ("the rest are minor" — fix them all, or defer-with-reason)
 - Editing without re-reading to verify (edits can silently fail or land in the wrong location)
 - Changing `tailwind.config.js` when an arbitrary value would work

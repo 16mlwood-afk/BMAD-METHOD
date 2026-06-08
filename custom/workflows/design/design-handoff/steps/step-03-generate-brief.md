@@ -178,6 +178,9 @@ This brief was generated from the codebase after implementation. It intentionall
 **Capabilities the design must support:**
 {must_support_capabilities — jobs the operator must be able to accomplish, as outcomes. Each is a requirement the design must satisfy even though this brief deliberately withholds the current layout. If the design cannot express one of these, that is a gap to flag — not to drop silently. Omit this subsection only when the surface genuinely has no capabilities beyond the primary goals above.}
 
+**Deliberately not carried forward (logged drops):**
+{Render this subsection ONLY when `{dropped_capabilities}` is non-empty (a redesign that consciously sheds or relocates a capability the current surface had). One bullet per entry: the capability (outcome phrasing) · why (`relocated` to which sibling surface / `obsolete` / `out-of-scope-by-design`). This makes every drop an explicit, on-the-record decision the designer and the user can see — the design need NOT build these, but they are documented, not silently absent. Omit the subsection entirely when `{dropped_capabilities}` is empty.}
+
 **Typical data volume:** {counts in domain terms}
 
 ---
@@ -664,6 +667,7 @@ Before writing, verify:
 - [ ] **composition_provenance is honest.** Frontmatter `composition_provenance` is set (`policy-default` or `recommended-alt`). If `recommended-alt`: §4a leads with the composition-override block naming the job-fit composition (no template placeholders remain), the override was veto-surfaced to the user (not silently imposed), and `{page_mode}` still honestly names the *work type* (the override changed composition, not mode — the page can be `operational` with a non-table composition). If `policy-default`: no override block appears and §4a is the plain page-mode block. The composition was decided from the §5a job questions, NOT inherited from the policy default or the legacy render.
 - [ ] **Must-support capabilities are captured, not dropped.** §1 lists every job from `{must_support_capabilities}` as an outcome (not a UI mechanic), OR the subsection is omitted because the surface genuinely has none beyond the primary goals. A redesign-scope brief especially must not silently shed a capability the current screen has — the blank-canvas mandate strips the *arrangement*, never the *job* (step-01 §4). If a capability could not be expressed without naming current UI, it is still listed as an outcome, not discarded.
 - [ ] **Ingest / entry-point not dropped.** Cross-check the step-01 ingest audit: for each entity type the feature displays, was the source of new records captured? If a production page-level affordance seeds the pipeline (upload, import, manual-create), it appears as a capability in §1 (outcome, not mechanic) AND as a mutation in §2 API Surface. A brief that enables browsing records but omits their creation path is incomplete — and this gap survives "capabilities not dropped" scans because the capability was never added to `{must_support_capabilities}`, not removed from it.
+- [ ] **Every current-surface action is accounted for (mutation-derivation audit).** For a redesign, cross-check step-01 §3's mutation-derivation audit: every server action the current surface's components invoke resolves to EITHER a `{must_support_capabilities}` / primary-goal entry (carried forward) OR a `{dropped_capabilities}` entry with a reason. No action is unaccounted for. This is the audit that catches mutations on *existing* records (resolve / remap / override / re-run / reprice) — the subclass the ingest audit and the recall-based capability list both miss (the EOS batch-detail EAN→ASIN remap loss). When `{dropped_capabilities}` is non-empty, the brief's §1 "Deliberately not carried forward" subsection renders it, and step-03 §5 surfaces it to the user as a vetoable decision.
 - [ ] **Surface topology captured.** `{surface_topology_verdict}` is set from step-01 §5d. When not `single-page-appropriate`, §4c is present in the brief and describes the recommended topology correctly — which job each surface owns, whether related routes already exist, and whether a sub-brief is pending. When `single-page-appropriate`, §4c is omitted entirely — no heading, no placeholder text. In non-autonomous mode, the topology recommendation was surfaced to the user before the brief was written.
 - [ ] **Detail composition fit was checked (not assumed).** For `page_mode: detail`, `composition_provenance` reflects the §5a interaction-verb question: `policy-default` for data-entry / passive-review surfaces, `recommended-alt` (source-co-present verification layout) when the verb is verification-against-a-source. A verify-against-source detail surface left at `policy-default` is the miss this check exists to catch.
 - [ ] **File paths are correct** and relative to repo root.
@@ -677,7 +681,16 @@ Write the file to `{output_path}`.
 Show:
 1. Where the file was written
 2. A 3-line summary
-3. Copy-paste prompt for Claude Design:
+3. **Dropped-capabilities disclosure (MANDATORY when `{dropped_capabilities}` is non-empty).** If this redesign deliberately drops or relocates any capability the current surface had, you MUST enumerate them here at the end of the run — never let a drop be silent. Emit:
+
+   ```
+   ⚠️ Capabilities NOT carried into this brief ({N}) — confirm these should be dropped, or re-run to include them:
+     - {capability} — {reason: relocated to <sibling surface> | obsolete | out-of-scope-by-design}
+     ...
+   ```
+
+   If `{dropped_capabilities}` is empty, state one line: "All capabilities the current surface exposes are carried forward — no drops." This disclosure is the *output* half of the anti-silent-drop contract (the *log* half is `{dropped_capabilities}` + the brief's §1 subsection); the drop must reach the user's eyes at hand-off, not just sit in a state variable.
+4. Copy-paste prompt for Claude Design:
 
 > **To hand off to Claude Design:**
 >

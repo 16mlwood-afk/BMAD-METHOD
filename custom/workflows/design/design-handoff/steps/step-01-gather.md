@@ -92,6 +92,10 @@ Capture `{data_shape}` in **domain-entity table form** (see step-03 template). I
 - What does each response look like? (reference the data shape)
 - What mutations are available? (POST/PUT/DELETE endpoints)
 - **Ingest / entry-point audit:** For each entity type the feature displays, ask: *how does a new record enter the system?* Is there an upload, import, manual-create, webhook, or scraper that populates it? A production page-level affordance that seeds the pipeline (e.g. a "Upload wholesale price list" button) is a **capability**, not just a technical endpoint — capture it in `{must_support_capabilities}` (as an outcome) AND in `{api_surface}` (as the mutation). Miss it and the redesign can browse records but never create them. This is the most common single-capability loss in redesign-scope briefs.
+- **Mutation-derivation audit (anti-recall — DERIVE capabilities, don't remember them):** The data shape is *derived* from the schema (above), so no field can be silently missed. Capabilities must be derived the **same mechanical way**, not recalled — recall is where they leak. For a **redesign**, `grep` the *current* surface's implementing component files for every server action / mutation they import and call (this reads the **verbs the screen exposes**, NOT its layout — so it stays inside the anti-bias rule; you are cataloguing what the operator can *do*, never how it's arranged). Then account for **every** action found — each must resolve to exactly one of:
+  - a **primary user goal** or a **`{must_support_capabilities}`** entry — the capability is carried forward (name it as an outcome), OR
+  - a **deliberate drop** — recorded in `{dropped_capabilities}` as `{ capability (outcome phrasing) · backing_action · reason }`, where `reason` is one of: `relocated` (to a named sibling surface), `obsolete`, or `out-of-scope-by-design`.
+  No action may be left unaccounted for. The **ingest audit** above catches mutations that *create* records; **this** audit catches mutations on *existing* records — resolve / remap / override / re-run / reprice / reconcile / approve / dismiss — the subclass a blank-canvas redesign sheds most easily because each is neither a primary goal nor an entry-point, and the anti-bias rule discourages the very UI-reading that would surface it. An action that lands in **neither** bucket is the silent capability loss this audit exists to make impossible (the EAN→ASIN remap dropped from the EOS batch-detail redesign — `overrideWholesaleAsinAction` left with zero callers — is the canonical case). For a **new** feature there is no current surface to grep, so this audit reduces to the ingest audit alone.
 
 **Implementation Files:**
 - List relevant file paths → `{implementation_files}`
@@ -316,7 +320,8 @@ Confirm populated:
 - `{feature_scope}` ✓
 - `{feature_purpose}` ✓
 - `{data_shape}` ✓
-- `{api_surface}` ✓
+- `{api_surface}` ✓ (incl. the §3 **mutation-derivation audit** — every server action the current surface invokes is accounted for: carried into `{must_support_capabilities}` or logged in `{dropped_capabilities}`)
+- `{dropped_capabilities}` ✓ (each a deliberate drop with `capability · backing_action · reason`; empty list only when every action the current surface exposes is carried forward — never empty by omission)
 - `{implementation_files}` ✓
 - `{page_mode}` ✓ ("operational", "analytical", or "detail")
 - `{composition_provenance}` ✓ (`policy-default` | `recommended-alt`; decided in §5a from the job, NOT inherited from the policy default; `recommended-alt` veto-surfaced and `{composition_rationale}` captured) — and `{page_mode}` stays the honest work type even when composition deviates
