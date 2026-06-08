@@ -20,6 +20,7 @@ Includes pills, badges, dots, row tints, left-borders, **progress / meter / life
 - [ ] Tone matches meaning — failure tone (red, where the policy defines one) is reserved for genuine failures; pending/awaiting/unmatched use the attention tone, never the failure tone
 - [ ] The same state reads in the same tone on every element and every surface (list ↔ drawer ↔ sibling pages)
 - [ ] One primary status per row; secondary signals are quieter (muted text/icon), never a second equal-weight pill
+- [ ] No status over-encoding by repetition — the same status/severity is not repainted 3–4× on one row (left-border + pill + colored secondary text + colored count). The 4-color cap is breadth; this is repetition on one row (step-02 §2 Craft & legibility)
 
 ## Role: primary action / CTA
 
@@ -45,6 +46,7 @@ Bands, strips, charts, meters on operational/analytical pages.
 - [ ] Content is a *visualization* (coverage strip / trend / meter), not a row of summary count figures (those belong in the inline header summary line)
 - [ ] Reads as a single shared band — not a row of per-panel cards (per-tile border/fill/shadow = card-grid violation)
 - [ ] Every element drills somewhere — no ornamental figures
+- [ ] Not redundant with adjacent text — a per-row micro-bar/meter/sparkline must show something its own caption/value does not (proportion/position/trend); if the text beside it already says it, the element is decoration (step-02 §2 Craft & legibility)
 
 ## Role: surface fill / layout
 
@@ -61,6 +63,12 @@ Applies even on an operational/analytical page (the §7 default pattern).
 - [ ] No KPI cards, charts, or mini-dashboard inside the drawer
 - [ ] No more than the policy's max field groups (typically 3–4)
 - [ ] Same surface/typography/status system as the list — not a form from another app
+
+## Role: labels & wording (craft & legibility)
+
+- [ ] No label collision — one label does not name two different quantities on the same screen (e.g. a chip "To commit" counting partners while a column "To commit" counts orders)
+- [ ] Label↔severity wording matches — a genuine-failure (red) status is worded as a failure ("Commit failed"), not softened ("Needs attention") while the real attention state owns a different word
+- [ ] Iconography↔meaning matches — each icon's glyph denotes its action (no theme toggle wearing a "layers" glyph, no refresh with an unrelated icon)
 
 ## Cross-cutting (read from policy)
 

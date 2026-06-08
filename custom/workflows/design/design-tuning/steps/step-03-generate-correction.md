@@ -26,6 +26,7 @@ From steps 01–02:
 - `{policy_overrides_brief}` — boolean set by step-02 when brief drifted from policy
 - `{current_violations}`, `{fixed_violations}`, `{kept_elements}`
 - `{previous_violations}`
+- `{has_unresolved_issues}` — boolean set by step-02 §7; `true` when ≥1 issue-severity finding is outstanding. Splits a PASS into PASS-CLEAN (clean approval) vs PASS-WITH-ISSUES (approval that carries the issues into implementation).
 
 ## SEQUENCE OF INSTRUCTIONS
 
@@ -33,7 +34,9 @@ From steps 01–02:
 
 Based on the overall assessment from step-02 §7:
 
-- **Assessment = PASS** (0 hard failures AND `{coverage_partial} = false` AND `{treatment_unverified} = false`): Generate an APPROVAL message. Skip to section 5.
+- **Assessment = PASS** (0 hard failures AND `{coverage_partial} = false` AND `{treatment_unverified} = false`): Generate an APPROVAL message — section 5. Two sub-paths there, chosen by `{has_unresolved_issues}`:
+  - **PASS-CLEAN** (`{has_unresolved_issues} = false`): an unqualified approval.
+  - **PASS-WITH-ISSUES** (`{has_unresolved_issues} = true`): an APPROVED-WITH-ISSUES message — no hard failure blocks the design, but the issue-severity findings are carried in a mandatory **Issues to resolve** block so they get fixed at implementation rather than silently shipped. A clean approval is NOT permitted while any issue is outstanding; this is the gate that stops a polished render from auto-passing on "0 hard failures."
 - **Assessment = FAIL** (1+ hard failures, regardless of coverage): Generate a correction message. Continue to section 2.
 - **Assessment = PARTIAL** (0 hard failures BUT `{coverage_partial} = true` OR `{treatment_unverified} = true`): Generate a PARTIAL-STATUS message — list everything that's resolved, list the prior keepers that re-verified cleanly, and explicitly name what blocks approval. Two blockers can land here:
   - **Missing screens** (`{coverage_partial}`) — name the screens that must be rendered.
@@ -127,12 +130,14 @@ Fixed this round: {count}
 
 ### 5. Generate Approval Message (if assessment == PASS)
 
-If `{assessment} == PASS` (0 hard failures AND `{coverage_partial} == false`):
+If `{assessment} == PASS` (0 hard failures AND `{coverage_partial} == false` AND `{treatment_unverified} == false`), branch on `{has_unresolved_issues}`.
+
+**5 (clean) — PASS-CLEAN (`{has_unresolved_issues} == false`):**
 
 ```markdown
 **Design approved — iteration {iteration_number}.**
 
-All constraints from the design brief are satisfied. No corporate guardrail violations. Visual direction aligns with references. All required screens were inspected.
+All constraints from the design brief are satisfied. No corporate guardrail violations. No craft or legibility issues. Visual direction aligns with references. All required screens were inspected.
 
 **Approved elements:**
 {List all kept_elements}
@@ -141,6 +146,26 @@ All constraints from the design brief are satisfied. No corporate guardrail viol
 ```
 
 Update the state file with `status: approved`.
+
+**5 (with issues) — PASS-WITH-ISSUES (`{has_unresolved_issues} == true`):** the design has no hard failures, but ≥1 issue-severity finding (a §2 Craft & legibility row, a §4 typography/monospace issue, a §11 dropdown issue, a non-systemic content slip). Do NOT emit the clean approval above. Emit this instead:
+
+```markdown
+**Design approved with issues — iteration {iteration_number}.** {N} issue(s) to resolve at implementation; 0 hard failures.
+
+No hard failure blocks this design — the composition, treatment, and §13 coherence hold. But the following issue-severity findings must be resolved when the design is implemented (or fed back to Claude Design if you want them fixed in the mock first). They are real policy deviations, just not page-failing ones — shipping them is the "polished but thoughtless" miss this gate exists to catch.
+
+**Issues to resolve (do not ship as-is):**
+{For each issue-severity item in current_violations, ordered most-impactful first:}
+**{ID}. {Short title}** ({category}, {lane})
+{What the policy says — quote the section.} {What the render shows.} {The one-line fix.}
+
+**Approved elements — keep these:**
+{List all kept_elements}
+
+**Next:** these are implementation-time fixes, not a redesign. Hand to design-implement (it folds the issue fixes into the build), or paste the issue list to Claude Design first if you want the mock corrected before implementation.
+```
+
+Update the state file with `status: approved-with-issues` and persist the issue list so a re-run recognizes which issues were carried forward.
 
 ### 5a. Generate PARTIAL-STATUS Message (if assessment == PARTIAL)
 
@@ -169,7 +194,9 @@ No hard failures on what could be verified. The blocker(s):
 
 Update the state file with `status: partial-pending-coverage` (or `partial-pending-treatment` if coverage is complete but treatment is unverified; `partial-pending-coverage-and-treatment` if both) and persist `{missing_screens}` + `{treatment_evidence_mode}` so the next iteration recognizes the gap is closed when the screens and/or the artifact URL arrive.
 
-### 5b. Brand Identity Feedback (on approval only)
+### 5b. Brand Identity Feedback (on PASS-CLEAN approval only)
+
+Run this ONLY on a PASS-CLEAN approval (`{has_unresolved_issues} == false`). A PASS-WITH-ISSUES design has outstanding craft/legibility deviations — do not nominate it as a new reference page or exemplar until those are resolved; recommending a flawed surface as the bar is how drift enters the policy.
 
 When a design is approved AND `{brand_identity_path}` exists, evaluate whether the brand identity should be updated:
 
@@ -191,8 +218,8 @@ Output these suggestions in a `**Brand Identity Updates**` section after the app
 
 Display to the user:
 
-1. **Summary line:** "Iteration {N}: {PASS|FAIL|PARTIAL} — {X} violations ({Y} hard failures), {Z} fixed from last round{, missing N screen(s) if PARTIAL}"
-2. **The full correction / approval / partial-status message** inside a clearly marked block — ready to copy
+1. **Summary line:** "Iteration {N}: {PASS-CLEAN | PASS-WITH-ISSUES | FAIL | PARTIAL} — {X} violations ({Y} hard failures, {W} issues), {Z} fixed from last round{, missing N screen(s) if PARTIAL}". Never report a bare "PASS" when issues are outstanding — say "PASS-WITH-ISSUES — N issues to resolve" so the issue count is in the headline, not buried.
+2. **The full correction / approval / approved-with-issues / partial-status message** inside a clearly marked block — ready to copy
 3. **Brief drift report** (if `{policy_overrides_brief}` = true). For each item in `{brief_drift}`, print:
    > **Brief drift detected — policy wins.** The brief at `{brief_path}` softens a rule from `{brand_identity_path}`. This run evaluated against the policy, not the brief.
    > - Rule: `{rule}`
@@ -200,10 +227,11 @@ Display to the user:
    > - Brief says: `{brief_text}` *(drift type: {drift_type})*
    >
    > Fix the brief (edit the bullet to match the policy verbatim) OR if the policy itself should change, run `modify-design-policy`. Do not leave the brief drifted — every downstream review and tuning run will re-detect this.
-4. **Brand identity update suggestions** (if any — approval only)
+4. **Brand identity update suggestions** (if any — PASS-CLEAN only)
 5. **Next step instruction:**
    - If FAIL: "Paste the message above into Claude Design. Drop the next screenshot here when ready."
-   - If PASS: "Design approved. Run the design-implement workflow to bring the approved design into the codebase. For a single, isolated component change, quick-dev may be sufficient."
+   - If PASS-CLEAN: "Design approved. Run the design-implement workflow to bring the approved design into the codebase. For a single, isolated component change, quick-dev may be sufficient."
+   - If PASS-WITH-ISSUES: "Approved with {N} issue(s). Run design-implement — it folds the listed issue fixes into the build. Or paste the Issues block to Claude Design first if you'd rather correct the mock before implementing. Do not ship the design without resolving the issues."
    - If PARTIAL: "Drop screenshots of the missing screens listed above and re-invoke design-tuning. The status message is for your records; do not send it to Claude Design as a correction."
 
 ---
