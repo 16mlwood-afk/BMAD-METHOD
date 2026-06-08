@@ -204,6 +204,8 @@ Skip this section entirely if `{has_analytics_band}` is `false` — `{analytics_
 
 When `{has_analytics_band}` is `true`, the archetype selection is delegated to the **`analytics-surface-architect` skill** — the single brain for this decision, so handoff, design-review-pr, and any human all reason the same way instead of re-deriving it. Do not hand-reason the archetype inline when the skill is available.
 
+**Multiple analytics surfaces on one page.** A page can carry more than one distinct analytics surface — e.g. a product view with price-over-time, sales-rank, and competitor-share, which are three surfaces, not one band. When it does, run this selection **once per surface** (each gets its own captured archetype), and **§5e** then ranks them into hero / supporting / drill. For the common single-surface page, run it once exactly as written below.
+
 **Invoke the skill (mode: `select`).** Load `analytics-surface-architect` via the Skill tool and pass it:
 - the **data shape** (`{data_shape}` — the domain entities and their dimensions from §3),
 - the **user's question** in their words (from `{feature_purpose}` / `{user_context}` — the single thing the band must answer),
@@ -264,6 +266,34 @@ In autonomous mode, proceed with the primary brief and surface the topology in �
 
 Set `{surface_topology_verdict}` and `{surface_topology_notes}`.
 
+### 5e. Analytics Surface Hierarchy — rank multiple co-resident surfaces
+
+**Gate:** run this section ONLY when the route (after §5d topology) carries **two or more distinct analytics surfaces** — a "surface" being a dataset + question pair that earns its own §5c archetype (a price-over-time chart, a seller-share composition, and a buy-box-ownership ranking are three surfaces, not one band). Zero or one surface → skip; §5b/§5c already handle the singular case. **This gate fires regardless of `{page_mode}`, including `detail`:** an analytics-rich single-entity page (a product research / monitoring view whose record carries time-series and competitive aggregates) is exactly the case §5b's "a single record has no aggregate dimension" misses.
+
+**The problem this prevents:** left unranked, multiple legitimate surfaces render at equal visual weight — the flat panel-stack the policy bans (§6 "the visual lead must be one or two restrained charts… supporting tables"; §5 no card-grid-as-structure). The handoff has named the *shape* of each surface (§5c) but never said which one *leads*. This section carries that decision into the brief so the designer ranks deliberately instead of stacking by default.
+
+**Rank by the page's primary question, not the legacy render.** You have already captured the one job this page exists for (§4 feature purpose / §6 user context). Run §5c once per surface to get each one's archetype, then assign each surface a tier:
+
+| Tier | Test | Form in the brief |
+|------|------|-------------------|
+| **hero** (1, rarely 2) | Most directly answers the page's primary question | Full-weight chart, top of the analytics region |
+| **supporting** | Qualifies or contextualises the hero's answer | Demoted to a compact form — sparkline / strip / mini-chart, not a full panel |
+| **drill** | Consulted only on a specific doubt, not in the default scan | Collapsed behind an expand/toggle; available, not displayed |
+
+The anti-bias is the same as §5a/§5b: rank by the **job**, never by the order the legacy page happened to stack them (flat-equal *is* the legacy bias). Demotion is real form, not a smaller title — a supporting surface becomes a sparkline, a drill surface collapses.
+
+**Ground or flag (reuses §5d).** If you **cannot name a single primary question that designates one hero** — two surfaces are genuinely co-equal because the page serves two unrelated jobs — do not flatten them to a tie. That is the §5c "two co-equal archetypes → split it" rule at the page level: **route back to §5d** (`needs-tab-views` if the two jobs are deliberately switched between, `needs-sibling-route` if they are distinct sub-features). If you can't rank it to one hero, it may not be one page.
+
+**Capture the reasoning.**
+- `{analytics_surface_inventory}` — the distinct surfaces found, each with its dataset + question + §5c archetype.
+- `{analytics_hierarchy}` — each surface tagged `hero | supporting | drill`.
+- `{hierarchy_rationale}` — the primary question, why the hero answers it, and why each other surface is **demoted, not deleted** (richness is preserved — a research/detail page wants all of it, ranked).
+- `{hierarchy_unresolved}` — set when no single hero emerges; record the §5d verdict it routed to.
+
+In autonomous mode, proceed with the inferred hierarchy and surface it in the brief (§4b); the ground-or-flag still fires — a wrong hero is confident nonsense, so an unresolvable primary question is asked/routed, not guessed.
+
+Set `{analytics_hierarchy}` and `{hierarchy_rationale}` (both empty when the gate doesn't fire — zero or one analytics surface).
+
 ### 6. Identify User Context
 
 Set `{user_context}`:
@@ -295,6 +325,7 @@ Confirm populated:
 - `{analytics_archetype}` ✓ (one of the nine, or `unclear` → asked; empty when no band)
 - **Analytics reasoning capture** ✓ (populated iff `{has_analytics_band}` is `true`; all empty otherwise) — `{page_mode_rationale}`, `{band_decision_log}`, and the archetype decision object captured from the `analytics-surface-architect` skill in §5c: `{archetype_candidates}`, `{archetype_winner_reason}`, `{archetype_secondary}`, `{time_present_check}`, `{archetype_drill_map}`, `{archetype_prohibited}`. These feed the rationale artifact (step-03b) and §4b; capturing the deliberation here is what makes the presentation decision auditable instead of discarded.
 - `{surface_topology_verdict}` ✓ (one of: `single-page-appropriate` | `needs-detail-route` | `needs-tab-views` | `needs-sibling-route`)
+- `{analytics_hierarchy}` ✓ (each surface tagged hero | supporting | drill — §5e; empty when the page has 0–1 analytics surface) — plus `{hierarchy_rationale}` and `{analytics_surface_inventory}`; `{hierarchy_unresolved}` set only when no single hero emerged (→ routed to §5d topology)
 - `{surface_topology_notes}` ✓ (recommended topology in 2-4 sentences; empty string when verdict is `single-page-appropriate`)
 - `{user_context}` ✓
 - `{brand_identity}` ✓ (may be empty)

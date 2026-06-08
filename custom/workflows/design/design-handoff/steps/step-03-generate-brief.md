@@ -345,7 +345,7 @@ This is a detail page — a drawer or full-page view of **one record**. The desi
 - Group fields by the user's mental model of the record, not by database table order. Make the record's identity and current state legible at the top.
 - Inline edit and per-record actions are first-class — surface them where the field lives, not in a distant toolbar.
 - Density is moderate (between a dense worklist row and a relaxed analytical page) — the user is reading one record carefully, not scanning hundreds.
-- No analytics band: a single record has no aggregate dimension. If the record has child collections (line items, history), those are supporting tables, not an analytics surface.
+- Usually no analytics band: most single records have no aggregate dimension, and child collections (line items, history) are supporting tables, not an analytics surface. **Exception:** an analytics-rich detail page — a research or monitoring view whose one entity carries genuine aggregates (price/rank over time, competitor share, ownership history) — does have analytics surfaces, often several. When two or more are present, §5e ranks them (hero / supporting / drill) instead of stacking them flat; do not suppress them just because the page is `detail`.
 
 **Composition:** Record-view composition — neither table-first nor chart-led. The visual treatment (typography, badges, spacing) follows the visual system in section 4; this section governs mode. Per project policy §6/§7, a detail view is an extension of its operational list, not a standalone redesign.
 
@@ -354,6 +354,18 @@ This is a detail page — a drawer or full-page view of **one record**. The desi
 ## 4b. Analytics Structure (if present)
 
 {Include this section ONLY if `{has_analytics_band}` is `true` (band_provenance ∈ inherited | recommended-new). Skip entirely for `none` and `recommended-drop`. This section defines what the analytics layer is FOR and what *shape* it takes, so the designer does not improvise — and does not default every band to the same trend-strip-of-small-multiples. The shape is governed by `{analytics_archetype}`, selected in step-01 §5c by the `analytics-surface-architect` skill (its taxonomy SoT is `shared/analytics-archetypes.md`). The fields below are rendered from that skill's captured decision object — do NOT re-derive them here.}
+
+### 0. Analytics hierarchy (only when the page has ≥2 analytics surfaces — from §5e)
+
+{Include this sub-section ONLY when `{analytics_hierarchy}` is non-empty (the §5e gate fired — the page carries two or more distinct analytics surfaces). Skip entirely for single-surface pages. It ranks the surfaces so the designer assigns visual weight deliberately instead of stacking them flat — policy §6 (one or two lead charts + supporting), §5 (no card-grid-as-structure). Rendered from the captured §5e decision; do NOT re-rank here.}
+
+- **Primary question of the page:** {from `{hierarchy_rationale}` — the one job that decides the ranking}
+- **Hero (full-weight, 1–2):** {the surface(s) tagged `hero` + archetype — the chart that answers the primary question}
+- **Supporting (compact — sparkline / strip / mini):** {each `supporting` surface + archetype, demoted to a compact form, NOT a full panel}
+- **Drill (collapsed behind expand):** {each `drill` surface + archetype, available on demand, not in the default scan}
+- **Why this ranking (demoted, not deleted):** {from `{hierarchy_rationale}` — why the hero leads and why each other surface is kept but subordinated; a research/detail page keeps all of it, ranked}
+
+When this sub-section is present, the A–E spec below is written **per surface**, in hero → supporting → drill order, each at the visual weight its tier dictates (the hero gets the full A–E treatment; supporting/drill surfaces get a compact form + drill path, not a full-panel spec).
 
 ### A. Archetype & job
 
