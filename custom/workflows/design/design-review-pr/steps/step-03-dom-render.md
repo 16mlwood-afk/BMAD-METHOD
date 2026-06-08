@@ -249,6 +249,7 @@ Compare the harvest against the declared `archetype` from `{brief_archetype_map}
 | `composition` | `panelCount` ≥ 3 or `seriesCount` ≥ 3 (split into many charts instead of one part-to-whole) |
 | `single-metric` | `bigNumbers` = 0, or ≥ 3 same-size metric blocks (a KPI-card wall, not one number) |
 | `flow` | `funnelSignal` false and no stage-to-stage structure detected |
+| `waterfall` | `barCount` < 2 — no stepped opening→deltas→closing bar structure, i.e. not rendered as a reconciliation bridge (deltas double-encoded as bar segments *and* separate reason chips is a human-judgment flag for step-04, not a DOM-firable contradiction) |
 | any except `single-metric` | `bigNumbers` ≥ 3 AND weak visualization signal (`!hasGapStrip` AND `barCount` < 2 AND `seriesCount` < 2 AND `!funnelSignal`) → the band's content is a row of big-number figures, not a visualization (stat-row-in-disguise — the `bigNumbers` harvest was previously read only for `single-metric`, so a `coverage`/`flow`/`ranking` band rendered as 3 big counts passed). A legitimate band of any archetype renders a strip/chart/meter; the counts belong in the inline header summary line, not the band. |
 | any | `drillableBandEls` < `substantiveBandEls` → at least one ornamental band element with no drill target (cross-cutting rule in `{archetypes_path}`) — fire as P1 with the count of non-drillable elements |
 

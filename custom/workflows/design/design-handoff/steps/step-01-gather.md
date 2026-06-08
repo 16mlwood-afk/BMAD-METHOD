@@ -213,7 +213,7 @@ The skill runs its selection procedure (start from the question, ground-or-flag,
 
 | Skill output field | Capture into | Consumed by |
 |---|---|---|
-| `archetype` | `{analytics_archetype}` (one of the eight, or `unclear`) | frontmatter, §4b, rationale |
+| `archetype` | `{analytics_archetype}` (one of the nine, or `unclear`) | frontmatter, §4b, rationale |
 | `candidates` | `{archetype_candidates}` (chosen / secondary / rejected + why) | rationale §3 table |
 | `winner_reason` | `{archetype_winner_reason}` | rationale §3 |
 | `secondary` | `{archetype_secondary}` (or `none`) | rationale §3 |
@@ -223,7 +223,7 @@ The skill runs its selection procedure (start from the question, ground-or-flag,
 
 **Ground-or-flag is preserved through the skill:** if it returns `archetype: unclear` (it could not name BOTH a data dimension and a user question), do NOT default to `trend` — ask the user the one resolving question the skill surfaced, then re-invoke. A guessed archetype is worse than an asked one.
 
-**Fallback (skill not available).** If the `analytics-surface-architect` skill is not present in this project (e.g. an older sync), apply `shared/analytics-archetypes.md`'s selection rule directly — identical logic — and populate the same capture fields by hand: name the dominant archetype from the eight; ground-or-flag (data dimension AND user question, else `unclear` → ask); record the candidates weighed with the most-tempting rejected alternative (for time-bearing data, almost always `trend`); the winner reason; the secondary or `none`; and the time-in-data check. The skill is the preferred path because it makes the road-not-taken and the drill map mandatory outputs rather than easily-skipped prose, but handoff must not hard-fail when it is absent.
+**Fallback (skill not available).** If the `analytics-surface-architect` skill is not present in this project (e.g. an older sync), apply `shared/analytics-archetypes.md`'s selection rule directly — identical logic — and populate the same capture fields by hand: name the dominant archetype from the nine; ground-or-flag (data dimension AND user question, else `unclear` → ask); record the candidates weighed with the most-tempting rejected alternative (for time-bearing data, almost always `trend`); the winner reason; the secondary or `none`; and the time-in-data check. The skill is the preferred path because it makes the road-not-taken and the drill map mandatory outputs rather than easily-skipped prose, but handoff must not hard-fail when it is absent.
 
 Either path populates the same state, so step-03b renders identically. `{analytics_archetype}` empty ⇒ no band.
 
@@ -292,7 +292,7 @@ Confirm populated:
 - `{composition_provenance}` ✓ (`policy-default` | `recommended-alt`; decided in §5a from the job, NOT inherited from the policy default; `recommended-alt` veto-surfaced and `{composition_rationale}` captured) — and `{page_mode}` stays the honest work type even when composition deviates
 - `{band_provenance}` ✓ (`inherited` | `recommended-new` | `recommended-drop` | `none`; net-new/drop recommendations veto-surfaced)
 - `{has_analytics_band}` ✓ (`true` iff band_provenance ∈ {inherited, recommended-new})
-- `{analytics_archetype}` ✓ (one of the eight, or `unclear` → asked; empty when no band)
+- `{analytics_archetype}` ✓ (one of the nine, or `unclear` → asked; empty when no band)
 - **Analytics reasoning capture** ✓ (populated iff `{has_analytics_band}` is `true`; all empty otherwise) — `{page_mode_rationale}`, `{band_decision_log}`, and the archetype decision object captured from the `analytics-surface-architect` skill in §5c: `{archetype_candidates}`, `{archetype_winner_reason}`, `{archetype_secondary}`, `{time_present_check}`, `{archetype_drill_map}`, `{archetype_prohibited}`. These feed the rationale artifact (step-03b) and §4b; capturing the deliberation here is what makes the presentation decision auditable instead of discarded.
 - `{surface_topology_verdict}` ✓ (one of: `single-page-appropriate` | `needs-detail-route` | `needs-tab-views` | `needs-sibling-route`)
 - `{surface_topology_notes}` ✓ (recommended topology in 2-4 sentences; empty string when verdict is `single-page-appropriate`)

@@ -125,7 +125,7 @@ composition_provenance: {composition_provenance}   # policy-default | recommende
 band_provenance: {band_provenance}       # inherited | recommended-new | recommended-drop | none
 {# analytics_archetype is REQUIRED iff band_provenance ∈ {inherited, recommended-new}; omit the line entirely otherwise. #}
 {if has_analytics_band}
-analytics_archetype: {analytics_archetype}   # trend | distribution | composition | ranking | coverage | flow | single-metric | correlation
+analytics_archetype: {analytics_archetype}   # trend | distribution | composition | ranking | coverage | flow | waterfall | single-metric | correlation
 {endif}
 {# In refine-screen mode the following four fields are REQUIRED. In fresh-design mode they MUST be omitted entirely. #}
 {if handoff_mode == "refine-screen"}
@@ -357,7 +357,7 @@ This is a detail page — a drawer or full-page view of **one record**. The desi
 
 ### A. Archetype & job
 
-- **Archetype:** {analytics_archetype} — {one of: trend | distribution | composition | ranking | coverage | flow | single-metric | correlation}
+- **Archetype:** {analytics_archetype} — {one of: trend | distribution | composition | ranking | coverage | flow | waterfall | single-metric | correlation}
 - **Band provenance:** {band_provenance} — {if recommended-new: "net-new — confirmed with user on {date}"}
 - **The one question this band answers (1 sentence):** {state it in the user's words — e.g. "which weeks are we missing statements for, and in which region?" Do NOT restate as a generic "show trends."}
 - **Why this archetype (grounding):** {from `{archetype_winner_reason}` — names the data dimension AND the user question that selected it, e.g. "coverage: data has per-week × per-region completeness; the job is finding gaps, not reading a trend."}
@@ -366,7 +366,7 @@ This is a detail page — a drawer or full-page view of **one record**. The desi
 
 Do not impose a fixed headline → trend-strip → table sequence. Read `shared/analytics-archetypes.md` for the selected archetype and let its **form** drive the passes. Specify each pass the band actually needs:
 
-- **Lead pass — the form that answers the question fastest:** {the archetype's form, made concrete for this feature. For `coverage`: a completeness strip where the gaps are the content. For `ranking`: a sorted top-N bar list capped and labelled. For `composition`: a single 100%-bar. For `single-metric`: one value + sparkline + threshold. For `trend`: small-multiples with a stated Y-axis rule. State dimensions, ordering, and what is emphasised.}
+- **Lead pass — the form that answers the question fastest:** {the archetype's form, made concrete for this feature. For `coverage`: a completeness strip where the gaps are the content. For `ranking`: a sorted top-N bar list capped and labelled. For `composition`: a single 100%-bar. For `flow`: a funnel/stage strip with drop deltas. For `waterfall`: an anchored opening bar, signed labelled steps, an anchored closing bar — deltas reconcile to the close, reasons live in the step's drill (not a duplicate chip). For `single-metric`: one value + sparkline + threshold. For `trend`: small-multiples with a stated Y-axis rule. State dimensions, ordering, and what is emphasised.}
 - **Secondary pass (only if a second archetype genuinely co-occurs):** {from `{archetype_secondary}` — name it and keep it subordinate, e.g. "coverage is dominant; a faint per-region trend is secondary, not co-equal." Omit if `{archetype_secondary}` is `none`.}
 - **Evidence pass — path to the rows:** {what the underlying records show that the lead pass cannot — exact values, states, drill affordances. Every band must preserve a path to evidence; a band that can't show its working is a dashboard.}
 

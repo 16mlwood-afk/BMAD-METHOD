@@ -14,7 +14,7 @@ An analytics surface has a *shape* the way a sentence has a verb. The shape is c
 2. **Pick the dominant archetype.** Surfaces often touch two (e.g. coverage + drift). Name the dominant one — it governs the composition — and treat the second as a secondary pass, not a co-equal that doubles the band's footprint.
 3. **Ground or flag.** State the data dimension *and* the user question that selected the archetype. If you cannot name both, set `analytics_archetype: unclear` and halt/flag per the workflow's grounding gate. Do **not** default to `trend` — defaulting to trend is the exact failure this file exists to kill.
 
-> **This file is the taxonomy; the `analytics-surface-architect` skill is the selector.** That skill runs the selection rule above against these archetypes and returns a structured decision (archetype + grounding + candidates-weighed + drill map + prohibited). `design-handoff` step-01 §5c invokes it; the eight definitions live here so the skill (and any reader) has one source of truth for *what the shapes are*, while the skill owns *how to choose*.
+> **This file is the taxonomy; the `analytics-surface-architect` skill is the selector.** That skill runs the selection rule above against these archetypes and returns a structured decision (archetype + grounding + candidates-weighed + drill map + prohibited). `design-handoff` step-01 §5c invokes it; the nine definitions live here so the skill (and any reader) has one source of truth for *what the shapes are*, while the skill owns *how to choose*.
 >
 > **The selection is recorded, not just made.** The skill's decision — candidates weighed, why the winner won, what was rejected, and the explicit time≠trend check — is captured in step-01 §5c and written to a companion **rationale artifact** (`design-rationale-{slug}-{date}.md`, spec in `shared/analytics-rationale.md`). The brief carries only the conclusion; the rationale carries the reasoning so a human can audit how the dataset's presentation was chosen. A reviewer checking that a band earns its space can read the rationale to see whether the ground-or-flag rule was actually honored.
 
@@ -56,7 +56,14 @@ Each entry: the **question** it answers · the **form** that answers it fastest 
 - **Question:** Where do items drop or stall between stages of a process?
 - **Form:** A funnel or stage strip showing counts per stage and the drop delta between them.
 - **Drill:** A stage opens the items currently sitting at it.
-- **Avoid:** Implying a funnel when stages aren't actually sequential.
+- **Avoid:** Implying a funnel when stages aren't actually sequential. And do **not** use `flow` for a *reconciliation* — one population whose signed deltas sum back to a closing total. That is `waterfall`. `flow` is for independent sequential gates where the story is *survival rate per gate and why items fall out*.
+
+### `waterfall` — reconciliation of a total
+- **Question:** How did the opening total become the closing total — what was added or subtracted along the way, and why?
+- **Form:** A bridge chart: an anchored opening bar, one signed step per contributing delta (each labelled with its cause), and an anchored closing bar. The deltas reconcile — they sum back to the closing total.
+- **Drill:** A step opens the records that make up that delta.
+- **Avoid:** A funnel. A funnel implies independent sequential *gates* and reads survival-rate-per-stage; a waterfall is *one population* reconciled to a single headline number by signed deltas. The tell: if you would naturally write `opening − Δ − Δ = closing`, it is a bridge, not a funnel. Also avoid double-encoding a delta as both a bar segment *and* a separate reason chip — the signed step *is* the delta; reasons live in its drill/label.
+- **When `flow` and `waterfall` both seem to fit** — sequential attrition that *also* reconciles to one outcome (e.g. a conversion run that ends in a single profit or winner figure) — let the **user's question** decide, per the selection rule. If the headline is a single reconciled closing number that is *the point of the surface*, lead `waterfall` and demote the per-gate reasons to drill. If the point is *which gate leaks and why*, lead `flow`.
 
 ### `single-metric` — one number, in context
 - **Question:** What's the one number, and is it OK?
