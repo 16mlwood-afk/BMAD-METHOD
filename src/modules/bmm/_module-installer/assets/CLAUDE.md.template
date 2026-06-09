@@ -14,7 +14,7 @@
 - **Frontend:** (e.g., React + Vite, Next.js, SvelteKit)
 - **Test runner:** (e.g., vitest, pytest, jest)
 - **DB:** (e.g., PostgreSQL via Drizzle, SQLite via aiosqlite, Prisma)
-- **Secrets:** loaded from `~/.secrets` via `zsh -ic '...'` (non-interactive shells don't source zshrc)
+- **Secrets:** auto-loaded by a global SessionStart hook (sources `~/.secrets` into the session via `$CLAUDE_ENV_FILE`). Available as normal env vars — no `zsh -ic` needed.
 
 ## Agent Behavior Rules
 
@@ -144,7 +144,7 @@
 <!-- bmad:no-hardcoded-secrets -->
 - **Scripts must read secrets from the environment.** If a required env var is not set, the script must exit with a clear error message — never fall back to a hardcoded value.
 - Local secrets go in `~/.secrets` (sourced by `~/.zshrc`). If a Claude session can't see it, tell the user to set it — do NOT embed credentials in code.
-- Use `zsh -ic '...'` to access secrets from non-interactive shells.
+- Secrets are injected at session start (global SessionStart hook → `$CLAUDE_ENV_FILE`), so they're available as normal env vars. Mid-session additions to `~/.secrets` require a session restart.
 
 ### Do NOT search endlessly for files
 <!-- bmad:no-endless-search -->
