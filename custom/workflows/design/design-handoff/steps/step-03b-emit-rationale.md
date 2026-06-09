@@ -84,6 +84,7 @@ Write `{rationale_output_path}` using the template in `shared/analytics-rational
 - §2 from `{band_decision_log}` + `{band_provenance}`; include the veto line iff `band_provenance ∈ {recommended-new, recommended-drop}`.
 - §3 from `{archetype_candidates}` (the table), `{archetype_winner_reason}`, `{archetype_secondary}`; include the time-in-data check block iff `{time_present_check}` is set; the evidence/drill detail comes from `{archetype_drill_map}`.
 - §3b (rigor spec) from `{rigor_read_sentence}`, `{rigor_decision_numbers}` (the metric · uncertainty · base-rate table), `{rigor_deciding_fields}`, `{rigor_data_gaps}`, and `{rigor_verdict}` — the depth decision captured in step-01 §5c-2. Data gaps render as enrichment requirements, never as fabricated figures (the §5c-2 honesty gate).
+- §3c (decision spec) ONLY when `{is_capital_decision}` is `true` — from `{decision_frame}`, `{decision_outcome}`, `{decision_sizing}`, `{decision_sensitivity}`, `{decision_context}`, `{decision_gaps}`, and `{decision_verdict}` — the executive decision model captured in step-01 §5c-3. An un-modellable decision renders as an honest `single-scenario` read + a named VOI gap, never a fabricated outcome distribution (the §5c-3 model-honesty gate). Omit §3c entirely when `{is_capital_decision}` is `false`.
 - §4 from `{archetype_prohibited}` (the skill's page-specific shape bans) plus the cross-cutting bans (no KPI wall, etc.). If `{archetype_prohibited}` is empty (fallback path with none captured), derive from the rejected rows of `{archetype_candidates}`.
 
 ### 4. Self-Review

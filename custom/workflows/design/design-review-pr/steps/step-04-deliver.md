@@ -84,6 +84,30 @@ The *depth* counterpart to §1b. §1b checks the band took the right shape; this
 
 - **No rigor spec** (route not in `{brief_rigor_map}`): do nothing here — step-01 §7 already disclosed in coverage that depth was not verifiable. Never emit a rigor finding when there is no spec to read, and never treat a named data gap as a rendering defect.
 
+### 1b-3. Evaluate C-DECISION-01 (the executive layer — capital-commitment surfaces only)
+
+The *decision* counterpart, one rung above §1b-2 and the narrowest. §1b-2 checks the figures are an honest read; this checks the surface presents a **modelled, sized bet**. Runs ONLY for routes in `{brief_decision_map}` (those whose brief carries a §4e — a buy/reorder/sizing surface). Most routes have none → skip silently.
+
+- **Hard finding (P1) — the unambiguous cases only.** From a clear read of the changed render/diff (there is no decision DOM harvest; decision quality is semantic):
+  - a **buy / size recommendation rendered with no sizing basis** — a bare BUY/PASS or a suggested quantity with no tie to the loss tail / capital cap the §4e spec named; or
+  - a **stated probability or expected value with no model behind it** — a "62% / E[ROI] X%" figure where §4e declared `verdict: single-scenario` (the decision was un-modellable), i.e. a confident distribution that the brief said cannot honestly exist.
+
+  > Unmodelled decision on `{route}` — the decision spec (brief `{brief_filename}` §4e) frames a {modelled bet / single-scenario read}, but the surface renders {an unjustified BUY/PASS / a confident P(success) the spec flagged un-modellable}. Render the {sizing basis tied to the loss tail / honest single-scenario read + the named VOI gap}. A fabricated outcome distribution is the worse failure.
+
+- **Human-judgment prompt (always, when a §4e spec exists).** Decision quality is mostly semantic — emit a precise prompt seeded by the spec:
+
+  ```
+  **[manual] C-DECISION-01** — Capital-decision surface must read like a modelled, sized bet.
+  - Route: {route}  ·  Brief: {brief_filename} §4e  ·  Decision verdict at handoff: {decision_verdict}
+  - Framed bet: does the surface state the stake + horizon + downside ({frame}), not just an ROI?
+  - Outcome: is the decision a distribution (P(success)/EV/P10/P90) per §4e — or, if verdict is single-scenario, an HONEST point read with the VOI gap (and NOT a faked probability)?
+  - Sizing: is the recommended quantity tied to the loss tail / capital cap ({sizing}), not a bare BUY/PASS?
+  - Breakeven driver: is the swing input + its threshold shown ({sensitivity})?
+  - Gaps (do NOT treat as defects): {decision_gaps or "none"} — enrichment requirements.
+  ```
+
+- **Not a decision route** (route not in `{brief_decision_map}`): do nothing — decision analysis does not apply (the norm). Never invent a decision finding on a dashboard/coverage/status surface.
+
 ### 1c. Evaluate C-IDENTFMT-01 (canonical-identifier formatting)
 
 For each route in `{affected_routes}`:
@@ -143,6 +167,7 @@ Always emit a coverage section:
 - archetype conformance (C-ARCHETYPE-01): {checked {P} route(s) against declared briefs / deferred to manual — dom-render skipped / no brief-declared bands in scope}. {List any affected routes with no brief, which were NOT checked.} Reasoning verified against rationale for {S} of {P} route(s); {list routes with a declared band but no rationale artifact — reasoning NOT verifiable, only rendered form}.
 - identifier formatting (C-IDENTFMT-01): {checked {R} route(s) in dom-render §3c / deferred to manual — dom-render skipped, source-arm surfaced {C} advisory candidate(s)}. §13(a) canonical-identifier consistency.
 - analytic depth (C-RIGOR-01): {checked {Q} route(s) against a captured brief §4d rigor spec — {hard naked-number findings} + manual prompt(s) / no §4d specs in scope}. {List any affected routes that present decision figures but have no brief §4d — depth NOT specified (possible handoff defect).} Data gaps named in a spec are enrichment requirements, not defects.
+- decision quality (C-DECISION-01): {checked {D} capital-decision route(s) against a captured brief §4e spec — {hard unmodelled/unsized findings} + manual prompt(s) / no §4e specs in scope (the norm — most routes commit nothing)}. A `single-scenario` verdict is honest, not a defect; a fabricated outcome distribution is the failure.
 - Rules with no diff context: {list of rule IDs that had nothing to check this PR}.
 ```
 

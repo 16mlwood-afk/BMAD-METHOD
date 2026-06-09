@@ -268,6 +268,37 @@ The rigor spec lands in the **brief §4d** (a surface-level section — it cover
 
 Set `{has_decision_numbers}` and the `{rigor_*}` fields (all empty when `{has_decision_numbers}` is `false`).
 
+### 5c-3. Decision analysis — the executive layer (capital-commitment surfaces only)
+
+Skip unless the surface is a **capital decision** — its primary job is to commit a scarce resource (capital, inventory slots, time) under uncertainty with a real downside (a buy / reorder / sizing / go-no-go-with-stake). This is **narrower than §5c-2**: a coverage strip, a trend dashboard, or a status worklist carries decision *numbers* but commits nothing — it stops at rigor. Set `{is_capital_decision}` accordingly; when `false`, leave all `{decision_*}` empty and skip the rest of this section.
+
+§5c-2 made the figures honest (senior-analyst grade); this models and sizes the *decision* (executive / quant-desk grade). A surface can pass rigor — honest ranges, named gaps — and still leave the operator to decide how much to bet and whether the downside is survivable. Closing that is a distinct discipline.
+
+**Invoke the skill (mode: `spec`).** Load `decision-analysis` via the Skill tool and pass it:
+- the **commitment the surface serves** — action · stake (capital at risk) · horizon · downside,
+- the **rigor figures** from §5c-2 (the honest inputs it builds the decision on),
+- the **data sources** for the uncertain inputs (live data, an owned-history reference class, or absent).
+
+The skill runs its procedure (frame the bet; model the outcome distribution; size to the loss tail; find the breakeven driver; compute the reference class; weight the decision-relevant regime; state the value-of-information gap; decide under asymmetry) and returns its **decision object**. Capture it field-for-field:
+
+| Skill output field | Capture into | Consumed by |
+|---|---|---|
+| `frame` (action · stake · horizon · payoff) | `{decision_frame}` | brief §4e, rationale §3c |
+| `outcome` (method · P(success) · EV · P10 · P90) | `{decision_outcome}` | brief §4e (the design contract `C-DECISION-01` checks) |
+| `sizing` (quantity · basis · downside_survived) | `{decision_sizing}` | brief §4e, `C-DECISION-01` |
+| `sensitivity` (swing driver · breakeven threshold) | `{decision_sensitivity}` | brief §4e, `C-DECISION-01` |
+| `reference_class` / `regime` / `value_of_info` / `asymmetry` | `{decision_context}` | brief §4e, rationale §3c |
+| `gaps` | `{decision_gaps}` | brief §4e — surfaced as enrichment requirements |
+| `verdict` | `{decision_verdict}` (decision-grade / risk-modelled / single-scenario) | brief §4e, rationale §3c |
+
+**Model-honesty gate (paramount — outranks the rest).** If the key probabilistic input is missing AND no reference class is computable, the skill returns `verdict: single-scenario` with the VOI gap — NOT a fabricated outcome distribution. Carry that honestly into the brief: an honest single-scenario read plus the named gap, never a confident P(success) off an invented win-rate. A fake distribution is worse than an honest point estimate. Same honesty posture as §5c-2 and the no-silent-fallbacks rule.
+
+**Per surface.** On a page with more than one capital decision, run once per decision surface.
+
+**Fallback (skill not available).** Apply the eight decision moves by hand — frame the bet; model the outcome distribution; size to the loss tail; breakeven driver; compute the reference class; weight the regime; value of information; asymmetry — and populate the same fields.
+
+Set `{is_capital_decision}` and the `{decision_*}` fields (all empty when `{is_capital_decision}` is `false`).
+
 ### 5d. Surface Topology Assessment
 
 **The question:** Given everything gathered above, is this feature's scope correctly bounded at a single route — or does the data depth, capability breadth, or user job structure suggest multiple surfaces?
@@ -366,6 +397,8 @@ Confirm populated:
 - **Analytics reasoning capture** ✓ (populated iff `{has_analytics_band}` is `true`; all empty otherwise) — `{page_mode_rationale}`, `{band_decision_log}`, and the archetype decision object captured from the `analytics-surface-architect` skill in §5c: `{archetype_candidates}`, `{archetype_winner_reason}`, `{archetype_secondary}`, `{time_present_check}`, `{archetype_drill_map}`, `{archetype_prohibited}`. These feed the rationale artifact (step-03b) and §4b; capturing the deliberation here is what makes the presentation decision auditable instead of discarded.
 - `{has_decision_numbers}` ✓ (`true` iff the surface presents figures the user acts on — verdict, score, ROI/margin/profit, KPI; broader than `{has_analytics_band}`, so it captures bandless `detail`/`analytical` decision surfaces like a lead buy page; `false` for pure data-entry/passive-review/CRUD — §5c-2)
 - **Analytics rigor capture** ✓ (populated iff `{has_decision_numbers}` is `true`; all empty otherwise — run **per surface** on multi-surface pages) — `{rigor_read_sentence}`, `{rigor_decision_numbers}`, `{rigor_deciding_fields}`, `{rigor_data_gaps}`, `{rigor_verdict}` from the `analytics-rigor` skill in §5c-2. These render into **brief §4d** (surface-level — covers decision numbers in the band AND the record/hero) and drive `C-RIGOR-01` at review; rationale §3b records the reasoning when a band exists. The §5c-2 honesty gate holds — data gaps are surfaced as enrichment requirements, never fabricated into figures.
+- `{is_capital_decision}` ✓ (`true` iff the surface's job is to commit a scarce resource — capital / inventory slots / time — under uncertainty with a real downside; narrower than `{has_decision_numbers}`, so a buy/reorder/sizing surface is `true` but a dashboard/coverage/status surface is `false` — §5c-3)
+- **Decision analysis capture** ✓ (populated iff `{is_capital_decision}` is `true`; all empty otherwise — run **per decision surface**) — `{decision_frame}`, `{decision_outcome}`, `{decision_sizing}`, `{decision_sensitivity}`, `{decision_context}`, `{decision_gaps}`, `{decision_verdict}` from the `decision-analysis` skill in §5c-3. These render into **brief §4e** (the executive layer — modelled outcome + sizing + breakeven driver + reference class) and drive `C-DECISION-01` at review; rationale §3c records the reasoning when a band exists. The §5c-3 model-honesty gate holds — an un-modellable decision is an honest `single-scenario` read + a named VOI gap, never a fabricated outcome distribution.
 - `{surface_topology_verdict}` ✓ (one of: `single-page-appropriate` | `needs-detail-route` | `needs-tab-views` | `needs-sibling-route`)
 - `{analytics_hierarchy}` ✓ (each surface tagged hero | supporting | drill — §5e; empty when the page has 0–1 analytics surface) — plus `{hierarchy_rationale}` and `{analytics_surface_inventory}`; `{hierarchy_unresolved}` set only when no single hero emerged (→ routed to §5d topology)
 - `{surface_topology_notes}` ✓ (recommended topology in 2-4 sentences; empty string when verdict is `single-page-appropriate`)

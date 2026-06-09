@@ -136,7 +136,12 @@ Match the one whose frontmatter `accompanies_brief == {brief_filename}`. Record 
 - **§4d present:** capture the spec. This is what `C-RIGOR-01` checks the rendered surface against.
 - **§4d absent:** the brief declares no decision-bearing figures (pure data-entry / passive-review / CRUD) — do not add a `{brief_rigor_map}` entry; rigor does not apply. NOT a failure. (Exception: if the brief's §4a/§4b clearly presents decision figures — a verdict, ROI, KPI — yet has no §4d, that is a handoff defect; note it in `{findings.coverage_notes}`: "route X presents decision figures but the brief has no §4d — analytic depth was not specified.")
 
-If `{brief_archetype_map}` is empty, `C-ARCHETYPE-01` is a no-op this run; note it in coverage. Likewise if `{brief_rigor_map}` is empty, `C-RIGOR-01` is a no-op; note it.
+**Capture the decision spec (capital-commitment surfaces only).** From the active brief's **§4e (Decision analysis)** — present only when the surface commits a scarce resource under uncertainty (a buy / reorder / sizing) — build `{brief_decision_map}[route]` for `C-DECISION-01`: the `frame`, the `outcome` (method · P(success) · EV · P10 · P90), the `sizing` (quantity · basis), the `sensitivity` (breakeven driver), and the `decision_verdict`.
+
+- **§4e present:** capture the spec. This is what `C-DECISION-01` checks the rendered surface against.
+- **§4e absent:** the route is not a capital decision (most routes) — do not add a `{brief_decision_map}` entry; decision analysis does not apply. NOT a failure, and NOT noted (its absence is the norm, unlike §4d).
+
+If `{brief_archetype_map}` is empty, `C-ARCHETYPE-01` is a no-op this run; note it in coverage. Likewise if `{brief_rigor_map}` is empty, `C-RIGOR-01` is a no-op; note it. `{brief_decision_map}` empty → `C-DECISION-01` is a no-op (expected on non-decision routes; no note needed).
 
 ---
 
@@ -150,6 +155,7 @@ The workflow now has:
 - `{chrome_available}` — boolean
 - `{brief_archetype_map}` — declared analytics archetype per affected route that has a brief-declared band (may be empty)
 - `{brief_rigor_map}` — declared rigor spec (read sentence, decision numbers + uncertainty/base-rate, deciding fields, data gaps) per affected route whose active brief carries a §4d Analytic depth section (may be empty)
+- `{brief_decision_map}` — declared decision spec (framed bet, modelled outcome, sizing, breakeven driver, verdict) per affected route whose active brief carries a §4e Decision analysis section (empty on every non-capital-decision route — the norm)
 
 Proceed to step-02.
 
