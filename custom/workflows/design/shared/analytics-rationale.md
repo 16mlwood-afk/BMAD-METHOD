@@ -90,7 +90,7 @@ The three blank-canvas questions (step-01 §5b), answered for THIS feature — d
 
 ## 3b. Which depth? Rigor specification (from the `analytics-rigor` skill)
 
-The archetype (§3) is the *shape*; this is the *depth* that keeps the shape from rendering as a schoolboy data-dump (correct figures, no read). Captured in step-01 §5c-2 by the `analytics-rigor` skill; consumed by `C-RIGOR-01` at review.
+The archetype (§3) is the *shape*; this is the *depth* that keeps the shape from rendering as a schoolboy data-dump (correct figures, no read). Captured in step-01 §5c-2 by the `analytics-rigor` skill. This is the reviewer-facing **reasoning** record (present only when the surface has a band, so a rationale exists); the enforced **contract** is the brief's surface-level §4d, which `C-RIGOR-01` reads — parallel to how §3 records the archetype reasoning while the brief frontmatter carries the conclusion.
 
 - **The read the surface leads with:** "{rigor_read_sentence}" {or "— none: this surface carries no single decision to read"}
 - **Decision-bearing numbers — each must carry uncertainty AND a base rate:**

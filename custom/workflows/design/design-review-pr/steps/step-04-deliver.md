@@ -65,11 +65,11 @@ For each route in `{brief_archetype_map}`:
 
 ### 1b-2. Evaluate C-RIGOR-01 (analytic depth, not shape)
 
-The *depth* counterpart to §1b. §1b checks the band took the right shape; this checks the surface reads like an analyst, not a schoolboy data-dump. For each route in `{brief_rigor_map}` (the rigor spec captured from rationale §3b in step-01 §7):
+The *depth* counterpart to §1b. §1b checks the band took the right shape; this checks the surface reads like an analyst, not a schoolboy data-dump — and it fires on **any** decision surface in `{brief_rigor_map}`, band or not (a bandless `detail` buy page is the motivating case). For each route in `{brief_rigor_map}` (the rigor spec captured from the **brief §4d** in step-01 §7):
 
 - **Hard finding (P1) — the unambiguous case ONLY.** A decision-bearing number the spec lists with a required `uncertainty` or `base_rate` renders with **neither** anywhere adjacent — no range, no confidence, no assumption, no baseline: a naked decision figure. This is the one rigor failure mechanical enough to assert — from a clear read of the changed render/diff (there is no dedicated rigor DOM harvest; rigor is judged semantically, and over-firing trains reviewers to ignore the check):
 
-  > Naked decision number on `{route}` — the rigor spec (rationale `{rationale_filename}` §3b) requires `{metric}` to carry {its uncertainty / a base rate}, but it renders as a bare point estimate. Add the {range / confidence / assumption} and the {baseline} the spec names. If that data isn't available, surface it as the data gap the spec records — do NOT fabricate an interval. False precision is the worse failure.
+  > Naked decision number on `{route}` — the rigor spec (brief `{brief_filename}` §4d) requires `{metric}` to carry {its uncertainty / a base rate}, but it renders as a bare point estimate. Add the {range / confidence / assumption} and the {baseline} the spec names. If that data isn't available, surface it as the data gap the spec records — do NOT fabricate an interval. False precision is the worse failure.
 
 - **Human-judgment prompt (always, when a spec exists).** Rigor is semantic — most of it cannot be asserted from the DOM. Emit a precise prompt seeded by the declared spec so the reviewer verifies depth against the actual render:
 
@@ -77,7 +77,7 @@ The *depth* counterpart to §1b. §1b checks the band took the right shape; this
   **[manual] C-RIGOR-01** — Surface must read like an analyst's read, not a data dump.
   - Route: {route}  ·  Rationale: {rationale_filename}  ·  Rigor verdict at handoff: {rigor_verdict}
   - Lead read: does the surface state "{read_sentence}" (or its equivalent) BEFORE the evidence?
-  - Decision numbers: does each of {list metrics} carry its uncertainty + base rate per §3b?
+  - Decision numbers: does each of {list metrics} carry its uncertainty + base rate per the brief §4d spec?
   - Deciding field: do the charts show {deciding fields}, not the handy proxy?
   - Data gaps (do NOT treat as defects): {data_gaps or "none"} — these are enrichment requirements; a figure may honestly ship bare until the data exists.
   ```
@@ -142,7 +142,7 @@ Always emit a coverage section:
 - human-judgment: {Q} rules surfaced as manual prompts.
 - archetype conformance (C-ARCHETYPE-01): {checked {P} route(s) against declared briefs / deferred to manual — dom-render skipped / no brief-declared bands in scope}. {List any affected routes with no brief, which were NOT checked.} Reasoning verified against rationale for {S} of {P} route(s); {list routes with a declared band but no rationale artifact — reasoning NOT verifiable, only rendered form}.
 - identifier formatting (C-IDENTFMT-01): {checked {R} route(s) in dom-render §3c / deferred to manual — dom-render skipped, source-arm surfaced {C} advisory candidate(s)}. §13(a) canonical-identifier consistency.
-- analytic depth (C-RIGOR-01): {checked {Q} route(s) against a captured rigor spec — {hard naked-number findings} + manual prompt(s) / no rigor specs in scope}. {List any affected routes with a band but no rationale §3b — depth NOT verifiable.} Data gaps named in a spec are enrichment requirements, not defects.
+- analytic depth (C-RIGOR-01): {checked {Q} route(s) against a captured brief §4d rigor spec — {hard naked-number findings} + manual prompt(s) / no §4d specs in scope}. {List any affected routes that present decision figures but have no brief §4d — depth NOT specified (possible handoff defect).} Data gaps named in a spec are enrichment requirements, not defects.
 - Rules with no diff context: {list of rule IDs that had nothing to check this PR}.
 ```
 
