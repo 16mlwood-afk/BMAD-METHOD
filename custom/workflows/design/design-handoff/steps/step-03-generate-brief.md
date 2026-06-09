@@ -27,6 +27,7 @@ description: 'Generate a bias-free Claude Design brief — domain data in entity
 From steps 01–02:
 - `{github_repo_url}`, `{feature_name}`, `{feature_scope}`, `{feature_purpose}`
 - `{data_shape}`, `{api_surface}`, `{implementation_files}`, `{user_context}`
+- `{linked_records_inventory}` — foreign-record references the surface displays (§3a); empty for a true leaf surface
 - `{design_system}`, `{brand_identity}`, `{brand_identity_path}`
 - `{design_tokens}`, `{existing_patterns}`, `{reference_pages}`, `{hard_failures}`, `{constraints}`
 - `{page_mode}`, `{has_analytics_band}`
@@ -212,6 +213,22 @@ Fields are in domain language. Grouping, derivation, and presentation are design
 ### API Surface
 
 {api_surface — endpoints, methods, brief response descriptions. Implementation reference only.}
+
+---
+
+## 2a. Linked records & lookups
+
+{Render this section ONLY when `{linked_records_inventory}` is non-empty. Omit entirely — no heading, no placeholder — for a true leaf surface that references no record owned by another surface.}
+
+Project design-policy **§13 (linked records & lookups) is a functional mandate, not a suggestion** — and `design-review-pr` enforces it as a hard failure. Every value below IS a record owned by another surface; on this design it must be a **navigable lookup/link** to that record, not inert duplicated text. This is about **navigation and data resolution**, not visual treatment: the link stays **quiet** (§4 — the demoted blue accent or a hover underline), reads as ordinary dense product text until acted on, and is **never** a button, CTA, colored pill, or grid chrome. "Airtable-style" means the *behavior* (click a foreign reference → drill to it; pull a related field in as a read-only lookup) — never Airtable's *form*.
+
+| Foreign reference | Owns it (surface · route) | Drill target | Inline lookups (read-only, resolved from the canonical record) |
+|---|---|---|---|
+| {identifier as shown} | {sibling surface · `/route`} | {row/value → detail drawer (§7) + "Open full {sibling} →"} | {related fields pulled in, or "—"} |
+
+{One row per entry in `{linked_records_inventory}`.}
+
+**Required behavior (review-test, §13):** for each reference above — same identifier / same format as on the owning surface; **it is a working link** with a round-trip back; any inline field shown is a *resolved lookup* from the canonical record, **never re-keyed** per surface. Inert duplicated text for a record that exists elsewhere is the anti-pattern this section exists to kill. The drawer-plus-cross-link drill is the default; the design may choose a different quiet affordance, but the value must resolve to the foreign record either way.
 
 ---
 
@@ -696,6 +713,7 @@ Before writing, verify:
 - [ ] **Ingest / entry-point not dropped.** Cross-check the step-01 ingest audit: for each entity type the feature displays, was the source of new records captured? If a production page-level affordance seeds the pipeline (upload, import, manual-create), it appears as a capability in §1 (outcome, not mechanic) AND as a mutation in §2 API Surface. A brief that enables browsing records but omits their creation path is incomplete — and this gap survives "capabilities not dropped" scans because the capability was never added to `{must_support_capabilities}`, not removed from it.
 - [ ] **Every current-surface action is accounted for (mutation-derivation audit).** For a redesign, cross-check step-01 §3's mutation-derivation audit: every server action the current surface's components invoke resolves to EITHER a `{must_support_capabilities}` / primary-goal entry (carried forward) OR a `{dropped_capabilities}` entry with a reason. No action is unaccounted for. This is the audit that catches mutations on *existing* records (resolve / remap / override / re-run / reprice) — the subclass the ingest audit and the recall-based capability list both miss (the EOS batch-detail EAN→ASIN remap loss). When `{dropped_capabilities}` is non-empty, the brief's §1 "Deliberately not carried forward" subsection renders it, and step-03 §5 surfaces it to the user as a vetoable decision.
 - [ ] **Surface topology captured.** `{surface_topology_verdict}` is set from step-01 §5d. When not `single-page-appropriate`, §4c is present in the brief and describes the recommended topology correctly — which job each surface owns, whether related routes already exist, and whether a sub-brief is pending. When `single-page-appropriate`, §4c is omitted entirely — no heading, no placeholder text. In non-autonomous mode, the topology recommendation was surfaced to the user before the brief was written.
+- [ ] **Section 2a (linked records) is correct.** Section 2a is present iff `{linked_records_inventory}` is non-empty. When present, every entry renders one table row (foreign reference · owning surface+route · drill target · inline lookups), no template placeholders remain, and the §13 quiet-styling guardrail + round-trip review-test are stated. When the inventory is empty (a true leaf surface), section 2a is omitted entirely — no heading, no placeholder. A surface that displays a record another surface owns (ASIN, SKU, order/batch/shipment number, supplier, customs entry, listing) and has NO §2a entry for it is the silent miss this check exists to catch — `design-review-pr` §13/§12 will hard-fail it post-build.
 - [ ] **Detail composition fit was checked (not assumed).** For `page_mode: detail`, `composition_provenance` reflects the §5a interaction-verb question: `policy-default` for data-entry / passive-review surfaces, `recommended-alt` (source-co-present verification layout) when the verb is verification-against-a-source. A verify-against-source detail surface left at `policy-default` is the miss this check exists to catch.
 - [ ] **File paths are correct** and relative to repo root.
 
@@ -746,4 +764,5 @@ If `{has_analytics_band}` is `true`, add one line: "An analytics presentation ra
 - Visual identity is complete for the variant (branded/existing/external)
 - Positive anchors precede negative constraints
 - **Analytics structure (section 4b) is filled when an analytics band exists** — the archetype is named and grounded (data dimension + user question), reading passes are derived from that archetype's form (not a defaulted trend strip), every interactive element has a defined drill target, palette rules and prohibited patterns are explicit. The designer cannot improvise the analytics layer.
+- **Linked records carry the §13 mandate into the brief (section 2a)** — every on-screen value that IS a record another surface owns is captured as a navigable lookup/link with a named drill target, not left for the designer to rediscover from a layout the brief withholds. A shared-data surface is never handed off silent on §13; inert duplicated text for a foreign record is a `design-review-pr` hard failure, so the brief names the linking up front.
 - **Band presence is a judgment, not an inheritance** — `band_provenance` is set; a `recommended-new` band reflects data + job (not the legacy render) and was veto-surfaced to the user. A bare-table feature whose job is pattern/coverage/ranking work is NOT silently shipped without a band.

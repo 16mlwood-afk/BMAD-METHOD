@@ -102,6 +102,18 @@ Capture `{data_shape}` in **domain-entity table form** (see step-03 template). I
 - Include: type definitions, API route handlers, the main page component path, CSS/style files
 - These are for technical reference, NOT layout reference
 
+### 3a. Linked-records inventory — every on-screen value that IS a foreign record
+
+Project design-policy **§13 (Cross-surface relational coherence — linked records & lookups)** is a **contract-critical §12 assertion that `design-review-pr` enforces as a hard failure**: any on-screen value that IS a record *owned by another surface* (ASIN, SKU, order number, batch, shipment, supplier, customs entry, listing, …) must be a **navigable lookup/link** to that record — never inert duplicated text. Because this brief withholds the current layout (blank canvas), the one place that linking was visible is gone; if the brief is silent on it, the redesign defaults to inert text and **fails review on the way back in**. So derive the inventory here — mechanically, the same anti-recall way as the data surface (§3) and the mutation audit — never leave it for the designer to rediscover.
+
+**Derive (don't recall).** From the `{data_shape}` and route just mapped, for **each** field that resolves to a record another surface owns (start from the foreign keys / natural keys flattened in §3 step 4 — `supplier`, `asin`, `order_number`, `batch_id`, …):
+1. **Foreign reference** — the field/identifier as it appears on this surface.
+2. **Owning surface** — which surface owns that record, and its route (`/suppliers/[id]`, `/catalog/[asin]`, …). If no surface owns it yet, say so — it is a plain value, not a link, and does not belong in the inventory.
+3. **Drill target** — the §13 default is row/value → right-side **detail drawer** (§7) for the in-context record, **plus** an explicit "Open full {sibling} →" cross-link to the owning surface. Name both.
+4. **Inline lookups** — any *related field* this surface needs from that foreign record to make its decision (a supplier's lead-time, a catalog product's image/title on an order line, an order's marketplace/currency on a batch). These render as **read-only** lookups resolved from the canonical record — never re-keyed per surface.
+
+Set `{linked_records_inventory}` — one entry per foreign reference, each with the four facts above. **Empty only when nothing on the surface resolves to a foreign record** (a true leaf surface); empty-by-omission is the silent failure this step exists to prevent — the §13 mandate is invisible to the designer unless this inventory carries it into the brief. The §13 *quiet-styling* guardrail (the link is the demoted blue accent / hover underline, **never** a button, CTA, or colored pill) travels with the inventory into brief §2a — function imported, not Airtable's form.
+
 ### 4. Capture Feature Purpose
 
 Write `{feature_purpose}`:
@@ -402,6 +414,7 @@ Confirm populated:
 - `{surface_topology_verdict}` ✓ (one of: `single-page-appropriate` | `needs-detail-route` | `needs-tab-views` | `needs-sibling-route`)
 - `{analytics_hierarchy}` ✓ (each surface tagged hero | supporting | drill — §5e; empty when the page has 0–1 analytics surface) — plus `{hierarchy_rationale}` and `{analytics_surface_inventory}`; `{hierarchy_unresolved}` set only when no single hero emerged (→ routed to §5d topology)
 - `{surface_topology_notes}` ✓ (recommended topology in 2-4 sentences; empty string when verdict is `single-page-appropriate`)
+- `{linked_records_inventory}` ✓ (§3a — one entry per on-screen value that IS a record another surface owns: foreign reference · owning surface+route · drill target (drawer + "Open full {sibling} →") · inline lookups; empty **only** for a true leaf surface that references no foreign record. Renders into brief §2a and is enforced at review by `design-review-pr` §13/§12.)
 - `{user_context}` ✓
 - `{brand_identity}` ✓ (may be empty)
 - `{design_system}` ✓ ("branded", "existing", or "external")
