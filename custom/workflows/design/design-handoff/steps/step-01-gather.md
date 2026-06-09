@@ -233,6 +233,33 @@ The skill runs its selection procedure (start from the question, ground-or-flag,
 
 Either path populates the same state, so step-03b renders identically. `{analytics_archetype}` empty ⇒ no band.
 
+### 5c-2. Specify the Analytics Rigor — depth, not shape
+
+Skip entirely if `{has_analytics_band}` is `false` — all `{rigor_*}` fields stay empty.
+
+§5c picked the *shape*; this picks the *depth*. A correctly-shaped band can still be schoolboy-grade — every figure a naked point estimate, nothing compared to a baseline, no connective read (*correct and useless*). Closing that gap is a distinct judgement with its own skill, so the depth decision is recorded the same way the shape decision is.
+
+**Invoke the skill (mode: `spec`).** Load `analytics-rigor` via the Skill tool and pass it:
+- the **surface's dataset** (`{data_shape}` — the entities + the figures it will show),
+- the **decision the surface serves**, in the user's words (from `{feature_purpose}` / `{user_context}`),
+- the **§5c archetype** (the shape it must deepen).
+
+The skill runs its procedure (state the decision; list the decision-bearing numbers; run the eight rigor moves; name the deciding field per series; find the connective read; separate fixes from data gaps; cut ornament) and returns its **rigor decision object**. Capture it field-for-field:
+
+| Skill output field | Capture into | Consumed by |
+|---|---|---|
+| `read_sentence` | `{rigor_read_sentence}` (or `none`) | rationale §3b, §4b |
+| `decision_numbers` (metric · uncertainty · base_rate) | `{rigor_decision_numbers}` | rationale §3b, `C-RIGOR-01` |
+| `deciding_field_check` | `{rigor_deciding_fields}` | rationale §3b, `C-RIGOR-01` |
+| `data_gaps` | `{rigor_data_gaps}` | rationale §3b — surfaced as enrichment requirements |
+| `verdict` | `{rigor_verdict}` (analyst-grade / schoolboy / mixed) | rationale §3b |
+
+**Honesty gate (mirrors §5c's ground-or-flag).** If a required uncertainty or base rate is not computable from the available data, the skill returns it as a `data_gap`, NOT a fabricated figure. Carry the gap into the brief as a data requirement — never instruct the designer to draw a confidence interval the data can't support. **False precision is worse than an honest bare number**; a decorative error bar lies. This is the same honesty posture as the no-silent-fallbacks rule.
+
+**Fallback (skill not available).** Apply the eight rigor moves by hand — lead with the read; no naked decision number; sensitivity to drivers; base rate; deciding field; trend magnitude + dispersion; rank by impact; missing-vs-weak — and populate the same fields. The skill is preferred because it makes the read sentence and per-number uncertainty mandatory outputs rather than skippable prose.
+
+Set the `{rigor_*}` fields (all empty when no band).
+
 ### 5d. Surface Topology Assessment
 
 **The question:** Given everything gathered above, is this feature's scope correctly bounded at a single route — or does the data depth, capability breadth, or user job structure suggest multiple surfaces?
@@ -329,6 +356,7 @@ Confirm populated:
 - `{has_analytics_band}` ✓ (`true` iff band_provenance ∈ {inherited, recommended-new})
 - `{analytics_archetype}` ✓ (one of the nine, or `unclear` → asked; empty when no band)
 - **Analytics reasoning capture** ✓ (populated iff `{has_analytics_band}` is `true`; all empty otherwise) — `{page_mode_rationale}`, `{band_decision_log}`, and the archetype decision object captured from the `analytics-surface-architect` skill in §5c: `{archetype_candidates}`, `{archetype_winner_reason}`, `{archetype_secondary}`, `{time_present_check}`, `{archetype_drill_map}`, `{archetype_prohibited}`. These feed the rationale artifact (step-03b) and §4b; capturing the deliberation here is what makes the presentation decision auditable instead of discarded.
+- **Analytics rigor capture** ✓ (populated iff `{has_analytics_band}` is `true`; all empty otherwise) — `{rigor_read_sentence}`, `{rigor_decision_numbers}`, `{rigor_deciding_fields}`, `{rigor_data_gaps}`, `{rigor_verdict}` from the `analytics-rigor` skill in §5c-2. These feed the rationale (step-03b §3b) and drive `C-RIGOR-01` at review; the §5c-2 honesty gate holds — data gaps are surfaced as enrichment requirements, never fabricated into figures.
 - `{surface_topology_verdict}` ✓ (one of: `single-page-appropriate` | `needs-detail-route` | `needs-tab-views` | `needs-sibling-route`)
 - `{analytics_hierarchy}` ✓ (each surface tagged hero | supporting | drill — §5e; empty when the page has 0–1 analytics surface) — plus `{hierarchy_rationale}` and `{analytics_surface_inventory}`; `{hierarchy_unresolved}` set only when no single hero emerged (→ routed to §5d topology)
 - `{surface_topology_notes}` ✓ (recommended topology in 2-4 sentences; empty string when verdict is `single-page-appropriate`)

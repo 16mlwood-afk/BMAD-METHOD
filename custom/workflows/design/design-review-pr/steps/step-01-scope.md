@@ -131,7 +131,12 @@ Match the one whose frontmatter `accompanies_brief == {brief_filename}`. Record 
 - **Found:** capture `{rationale_filename}`, its `analytics_archetype`, and whether its body carries the grounding pair (a data dimension AND a user question) and — when the data has a time dimension — the time-in-data check. This is what `C-ARCHETYPE-01` uses to verify the *reasoning* held, not just the rendered form.
 - **Not found:** set `rationale: none`. This is NOT a failure — the brief may predate the rationale feature, or the band may be `inherited` without a fresh run. Note it in `{findings.coverage_notes}` ("route X has a declared band but no rationale artifact — archetype *reasoning* not verifiable, only rendered form"). Never imply the reasoning was checked when no rationale exists. Same honesty posture as the no-brief case above.
 
-If `{brief_archetype_map}` is empty, `C-ARCHETYPE-01` is a no-op this run; note it in coverage.
+**Capture the rigor spec (depth evidence).** From the same rationale's **§3b** (if present), build `{brief_rigor_map}[route]` for `C-RIGOR-01`: the `read_sentence`, the `decision_numbers` table (metric · uncertainty · base_rate), the `deciding_field` checks, the `data_gaps`, and the `rigor_verdict`.
+
+- **Found:** capture the spec. This is what `C-RIGOR-01` checks the rendered surface against.
+- **§3b absent** (older rationale, or none): do not add a `{brief_rigor_map}` entry for the route. NOT a failure — note it in `{findings.coverage_notes}` ("route X has a declared band but no rigor spec — analytic depth not verifiable"). Never imply depth was checked when no spec exists. Same honesty posture as the no-rationale case.
+
+If `{brief_archetype_map}` is empty, `C-ARCHETYPE-01` is a no-op this run; note it in coverage. Likewise if `{brief_rigor_map}` is empty, `C-RIGOR-01` is a no-op; note it.
 
 ---
 
@@ -144,6 +149,7 @@ The workflow now has:
 - `{checklist}` — parsed rule list, grouped by lane, with `established_exception` flags populated
 - `{chrome_available}` — boolean
 - `{brief_archetype_map}` — declared analytics archetype per affected route that has a brief-declared band (may be empty)
+- `{brief_rigor_map}` — declared rigor spec (read sentence, decision numbers + uncertainty/base-rate, deciding fields, data gaps) per affected route whose rationale carries a §3b (may be empty)
 
 Proceed to step-02.
 
