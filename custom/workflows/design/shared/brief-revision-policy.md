@@ -59,6 +59,7 @@ supersedes:                              # filename of the brief this one replac
 superseded_by:                           # filename of the brief that replaced this one (null/empty until superseded)
 source_workflow: design-handoff
 source_run_date: 2026-05-27
+policy_version_required: 0               # version of docs/design-policy.md this brief was authored against (its frontmatter `version:`; 0 if no policy). Consumers halt/warn when the current policy version exceeds this. Absent ⇒ treated as 0 (§2 invariant 1a).
 last_modified_by: workflow               # workflow | human
 last_modified_date: 2026-05-27
 
@@ -96,6 +97,7 @@ deferred_violations:                     # V-IDs from the artifact that are NOT 
 | `superseded_by` | filename, or empty | Set on the **older** brief (retroactively) when a newer brief takes over. Pairs with the newer brief's `supersedes`. |
 | `source_workflow` | `design-handoff` | The workflow that generated this brief. Reserved for future workflows that may also emit briefs. |
 | `source_run_date` | ISO date | When `source_workflow` last produced this file. Never updated by a minor revision. |
+| `policy_version_required` | integer (`0` if no policy) | Version of `docs/design-policy.md` the brief was authored against (its frontmatter `version:`). Consumers (`design-synthesize`, `design-implement`) MUST halt or warn when the current policy version exceeds this — rules ratified after the brief may invalidate its assumptions. Stamped by `design-handoff` step-03 from the policy resolved in step-01. Absent ⇒ treated as `0` (§2 invariant 1a backward-compat). |
 | `last_modified_by` | `workflow`, `human` | The hand that touched the file most recently. |
 | `last_modified_date` | ISO date | When the file was last written, regardless of by whom. |
 
