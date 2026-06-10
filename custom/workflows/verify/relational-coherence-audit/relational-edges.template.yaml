@@ -1,0 +1,62 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# relational-edges.yaml — DECLARED relational edges for relational-coherence-audit
+#
+# Copy this template to the PROJECT (not the fork) at: docs/relational-edges.yaml
+# It is PROJECT DATA, not a synced workflow file — sync-bmad-workflows.sh must
+# never overwrite it. Each project maintains its own.
+#
+# WHY THIS FILE EXISTS
+# The audit derives most edges mechanically from Drizzle FKs. But the product's
+# most decision-relevant relationships are DERIVED — a correlated EXISTS, a join
+# through a link table, a status fold — and carry NO literal FK, so the schema
+# can't see them. Declare those here, or the audit silently misses them.
+#
+# Canonical example (the one this workflow was built around): the Listing Queue
+# relates to a Warehouse through the SellerSmart push — generated_sku correlated
+# into warehouse_order_items → warehouse_orders (pushBatchId not null) → a
+# warehouse. There is no listing_queue.warehouse_id column; without the entry
+# below, the audit cannot know the queue should link to the warehouse.
+#
+# ONLY declare edges the schema CANNOT express (relation_kind: derived). Literal
+# FKs are auto-derived — do not restate them here unless you need to attach
+# mandated_lookups the FK alone doesn't carry.
+# ─────────────────────────────────────────────────────────────────────────────
+
+edges:
+  - from: listing_queue # the referencing record / surface subject
+    to: warehouse # the owned foreign record
+    owner_route: /warehouse # the surface that owns `to` (from the ownership map)
+    relation_kind: derived # derived | fk-with-lookups
+    # How the edge is computed, in the app's own terms — the join/EXISTS path.
+    # This is what makes the edge auditable and re-derivable; be precise.
+    correlation: >-
+      listing_queue.generated_sku = warehouse_order_items.sku
+      INNER JOIN warehouse_orders ON warehouse_orders.id = warehouse_order_items.warehouse_order_id
+      WHERE warehouse_orders.warehouse_id = <SELLERSMART_WAREHOUSE_ID>
+        AND warehouse_orders.push_batch_id IS NOT NULL
+    # The inline fields §13 says the borrowing surface should resolve from the
+    # canonical warehouse record (read-only lookups, quiet text — never re-keyed).
+    mandated_lookups:
+      - warehouse name
+      - dispatch / push state
+    # forward = surface shows the foreign record; reverse = owner lists referencers;
+    # both = §13 bidirectional obligation applies in both directions.
+    direction: both
+    # nullable: the foreign record is sometimes absent (empty-state, not a gap).
+    nullable: true
+    notes: >-
+      The SellerSmart dispatch readiness already shown on /listings/queue is
+      derived from this very edge — so the warehouse value IS on screen, which is
+      exactly why §13 requires it to link. This is the headline missing-required
+      link the audit should surface.
+
+  # ── add further derived edges below, same shape ──
+  # - from: <record/surface>
+  #   to: <owned record>
+  #   owner_route: </route>
+  #   relation_kind: derived
+  #   correlation: "<the join / EXISTS / fold, in app terms>"
+  #   mandated_lookups: [<field>, <field>]
+  #   direction: forward | reverse | both
+  #   nullable: true | false
+  #   notes: "<why this matters / where it's displayed>"
