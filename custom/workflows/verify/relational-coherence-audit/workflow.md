@@ -1,6 +1,6 @@
 ---
 name: relational-coherence-audit
-description: 'Read-only audit of §13 cross-surface relational coherence across a SET of pages — the linkage GRAPH, not one page in isolation. Derives the EXPECTED edges from the app''s own schema (Drizzle FKs) plus a declared relational-edges.yaml for the derived/correlated relationships the schema doesn''t encode, then walks each edge against the live surface: is the foreign record displayed, is it a navigable §13 lookup (expand-in-context, quiet), are the mandated inline lookups resolved, does it round-trip both ways, is the identifier canonical. Separates a MISSING-REQUIRED LINK (the surface doesn''t express the relationship at all → re-design) from an UNRESOLVED LOOKUP (the link is there, the inline fields aren''t → mechanical fix) from an OUT-OF-SCOPE CANDIDATE (a schema edge the surface never displays → named, not failed). Detect + route only — never edits.'
+description: 'Read-only audit of §13 cross-surface relational coherence across a SET of pages — the linkage GRAPH, not one page in isolation. Derives the EXPECTED edges from the app''s own schema (Drizzle FKs) plus a declared relational-edges.yaml for the derived/correlated relationships the schema doesn''t encode, then walks each edge against the live surface: is the foreign record displayed, is it a navigable §13 lookup (expand-in-context, quiet), are the mandated inline lookups resolved, does it round-trip both ways, is the identifier canonical. Separates a MISSING-REQUIRED LINK (the surface doesn''t express the relationship at all → re-design) from an UNRESOLVED LOOKUP (the link is there, the inline fields aren''t → mechanical fix) from an OUT-OF-SCOPE CANDIDATE (a schema edge the surface never displays → named, not failed). Also audits CO-VIEW siblings — two surfaces over the SAME record type, partitioned (a master view + a status-filtered partition view) — for whether they actually communicate: a per-row link between an entry''s two views (both ways), reconciling counts, a consistent handler-split IA, and one shared status vocabulary. Detect + route only — never edits.'
 ---
 
 # Relational Coherence Audit Workflow
@@ -18,6 +18,8 @@ description: 'Read-only audit of §13 cross-surface relational coherence across 
 - **Out-of-scope candidate** — the schema says an edge *could* exist, but the surface never puts that foreign value on screen. §13 only governs records that **appear** on a surface. This is **not a failure** — it's named so the reader knows it was considered and consciously excluded, never silently dropped.
 
 Mislabel a missing-required link as an unresolved lookup and you hand a designer's problem to a `quick-dev` that can only bolt a link onto a value the page was never meant to show. Mislabel an out-of-scope candidate as a missing link and you flood the report with false failures for every internal FK the operator never sees. Producing those three verdicts honestly is the value.
+
+**The second relation kind — co-view (same record, two surfaces).** Everything above is about **foreign-record** edges: record A on a surface should link to record B *owned by another surface*. There is a second relation the FK graph cannot see and §13's foreign-record clause does not reach: **two surfaces that render the SAME record type**, partitioned (usually by status) into a **master** view (the whole set) and one or more **partition** views (a filtered slice of the same rows). The Listing Queue (all statuses) and the Listing Upload Triage desk (the `CHECK_FAILED`/`CHECK_ERROR`/`REJECTED` failure tail) are the canonical pair — the same `listing_queue` rows, split. They are not *foreign* to each other, so none of the §13 lookup checks fire — yet two near-identical pages over one dataset that **don't communicate** is exactly the cross-surface tear this workflow exists to catch. The failure shape: no per-row link between an entry's two views, counts that don't reconcile, a handler-split IA on one and a flat list on the other, two names for one status. A co-view, like a derived edge, is **schema-invisible** — it must be **declared** in `relational-edges.yaml` (a `co_views:` entry, not an `edges:` entry) or the audit can't check it. Its checks are the five **CO-VIEW CHECKS (CV1–CV5)** in step-03, not the §13 lookup checks.
 
 ---
 
@@ -58,6 +60,7 @@ If you want one page's links checked at PR time, that's `design-review-pr`. If y
 - **Every edge gets an explicit disposition — including the benign and the out-of-scope.** Output a per-edge table where each row is classified AND routed (or explicitly marked `compliant` / `out-of-scope-candidate` with the reason). Nothing is silently dropped. An edge that appears in the report on neither the compliant nor the failing list is a silent-partial-implementation defect.
 - **Missing-required-link vs unresolved-lookup vs out-of-scope-candidate is the load-bearing classification.** Resolve every non-compliant edge to exactly one. They route to opposite lanes (re-design vs mechanical vs nowhere).
 - **Detect and route — do not fix.** This workflow stops at "here is the edge, its §13 verdict, and where the fix goes." Re-design routes to `design-handoff`; mechanical fixes route to `quick-spec`/`quick-dev`; a missing declared edge routes to "extend `relational-edges.yaml`."
+- **Co-views are a declared relation, never inferred — and never mis-flagged as a dual-owner defect.** A `co_views:` entry is the only thing that puts a same-record sibling pair in scope (no FK produces it). The single-owner premise of the ownership map (step-01) has an explicit carve-out for it: a co-viewed record legitimately has 2+ surfaces — the declared `master` owns it, the `partition` views are co-viewers, NOT rival owners. An undeclared same-record sibling you happen to notice is routed "declare a `co_view`," never conjured into a finding from a guess. Co-view findings get their own disposition rows alongside the edge rows — never folded away.
 
 ---
 
@@ -66,8 +69,8 @@ If you want one page's links checked at PR time, that's `design-review-pr`. If y
 This uses **step-file architecture** for focused execution:
 
 - Each step loads fresh to combat "lost in the middle"
-- State persists via variables: `{surface_set}`, `{ownership_map}`, `{schema_edges}`, `{declared_edges}`, `{expected_graph}`, `{walked}`, `{dispositions}`, `{db_access}`, `{server_live}`, `{baseline_commit}`
-- Sequential progression through 4 phases: resolve the surface set + ownership map → derive the expected graph → walk each edge against the live surface → classify + route
+- State persists via variables: `{surface_set}`, `{ownership_map}`, `{schema_edges}`, `{declared_edges}`, `{co_views}`, `{expected_graph}`, `{walked}`, `{dispositions}`, `{db_access}`, `{server_live}`, `{baseline_commit}`
+- Sequential progression through 4 phases: resolve the surface set + ownership map → derive the expected graph (foreign-record edges + co-view siblings) → walk each edge/co-view against the live surface → classify + route
 
 ---
 

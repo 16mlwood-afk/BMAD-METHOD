@@ -20,7 +20,8 @@ nextStepFile: './step-02-derive-expected-graph.md'
 ## STATE VARIABLES (set in this step)
 
 - `{surface_set}` — the routes under audit, each with its page component path
-- `{ownership_map}` — record type → owning route + the canonical identifier it's shown with
+- `{ownership_map}` — record type → owning route + the canonical identifier it's shown with (the `master` is the owner for a co-viewed record)
+- `{co_views}` — declared same-record sibling pairs from `relational-edges.yaml` `co_views:` (record + master/partition surfaces + scopes + shared_contract), for step-02 to merge into the expected graph
 
 ---
 
@@ -75,6 +76,15 @@ Present each in **plain language with what it covers and why it's worth it**, re
 
 If a record is displayed across the surface set but **no** surface owns it (nobody renders it as a primary subject), that's a finding in its own right — a shared record with no home surface to link to. Carry it to step-04 as `ownerless-record` (route: stand up an owning surface, or designate one). Don't drop it.
 
+#### 2a. Co-viewed records — the single-owner carve-out
+
+The single-owner premise above has one **declared** exception: a record type that a `co_views:` entry in `relational-edges.yaml` says is rendered by **2+ surfaces** on purpose — a `master` view (all rows) plus one or more `partition` views (a status/predicate-filtered slice of the *same* rows). The Listing Queue (master) and the Listing Upload Triage desk (the failure-tail partition) are the canonical pair.
+
+- This is **not** a dual-owner defect and must **not** be flagged as one (it's the legitimate other-relation, audited by the CO-VIEW CHECKS, not the §13 lookup checks). The declared `master` is the record's owner in `{ownership_map}`; the `partition` surfaces are recorded as **co-viewers** of that record, not rival owners.
+- If you encounter two surfaces in the set rendering the same record type as a primary subject with **no** `co_views:` declaration, do **not** invent the relationship and do **not** flag a dual-owner break — record it as an **undeclared co-view** finding and route it to "declare a `co_view` in `relational-edges.yaml`," exactly as an undeclared derived edge is routed (no-guessed-edges rule).
+
+Carry the declared co-views forward as `{co_views}` for step-02 to merge into the expected graph.
+
 ### 3. Confirm the gate, then proceed
 
 State, in plain English: **"Auditing the §13 linkage graph among: {routes}. Record owners: {map}."** If you can say that — whether the user named the surfaces or picked them from the offer in step 1a — the gate is cleared.
@@ -105,4 +115,5 @@ Proceed to `{project-root}/_bmad/bmm/workflows/verify/relational-coherence-audit
 - The opposite error: *running* a guessed scope silently instead of offering it (intent autonomy — offer and let the user pick, or in autonomous mode state the chosen scope)
 - A record displayed on the set with no owner mapped — leaves step-03 with a link target it can't name
 - Treating a leaf surface as in-scope and manufacturing edges for it
-- Mapping two owners for one record (the §13 single-owner premise is broken — surface it, don't pick one silently)
+- Mapping two owners for one record (the §13 single-owner premise is broken — surface it, don't pick one silently) — UNLESS a `co_views:` entry declares the pair, in which case it's the legitimate co-view carve-out (§2a): the `master` owns it, the `partition` views are co-viewers, and it's audited by the CO-VIEW CHECKS, not flagged as dual-owner
+- Treating an undeclared same-record sibling as a dual-owner defect, or inventing the co-view yourself — route "declare a `co_view`," don't conjure or mis-flag it

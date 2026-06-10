@@ -20,8 +20,9 @@ nextStepFile: './step-03-walk-edges.md'
 ## STATE VARIABLES (set in this step)
 
 - `{schema_edges}` — directed edges from Drizzle FKs
-- `{declared_edges}` — directed edges from `relational-edges.yaml`
-- `{expected_graph}` — the merged candidate edge set
+- `{declared_edges}` — directed edges from `relational-edges.yaml` `edges:`
+- `{co_view_edges}` — co-view candidates from `relational-edges.yaml` `co_views:` (same-record sibling pairs)
+- `{expected_graph}` — the merged candidate set (foreign-record edges + co-view siblings)
 
 ---
 
@@ -45,9 +46,17 @@ Read `{project_knowledge}/relational-edges.yaml`. Each entry is a relationship t
 
 **If the file exists but a known derived relationship is missing from it:** you cannot conjure the edge (no-guessed-edges rule). Record `undeclared-derived-edge` as a finding — "the schema shows a link table `X` joining `A` and `B` with no declared edge; if this is an operator-facing relationship, declare it" — and route it to "extend the edge map." Naming the gap is the honest move; inventing the edge is not.
 
+### 2b. Load declared co-views (same-record siblings)
+
+Read the `co_views:` section of `{project_knowledge}/relational-edges.yaml` (separate from `edges:`). Each entry declares a record type rendered by 2+ surfaces in the set — a `master` (all rows) and one or more `partition` views (a status/predicate-filtered slice of the same rows). Validate each against the template (`relational-edges.template.yaml` → CO-VIEWS): it must name `record`, `partition_by`, `surfaces` (each with `route`, `role` ∈ `master`|`partition`, `scope`), and the `shared_contract` booleans (`bidirectional_row_link`, `reconciling_counts`, `consistent_ia`, `shared_vocabulary`, `no_orphaned_partition`). Emit one **co-view candidate** per entry into `{co_view_edges}`, `source: co-view`.
+
+**Scope gate.** A co-view is in scope only when **≥2 of its declared surfaces are in `{surface_set}`** — communication is a property *between* surfaces, unobservable from one. If only the master (or only a partition) is in the set, record the co-view `out-of-scope-candidate` with reason "sibling surface not in the audited set" and name the sibling — don't drop it.
+
+**If `co_views:` is absent but you saw 2+ surfaces render the same record type as a primary subject:** this is the same-record analogue of the missing-derived-edge case. Do not invent it — carry the `undeclared-co-view` finding from step-01 and route it to "declare a `co_view`." (no-guessed-edges rule.)
+
 ### 3. Merge into the expected graph
 
-Union `{schema_edges}` and `{declared_edges}` into `{expected_graph}`. De-duplicate (a declared edge that restates an FK keeps the richer declared entry, since it carries `mandated_lookups`). For each edge record:
+Union `{schema_edges}`, `{declared_edges}`, and `{co_view_edges}` into `{expected_graph}`. De-duplicate the foreign-record edges (a declared edge that restates an FK keeps the richer declared entry, since it carries `mandated_lookups`). Co-view candidates are a distinct kind — they carry a `shared_contract`, not `mandated_lookups`, and step-03 walks them with the CO-VIEW CHECKS, not the §13 lookup checks. For each foreign-record edge:
 
 ```
 edge:
@@ -63,7 +72,21 @@ edge:
   status: candidate            # every edge starts as a CANDIDATE; step-03 confirms displayed? → in-scope | out-of-scope
 ```
 
-Every edge leaves this step as `status: candidate`. Nothing is yet a pass or a fail — step-03 looks at the live surface to decide whether the foreign record is *displayed* (→ in scope, walk the §13 checks) or *never shown* (→ out-of-scope-candidate, named not failed). Resist the urge to pre-judge from the schema; the schema can't see the screen.
+And for each co-view candidate:
+
+```
+co_view:
+  record: listing_queue                  # the shared record type
+  partition_by: status
+  master: /listings/queue                # owns the record
+  partition: /listings/queue/triage      # the filtered sibling
+  partition_scope: "status IN (CHECK_FAILED, CHECK_ERROR, REJECTED)"
+  shared_contract: {bidirectional_row_link, reconciling_counts, consistent_ia, shared_vocabulary, no_orphaned_partition}
+  source: co-view
+  status: candidate                      # step-03 confirms both surfaces in-set, then runs CV1–CV5
+```
+
+Every edge AND every co-view leaves this step as `status: candidate`. Nothing is yet a pass or a fail — step-03 looks at the live surfaces: for an edge, whether the foreign record is *displayed* (→ §13 checks) or *never shown* (→ out-of-scope-candidate); for a co-view, whether ≥2 of its surfaces are in the set (→ CO-VIEW CHECKS) or not (→ out-of-scope-candidate, sibling not audited). Resist the urge to pre-judge from the schema/edge-map; the schema can't see the screen.
 
 ---
 

@@ -27,8 +27,9 @@ Before routing, resolve every non-compliant edge to one class. The split decides
 - **Mechanical** (`unresolved-lookup`, `identifier-drift`, `loud-affordance`, a broken round-trip on an otherwise-present link) → the relationship is expressed; a join, a formatter, a styling fix, or a return-path is missing. Routes to **`quick-spec`/`quick-dev`**.
 - **Edge-map gap** (`no-declared-edge-map`, `undeclared-derived-edge`) → the audit's own input is incomplete. Routes to **"extend `relational-edges.yaml`"** — and a re-run.
 - **Structural** (`ownerless-record` from step-01) → a shared record with no owning surface. Routes to a design decision about where it should live.
+- **Co-view seam** (the CV verdicts) → splits the same way the foreign-record edges do, by *relationship-vs-mechanism*. **Seam-as-IA** (`no-row-link`, `ia-divergence`, and a missing-direction `one-directional-coview`) → the two pages don't express the relationship at all, or express it with structurally different IA; *how the master and partition communicate* is an information-architecture question → **re-design**. **Seam-as-mechanism** (`count-drift`, `vocabulary-drift`, `orphaned-partition` wiring, a broken return on an existing cross-link) → the relationship is expressed; a count derivation, a status→label mapping, or an exception-chip route is off → **`quick-spec`/`quick-dev`**. **Undeclared co-view** (from step-01/02) → **"declare a `co_view` + re-run."**
 
-The honest edge case, mirroring the content-lane cede: when a `loud-affordance` is the *only* defect, it's mechanical (restyle the existing link); but when the link is *absent entirely* and adding it raises "where does the drawer come from, what does it show," that's re-design. Decide by asking *is there a link affordance to fix, or a relationship to design?* — the first is `quick-dev`, the second is `design-handoff`.
+The honest edge case, mirroring the content-lane cede: when a `loud-affordance` is the *only* defect, it's mechanical (restyle the existing link); but when the link is *absent entirely* and adding it raises "where does the drawer come from, what does it show," that's re-design. Decide by asking *is there a link affordance to fix, or a relationship to design?* — the first is `quick-dev`, the second is `design-handoff`. **For a co-view seam the design lane is special: it cannot be designed from one page in isolation — the seam is a property *between* the two surfaces, so its `design-handoff` is a material revision spanning both (and, where the partition view post-dates the master's redesign, it inherits the master's settled patterns rather than re-inventing them).**
 
 ## ROUTING RULES
 
@@ -41,6 +42,10 @@ The honest edge case, mirroring the content-lane cede: when a `loud-affordance` 
 | **Identifier drift** | `quick-dev` | "Align `{record}`'s identifier/format/label on `{S}` to the canonical form on `{owner}` (`{canonical}`). Content-lane formatter fix." |
 | **Edge-map gap** (P1) | extend `relational-edges.yaml` (template beside this workflow) → re-run | "Derived relationships were not audited. Declare `{edge(s)}` and re-run for full coverage." |
 | **Ownerless record** | `design-handoff` / design decision | "Shared record `{R}` is displayed but owned by no surface — designate or stand up an owner before linking can resolve." |
+| **Co-view: `no-row-link` / `ia-divergence`** | `design-handoff` (material revision spanning **both** surfaces) | "`{master}` and `{partition}` are two views of `{record}` that don't communicate: no per-row link between an entry's two views / divergent IA (`{detail}`, e.g. v7 handler-split on one, flat on the other). Design the seam — per-row in-context cross-link both ways + a shared partition IA — across both pages." |
+| **Co-view: `count-drift` / `vocabulary-drift` / `orphaned-partition`** | `quick-spec` → `quick-dev` | "The `{master}`↔`{partition}` relationship is expressed; reconcile the `{count}` against the shared scope / align the `{state}` label across both / route the master's exception chip into the partition view. Mechanical." |
+| **Co-view: `one-directional-coview`** | missing direction → `design-handoff` (the surface lacking the link); broken return on an existing cross-link → `quick-dev` | "Make `{master}`⇄`{partition}` traversable both ways with a round-trip back." |
+| **Undeclared co-view** | declare a `co_view` in `relational-edges.yaml` → re-run | "Two surfaces render `{record}` as a primary subject with no `co_views:` entry — the seam was not audited. Declare it and re-run." |
 
 When the choice between re-design and mechanical is genuinely ambiguous, prefer routing to `design-review` (audit) over guessing — a wrong mechanical fix bolts a link onto a page that needed rethinking.
 
@@ -61,17 +66,26 @@ Every walked edge becomes one row — **including `compliant` and `out-of-scope-
 | 4 | order → customs_entry | fk | no | out-of-scope-candidate | — | not displayed on /orders |
 | … |
 
+**Co-views** (same-record siblings — a row per co-view, **every** CV check accounted for):
+
+| # | Co-view ({master} ⇄ {partition}) | In-scope | Failing CV checks | Class | Route |
+|---|----------------------------------|----------|-------------------|-------|-------|
+| C1 | /listings/queue ⇄ /listings/queue/triage | yes | no-row-link, count-drift, ia-divergence, vocabulary-drift | seam (IA + mechanical) | design-handoff (seam, both surfaces) + quick-dev (counts, vocab) |
+| … |
+
 ### Coverage
-- Expected edges: {M}  ({in-scope: x} / {out-of-scope: y})
-- Compliant: {n}
+- Expected edges: {M}  ({in-scope: x} / {out-of-scope: y})  ·  Co-views: {K}  ({in-scope: k} / {out-of-scope: j})
+- Compliant: {n edges} / {n co-views}
 - Missing-required link (→ re-design): {n}
 - Unresolved lookup / drift / loud / round-trip (→ quick-dev): {n}
 - One-directional: {n}
-- Edge-map gaps (→ declare + re-run): {n}
+- Co-view seam-as-IA (→ design-handoff, spans both surfaces): {n}
+- Co-view seam-as-mechanism (→ quick-dev): {n}
+- Edge-map / co-view-map gaps (→ declare + re-run): {n}
 - Evidence: {live: a} / {inferred-static: b}
 
 ### Top priority
-1. {highest-severity torn edge + its route}
+1. {highest-severity torn edge or co-view seam + its route}
 ```
 
 Write the report to `{implementation_artifacts}/relational-coherence-audit-{scope-slug}-{date}.md`.

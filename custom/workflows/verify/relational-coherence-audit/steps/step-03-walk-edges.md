@@ -64,6 +64,43 @@ A nullable-FK edge whose foreign record is simply absent on a given row is an **
 
 ---
 
+## THE CO-VIEW CHECKS (run for every in-scope co-view, NOT the §13 checks)
+
+A co-view candidate is two surfaces over the **same** record type — there is no foreign record to "display," so the §13 lookup checks (0–5) do **not** apply. These check whether the master and partition views **communicate**.
+
+### Gating check — both surfaces in the audited set?
+
+- **CV-gate — Both sides present?** Are ≥2 of the co-view's declared surfaces in `{surface_set}` and rendered? Communication is a property *between* surfaces — unobservable from one.
+  - **No** → verdict `out-of-scope-candidate`, reason "sibling surface `{route}` not in the audited set." Name the absent sibling; don't drop it. (Re-run with both surfaces to audit the seam.)
+  - **Yes** → run CV1–CV5 below, reading **both** rendered surfaces (live render preferred; source scan marked `inferred`).
+
+### CV1 — Bidirectional per-row link (the primary co-view failure)
+
+- [ ] A row on the partition view links to **that same entry** in the master view, and a row in the master's partition scope links to the same entry on the partition view — both ways, opening the entry in place (the §7 drawer / in-context), not a generic page-level backlink.
+- [ ] Only a header-level "{sibling} →" nav with no per-row affordance → verdict `no-row-link`. A link one way but not the other → `one-directional-coview`.
+
+### CV2 — Reconciling counts
+
+- [ ] The master's count for the partition predicate (its "{N} failed" / exception chip) and the partition view's own total for the **same scope** reconcile — equal for the same handler/filter, or visibly derived from one another. Read both rendered counts.
+- [ ] Two different numbers for the same underlying set with no bridge (master "Pre-check failed 1" per-handler vs partition "17 failed" global, nothing reconciling them) → verdict `count-drift`.
+
+### CV3 — Consistent partition IA
+
+- [ ] The two surfaces share the same primary IA over the shared record: the same handler/lane split, grouping, and default sort. If the master is split by handler (policy v7) the partition view is too (or carries the same handler filter) — it must not interleave handlers the master separates.
+- [ ] Divergent IA (master = per-handler tabs, partition = flat list interleaving handlers) → verdict `ia-divergence`. Flag a policy-rule break (e.g. v7 multi-handler) explicitly.
+
+### CV4 — Shared vocabulary
+
+- [ ] One underlying state reads with one label/affordance across both surfaces — a status, a disposition, a drift signal is named the same way on each. A status the master shows that the partition's job depends on (e.g. drift on a failure desk) is present on both.
+- [ ] Two names/treatments for one underlying state (master "Check failed" vs partition "Retryable/Terminal" with no mapping shown), or a load-bearing signal present on one surface and absent on the sibling that needs it → verdict `vocabulary-drift`.
+
+### CV5 — No orphaned partition
+
+- [ ] Every record in the partition scope is reachable in the partition view, and the master's exception affordance for that scope **routes into** the partition view (scoped), not a dead end. The partition is the master's failure-tail handled, not a parallel island.
+- [ ] Records in scope that appear in neither, or a master exception chip that filters in place instead of routing to the partition desk → verdict `orphaned-partition`.
+
+---
+
 ## RECORD EACH EDGE
 
 Give every walked edge one primary verdict (the most severe that applies — `inert-reference` outranks `unresolved-lookup` outranks `identifier-drift`; a compliant edge passes all five). Record secondary verdicts in the detail so nothing is lost.
@@ -77,7 +114,17 @@ on: {surface route}  ({component:line | DOM node})
 detail: {what's shown vs what §13 requires; secondary verdicts; mandated lookups present/absent}
 ```
 
-Store all of it as `{walked}`. Every candidate edge from step-02 must appear in `{walked}` exactly once — in scope with a §13 verdict, or out-of-scope with the not-displayed reason. An edge that vanishes between steps is a silent-partial-implementation defect.
+And give every walked co-view one record, listing each failed CV check (a co-view can fail several at once — list them all; they route together):
+
+```
+co-view: {master} ⇄ {partition}  (record: {record}, partition: {scope})
+in-scope: yes | no(sibling not in set)
+verdicts: [compliant | no-row-link | one-directional-coview | count-drift | ia-divergence | vocabulary-drift | orphaned-partition]
+evidence: live | inferred
+detail: {per-CV finding — what diverges on which surface, with component/DOM refs; policy-rule breaks named (e.g. v7)}
+```
+
+Store all of it as `{walked}`. Every candidate edge **and every co-view** from step-02 must appear in `{walked}` exactly once — in scope with its verdict(s), or out-of-scope with the reason. An edge or co-view that vanishes between steps is a silent-partial-implementation defect.
 
 ---
 

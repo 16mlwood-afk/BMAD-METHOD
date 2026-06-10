@@ -60,3 +60,67 @@ edges:
   #   direction: forward | reverse | both
   #   nullable: true | false
   #   notes: "<why this matters / where it's displayed>"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CO-VIEWS — same-record sibling surfaces (a DIFFERENT relation kind)
+#
+# `edges:` above model FOREIGN-record §13 lookups (record A on a surface links to
+# record B owned elsewhere). A CO-VIEW is the other relation the FK graph cannot
+# see: TWO surfaces that render the SAME record type, partitioned (usually by
+# status) into a "master" view and one or more "partition" views. They are not
+# foreign to each other — they are the same rows, split. The schema has no edge
+# for this (there is no listing_queue → listing_queue FK), so like derived edges
+# it must be DECLARED or the audit cannot check it.
+#
+# The failure this catches: two near-identical pages over one dataset that "do
+# not communicate" — no per-row link between the same entry's two views, counts
+# that don't reconcile, divergent handler-split IA, two names for one status.
+# §13's foreign-record checks do NOT fire here (the sibling is not a foreign
+# record), so without this section the audit is silent on the seam.
+#
+# Each co_view declares the shared record, the surfaces + their scope, the
+# partition dimension, and the shared_contract the surfaces must honour to count
+# as "communicating". step-03 runs the CO-VIEW CHECKS (CV1–CV5) against it.
+# ─────────────────────────────────────────────────────────────────────────────
+
+co_views:
+  - record: listing_queue # the shared record type BOTH surfaces render
+    partition_by: status # the dimension that splits master from partition view(s)
+    surfaces:
+      - route: /listings/queue # MASTER — the whole record set (owns the record)
+        role: master
+        scope: all statuses
+      - route: /listings/queue/triage # PARTITION VIEW — a status-filtered slice of the same rows
+        role: partition
+        scope: status IN (CHECK_FAILED, CHECK_ERROR, REJECTED)
+    # What the surfaces MUST share to "communicate" — each maps to a CO-VIEW CHECK:
+    shared_contract:
+      bidirectional_row_link: true # CV1 — a row opens THE SAME entry in the sibling view, in-place, both ways
+      reconciling_counts: true # CV2 — the master's partition count == the partition view's total for the same scope
+      consistent_ia: true # CV3 — same handler-split / grouping / sort-default IA on both
+      shared_vocabulary: true # CV4 — one status→label mapping; never two names for one underlying state
+      no_orphaned_partition: true # CV5 — every row in the partition scope is reachable in the partition view; the master's exception affordance routes INTO it
+    notes: >-
+      /listings/queue (master, all statuses, per-handler tab split) and
+      /listings/queue/triage (the CHECK_FAILED / CHECK_ERROR / REJECTED failure
+      tail) are two lenses on one listing_queue table. As of 2026-06-10 they do
+      not communicate: no per-row link between an entry's two views (triage has
+      only a generic header backlink), counts don't reconcile (queue "Pre-check
+      failed N" per-handler vs triage "M failed" global), IA disagrees (queue is
+      per-handler tabs, triage is a flat marketplace dropdown — triage interleaves
+      handlers, breaking the same policy v7 the queue follows), and drift is a
+      queue concept the failure desk never surfaces. Route the seam to design.
+
+  # ── add further co-views below, same shape ──
+  # - record: <shared record type>
+  #   partition_by: <status | type | lane | ...>
+  #   surfaces:
+  #     - { route: </master>, role: master, scope: "<all | predicate>" }
+  #     - { route: </partition-view>, role: partition, scope: "<predicate>" }
+  #   shared_contract:
+  #     bidirectional_row_link: true
+  #     reconciling_counts: true
+  #     consistent_ia: true
+  #     shared_vocabulary: true
+  #     no_orphaned_partition: true
+  #   notes: "<where they diverge today / why it matters>"
