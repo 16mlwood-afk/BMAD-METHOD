@@ -26,16 +26,35 @@ nextStepFile: './step-02-derive-expected-graph.md'
 
 ## EXECUTION SEQUENCE
 
+### 0. Read the ask in plain English
+
+The input is **natural language first** — routes are an optional shorthand, not the expected form. A human asks this workflow the way they'd ask a colleague: *"is the listing queue properly linked to its records?"*, *"check the linking between listings and the warehouse"*, *"audit the inbound supply-chain pages for broken links"*, *"does /orders link everything it should?"*. Pick the **verbs and nouns** out of that sentence and map them to surfaces via `nav-config` (label → route) and the ownership map (record name → owning route). A page label ("listing queue"), a domain area ("inbound supply chain"), a record type ("warehouse"), or a raw route (`/orders`) are all valid handles — resolve whichever the user used. Only fall back to treating the input as a literal route list when the user actually typed routes.
+
+You do **not** need the user to phrase it as a command or hand you two routes. If a friendly sentence names enough to ground a surface set, ground it and proceed. If it's friendly but *under*-specified, go to step 1's offer path — don't make them re-type it as machine input.
+
 ### 1. Resolve the surface set
 
-Map the input to concrete routes:
+Map whatever you extracted in step 0 to concrete routes:
 
 - **Explicit route list** → use it verbatim; resolve each route to its page component (App Router tree).
-- **Domain area** ("the Listings surfaces", "inbound supply chain") → resolve via `nav-config` (the grouped nav sections) to the routes in that group, plus any sibling the schema says shares its records.
-- **Single anchor** → expand: read the records the anchor surface displays, follow their schema FKs and declared edges to the owning surfaces, and add those. A single page's §13 coherence is only judgeable against the siblings it links to (or should).
+- **Domain area / page label** ("the Listings surfaces", "inbound supply chain", "the listing queue") → resolve via `nav-config` (the grouped nav sections / labels) to the routes in that group, plus any sibling the schema says shares its records.
+- **Single anchor** (one page or one record named) → expand: read the records the anchor surface displays, follow their schema FKs and declared edges to the owning surfaces, and add those. A single page's §13 coherence is only judgeable against the siblings it links to (or should).
 - **Full sweep** → every operational route in `nav-config` that the schema marks as owning or referencing a shared record. Leaf surfaces (auth, settings, standalone upload) are excluded and *listed as excluded* — never silently.
 
 Record `{surface_set}` as `route → page component path`. If a route in an explicit list has no resolvable page, halt and name it — auditing a route that doesn't exist is ungrounded.
+
+#### 1a. When the ask is under-specified — OFFER scopes, don't demand them
+
+If step 0 leaves the surface set ambiguous — the user said "check our linking" or "is this page linked right?" without pinning a clear set — **do not bounce them back to re-type a command.** Derive 2–4 candidate audit scopes and **offer them as a recommendation menu**, most-leverage first. Candidates come from the same two sources the audit already reads, so they're grounded, not invented:
+
+- **the anchor's neighbourhood** — if any page/record was named, its schema-FK + declared-edge neighbours (e.g. *"Listing queue + the records it touches: orders, catalog items, warehouse"*).
+- **a nav cluster** — the `nav-config` group the named page sits in (e.g. *"All Listings surfaces"*).
+- **a single hot edge** — one specific relationship worth checking alone (e.g. *"Just the listing-queue → warehouse link"*).
+- **full sweep** — every shared-record surface (named as the thorough/slow option).
+
+Present each in **plain language with what it covers and why it's worth it**, recommend one, and let the user pick. This is **not** intent autonomy — you're surfacing *derived* candidates for the user to choose among, never guessing which one they meant and running it silently. The pick becomes `{surface_set}`; then continue to step 2.
+
+**Autonomous mode:** don't render a menu — choose the highest-leverage candidate (the named anchor + its schema neighbours, or the obvious nav cluster) and proceed, **stating the scope you chose** in one line so the run is auditable. Reserve the hard halt for genuinely ungroundable input (step 3).
 
 ### 2. Build the record-ownership map
 
@@ -58,7 +77,9 @@ If a record is displayed across the surface set but **no** surface owns it (nobo
 
 ### 3. Confirm the gate, then proceed
 
-State, in plain English: **"Auditing the §13 linkage graph among: {routes}. Record owners: {map}."** If you can say that, the gate is cleared. If you can't — the input named no surface, or every candidate is a leaf with no shared records — HALT with the workflow's HALT response.
+State, in plain English: **"Auditing the §13 linkage graph among: {routes}. Record owners: {map}."** If you can say that — whether the user named the surfaces or picked them from the offer in step 1a — the gate is cleared.
+
+**HALT is the last resort, not the first response to vagueness.** Only hard-halt when the input is genuinely ungroundable *and* the offer path can't help: nothing in the sentence names or implies any surface, the nav tree yields no candidate to even offer, or every candidate is a leaf with no shared records (no graph to audit). A vague-but-anchorable ask ("check our linking") is handled by the step-1a offer, not a halt — halting on it would be the exact "very computer input" friction this workflow's trigger is meant to avoid.
 
 ---
 
@@ -70,6 +91,8 @@ Proceed to `{project-root}/_bmad/bmm/workflows/verify/relational-coherence-audit
 
 ## SUCCESS METRICS
 
+- A natural-language ask was accepted as-is — the user was not required to phrase the input as a command or a route list
+- An under-specified ask was met with a derived **offer of candidate scopes** (interactive) or a stated highest-leverage default (autonomous), not a bounce-back halt
 - `{surface_set}` is concrete routes, each resolved to a page component
 - `{ownership_map}` covers every record type any surface in the set displays, each with one owner and one canonical identifier
 - Excluded leaf surfaces are listed, not silently dropped
@@ -77,7 +100,9 @@ Proceed to `{project-root}/_bmad/bmm/workflows/verify/relational-coherence-audit
 
 ## FAILURE MODES
 
-- Auditing a surface set the user didn't ask for because the input was vague (intent autonomy — halt instead)
+- Demanding routes / a command form when a plain-English ask named enough to ground (the "very computer input" friction this trigger exists to avoid)
+- Hard-halting on a vague-but-anchorable ask instead of offering derived candidate scopes (step 1a)
+- The opposite error: *running* a guessed scope silently instead of offering it (intent autonomy — offer and let the user pick, or in autonomous mode state the chosen scope)
 - A record displayed on the set with no owner mapped — leaves step-03 with a link target it can't name
 - Treating a leaf surface as in-scope and manufacturing edges for it
 - Mapping two owners for one record (the §13 single-owner premise is broken — surface it, don't pick one silently)

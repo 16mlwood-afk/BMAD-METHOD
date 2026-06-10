@@ -94,26 +94,27 @@ If `autonomous_mode` is `true` in config, the following rules apply to ALL steps
 
 ### Input & Grounding Gate
 
-The input is one of:
+**The input is plain English — routes are an optional shorthand, never a requirement.** Ask it the way you'd ask a colleague: *"is the listing queue properly linked to its records?"*, *"check the linking between listings and the warehouse"*, *"audit the inbound supply-chain pages"*, *"does /orders link everything it should?"*. Step-01 pulls the verbs and nouns out of that sentence and resolves them — a page label, a domain area, a record type, or a raw route are all valid handles. The user is **not** expected to type a command form or hand over two routes.
 
-- **A surface set** — an explicit list of routes (`/listings/queue /warehouse /orders`), or a domain area ("the Listings surfaces", "the inbound supply chain") this workflow resolves to routes via `nav-config` / the App Router tree. This is the cleanest input and the default for the on-demand "evaluate these pages together" use.
-- **A single anchor surface** — one route ("audit `/listings/queue`'s linkage"). The workflow expands it to the surface set of every record it relates to (its schema neighbours), because a single page's §13 coherence is only judgeable against its siblings.
-- **A full-sweep request** — "audit the whole product's relational coherence." The surface set becomes every operational route in `nav-config` that the schema says owns or references a shared record.
+What the sentence resolves to (step-01 §0–§1):
 
-**Before exiting INITIALIZATION you MUST be able to state, in plain English: "audit the §13 linkage graph among {named surfaces}." If you can't name the surfaces from the input, the schema, or the nav tree, the input isn't groundable — HALT.**
+- **A surface set** — routes named outright, or a domain area / nav label ("the Listings surfaces") resolved via `nav-config` / the App Router tree. The default for the on-demand "evaluate these pages together" use.
+- **A single anchor** — one page or one record named ("the listing queue", "warehouse"). Expanded to the surface set of every record it relates to (its schema neighbours), because a single page's §13 coherence is only judgeable against its siblings.
+- **A full sweep** — "audit the whole product's relational coherence." Every operational route in `nav-config` that the schema says owns or references a shared record.
 
-**Ungroundable inputs (HALT):**
+**Under-specified ≠ ungroundable.** If the ask is friendly but vague ("check our linking", "is this page linked right?"), step-01 §1a does **not** halt — it derives 2–4 candidate scopes from the schema neighbours / nav clusters and **offers them as a recommendation menu** (interactive) or picks the highest-leverage default and states it (autonomous). Offering grounded candidates is not intent autonomy; guessing one and running it silently would be.
 
-- A bare verb with no target ("check the linking", "is our §13 ok") where no surface, area, or anchor is identifiable from the input or the nav tree.
-- A request to audit a surface that shares no records with any other (a true leaf — auth, settings, a standalone file-upload step). There is no graph to audit; say so rather than manufacturing edges.
+**Before exiting INITIALIZATION you must be able to state, in plain English: "audit the §13 linkage graph among {named surfaces}" — reached either from the ask or from the user's pick off the §1a offer.**
+
+**Hard HALT — last resort only:** when the input is genuinely ungroundable *and* the offer can't help — nothing in the sentence names or implies any surface and the nav tree yields no candidate to even offer, or the only target is a true leaf that shares no records with anything (auth, settings, a standalone upload — no graph to audit). A vague-but-anchorable ask is handled by the §1a offer, never by a halt.
 
 **HALT response** (same shape as the `data-quality-audit` / `webhook-contract-check` halt — what's wrong, which gate, what clears it):
 
-1. State plainly: "I can't ground a surface set. relational-coherence-audit needs at least one surface that shares records with another — the graph is the unit of audit, not a single isolated page."
-2. Name what you *can* see (e.g., "I can see `/listings/queue` in the nav tree, but no surface set or anchor was given").
-3. Ask for the missing piece: a route list, a domain area, or a single anchor surface to expand from.
+1. State plainly: "I can't ground or even offer a surface set — nothing here names or implies a surface that shares records with another, and the graph is the unit of audit."
+2. Name what you *can* see (e.g., "the nav tree is unreadable" / "the only thing named is a leaf settings page").
+3. Ask for the smallest unblock: any page name, area, or record to anchor from — *not* a route list or command form.
 
-This halt fires regardless of `autonomous_mode`.
+This last-resort halt fires regardless of `autonomous_mode`; the §1a offer (interactive) / stated-default (autonomous) handles everything short of it.
 
 ### No Worktree — Read-Only Across the Graph
 
