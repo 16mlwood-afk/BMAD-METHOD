@@ -40,7 +40,7 @@ The honest edge case, mirroring the content-lane cede: when a `loud-affordance` 
 | **Loud affordance** (only defect) | `quick-dev` | "Demote the `{record}` link from button/CTA/pill to the §4 quiet link affordance." |
 | **One-directional / dead-end** | reverse link absent → `design-handoff` for the surface missing it; broken round-trip on an existing link → `quick-dev` | "Make `{A}↔{B}` traversable both ways with a round-trip back." |
 | **Identifier drift** | `quick-dev` | "Align `{record}`'s identifier/format/label on `{S}` to the canonical form on `{owner}` (`{canonical}`). Content-lane formatter fix." |
-| **Edge-map gap** (P1) | extend `relational-edges.yaml` (template beside this workflow) → re-run | "Derived relationships were not audited. Declare `{edge(s)}` and re-run for full coverage." |
+| **Edge-map gap** (P1) | extend `{relational_coherence_home}/relational-edges.yaml` (template beside this workflow) → re-run | "Derived relationships were not audited. Declare `{edge(s)}` in the maintained edge map and re-run for full coverage." |
 | **Ownerless record** | `design-handoff` / design decision | "Shared record `{R}` is displayed but owned by no surface — designate or stand up an owner before linking can resolve." |
 | **Co-view: `no-row-link` / `ia-divergence`** | `design-handoff` (material revision spanning **both** surfaces) | "`{master}` and `{partition}` are two views of `{record}` that don't communicate: no per-row link between an entry's two views / divergent IA (`{detail}`, e.g. v7 handler-split on one, flat on the other). Design the seam — per-row in-context cross-link both ways + a shared partition IA — across both pages." |
 | **Co-view: `count-drift` / `vocabulary-drift` / `orphaned-partition`** | `quick-spec` → `quick-dev` | "The `{master}`↔`{partition}` relationship is expressed; reconcile the `{count}` against the shared scope / align the `{state}` label across both / route the master's exception chip into the partition view. Mechanical." |
@@ -88,7 +88,7 @@ Every walked edge becomes one row — **including `compliant` and `out-of-scope-
 1. {highest-severity torn edge or co-view seam + its route}
 ```
 
-Write the report to `{implementation_artifacts}/relational-coherence-audit-{scope-slug}-{date}.md`.
+Write the report to `{relational_coherence_home}/reports/relational-coherence-audit-{scope-slug}-{date}.md` — the dated audit history lives **beside the edge map it was generated against**, in the project's maintained relational-coherence home (see `workflow.md` → "Declared Edge Map"), not loose in `implementation-artifacts`. Create the `reports/` subdirectory if it does not yet exist. The report is git-tracked, deploy-irrelevant project knowledge — a maintained record, not a transient artifact.
 
 ## HAND-OFF
 

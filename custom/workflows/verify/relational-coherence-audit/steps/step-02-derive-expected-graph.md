@@ -15,13 +15,13 @@ nextStepFile: './step-03-walk-edges.md'
 ## AVAILABLE STATE
 
 - `{surface_set}`, `{ownership_map}` (step-01)
-- `{project_knowledge}` (the project `docs/`), `{db_access}`
+- `{project_knowledge}` (the project `docs/`), `{relational_coherence_home}` (the maintained edge-map + reports home — see `workflow.md`), `{db_access}`
 
 ## STATE VARIABLES (set in this step)
 
 - `{schema_edges}` — directed edges from Drizzle FKs
-- `{declared_edges}` — directed edges from `relational-edges.yaml` `edges:`
-- `{co_view_edges}` — co-view candidates from `relational-edges.yaml` `co_views:` (same-record sibling pairs)
+- `{declared_edges}` — directed edges from the maintained edge map's `edges:` (`{relational_coherence_home}/relational-edges.yaml`)
+- `{co_view_edges}` — co-view candidates from the maintained edge map's `co_views:` (same-record sibling pairs)
 - `{expected_graph}` — the merged candidate set (foreign-record edges + co-view siblings)
 
 ---
@@ -40,15 +40,15 @@ Capture both directions of interest: the forward reference (the surface shows a 
 
 ### 2. Load declared (derived) edges
 
-Read `{project_knowledge}/relational-edges.yaml`. Each entry is a relationship the schema can't fully express — a correlated existence, a link-table join, a fold, or a literal FK that needs `mandated_lookups` attached. Validate each against the template schema (`relational-edges.template.yaml`): it must name `from`, `to`, `owner_route`, `relation_kind` (`derived` for a non-FK relationship, or `fk-with-lookups` when restating a literal FK only to carry its mandated lookups), the `correlation` (how the edge is computed — the join/EXISTS path, in the app's own terms), and the `mandated_lookups` (the inline fields §13 says the borrowing surface should resolve). Emit a directed edge per entry, `source: declared`.
+Read the maintained edge map at `{relational_coherence_home}/relational-edges.yaml` (the project's dedicated relational-coherence home — see `workflow.md` → "Declared Edge Map"). **Legacy fallback:** if that file is absent but the flat `{project_knowledge}/relational-edges.yaml` exists, read that instead and record a `legacy-edge-map-location` note routing "move the edge map into the `relational-coherence/` home." Each entry is a relationship the schema can't fully express — a correlated existence, a link-table join, a fold, or a literal FK that needs `mandated_lookups` attached. Validate each against the template schema (`relational-edges.template.yaml`): it must name `from`, `to`, `owner_route`, `relation_kind` (`derived` for a non-FK relationship, or `fk-with-lookups` when restating a literal FK only to carry its mandated lookups), the `correlation` (how the edge is computed — the join/EXISTS path, in the app's own terms), and the `mandated_lookups` (the inline fields §13 says the borrowing surface should resolve). Emit a directed edge per entry, `source: declared`.
 
-**If the file is absent:** raise a **P1 finding — `no-declared-edge-map`** and proceed with FK-only edges. State loudly in the eventual report that derived relationships (the SellerSmart push and any link-table join) were **not audited**, and route "create `relational-edges.yaml` from the template" as the first fix. An FK-only audit is a partial audit; it must announce its own blind spot rather than read as complete. (silent-partial-implementation guard.)
+**If the file is absent** (neither the home nor the legacy location has it): raise a **P1 finding — `no-declared-edge-map`** and proceed with FK-only edges. State loudly in the eventual report that derived relationships (the SellerSmart push and any link-table join) were **not audited**, and route "create `{relational_coherence_home}/relational-edges.yaml` from the template (`relational-edges.template.yaml`, beside this workflow)" as the first fix. An FK-only audit is a partial audit; it must announce its own blind spot rather than read as complete. (silent-partial-implementation guard.)
 
 **If the file exists but a known derived relationship is missing from it:** you cannot conjure the edge (no-guessed-edges rule). Record `undeclared-derived-edge` as a finding — "the schema shows a link table `X` joining `A` and `B` with no declared edge; if this is an operator-facing relationship, declare it" — and route it to "extend the edge map." Naming the gap is the honest move; inventing the edge is not.
 
 ### 2b. Load declared co-views (same-record siblings)
 
-Read the `co_views:` section of `{project_knowledge}/relational-edges.yaml` (separate from `edges:`). Each entry declares a record type rendered by 2+ surfaces in the set — a `master` (all rows) and one or more `partition` views (a status/predicate-filtered slice of the same rows). Validate each against the template (`relational-edges.template.yaml` → CO-VIEWS): it must name `record`, `partition_by`, `surfaces` (each with `route`, `role` ∈ `master`|`partition`, `scope`), and the `shared_contract` booleans (`bidirectional_row_link`, `reconciling_counts`, `consistent_ia`, `shared_vocabulary`, `no_orphaned_partition`). Emit one **co-view candidate** per entry into `{co_view_edges}`, `source: co-view`.
+Read the `co_views:` section of the same maintained edge map (`{relational_coherence_home}/relational-edges.yaml`, separate from `edges:`). Each entry declares a record type rendered by 2+ surfaces in the set — a `master` (all rows) and one or more `partition` views (a status/predicate-filtered slice of the same rows). Validate each against the template (`relational-edges.template.yaml` → CO-VIEWS): it must name `record`, `partition_by`, `surfaces` (each with `route`, `role` ∈ `master`|`partition`, `scope`), and the `shared_contract` booleans (`bidirectional_row_link`, `reconciling_counts`, `consistent_ia`, `shared_vocabulary`, `no_orphaned_partition`). Emit one **co-view candidate** per entry into `{co_view_edges}`, `source: co-view`.
 
 **Scope gate.** A co-view is in scope only when **≥2 of its declared surfaces are in `{surface_set}`** — communication is a property *between* surfaces, unobservable from one. If only the master (or only a partition) is in the set, record the co-view `out-of-scope-candidate` with reason "sibling surface not in the audited set" and name the sibling — don't drop it.
 

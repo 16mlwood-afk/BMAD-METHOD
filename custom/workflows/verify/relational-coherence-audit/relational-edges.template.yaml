@@ -1,9 +1,13 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # relational-edges.yaml — DECLARED relational edges for relational-coherence-audit
 #
-# Copy this template to the PROJECT (not the fork) at: docs/relational-edges.yaml
+# Copy this template to the PROJECT (not the fork) at its maintained home:
+#   docs/relational-coherence/relational-edges.yaml
 # It is PROJECT DATA, not a synced workflow file — sync-bmad-workflows.sh must
-# never overwrite it. Each project maintains its own.
+# never overwrite it. Each project maintains its own. The dated audit reports
+# live beside it under docs/relational-coherence/reports/ (see the home's
+# README.md). Legacy runs read the flat docs/relational-edges.yaml; the audit
+# still falls back to it and routes "move it into relational-coherence/".
 #
 # WHY THIS FILE EXISTS
 # The audit derives most edges mechanically from Drizzle FKs. But the product's

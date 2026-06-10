@@ -82,7 +82,8 @@ Load config from `{project-root}/_bmad/bmm/config.yaml` and resolve:
 
 - `user_name`, `communication_language`
 - `implementation_artifacts`
-- `project_knowledge` (the project's `docs/` — where the design policy and the edge map live)
+- `project_knowledge` (the project's `docs/` — where the design policy lives)
+- `relational_coherence_home` = `{project_knowledge}/relational-coherence` — the **dedicated, maintained home** for this audit's two long-lived files: the declared edge map (`relational-edges.yaml`, hand-maintained source of truth) and the dated reports (`reports/`). Both are git-tracked project knowledge, not transient artifacts. (See "Declared Edge Map" below.)
 - `autonomous_mode`, `autonomous_rules`
 - `date` as system-generated current datetime
 
@@ -127,13 +128,29 @@ This last-resort halt fires regardless of `autonomous_mode`; the §1a offer (int
 
 The "actual" side needs each surface rendered with real data to decide *displayed?* and *linked?*. Resolve the project's render path from its `CLAUDE.md` — the local isolated stack where one exists, or the read-only production proxy for source/DOM inspection — without hardcoding credentials. Where a project forbids running the app, fall back to **static source scan** (the same machinery `design-review-pr` step-02 uses) and record `{server_live} = false` so the report states which edges were confirmed against a live render vs inferred from source. Store the resolved access as `{db_access}`.
 
-### Declared Edge Map
+### Declared Edge Map — and its maintained home
 
-The derived/correlated relationships the schema can't express live in `{project_knowledge}/relational-edges.yaml` (the project's `docs/`). If it's absent, step-02 proceeds with FK-only edges and raises a P1 "no declared edge map" finding — because the most decision-relevant relationships in this product (the SellerSmart push, link-table joins) are exactly the ones the schema doesn't encode, and an FK-only audit silently misses them. The template and field schema live beside this workflow at `relational-edges.template.yaml`.
+This audit produces and consumes two long-lived files. They get a **dedicated home** at `{relational_coherence_home}` (`docs/relational-coherence/`) so the thing you *maintain* (the edge map) and the thing you *accumulate* (the reports) live together, version-controlled, and never rot loose in `implementation-artifacts`:
+
+```
+docs/relational-coherence/
+  README.md                 # what this home is + the maintenance discipline
+  relational-edges.yaml     # THE maintained edge + co-view map — hand-edited source of truth
+  reports/
+    relational-coherence-audit-{scope-slug}-{date}.md   # dated audit history
+```
+
+- **`relational-edges.yaml`** is the hand-maintained source of truth for the derived/correlated relationships the schema can't express (the SellerSmart warehouse push, link-table joins) **and** the same-record `co_views:`. It is **maintained**, not generated: when a new shared record or sibling view ships, the operator extends this file (the audit routes "declare it," never conjures it). If it's absent, step-02 proceeds with FK-only edges and raises a P1 "no declared edge map" finding, because an FK-only audit silently misses exactly the decision-relevant relationships. The template and field schema live beside this workflow at `relational-edges.template.yaml`.
+- **`reports/`** holds the dated audit reports — a maintained history beside the map version they were generated against, so a reader can see "as of this edge map, here is what cohered and what was torn." `docs/` is deploy-irrelevant under the BMAD deploy contract, so storing reports here never triggers a deploy.
+
+**Legacy location:** earlier runs read the flat `{project_knowledge}/relational-edges.yaml`. Step-02 still falls back to it if the home is empty, and routes "move it into `relational-coherence/`." New work uses the home.
+
+**Front door:** the human-facing way to run this audit is **Wren — Relational Coherence Lead** (`/bmad:bmm:agents:relational-coherence-lead`), the cast member who owns the linkage graph (sibling to Vera, the data-integrity lead). Wren runs this workflow, maintains the home above, and routes torn edges — re-design ones to **Rowan** (the design-handoff owner), mechanical ones to `quick-spec`/`quick-dev`. A power user can still invoke `/bmad:bmm:workflows:relational-coherence-audit` directly.
 
 ### Paths
 
 - `installed_path` = `{project-root}/_bmad/bmm/workflows/verify/relational-coherence-audit`
+- `relational_coherence_home` = `{project_knowledge}/relational-coherence` — maintained edge map + `reports/` (see "Declared Edge Map — and its maintained home")
 
 ### Baseline Commit
 
