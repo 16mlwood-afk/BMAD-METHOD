@@ -33,6 +33,20 @@ fixed_count: '{{fixed_count}}'
 
 ---
 
+## Page Shell
+
+_Mandatory row (step-03 §2d) — the page container's width/centering/padding, which no component owns and the full-bleed bundle can't supply. Design column from `{design_layout_constraints}` (README prose + bundle wrapper); Implementation column from `{impl_page_shell}` (effective width after every nested layout cap). A width/centering mismatch is Tier-1._
+
+| Property | Design | Implementation | Delta |
+|----------|--------|----------------|-------|
+| container width | {{design_shell_width}} | {{impl_shell_effective_width}} | {{shell_width_delta}} |
+| centering | {{design_shell_centered}} | {{impl_shell_centered}} | {{shell_centered_delta}} |
+| horizontal padding | {{design_shell_padding}} | {{impl_shell_padding}} | {{shell_padding_delta}} |
+
+{{#if shell_convention_divergence}}> Convention note: {{shell_convention_divergence}}{{/if}}
+
+---
+
 ## Component × Property Comparison Grid
 
 {{#each component}}

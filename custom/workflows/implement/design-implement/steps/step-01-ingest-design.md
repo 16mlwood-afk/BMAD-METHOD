@@ -66,8 +66,19 @@ The README contains:
 - Which design file to implement (if `{design_file}` wasn't specified by the user)
 - Chat transcript references that explain design decisions
 - Import structure
+- **Layout / page-shell assertions** (see below) — capture these into `{design_layout_constraints}`
 
 If the README references chat transcripts, read them — they contain rationale that disambiguates edge cases.
+
+**Capture `{design_layout_constraints}` — the page-shell intent the component sweep can't see.** The README almost always states how a feature page is framed in prose, and that prose is the ONLY authoritative source for the page container's width — because the bundle renders its root standalone and full-bleed (there is no app-shell or content-container in the bundle to measure). Scan the README (and the design policy it cites, if present) for layout assertions and record each verbatim with its constraint:
+
+- Width / framing: "full-width within the content container", "centered max-width card", "max-width 1280", "edge-to-edge".
+- Shell: "never inside a sidebar shell", "no hero strip above the table".
+- Centering / gutters: "centered", "left-aligned", explicit horizontal padding.
+
+Then read the **bundle wrapper element** for the target screen — the outermost layout element (`.app`, `<body>`, the root `<div>`) in `{design_file}` and its theme/layout CSS — and record ITS width treatment: `max-width` (or none → full-bleed), `margin: 0 auto` (centered) vs none, and root padding. The wrapper being full-bleed with no `max-width` is itself a positive assertion of "full-width", and it corroborates (or contradicts) the README prose.
+
+Store both into `{design_layout_constraints}` as `{ source: "README" | "bundle-wrapper" | "policy", assertion: "<verbatim>", resolved: { width: "full-bleed" | "<px>", centered: bool, padding: "<value>" } }`. This is what step-03 §2d's mandatory page-shell row compares against. If the README is silent AND the wrapper is full-bleed, record `width: "full-bleed", centered: false` — silence + a full-bleed wrapper still means "fill the container", and the page-shell row is still emitted (a nested `max-width` cap in the impl is still a delta against it).
 
 ### URL.3. Read the Target Design File
 
@@ -306,6 +317,8 @@ Continue at §SHARED — Property catalog and ingestion summary.
 ## SHARED — Property catalog and ingestion summary
 
 Both paths converge here. `{design_components}` (with embedded `.properties` per component), `{css_property_catalog}` (flat view of the same rows), and `{design_tokens}` are populated; downstream steps don't need to know which path produced them.
+
+**`{design_layout_constraints}` must be populated on BOTH paths.** The URL path fills it from README prose + the bundle wrapper (URL.2). The **bundle path has no README**, so for `{input_kind} == "synthesize_bundle"` derive it from the evidence the bundle does carry: read the screen HTML's outermost layout element (the root `<div data-region>` / `<body>`) for its width treatment (`max-width` present → capped; absent → full-bleed; `margin:auto` → centered) and fold in `{bundle_manifest}.page_mode` (`operational`/`analytical`/`detail`) as the framing hint. Record it in the same `{ source: "bundle-wrapper" | "manifest", assertion, resolved: {width, centered, padding} }` shape. Either path MUST leave `{design_layout_constraints}` non-empty (at minimum a `full-bleed` default from a wrapper with no `max-width`) so step-03 §2d's Page-shell row has a Design column to compare against.
 
 **The two stores must agree.** The same property rows appear in BOTH `{design_components}[name].properties` AND `{css_property_catalog}` — they are different shapes of the same data, not parallel writes that could drift. Step-03 reads via `{design_components}[name].properties` (component-by-component for the comparison grid); the flat catalog exists for SHARED's counts and as a defensive sanity store. If the two ever disagree, the per-component embedding is canonical.
 

@@ -129,6 +129,23 @@ For every cell in `{impl_identifier_cells}` (step-02 §3d — `value_source: for
 
 Count these as `{content_unverified_count}` (separate from `{delta_count}` — they are routed items, not deltas applied here). They carry into the step-04 apply ledger as `deferred(content-lane)` and into the §9 completion report's mandatory disclosure, so the run announces "these identifier cells were NOT content-verified — run design-review / design-tuning against the live page" rather than implying the grid covered them.
 
+### 2d. Page-shell row — ALWAYS emit one, even when no component maps to it
+
+The grid MUST contain exactly one **Page shell** row, regardless of how many components matched. It is the only row whose Design column comes from `{design_layout_constraints}` (step-01) instead of a cataloged component, and whose Implementation column comes from `{impl_page_shell}` (step-02 §1a) instead of a component file — because the page container's width is owned by the wrapper + ancestor layout, not by any component, and the bundle renders full-bleed so there is no component-level value to diff. Omitting it is the structural blind spot that shipped the inbound-flow `/orders` narrow-and-centered page (PR #2017) with an all-green component grid.
+
+Emit it with this fixed shape:
+
+| Component | State | Property | Design | Implementation | Delta |
+|-----------|-------|----------|--------|----------------|-------|
+| Page shell | default | container width | `{design_layout_constraints.resolved.width}` (e.g. `full-bleed` — README "full-width within the content container") | `{impl_page_shell.effective_width}` (e.g. `1280px`, the tightest cap in the chain `layout max-w-[1440px] → page max-width:1280px`) | e.g. `capped 1280 vs full-bleed → Tier-1` or `✓` |
+| Page shell | default | centering | `centered: {design…centered}` | `centered: {impl…centered}` | difference or `✓` |
+| Page shell | default | horizontal padding | `{design…padding}` | `{impl…padding}` | difference or `✓` |
+
+Rules:
+- **A width or centering mismatch is Tier-1 structural** (§4) — it reframes the entire composition, not one component. A `max-width` cap the design doesn't call for (or a missing one the design does) is the headline, not a nit.
+- **Silence is not a pass.** If the README was silent but the bundle wrapper is full-bleed (`{design_layout_constraints}` resolved `full-bleed`), an impl `max-width` cap is STILL a delta — the row is emitted and scored, never skipped for "the design didn't say."
+- **Surface a house-convention divergence, don't auto-spread it.** If step-02 §1a noted that sibling pages share the impl's cap, say so in the Delta cell (`divergence: design wants full-width, but catalog/supply-sources/… also cap at 1280 — confirm scope`). The apply (step-04) fixes THIS page to the design; widening every sibling is a separate, deliberate decision, not a silent sweep.
+
 ### 3. Count Deltas
 
 Count the number of rows where the Delta column is NOT `✓`:
@@ -148,6 +165,7 @@ Group deltas into three tiers:
 - **Hover-on-state fall-through** — `[data-state="failed"]:hover` cascading to the generic `:hover` rule and losing the state tint (the PR #827 failed-row-hover regression)
 - **Sibling-implementation divergence** (§2a) — two or more implementations of one primitive resolving to different values (colour, label, radius, size). Tier-1 **even if one of them matches the design**; the fix is consolidation to a single shared implementation, not patching each copy independently. This is the axis the invoices status-pill drift (3 forked pills) exposed.
 - Wrong grid column counts or definitions
+- **Page-shell width / centering mismatch** (§2d) — the impl caps or centers the page where the design wants full-width within the content container (or vice versa). The whole composition is reframed; this is a headline Tier-1, not a per-component nit. Padding-only differences on an otherwise-matching shell are Tier-2.
 - Content text differences that change meaning
 
 **Tier 2 — Visual (must fix):**
@@ -221,6 +239,7 @@ Read fully and follow: `{project-root}/_bmad/bmm/workflows/implement/design-impl
 - **Every primitive with ≥2 implementations ran the §2a consistency pass; sibling-divergence Tier-1 deltas surfaced explicitly in the summary**
 - **Every colour delta compared resolved values numerically (§2b), never by class name or family**
 - **Every formatter/enum-driven canonical-identifier cell (`{impl_identifier_cells}`) carries a `content-lane: CONTENT-LANE-UNVERIFIED` row (§2c) — its value was NOT pixel-matched against the mock bundle, and `{content_unverified_count}` is surfaced separately in the summary**
+- **Exactly one Page-shell row exists (§2d), comparing `{design_layout_constraints}` against `{impl_page_shell}`'s effective container width — a width/centering mismatch is surfaced as Tier-1 in the summary, never omitted because "no component owns it"**
 
 ## FAILURE MODES
 
@@ -234,3 +253,4 @@ Read fully and follow: `{project-root}/_bmad/bmm/workflows/implement/design-impl
 - Missing properties that exist in the design but weren't cataloged in Step 1
 - Claiming `✓` when values are "close enough" — 10px ≠ 4px even if both are "rounded"
 - **Pixel-matching a formatter-driven identifier cell against the mock bundle and calling it `✓`.** The bundle's mock `UK → UK` matching the impl's `UK → UK` is NOT evidence the formatter handles the real `amazon_us` / `amazon.de` / stray-`GB` variants — those never appear in a mock bundle. Such a cell is `content-lane: CONTENT-LANE-UNVERIFIED` (§2c) and routed to the live-page workflows, never certified here. This is the inbound-flow `/orders` raw-enum leak the content lane exists to catch.
+- **An all-green component grid with no Page-shell row (§2d).** Every component's CSS can match byte-for-byte while the page renders narrow + centered because a wrapper `max-width` cap nested inside the layout reframed the whole composition — and no per-component row can see it (the cap belongs to the wrapper + ancestor layout, and the bundle is full-bleed so there's nothing to diff at component level). The page-shell row is mandatory precisely because the component sweep is structurally blind to it. This is the inbound-flow `/orders` narrow-page miss (PR #2017).

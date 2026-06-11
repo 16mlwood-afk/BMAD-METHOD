@@ -43,6 +43,18 @@ Read the page file. Store as `{impl_page}`. Trace all component imports:
 import QualityVerdict from '$lib/components/data-quality/QualityVerdict.svelte';
 ```
 
+### 1a. Map the Page Shell — the EFFECTIVE container width
+
+The single thing the component sweep cannot see is how the page itself is framed. Width caps are **nested**: a page wrapper can set `max-width: 1280px` while its route/app layout ALSO sets `max-w-[1440px]` — and the tightest one wins, so the page renders at 1280, centered, with dead gutters inside its 1440 content area. That mismatch is invisible to every per-component grid row (each component's CSS can be byte-identical to the design) yet it reframes the whole composition. This is the inbound-flow `/orders` miss (PR #2017).
+
+Walk the wrapper chain from `{impl_page}` OUTWARD and resolve each layer to concrete px:
+
+1. **The page's own wrapper** — the outermost element the page component renders (e.g. `.ord-page`, the top `<div style={{maxWidth: …}}>`). Record its `max-width`, `margin: 0 auto` / `mx-auto` (centered?), and horizontal `padding`.
+2. **Every ancestor layout** — the route layout(s) and the app shell that wrap this page (`(authenticated)/layout.tsx`, `AppShell`, etc.). Record each one's container `max-width` / `mx-auto` / `padding`. (A layout often carries the real cap — e.g. `<div className="mx-auto max-w-[1440px]">`.)
+3. **Resolve the effective container:** the tightest `max-width` across the chain is the rendered width; `centered = true` if any layer applies `margin:auto`/`mx-auto`; sum the relevant horizontal padding.
+
+Store as `{impl_page_shell} = { effective_width: "<px>" | "full-bleed", centered: bool, padding: "<value>", chain: [ {layer, max_width, centered, padding}, … ] }`. Sibling pages are a useful cross-check: if every other feature page caps at the same inner width, note it — a design that wants this one full-width is then a deliberate divergence from a house convention, which step-03 §2d should surface (not silently "fix" the convention everywhere).
+
 ### 2. Read the Tailwind Configuration
 
 ```bash
@@ -169,6 +181,7 @@ Read fully and follow: `{project-root}/_bmad/bmm/workflows/implement/design-impl
 - **Every render site of every primitive enumerated (not just the named component) — `{impl_render_sites}` populated, multi-implementation primitives captured in full**
 - **Every render site tagged with its value-source (§3d); formatter/enum-driven canonical-identifier cells captured in `{impl_identifier_cells}` for step-03 §2c routing**
 - Every CSS property on every implementation component cataloged with resolved values
+- **Page-shell wrapper chain walked (§1a) — `{impl_page_shell}` populated with the EFFECTIVE container width after every nested layout cap, centering, and padding (plus a sibling-page convention note if relevant)**
 - Missing/extra components flagged
 - `{impl_components}` and `{impl_config}` populated
 - `{baseline_commit}` recorded

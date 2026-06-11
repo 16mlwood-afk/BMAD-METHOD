@@ -9,6 +9,7 @@
 - [ ] Design tokens extracted with resolved values (not just token names)
 - [ ] Every component's CSS properties cataloged with exact pixel/em/hex values
 - [ ] Asymmetric padding/margin recorded as separate values (not collapsed)
+- [ ] `{design_layout_constraints}` captured — README layout prose ("full-width / centered card / sidebar") + the bundle wrapper's own width treatment (both ingest paths populate it)
 
 ## Implementation Mapping (Step 2)
 
@@ -19,6 +20,7 @@
 - [ ] Every implementation component's classes/styles cataloged with resolved values
 - [ ] CSS custom properties (shadcn tokens, etc.) resolved to computed values
 - [ ] Missing/extra components flagged explicitly
+- [ ] Page-shell wrapper chain walked (§1a) — `{impl_page_shell}` effective container width resolved after every nested layout cap (+ sibling-page convention note)
 - [ ] Baseline commit SHA recorded
 
 ## Comparison Grid (Step 3)
@@ -28,6 +30,7 @@
 - [ ] No vague descriptions in the Delta column — quantified differences only
 - [ ] Delta column uses consistent notation: `✓`, `+Npx`, `-Npx`, `MISSING`, `EXTRA`
 - [ ] Deltas classified into Tier 1 (structural), Tier 2 (visual), Tier 3 (micro)
+- [ ] Page-shell row emitted (§2d) — container width/centering compared; a mismatch surfaced as Tier-1, never omitted because "no component owns it"
 - [ ] Grid artifact written to disk at `{implementation_artifacts}/`
 - [ ] `{delta_count}` matches actual count of non-✓ rows
 
