@@ -181,6 +181,20 @@ Deltas not applied:
   - ⊘ {grid row id / short description} — deferred ({reason}: {detail})
   - ✗ {grid row id / short description} — dropped ({reason})
 
+Frame coverage (brief §7 Surface Inventory):
+{Mandatory whenever the brief enumerated a §7 Surface Inventory — never omitted. Enumerate
+ EVERY promised frame by name (from step-03 §2f). If the brief was unavailable to this run,
+ say so and mark the whole section needs-human-confirmation — the bundle alone cannot certify
+ what was PROMISED. "All green" is only legitimate when every §7 frame is accounted for here;
+ a report that declares the run complete without this section — when a §7 inventory exists —
+ is non-conformant, re-emit it.}
+{if every §7 frame is present in both bundle and impl:}
+  All {N} §7 frames built — {frame_1}, {frame_2}, … present in impl and component-swept.
+{else, one bullet per gap:}
+  - {frame} — FRAME MISSING in impl (Tier-1: designed-but-unbuilt) → carried in "Deltas not applied" above; this is feature work, not a CSS apply
+  - {frame} — FRAME NOT DRAWN in bundle (routed, NOT inferred) → /bmad:bmm:workflows:design-handoff (re-render the frame); counted in {frame_uncovered_count}
+Frames promised: {N} · built & swept: {B} · missing-in-impl (Tier-1): {M} · not-drawn (routed): {frame_uncovered_count}
+
 Content-lane verification owed (live page):
 {if content_unverified_count == 0:}
   None — no formatter/enum-driven identifier cells on this surface.
@@ -213,7 +227,7 @@ callers. Any action now with ZERO callers is a capability the redesign dropped �
   → If the drop is intended, confirm it. If not, it was a silent capability loss — restore the affordance (the backend action is intact) or route it through /bmad:bmm:workflows:design-handoff to redesign the capability deliberately.
 ```
 
-A completion report that prints a fixed-count but omits the "Deltas not applied" section is non-conformant — re-emit it. The whole point of this section is that a partial implementation announces itself instead of shipping silently as "done." The **"Content-lane verification owed" section is equally mandatory** and never omitted: design-implement aligning a marketplace/supplier/ASIN cell's CSS is NOT the same as certifying it renders the right value on real data — that lane belongs to the live-page workflows, and the report must say so rather than let "implementation complete" imply the identifier values were checked. The **"Capabilities removed (orphaned actions)" section is equally mandatory** whenever the apply deleted or replaced components: a redesign that swaps the surface can silently strip a capability whose action call lived in a removed file and was never a grid delta (the EOS batch-detail EAN→ASIN remap — `overrideWholesaleAsinAction` left with zero callers — is the canonical miss). The grid-driven apply ledger cannot catch this because the lost capability was never a row in the grid; the orphaned-action grep is the backstop, and it must reach the report, not stay silent.
+A completion report that prints a fixed-count but omits the "Deltas not applied" section is non-conformant — re-emit it. The whole point of this section is that a partial implementation announces itself instead of shipping silently as "done." The **"Frame coverage (brief §7)" section is equally mandatory** whenever the brief enumerated a §7 Surface Inventory, and it is the gate on the most expensive false-green this workflow produces: a grid that ran the component sweep only over the frames that already exist in the impl, matched them, and reported "0 deltas — green" while frames the bundle *did* draw were never built (the inbound-flow `/orders` run that passed 5 of 9 §7 frames and called it green — 4 designed-but-unbuilt drawers, inbound-batch / import / shipping-lane / comms-case, silently absent). "All green" is a claim about the §7 deliverable list, not about whatever frames the sweep happened to find — so the report must enumerate the whole list and account for every frame as built / missing-in-impl (Tier-1) / not-drawn (routed), or it is non-conformant. The **"Content-lane verification owed" section is equally mandatory** and never omitted: design-implement aligning a marketplace/supplier/ASIN cell's CSS is NOT the same as certifying it renders the right value on real data — that lane belongs to the live-page workflows, and the report must say so rather than let "implementation complete" imply the identifier values were checked. The **"Capabilities removed (orphaned actions)" section is equally mandatory** whenever the apply deleted or replaced components: a redesign that swaps the surface can silently strip a capability whose action call lived in a removed file and was never a grid delta (the EOS batch-detail EAN→ASIN remap — `overrideWholesaleAsinAction` left with zero callers — is the canonical miss). The grid-driven apply ledger cannot catch this because the lost capability was never a row in the grid; the orphaned-action grep is the backstop, and it must reach the report, not stay silent.
 
 ---
 
@@ -223,6 +237,7 @@ A completion report that prints a fixed-count but omits the "Deltas not applied"
 - Apply was grid-driven (every fix traces to a row), not a holistic rebuild
 - Every applied delta is fixed and re-verified by re-reading the file
 - **The completion report's "Deltas not applied" section is present** — enumerating every deferred/dropped delta with its reason, or stating "None — all N applied"
+- **The completion report's "Frame coverage (brief §7)" section is present whenever a §7 Surface Inventory exists** — every promised frame accounted for as built / missing-in-impl (Tier-1) / not-drawn (routed); a "green" report that never enumerated the §7 list is non-conformant
 - **The completion report's "Content-lane verification owed (live page)" section is present** — every `content-lane` deferral (step-03 §2c) enumerated with its formatter ref + the design-review / design-tuning routing, or stating "None"
 - **The completion report's "Capabilities removed (orphaned actions)" section is present whenever the apply deleted/replaced components** — derived by grepping for now-zero-caller actions among those the removed files invoked, or stating "None — no capability lost". A surface-swapping redesign never ships without this disclosure.
 - Build passes; PR created and merged; grid artifact updated with dispositions; no regressions introduced
@@ -231,6 +246,7 @@ A completion report that prints a fixed-count but omits the "Deltas not applied"
 
 - **Holistic rebuild instead of grid-driven apply** — "make the page look like the design" satisfies composition while silently dropping enumerated rows (band sender clause, kbd hints, a sort control). This is the dominant leak and the reason the apply ledger exists (accounting-tools /queries #900).
 - **Reporting a count without the "Deltas not applied" list** — "47/47" or "deltas fixed: X" with no enumeration of what was deferred/dropped. A partial that omits the disclosure ships looking complete. The §9 section is mandatory.
+- **Declaring "0 deltas / green" off a sweep of only the frames that already exist in the impl.** The component grid is structurally blind to a whole frame the impl never built — it produces zero rows for an absent frame, so "all matched" reads as "all present." Without the §7 Frame-coverage enumeration (step-03 §2f → the §9 Frame-coverage section), a run greens out having silently skipped every designed-but-unbuilt drawer. This is the inbound-flow `/orders` miss: 9 §7 frames promised, 5 swept and matched, 4 (inbound-batch / import / shipping-lane / comms-case) never built and never surfaced — "green" meant "we only looked at what was already there." The §7 list, not the found-frame set, is the denominator for a green claim.
 - **A bare `deferred` with no reason** — the silent drop wearing a label. Every deferral names `needs-data` / `out-of-scope` / `judgment` / `content-lane` + detail.
 - **Letting "implementation complete" imply the identifier *values* were checked.** design-implement aligns a marketplace/supplier/ASIN cell's CSS against the bundle; it does NOT verify the formatter renders the right value on real data (the bundle is mock data). Omitting the "Content-lane verification owed" section ships that false implication — it is the design-implement counterpart of the inbound-flow `/orders` raw-enum leak that the grid's mock-data comparison could never catch.
 - **Deleting/replacing components without the orphaned-action check.** A surface-swapping redesign removes files that called server actions; if the new surface doesn't re-wire one, that capability is silently gone — and because it was never a grid row, the apply ledger can't catch it. The grid-driven apply makes this *more* likely, not less, by focusing attention on enumerated deltas. The orphaned-action grep + the "Capabilities removed" disclosure is the backstop; skipping it is how the EOS batch-detail EAN→ASIN remap shipped as a silent loss.

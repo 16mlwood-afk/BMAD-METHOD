@@ -32,6 +32,7 @@
 - [ ] Deltas classified into Tier 1 (structural), Tier 2 (visual), Tier 3 (micro)
 - [ ] Page-shell row emitted (§2d) — container width/centering compared against the policy-authoritative value; a mismatch surfaced as Tier-1, never omitted because "no component owns it"
 - [ ] Ceded-dimensions note emitted (§2e) — policy-conformance (prohibitions/tone/motion) + behavior ceded to design-review / verify, not faked as a bundle-diff check
+- [ ] Frame-coverage rows emitted (§2f) — **the brief §7 Surface Inventory was loaded and one row emitted per promised frame** (always emit the block; if the brief was unavailable, say so and mark the block `needs human confirmation`). A frame drawn-but-unbuilt is Tier-1 (`FRAME MISSING in impl`); a frame the bundle never drew is routed (`FRAME NOT DRAWN`, counted in `{frame_uncovered_count}`), not inferred. A grid that ran the component sweep only over frames that already exist in impl — never enumerating the §7 list — is non-conformant: "all green" then means "we never looked," not "every promised frame was built and matched."
 - [ ] Grid artifact written to disk at `{implementation_artifacts}/`
 - [ ] `{delta_count}` matches actual count of non-✓ rows
 
