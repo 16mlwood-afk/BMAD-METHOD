@@ -148,6 +148,8 @@ Project design-policy **§13 (linked records & lookups) is a functional mandate,
 
 {One row per entry in `{linked_records_inventory}`.}
 
+**Richness floor — the lookup drawer is a designed surface, not a stub.** Each reference above opens its foreign record as a **frame in the §7 Surface Inventory** (a `{record}-lookup` drawer). That frame must show the fields the relation actually needs — a `warehouse` opened from an order shows code/type/status/location AND what is routed through it for this order; a `catalog` record opened from an order line shows its image/title AND the market/economics the line depends on. The "Inline lookups" column above is that field set; `—` is permitted **only** when the foreign record genuinely carries nothing past identity. A lookup drawer that renders identity alone (code/type/status) when the record has decision-relevant fields is the silent thinness this floor exists to kill — and `design-implement` §2f will flag the frame if it was never drawn at all.
+
 **Required behavior (review-test, §13):** for each reference above — same identifier / same format as on the owning surface; **it expands the foreign record in context** — acting on it opens that record in the §7 drawer *over this surface* (its own fields and its own links shown, not a re-keyed summary and not a navigation away), with a round-trip back; any inline field shown is a *resolved lookup* read through the relation, **never re-keyed** per surface. Inert duplicated text for a record that exists elsewhere — and a link whose only behavior is to navigate to the sibling page — are the anti-patterns this section exists to kill. Expand-in-context via the §7 drawer is the default; the design may choose a different quiet affordance, but acting on the value must **resolve and surface the foreign record's own fields in place**, with the full sibling page only ever a secondary action.
 
 ---
@@ -563,9 +565,28 @@ If `{page_mode}` = **detail:**
 
 ## 7. Deliverable Format
 
-1. **Visual designs** at desktop width (1280px)
+### Surface Inventory — render every frame below (required, not optional)
+
+This page spawns secondary surfaces at runtime — the detail drawer the operator drills into, and the §13 expand-in-context lookup drawers (§2a) that open over it. **Every row below is a REQUIRED rendered frame, not an optional extra.** This pipeline is non-interpretive: `design-implement` pixel-matches only the frames you draw — a drawer you leave un-rendered is *inferred* downstream, which ships it thin and unformalised (bare `€60` money with no GBP/VAT basis — a `docs/design-policy.md` §15 violation; a lookup drawer showing only code/type/status). **If you want it built well, draw it.** The **Frame** name is the contract key — keep it verbatim on the rendered frame so `design-implement` matches by name with zero inference.
+
+| Frame | Opens from / trigger | Render as | Must contain | Figures (§4d) | Lookups (§2a, depth-1) |
+|---|---|---|---|---|---|
+| {frame_name} | {trigger} | {full-bleed \| drawer-over-{parent}} | {must_contain} | {the §4d decision numbers this frame carries, basis-complete per policy §15 — or "—"} | {depth-1 §2a fields — or "—"} |
+
+{One row per entry in `{spawned_surfaces}`. The primary surface is always row 1; the drilled detail drawer is a row when the §5a composition spawns one; each `{linked_records_inventory}` entry is one lookup-drawer row.}
+
+**Rules for the inventory:**
+- **No bare stubs.** A lookup-drawer frame's "Must contain" must name the fields the relation actually needs (a `warehouse-lookup` opened from an order shows code/type/status/location AND what's routed through it for this order), never identity alone. If the record genuinely carries nothing past identity, state that explicitly.
+- **Depth-1 only.** A lookup drawer lists its own immediate lookups; the foreign record's own §2a owns the next level. Do not inline the recursive order→catalog→supplier graph.
+- **Money is basis-complete.** Every figure in a "Figures" cell follows `docs/design-policy.md` §15 — VAT basis, native currency framed against GBP, no decontextualised fragment; rendered as the detail surface, not a bare-number dump.
+
+### Per-frame outputs
+
+For **every** frame in the Surface Inventory above, deliver:
+
+1. **Visual designs** at desktop width (1280px) — including each drawer rendered **open over its parent frame**, not as a standalone page.
 2. **Component specs** for new UI patterns
-3. **Interaction notes** — hover states, transitions, empty states, loading states
+3. **Interaction notes** — hover states, transitions, empty states, loading states; for drawers, the open/close/return-up-the-stack behaviour (§13 round-trip)
 4. **Information architecture rationale** — why you grouped and prioritized information this way
 
 ---

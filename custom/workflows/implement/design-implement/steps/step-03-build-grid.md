@@ -163,6 +163,24 @@ Emit ONE **Ceded-dimensions** note in the grid (not a delta, not counted in `{de
 
 It carries into the step-04 §9 report's disclosure so the run says "treatment + structure + page-shell verified; policy-conformance + behavior were NOT — run design-review / verify on the live page," never implying the grid covered them. Do **not** invent a half-check (a grep for `rounded-full`, a scan for `@keyframes`) and present it as conformance — a partial, bundle-anchored check that lies is worse than an honest cede to the workflow that owns the live evidence.
 
+### 2f. Frame-coverage rows — every frame the brief promised must exist in the bundle AND the impl
+
+The component sweep (§2) is structurally blind to a **whole frame** the bundle never contained — exactly the way it was blind to the page-shell (§2d). A brief's **§7 Surface Inventory** enumerates the frames this page must deliver: the primary surface, the drilled **detail drawer**, and one **lookup drawer** per linked record (design-handoff Deliverable-Completeness Principle). If Claude Design drew only the primary frame and skipped a drawer, there is nothing in the bundle to catalog, so `{design_components}` simply omits it and every component row goes green — while the drawer ships *inferred* (the thin, bare-`€60` drawer the inventory exists to prevent). So cross-check the promised frames against what was actually drawn and built — never let an absent frame pass by omission.
+
+**Load the contract.** Read the active brief's **§7 Surface Inventory** for this page (the brief that drove this bundle — its path is the design-handoff artifact for `{page-slug}`). Enumerate its frames by **Frame name** — that name is the contract key. If the brief is not available to this run, fall back to the bundle manifest's frame set and mark every Frame-coverage Delta `needs human confirmation` rather than Tier-1 (the bundle alone is not authoritative on what was *promised* — same posture as §2d's non-policy fallback).
+
+**Emit one Frame-coverage row per promised frame** (always emit the block, even when only the primary frame exists):
+
+| Component | State | Property | Design | Implementation | Delta |
+|-----------|-------|----------|--------|----------------|-------|
+| Frame: {frame_name} | — | `frame present` | brief §7 (required) | {drawn in bundle? built in impl?} | {✓ \| `FRAME NOT DRAWN in bundle → route to design-handoff / Claude Design re-render` \| `FRAME MISSING in impl → Tier-1`} |
+
+Rules:
+- **A promised frame absent from the bundle is NOT a fixable delta — it is routed**, like the content lane (§2c). `design-implement` cannot draw a drawer Claude Design never rendered; matching pixels presupposes pixels. Mark it `FRAME NOT DRAWN → route to design-handoff / Claude Design`, count it in `{frame_uncovered_count}` (separate from `{delta_count}`), and disclose it in §9. Inferring the drawer to "fill the gap" is the exact failure this axis exists to forbid.
+- **A frame drawn in the bundle but absent from the impl is Tier-1 structural** (`FRAME MISSING in impl`) — the drawer was designed and not built. This one IS actionable here.
+- **A frame present in both** runs the full §2 component × state × property sweep *within that frame* (a drawer's own pills, money cells, lookups get the same per-property rigor as the page) — the Frame-coverage row only certifies the frame exists; the components inside it are still compared normally.
+- **Drawer money cells inherit the content-lane (§2c) and policy-cede (§2e) rules** — a drawer's `€60`-style figure is bundle-mock data; its basis-completeness (`docs/design-policy.md` §15) is policy-conformance, ceded to design-review, not certified here. The Frame-coverage row certifies the drawer was *drawn and built*; whether its money is basis-complete is design-review's call.
+
 ### 3. Count Deltas
 
 Count the number of rows where the Delta column is NOT `✓`:
@@ -233,6 +251,9 @@ Deltas found:         {delta_count}
   Tier 3 (micro):      {count}
 Content-lane unverified (routed, NOT deltas): {content_unverified_count}
   → formatter/enum-driven identifier cells; route to design-review / design-tuning (live page)
+Frames promised (brief §7):  {count}
+Frames not drawn (routed, NOT deltas): {frame_uncovered_count}
+  → brief promised the frame; the bundle never rendered it; route to design-handoff / Claude Design re-render
 ```
 
 ---
@@ -258,6 +279,7 @@ Read fully and follow: `{project-root}/_bmad/bmm/workflows/implement/design-impl
 - **Every formatter/enum-driven canonical-identifier cell (`{impl_identifier_cells}`) carries a `content-lane: CONTENT-LANE-UNVERIFIED` row (§2c) — its value was NOT pixel-matched against the mock bundle, and `{content_unverified_count}` is surfaced separately in the summary**
 - **Exactly one Page-shell row exists (§2d), comparing `{design_layout_constraints}` against `{impl_page_shell}`'s effective container width — its Design value is the policy-authoritative entry; a width/centering mismatch is surfaced as Tier-1, never omitted because "no component owns it"**
 - **One Ceded-dimensions note exists (§2e) — policy-conformance (prohibitions/tone/motion/iconography) + behavior are explicitly ceded to design-review / design-review-pr / verify, NOT faked into a grid check against the generated bundle**
+- **One Frame-coverage row per frame the brief §7 Surface Inventory promised (§2f) — a promised frame absent from the bundle is `FRAME NOT DRAWN`, routed (`{frame_uncovered_count}`) not inferred; a drawn-but-unbuilt frame is Tier-1; frames present in both ran the full per-property sweep inside them**
 
 ## FAILURE MODES
 
@@ -272,3 +294,4 @@ Read fully and follow: `{project-root}/_bmad/bmm/workflows/implement/design-impl
 - Claiming `✓` when values are "close enough" — 10px ≠ 4px even if both are "rounded"
 - **Pixel-matching a formatter-driven identifier cell against the mock bundle and calling it `✓`.** The bundle's mock `UK → UK` matching the impl's `UK → UK` is NOT evidence the formatter handles the real `amazon_us` / `amazon.de` / stray-`GB` variants — those never appear in a mock bundle. Such a cell is `content-lane: CONTENT-LANE-UNVERIFIED` (§2c) and routed to the live-page workflows, never certified here. This is the inbound-flow `/orders` raw-enum leak the content lane exists to catch.
 - **An all-green component grid with no Page-shell row (§2d).** Every component's CSS can match byte-for-byte while the page renders narrow + centered because a wrapper `max-width` cap nested inside the layout reframed the whole composition — and no per-component row can see it (the cap belongs to the wrapper + ancestor layout, and the bundle is full-bleed so there's nothing to diff at component level). The page-shell row is mandatory precisely because the component sweep is structurally blind to it. This is the inbound-flow `/orders` narrow-page miss (PR #2017).
+- **An all-green grid that silently omits a whole frame (§2f).** The brief §7 promised an `order-drawer` and a `warehouse-lookup` drawer; Claude Design drew only the worklist; the component sweep cataloged the worklist's components, matched them all, and reported success — while the drawers ship *inferred* and thin (bare `€60`, code/type/status stub). A frame the bundle never drew produces zero component rows, so "all green" is "we never looked." The Frame-coverage axis is mandatory because the component sweep, like the page-shell case, is structurally blind to what was never drawn. Never infer the missing frame to close the gap — route it back (`FRAME NOT DRAWN`).

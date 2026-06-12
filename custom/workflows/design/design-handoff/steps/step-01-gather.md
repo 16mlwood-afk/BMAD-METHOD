@@ -381,6 +381,20 @@ In autonomous mode, proceed with the inferred hierarchy and surface it in the br
 
 Set `{analytics_hierarchy}` and `{hierarchy_rationale}` (both empty when the gate doesn't fire — zero or one analytics surface).
 
+### 5f. Spawned-surface inventory — every frame this page must DELIVER
+
+A page is never one frame. It spawns secondary surfaces the operator reaches at runtime — the **detail drawer** they drill into, and the **§13 expand-in-context lookup drawers** that open over it — and the downstream pipeline draws and checks **only the frames the brief enumerates** (workflow.md Deliverable-Completeness Principle). A drawer the brief leaves implicit is never drawn by Claude Design and is then *inferred* by `design-implement` — which is precisely how a drilled drawer ships thin and unformalised (bare `€60` with no GBP/VAT basis, a lookup drawer showing only code/type/status). So enumerate the frames here, **derived** from what you already captured — never recalled, never deferred to a "pending" brief.
+
+**Derive `{spawned_surfaces}` (don't recall).** One entry per frame, mechanically from §5/§5a/§3a:
+
+1. **The primary surface** — always frame #1. `frame_name` = the route's surface (e.g. `orders-worklist`); `render_as` = `full-bleed` (or the §5a composition); `must_contain` = the primary job; `figures` = the §4d decision numbers it carries (if any); `lookups` = `—` (its linked records are their own frames, below).
+2. **The drilled detail drawer** — emit this frame **iff** `{page_mode}` ∈ {`operational`, `analytical`} AND the surface drills into a per-record view (the policy-default "table-first worklist + right-side detail drawer" composition — the common case). `frame_name` = `{record}-drawer` (e.g. `order-drawer`); `trigger` = "click a worklist row"; `render_as` = `drawer-over-{primary}`; `must_contain` = the record's formalised field groups; `figures` = **every §4d decision number the record carries** (cost/value/ROI/margin — these are the figures `docs/design-policy.md` §15 governs; name them so the drawer is drawn basis-complete, not as a bare-number dump); `lookups` = the depth-1 §2a fields this drawer shows through its relations. For `{page_mode}: detail` the primary surface (#1) IS this drawer — do not emit a duplicate.
+3. **One lookup drawer per `{linked_records_inventory}` entry (§3a)** — each §13 expand-in-context target is its own frame. `frame_name` = `{foreign-record}-lookup` (e.g. `warehouse-lookup`, `catalog-lookup`); `trigger` = "act on the {reference} on {parent surface}"; `render_as` = `drawer-over-{parent}`; `must_contain` = the foreign record's own identifying fields **plus what this relation needs** (a warehouse opened from an order shows code/type/status/location AND what is routed through it for THIS order — not a bare stub); `figures` = any decision numbers it carries; `lookups` = its **depth-1** inline lookups only (the foreign record's own §2a owns the next level — do NOT inline the recursive order→catalog→supplier graph).
+
+**Richness floor (the anti-stub rule).** No frame's `must_contain` may be a bare identity stub (code/type/status alone) when the owning record carries decision-relevant fields. A `warehouse-lookup` that lists only `code/type/status/location` is the silent thinness this inventory exists to prevent — name the fields the relation actually needs. If a lookup record genuinely has nothing beyond identity, say so explicitly (`must_contain: identity only — {record} carries no decision fields`), never leave it to default thin.
+
+Set `{spawned_surfaces}` — frame #1 always present; the detail-drawer frame present per the §5a composition; one frame per linked record. Empty only for a true leaf surface (no drawer, no linked records). This renders into brief **§7 (Surface Inventory)** as the required deliverable list, and is cross-checked at build time by `design-implement` step-03 §2f (a brief-promised frame absent from the rendered bundle = "not drawn → route back", never a silent pass).
+
 ### 6. Identify User Context
 
 Set `{user_context}`:
@@ -420,6 +434,7 @@ Confirm populated:
 - `{analytics_hierarchy}` ✓ (each surface tagged hero | supporting | drill — §5e; empty when the page has 0–1 analytics surface) — plus `{hierarchy_rationale}` and `{analytics_surface_inventory}`; `{hierarchy_unresolved}` set only when no single hero emerged (→ routed to §5d topology)
 - `{surface_topology_notes}` ✓ (recommended topology in 2-4 sentences; empty string when verdict is `single-page-appropriate`)
 - `{linked_records_inventory}` ✓ (§3a — one entry per on-screen value that IS a record another surface owns: foreign reference · owning surface+route · expand-in-context target (§7 drawer over the current surface, NOT navigate-away; "Open full {sibling} →" secondary inside it) · inline lookups read through the relation; empty **only** for a true leaf surface that references no foreign record. Renders into brief §2a and is enforced at review by `design-review-pr` §13/§12.)
+- `{spawned_surfaces}` ✓ (§5f — one **required deliverable frame** per surface this page spawns: the primary surface, the drilled detail drawer (per the §5a composition), and one lookup drawer per `{linked_records_inventory}` entry; each with `frame_name · trigger · render_as · must_contain · figures (§4d) · lookups (depth-1 §2a)`; richness floor applied — no bare identity stubs; depth-1 lookups. Renders into brief **§7 Surface Inventory** and is cross-checked by `design-implement` step-03 §2f. Empty only for a true leaf surface with no drawer and no linked records.)
 - `{user_context}` ✓
 - `{brand_identity}` ✓ (may be empty)
 - `{design_system}` ✓ ("branded", "existing", or "external")
