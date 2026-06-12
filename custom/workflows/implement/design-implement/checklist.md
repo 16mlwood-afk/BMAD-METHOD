@@ -9,7 +9,7 @@
 - [ ] Design tokens extracted with resolved values (not just token names)
 - [ ] Every component's CSS properties cataloged with exact pixel/em/hex values
 - [ ] Asymmetric padding/margin recorded as separate values (not collapsed)
-- [ ] `{design_layout_constraints}` captured — README layout prose ("full-width / centered card / sidebar") + the bundle wrapper's own width treatment (both ingest paths populate it)
+- [ ] `{design_layout_constraints}` captured — from `docs/design-policy.md` (AUTHORITATIVE; the bundle README is generated from it), corroborated by the README + bundle wrapper width (both ingest paths populate it; `authoritative` flag set per source)
 
 ## Implementation Mapping (Step 2)
 
@@ -30,7 +30,8 @@
 - [ ] No vague descriptions in the Delta column — quantified differences only
 - [ ] Delta column uses consistent notation: `✓`, `+Npx`, `-Npx`, `MISSING`, `EXTRA`
 - [ ] Deltas classified into Tier 1 (structural), Tier 2 (visual), Tier 3 (micro)
-- [ ] Page-shell row emitted (§2d) — container width/centering compared; a mismatch surfaced as Tier-1, never omitted because "no component owns it"
+- [ ] Page-shell row emitted (§2d) — container width/centering compared against the policy-authoritative value; a mismatch surfaced as Tier-1, never omitted because "no component owns it"
+- [ ] Ceded-dimensions note emitted (§2e) — policy-conformance (prohibitions/tone/motion) + behavior ceded to design-review / verify, not faked as a bundle-diff check
 - [ ] Grid artifact written to disk at `{implementation_artifacts}/`
 - [ ] `{delta_count}` matches actual count of non-✓ rows
 

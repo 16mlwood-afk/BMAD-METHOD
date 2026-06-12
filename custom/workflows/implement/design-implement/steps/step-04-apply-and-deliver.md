@@ -192,6 +192,15 @@ Content-lane verification owed (live page):
   → run:  /bmad:bmm:workflows:design-review   (live Chrome §13(a) check)
      or:  /bmad:bmm:workflows:design-tuning   (step-02 §2b, live screenshots)
 
+Policy-conformance & behavior (ceded — NOT certifiable from a generated bundle-diff):
+  Treatment + structure + page-shell were verified against the bundle/policy. These were NOT,
+  because the bundle is a Claude-Design-generated proposal that can itself violate the policy:
+  - Prohibitions / tone / motion / iconography (docs/design-policy.md "never" list) →
+    /bmad:bmm:workflows:design-review   (live audit)  ·  enforced at PR-time by design-review-pr
+  - Behavior / interaction wiring (drawer stack, Esc, mutation flow, live-feed, sort/filter) →
+    the `verify` skill (drive the live app and exercise it)  ·  or design-review (live Chrome)
+  Do not let "implementation complete" imply these were checked here.
+
 Capabilities removed (orphaned actions):
 {Derive this MECHANICALLY, do not recall it. If the apply DELETED or REPLACED any component
 file (a redesign that swaps the surface — not a pure in-place restyle), then for every server
