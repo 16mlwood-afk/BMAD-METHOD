@@ -243,6 +243,42 @@ screens: [list, detail, drawer]
 
 If `screens` is omitted, derive: `[list, detail, drawer]` from `[/.../avask, /.../avask/[id], /.../avask/[id]/drawer]`. Halt if the derived names collide (e.g., two routes both reduce to `list`).
 
+#### 7a. §7 Surface Inventory frames — the spawned drawers are screens (REQUIRED)
+
+The routes/frontmatter above only ever name the **primary** surface(s). But `design-handoff` enumerates every secondary surface the page spawns — the drilled **detail drawer** and the §13 expand-in-context **lookup drawers** — as **frame-name-keyed rows in the brief body's §7 Surface Inventory** (the Deliverable-Completeness Principle; brief-template §7). Those frames live in the body, not the frontmatter, so the route-based derivation above **never sees them** — and a frame that never enters `{screens}` is never composed in step 4, never rendered in step 5, never recorded in the manifest, and is then *inferred* by `design-implement` (the thin, policy-violating drawer this whole contract exists to prevent: bare `€60` with no GBP/VAT basis, a lookup drawer showing only code/type/status). **The pipeline is non-interpretive — it draws only the frames `{screens}` carries, so every §7 frame MUST become a screen here.**
+
+Parse the brief body's **§7 Surface Inventory** table (frame-name-keyed; columns `Frame · Opens from/trigger · Render as · Must contain · Figures · Lookups`). For **each row**, add a screen entry to `{screens}`, carrying its row fields so step 4 composes it faithfully and step 7 records it:
+
+```yaml
+{screens}:                                  # one entry per §7 Surface Inventory row
+  - name: order-detail-drawer               # = the §7 Frame name, VERBATIM (the contract key)
+    render_as: drawer-over-orders-worklist   # §7 "Render as" — full-bleed | drawer-over-{parent_frame}
+    must_contain: "...§7 cell..."            # the frame's required field groups
+    figures: "...§7 cell..."                 # decision numbers it carries (§15 basis-complete)
+    lookups: "...§7 cell..."                 # depth-1 §2a inline lookups
+  - name: catalog-lookup
+    render_as: drawer-over-order-detail-drawer
+    must_contain: "...": ...
+  # ...one per frame
+```
+
+Rules:
+- **Frame name is the contract key — copy it VERBATIM.** It must travel brief §7 → `{screens}` entry → `bundle/<frame_name>.html` → `design-implement` §2f frame-coverage row, byte-for-byte, so the match is by name with zero inference. Do NOT re-derive a frame name from a route segment.
+- **A frame whose §7 "Must contain" is `= the {X} drawer in {other-brief}.md — consume, do not redesign`** is owned by that other brief and is NOT re-synthesized here — record it in `{consumed_frames}` (name + the owning brief) so the load summary states it was deferred, not dropped, and skip its screen. Every other frame becomes a screen.
+- The primary surface is frame #1 (already in `{screens}` from the route derivation) — do not duplicate it. For `page_mode: detail` the primary surface IS the drilled drawer; §7 row 1 and the route screen are the same frame.
+
+**Coverage gate (Gate 1f — the silent-partial guard, mirrors `design-implement` §2f at the render step).** After merging: the number of screens to synthesize **plus** `{consumed_frames}` MUST equal the number of §7 Surface Inventory rows. If §7 lists N frames and you resolved fewer, a spawned drawer would silently fail to render — **halt**:
+
+```
+Gate 1f — §7 frame undrawn. Brief §7 Surface Inventory lists {N} frames
+({names}); only {M} resolved into {screens} (+{K} consumed-from-sibling-brief).
+{N-M-K} frame(s) would never be drawn and would ship inferred/thin. Fix the
+brief's §7 (or the parse) so every frame becomes a screen or a recorded
+consumed-frame, then re-run.
+```
+
+If the brief has **no §7 Surface Inventory** at all (an older brief generated before the Surface Inventory contract), record a `pre-surface-inventory-brief` note, proceed with the primary screen(s) only, and state loudly in the load summary that spawned drawers were **not** drawn — route "re-run `design-handoff` to regenerate the brief with §7." An FK-of-the-render-pipeline blind spot announced beats one shipped silently.
+
 ### 8. Refine-screen mode validation
 
 If `{mode} == "refine-screen"`, the brief MUST supply (in frontmatter OR unambiguously in the body):

@@ -64,6 +64,47 @@ Set `{feature_scope}`:
 - **"new"** — component file was created (not modified) in recent commits
 - **"redesign"** — component exists and user wants it redesigned
 
+#### 2a. Lookup-drawer target redirect — route, never bounce (destination vs relationship)
+
+A §13 expand-in-context **lookup drawer** (the small drawer that opens *over* a surface when you act on a foreign reference — a `catalog-lookup` over an order, a `warehouse-lookup`, a `supply-source-lookup`) is **owned by the relation, not by a page** (Deliverable-Completeness Principle; brief-template §2a). It is drawn as a **frame in its parent surface's §7 Surface Inventory**, never as its own brief — a separate brief for it would be a duplicate of an already-owned frame and trip the brief-revision-policy multiple-active-brief invariant. So **`design-handoff` does not accept a lookup drawer as a standalone target** — but it must **route**, not reject opaquely (the user targeted it because the drawer is shipping thin; bouncing them with no path is the friction this gate kills).
+
+**Detect.** The resolved target is a lookup drawer when it is a §13 expand-in-context drawer over another surface — signals: the component is a `*-record-drawer` / `*-lookup` that renders a foreign record keyed by an FK/derived edge (an ASIN, warehouse, supply source, batch) opened from a parent surface; the user describes it as "the X drawer/link when I click Y on Z"; it has no route of its own. (When ambiguous between a lookup drawer and a real drilled detail drawer that owns a page/route, treat it as a normal target — only the relation-owned lookup redirects.)
+
+**Redirect (do NOT produce a standalone brief).** Identify the parent surface (the one the drawer opens *over*) and emit:
+
+```
+design-handoff — lookup-drawer target redirected (not rejected).
+
+"{target}" is a §13 expand-in-context lookup drawer. It is owned by the
+RELATION, so it is drawn as a frame in its parent surface's §7 Surface
+Inventory — never its own brief (that would duplicate an owned frame and
+break the multiple-active-brief invariant). Destination vs relationship:
+a destination (a real page / deep /[id] route) gets a handoff; a
+relationship (a lookup over a parent) rides its parent's brief.
+
+It is shipping thin because of WHERE in the pipeline it was missed — pick
+the matching fix:
+
+  • Its parent brief's §7 already lists it as a frame, but it was never
+    DRAWN → re-run design-synthesize on the PARENT brief (now §7-aware:
+    every Surface Inventory frame becomes a rendered screen), then
+    design-implement to build the drawn frame. ← most common; this is the
+    render gap, not a design gap.
+
+  • Its parent brief has NO §7 frame for it (older brief) → re-run
+    design-handoff on the PARENT surface "{parent}" (material revision) so
+    step-01 §5f enumerates the lookup drawer into §7, then synthesize +
+    implement.
+
+  • You want the foreign RECORD itself redesigned everywhere it expands →
+    run design-handoff on that record's OWNING surface "{owner_route}"
+    (material revision), not on this one drawer instance.
+
+Parent surface: {parent}   ·   Foreign record / owner: {record} / {owner_route}
+```
+
+Then **halt this run** (no brief produced). This is a routing redirect, not a failure — state the chosen next command so the user can run it directly. (Autonomous mode does not override this: producing the duplicate brief is an *intent* violation, not a decision the flag licenses.)
+
 ### 3. Map the Data Surface
 
 **Route:**

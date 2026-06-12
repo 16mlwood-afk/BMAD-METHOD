@@ -86,6 +86,7 @@ For each screen in `{screens}`, plan:
 - **Data binding:** which fields from `{data_shape}` populate which regions. Realistic content only.
 - **Density:** dense vs comfortable. Driven by `{user_context}` (operator-facing → dense; auditor-facing → comfortable).
 - **State variations:** if the brief asks for empty/loading/error states, plan their treatment. For multi-screen bundles, plan each screen's state variations independently.
+- **Spawned-drawer frames (`render_as: drawer-over-{parent}`, §1 step-01 §7a):** a §7 Surface Inventory frame whose `render_as` is `drawer-over-{parent_frame}` is a §13 expand-in-context drawer, not a standalone page — compose it as the foreign record's **right-side §7 drawer open over its parent frame** (the parent rendered behind a scrim, the drawer anchored right), NOT as a full-bleed page. Its body is exactly the frame's §7 **Must contain** field groups, with every **Figures** number rendered **basis-complete** per `docs/design-policy.md` §15 (VAT + currency basis, GBP frame — never a bare `€60`) and every **Lookups** field shown as a quiet §13 read-through (never a code/type/status stub — the §2a richness floor). The drawer frame's name (e.g. `catalog-lookup`) is the `<screen>.html` basename verbatim, so `design-implement` §2f matches it. A lookup drawer is the surface most prone to shipping thin — drawing it here to its §7 spec is the entire point of the frame being in `{screens}`.
 
 **Refine-screen scope (mode == refine-screen):**
 
