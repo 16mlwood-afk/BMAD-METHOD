@@ -10,6 +10,7 @@
 - [ ] Every component's CSS properties cataloged with exact pixel/em/hex values
 - [ ] Asymmetric padding/margin recorded as separate values (not collapsed)
 - [ ] `{design_layout_constraints}` captured — from `docs/design-policy.md` (AUTHORITATIVE; the bundle README is generated from it), corroborated by the README + bundle wrapper width (both ingest paths populate it; `authoritative` flag set per source)
+- [ ] (URL path) `{design_frame_inventory}` captured (URL.3a) — the primary frame + the drilled detail drawer + each §13 lookup ("link to records (lookups)"), from `<script src>` modules + comments, per-frame banners, lookup→target maps, and sibling standalone `<frame>.html`; each linked standalone frame opened and its components folded into `{design_components}`. This is §2f's frame-coverage denominator on a no-brief run.
 
 ## Implementation Mapping (Step 2)
 
@@ -32,7 +33,7 @@
 - [ ] Deltas classified into Tier 1 (structural), Tier 2 (visual), Tier 3 (micro)
 - [ ] Page-shell row emitted (§2d) — container width/centering compared against the policy-authoritative value; a mismatch surfaced as Tier-1, never omitted because "no component owns it"
 - [ ] Ceded-dimensions note emitted (§2e) — policy-conformance (prohibitions/tone/motion) + behavior ceded to design-review / verify, not faked as a bundle-diff check
-- [ ] Frame-coverage rows emitted (§2f) — **the brief §7 Surface Inventory was loaded and one row emitted per promised frame** (always emit the block; if the brief was unavailable, say so and mark the block `needs human confirmation`). A frame drawn-but-unbuilt is Tier-1 (`FRAME MISSING in impl`); a frame the bundle never drew is routed (`FRAME NOT DRAWN`, counted in `{frame_uncovered_count}`), not inferred. A grid that ran the component sweep only over frames that already exist in impl — never enumerating the §7 list — is non-conformant: "all green" then means "we never looked," not "every promised frame was built and matched."
+- [ ] Frame-coverage rows emitted (§2f) — **the frame contract was loaded and one row emitted per frame.** Source in precedence order: brief §7 Surface Inventory; OR (raw-URL run, no brief) the bundle's declared `{design_frame_inventory}` (step-01 URL.3a — the drilled drawer + each §13 lookup); OR the manifest. Always emit the block; only if NO source yields a frame set, say so and mark it `needs human confirmation`. A frame drawn-but-unbuilt is Tier-1 (`FRAME MISSING in impl` — the verdict for the §13 lookup drawers on a no-brief URL run); a frame the bundle never drew is routed (`FRAME NOT DRAWN`, counted in `{frame_uncovered_count}`), not inferred. A grid that ran the component sweep only over frames that already exist in impl — never enumerating the contract — is non-conformant; "no brief" is not "no contract."
 - [ ] Grid artifact written to disk at `{implementation_artifacts}/`
 - [ ] `{delta_count}` matches actual count of non-✓ rows
 

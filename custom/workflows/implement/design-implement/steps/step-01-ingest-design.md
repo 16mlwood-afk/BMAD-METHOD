@@ -97,6 +97,31 @@ ComponentName → {
 }
 ```
 
+### URL.3a. Catalog the declared frame inventory (`{design_frame_inventory}`)
+
+The target file is rarely one frame. A worklist surface declares the **drilled detail drawer** and the **§13 expand-in-context lookups** it consumes — and those are the deliverables most often silently dropped: the "link to records (lookups)" the design viewer lists. On a brief-driven run, step-03 §2f gets this list from the brief's §7 Surface Inventory — but a raw Claude Design URL run has **no brief and no manifest**, so §2f would have no frame-coverage denominator and the lookup drawers would vanish (a worklist's lookups' inner primitives are shared and exist elsewhere in the impl, so the component sweep greens out over them). Capture the frame set NOW, from the evidence URL.3 already traced, so §2f has a URL-path denominator.
+
+Build `{design_frame_inventory}` — one entry per frame the target surface delivers or consumes:
+
+1. **`<script src>` frame modules + their comments.** Each module group the target imports is usually one frame; the HTML comment above it names what it carries — e.g. `<!-- Supply Order Detail Drawer modules (order frame + warehouse/batch/import/accounting lookups consumed) -->` declares the detail drawer PLUS four §13 lookups; `<!-- Catalog Record Drawer modules (catalog + supply-source frames consumed) -->` declares two more.
+2. **Per-frame banners inside the traced modules.** Module files delimit frames with banner comments — `/* ===== warehouse-lookup ===== */`, `/* ===== inbound-batch-lookup ===== */`, `/* ===== import-run-lookup ===== */`, `/* ===== accounting-outcome-lookup ===== */`. Each banner is one frame.
+3. **Lookup→target maps in the bundle data.** Data/app modules often carry an explicit map (e.g. `catalog: ["read-only §13 lookup", "Open full catalog item", "Catalog Items.html"]`) naming each lookup and the standalone frame it drills to.
+4. **Sibling standalone `<frame>.html` the target links to.** The `find … -name "*.html"` from URL.1 lists them (e.g. `Catalog Record Drawer.html`, `Supply Order Detail Drawer.html`). A target that links to one declares that frame.
+
+Record each as:
+
+```
+{
+  frame: "warehouse-lookup",            # frame/lookup name (banner | comment | filename)
+  role: "§13-lookup",                   # primary | drilled-detail | §13-lookup
+  parent: "supply-order-detail-drawer", # the frame it expands within (null for the primary)
+  declared_in: "lookups.jsx banner",    # Orders.html comment | jsx banner | app.jsx map | sibling html
+  drawn: true,                          # true when a module OR a standalone <frame>.html exists in the bundle
+}
+```
+
+The primary frame (`{design_file}` itself) is always entry 0 with `role: primary`. **Open and catalog the components of every frame in the inventory.** A traced module's components are already cataloged in URL.5; a sibling standalone `<frame>.html` the target links to but does NOT `<script src>` import must be opened here (same trace as URL.3) so its components enter `{design_components}` rather than being invisible. A frame declared in a comment/map but with NO module and NO standalone HTML in the bundle is `drawn: false` → it carries into §2f as `FRAME NOT DRAWN` (routed, not inferred).
+
 ### URL.4. Extract Design Tokens
 
 Read the token/theme file (typically `theme/tokens.jsx` or similar). Extract and store `{design_tokens}`:
@@ -355,6 +380,10 @@ Design ingested ({input_kind}):
   policy sections cited:  {comma-separated bundle_manifest.policy_sections_cited}
 {end if}
   components found:       {len(design_components)}
+{if input_kind == "claude_design_url":}
+  frames declared:        {len(design_frame_inventory)} — {comma-separated frame names, e.g. "Orders(primary), supply-order-detail-drawer, warehouse-lookup, inbound-batch-lookup, import-run-lookup, accounting-outcome-lookup, catalog-record-drawer, supply-source-lookup"}
+  of which §13 lookups:   {count of role == "§13-lookup"} ← step-03 §2f checks each is built in the impl (no brief, so the bundle IS the frame contract)
+{end if}
   token categories:       {comma-separated unique categories}
   tokens cataloged:       {len(design_tokens)}
   CSS properties:         {len(css_property_catalog)}
@@ -403,6 +432,7 @@ URL-path-only:
 - Design bundle downloaded and extracted successfully.
 - README read and chat transcripts consulted (if referenced).
 - All imported files traced and read.
+- `{design_frame_inventory}` populated (URL.3a) — the primary frame plus every drilled drawer and §13 lookup the target declares (via `<script src>` modules + comments, per-frame banners, lookup→target maps, sibling standalone `<frame>.html`). Each linked standalone frame opened and its components folded into `{design_components}`. This is step-03 §2f's frame-coverage denominator on a no-brief run.
 
 Bundle-path-only:
 - No curl invocation occurred.
@@ -417,4 +447,5 @@ Bundle-path-only:
 - Treating the HTML wrapper as the design spec on the URL path (the components and theme files are the spec; the HTML is just the wrapper).
 - Missing asymmetric padding (`padding: '8px 12px'` is two properties, not one).
 - Silently ignoring `{unresolved_var_refs}` or `{config_class_violations}` on the bundle path. These indicate a bundle that should not have been emitted; surface them in the summary even though they don't halt step 1.
+- **Frame-inventory blindness on the URL path (URL.3a) — the "link to records (lookups)" leak.** Cataloging only the primary file's components and never recording the drilled detail drawer + the §13 lookups it consumes. On a raw-URL run there is no brief and no manifest, so step-03 §2f has no other frame-coverage denominator — skip URL.3a and the lookup drawers (warehouse / inbound-batch / import-run / accounting-outcome / catalog / supply-source for Orders.html) vanish: their inner primitives are shared and match somewhere in the impl, so the component grid greens out while the whole drawer ships unbuilt. The bundle declares these frames itself (the `<script src>` comments literally say "… lookups consumed", the modules carry `/* ==== warehouse-lookup ==== */` banners) — capturing them is reading evidence already in hand, not inventing a contract.
 - **State-axis blindness — the dominant leak mode.** Cataloging only inline `style="…"` and ignoring `<style>` blocks, `data-state` sibling variants, or JSX conditional style branches. The default-state catalog will look complete; the bundle's hover/focus/failed/empty/disabled rules will silently bypass the grid and ship as deltas in production. The 2026-05-28 fork retro (PR #827) was caused by exactly this — failed-row tint, failed-row hover, null-supplier styling, and null-total styling were all state-conditional and absent from the cataloged rows. If you finish ingestion with `{design_states}` showing only `[default]` for an interactive component (row, button, input, action cell), that is the signal that this failure mode is in play — re-audit `<style>` blocks before proceeding to step-02.
