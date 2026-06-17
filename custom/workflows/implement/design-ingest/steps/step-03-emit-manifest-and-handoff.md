@@ -36,32 +36,25 @@ Before declaring done, verify and stamp:
 
 Stamp `ingest.date` and `completeness.*` now (the orchestrator has the clock; scripts do not).
 
-## 3. PAUSE — handoff
+## 3. PAUSE — hand back to the user as a conversation, then STOP
 
-Emit the handoff and STOP. Do not proceed to any implementation.
+This is the moment the whole workflow exists for, so don't end it with a status box — **talk to the user.** Write the manifest, then have a real handoff conversation. Do NOT proceed to any implementation.
 
-```
-══════════════════════════════════════════════════════════════════
-✓ design-ingest complete — manifest emitted, NOT yet applied.
+Cover these, in your own words and in this spirit:
 
-  manifest:        {manifest_path}
-  frames:          {frames_drawn} drawn / {frames_total} declared
-  sections:        {sections_total} across {frames_drawn} frames
-  grid scaffold:   {sections_total} rows (status UNVERIFIED)
-  thin-frame warns:{list or none}
+- **Where things stand:** you've gone through the design and listed everything out, and nothing has been changed yet — this is a checkpoint, not a result.
+- **Walk them through what you found:** screen by screen, the sections each one has — in plain language, with the heavy/important screen (usually the detail drawer) spelled out in full so they can actually eyeball it. This is the part they're meant to read, so make it readable, not a dump.
+- **Call out anything you're unsure about:** a screen that came back thin, a section whose data the implementation might not have, anything that made you hesitate.
+- **Invite the check, directly:** ask them to look the list over — does each screen's sections look complete, or is something missing? This is exactly the review that catches a whole section being dropped, so make the ask real, not a footnote.
+- **Tell them what happens next, plainly:** when they're happy, you (or they) run design-implement on the manifest and it'll work straight off this list — it won't re-read the bundle, and every section is already a row so nothing gets skipped. If a screen looks short, they point you at it and you re-check that one.
 
-REVIEW the section inventory in the manifest before applying — confirm every
-frame's sections look complete (this is the gate that catches a section
-dropped inside a present frame). Then implement from the manifest:
+The concrete facts to hand them (weave these in naturally, don't print a form):
 
-  /bmad:bmm:workflows:design-implement {manifest_path}
+- the manifest's saved at `{manifest_path}`
+- it covers `{frames_drawn}` drawn screens (`{frames_total}` declared) and `{sections_total}` sections, one grid row each
+- the next command is `/bmad:bmm:workflows:design-implement {manifest_path}`
 
-design-implement will consume input_kind: ingest_manifest, skip re-ingest,
-and go straight to map → regression-surface → grid → apply. The grid is
-already seeded with every (frame, section) row, so no section can be
-silently skipped.
-══════════════════════════════════════════════════════════════════
-```
+Then stop and wait. If something has genuinely failed (an empty manifest, a broken invariant — §2 above), that's the one case where a short, plain failure note is the right call instead of the friendly walkthrough.
 
 ---
 

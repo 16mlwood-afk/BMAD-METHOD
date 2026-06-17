@@ -29,21 +29,8 @@ Run the frame agents concurrently where the harness allows (independent reads). 
 
 For every `drawn: true` frame, after its agent returns:
 
-- If `{frame_sections}[frame]` is **empty or absent**, this is a frame-completeness defect. The primary frame and any drilled-detail drawer ALWAYS have sections; an empty list means the agent under-enumerated or the frame failed to read. **Halt** with:
-
-```
-══════════════════════════════════════════════════════════════════
-✗ design-ingest: frame-completeness gate failed.
-
-Frame "{frame}" (role: {role}, drawn: true) returned an EMPTY section list.
-
-A drawn frame always has top-level sections. An empty list means the frame
-was under-enumerated — the exact failure this workflow exists to prevent
-(a whole section dropped inside a present frame). Re-run the frame agent
-with the full frame source, or mark the frame drawn:false ONLY if it is
-genuinely an empty/stub frame in the bundle.
-══════════════════════════════════════════════════════════════════
-```
+- If `{frame_sections}[frame]` is **empty or absent**, the gate has tripped — a drawn primary or detail frame always has top-level sections, so an empty list means the agent under-read it, not that the frame is genuinely blank. **First, try to recover quietly:** re-run that one frame's agent with the full frame source. Most empty lists are a missed read and come back fine on the retry, so there's no need to involve the user for that.
+- **If it STILL comes back empty after the retry, stop and talk to the user** — plainly, not in a gate-failure box. Tell them what happened in your own words: you read `{frame}` twice and couldn't pull any sections out of it, which usually means the source didn't load properly or that screen really is an empty stub. Ask them how they want to play it — point you at the right source for that screen, or confirm it's a stub so you can mark it `drawn: false`. Don't carry on with an empty section list: this is exactly the "a whole section goes missing inside a present frame" failure the workflow exists to catch, so it's worth a real check-in.
 
 Do not proceed to step-03 with an empty section list on a drawn frame. (A `drawn: false` frame legitimately has no sections — it is recorded as not-drawn and skipped here.)
 
@@ -53,16 +40,11 @@ Do not proceed to step-03 with an empty section list on a drawn frame. (A `drawn
 
 Before assembling, run one completeness critic over the collected inventory: for each drawn frame, ask "is there a section in the design source that no agent listed?" (e.g. a `<h4>` heading, a `grp`/`data-region` block, a conditionally-rendered banner). Anything found is added; if the critic finds a systematically missed class, re-fan the affected frame. This is the loop-until-dry tail that a single pass misses.
 
-## 4. Report
+## 4. Tell the user you're through the screens
 
-```
-Section enumeration complete:
-  frames enumerated:   {M} drawn
-  sections total:      {sum}
-  per frame:           {frame}: {k} sections · {frame}: {k} sections · …
-  thin-frame warnings: {list or none}
-  empty section lists: {MUST be none — else step-02 halted above}
-```
+A quick, human update — you've been through every screen and here's the shape of what you found. Lead with a sentence, give the per-screen counts plainly, and call out anything that looked thin (a detail drawer with only one section is worth a mention — you'll flag it for them at the review). Keep it short; the detailed walkthrough comes at the step-03 pause. For example: *"Done — went through all eight screens. The order drawer's the big one (10 sections); the worklist has 4, and the lookups run 2–3 each. Nothing came back empty. The dispatch lookup looked a bit thin, I'll point that out when you review."*
+
+What you're conveying (not a format to print): `{M}` drawn frames enumerated · `{sum}` sections total · per-frame counts · any thin-frame warnings · empty section lists (must be none — step-02 would have stopped above otherwise).
 
 ---
 

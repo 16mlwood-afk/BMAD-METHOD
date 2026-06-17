@@ -7,7 +7,7 @@ description: 'Download/locate the design source, extract tokens + layout constra
 
 **Progress: Step 1 of 3** — Next: Fan-out section enumeration (autonomous), then a manifest + handoff pause.
 
-**Announce (one line):** this run ingests the design into a durable, reviewable manifest; it will fan out per-frame to enumerate every section, then pause so the section inventory can be reviewed before any apply. Then proceed autonomously.
+**Kickoff — say hello in your own words (2–3 plain sentences, not a status line).** Tell the user what you're about to do, the way you'd explain it to a colleague: you'll open the design and go through it screen by screen, list out every section so nothing slips through the cracks, and then stop and show them the list before a single line of code gets applied. Mention that the heavy reading happens off to the side (one pass per screen) so it stays thorough. Don't recite step numbers or variable names — just talk. Then carry on.
 
 ## RULES
 
@@ -45,19 +45,17 @@ Each entry: `{ frame, role: primary|drilled-detail|§13-lookup, parent, declared
 
 On the bundle path, the frame inventory comes from `{bundle_manifest}.screens` + the `data-region` roots; same `{ frame, role, drawn }` shape.
 
-## 5. Report and hand to step-02
+## 5. Tell the user what you found, then hand to step-02
 
-Output a brief inventory summary:
+Say it conversationally — lead with a sentence a colleague would say, not a table. Name the screens plainly (the worklist, the order drawer, the lookups), how many there are, and which are actually drawn vs. only referenced. If a screen that should be there looks missing, or something seems off, say so and tell them you'll keep an eye on it. Then say you're about to go through each screen in turn to list its sections.
 
-```
-Design source located ({input_kind}): {design_dir}
-  primary frame:     {target_file}
-  frames declared:   {N} ({comma-separated names})
-  of which drawn:    {M}   not-drawn: {N-M}  (the not-drawn carry as FRAME NOT DRAWN)
-  layout:            {resolved.width}{, centered if so} (authoritative: {bool})
-  tokens cataloged:  {len}
-Sections NOT YET enumerated — step-02 fans out one agent per drawn frame.
-```
+Keep it brief and human. A compact line or two is plenty — for example: *"Pulled the design — it's got the Supply Orders worklist, the order drawer, and six linked-record lookups (eight screens, all drawn). Layout reads full-width. Going through each one now to list its sections."* The figures below are what you're conveying, not a format to print verbatim:
+
+- source + primary frame: `{design_dir}` / `{target_file}`
+- frames: `{N}` declared, `{M}` drawn, `{N-M}` referenced-but-not-drawn (these carry as FRAME NOT DRAWN)
+- layout: `{resolved.width}`{, centered if so} (authoritative: `{bool}`)
+- tokens cataloged: `{len}`
+- sections: not enumerated yet — step-02 fans out one agent per drawn frame
 
 ---
 
