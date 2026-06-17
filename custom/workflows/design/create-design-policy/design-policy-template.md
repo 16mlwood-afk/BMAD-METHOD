@@ -7,13 +7,18 @@ created: '{date}'
 last_updated: '{date}'
 created_by: '{user_name}'
 version: 1
+# inherits: (optional) name of a product-family overlay this project inherits, e.g. `bison-product-family-policy`.
+#   When set, this policy inherits every rule in shared/<overlay>.md verbatim and states ONLY its
+#   project-unique residue below (its exemplar domain, surface topology, imagery, concrete tokens/routes).
+#   Leave unset for a standalone project — author every section in full.
+inherits: '{family_overlay_or_none}'
 consumed_by:
   - design-handoff
   - design-tuning
   - design-implement
   - design-review
   - modify-design-policy
-precedence: design-policy > brand-identity > code tokens > design-standards
+precedence: design-policy > family-overlay (if inherited) > brand-identity > code tokens > design-standards
 ---
 
 # Design Policy: {project_name}
@@ -185,10 +190,13 @@ When a downstream workflow needs a design decision, it resolves from the most sp
 
 | Priority | Source | What it provides | When it wins |
 |----------|--------|-----------------|--------------|
-| 1 | **This policy** (`design-policy.md`) | Strategic direction, page modes, hard failures, tone | Always — this is the project's visual constitution |
-| 2 | **Brand identity** (`brand-identity.md`) | Concrete tokens, hex values, Tailwind classes, component specs | When the policy doesn't specify a concrete value (e.g., exact border-radius) |
-| 3 | **Code tokens** (utility-CSS config, CSS variables, theme/status helper files) | Current implementation values | When neither policy nor brand identity addresses the specific token |
-| 4 | **Design standards** (`shared/design-standards.md`) | Generic anti-patterns, AI fingerprint rules | Fallback defaults — overridden by anything project-specific above |
+| 1 | **This policy** (`design-policy.md`) | Strategic direction, page modes, hard failures, tone, and any **explicit override** of an inherited family rule | Always — this is the project's visual constitution |
+| 2 | **Family overlay** (`shared/<inherits>.md`, *if `inherits` is set*) | Shared product-family rules inherited verbatim (register, status system, money/relational discipline, positive-assertion floor) | When this policy doesn't override the inherited rule. Omit this tier entirely for a standalone project |
+| 3 | **Brand identity** (`brand-identity.md`) | Concrete tokens, hex values, Tailwind classes, component specs | When neither this policy nor the overlay specifies a concrete value (e.g., exact border-radius) |
+| 4 | **Code tokens** (utility-CSS config, CSS variables, theme/status helper files) | Current implementation values | When nothing above addresses the specific token |
+| 5 | **Design standards** (`shared/design-standards.md`) | Generic anti-patterns, AI fingerprint rules | Fallback defaults — overridden by anything project-specific above |
+
+**Inheritance.** When `inherits` is set in frontmatter (e.g. `bison-product-family-policy`), this policy does **not** restate the shared rules — it consumes them from the overlay and authors only its **project-unique residue** (exemplar domain, surface topology, product imagery, concrete tokens/routes, and any project-specific hard failures or positive assertions appended on top of the family floor). To diverge from an inherited rule, override it explicitly in the relevant section here and record the divergence in the changelog — the project policy wins per the order above.
 
 **Conflict rule:** If brand identity contradicts this policy, the policy wins and brand identity should be updated to match. If code tokens contradict both, the code is design debt to be resolved.
 

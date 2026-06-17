@@ -31,6 +31,7 @@ brand_identity_template: '{project-root}/_bmad/bmm/workflows/design/brand-identi
 - **Brownfield first, vision second.** When a project has existing UI, extract the implicit visual language before proposing changes. A policy that contradicts what the product already is invalidates the product, not the other way round.
 - **Brainstorming is opt-in.** Enter brainstorming mode only when the user explicitly requests it or expresses uncertainty. Otherwise ask structured questions and codify the answers — don't lead the user through directions they didn't ask for.
 - **The policy is downstream-load-bearing.** Every design brief, every design-tuning iteration, every implementation review references this document. A loose policy propagates looseness everywhere. Be precise.
+- **Inherit, don't re-port, when a product family exists.** If this project belongs to an established product family that already has a shared overlay in `shared/` (e.g. `bison-product-family-policy.md` for Bison Management tools), set `inherits:` in the frontmatter and author ONLY the project-unique residue — do not copy the family's register, status system, money/relational rules, or positive-assertion floor into this file. Re-porting shared rules per project is the divergence-by-hand failure the overlay exists to replace. A standalone project (no family) leaves `inherits` unset and authors every section in full.
 
 ---
 
@@ -57,6 +58,7 @@ This uses **step-file architecture** for focused execution:
 - `{operational_bias}` - "operational" (process rows, take actions) or "analytical" (understand patterns, compare data) or "hybrid"
 - `{visual_direction}` - The chosen direction (from brainstorming or direct input)
 - `{brainstorm_needed}` - Whether to enter brainstorming mode ("yes" or "no")
+- `{family_overlay}` - Name of an applicable product-family overlay in `shared/` (e.g. `bison-product-family-policy`), or "none" if this is a standalone project. Sets the `inherits` frontmatter and switches step-04 to residue-only authoring.
 - `{output_path}` - Where to write the design policy document
 
 ---

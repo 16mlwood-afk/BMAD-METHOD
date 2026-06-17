@@ -35,8 +35,22 @@ Set the metadata fields:
 - `created_by` = `{user_name}`
 - `version` = 1
 - `consumed_by` and `precedence` are pre-filled in the template — leave them as-is
+- `inherits` — set to a product-family overlay name if this project belongs to a family that has one in `{project-root}/_bmad/bmm/workflows/design/shared/` (e.g. `bison-product-family-policy` for Bison Management tools). Detect this from `{product_type}` / `{project_name}` and by listing `shared/*-product-family-policy.md`. If a matching overlay exists, set `inherits` to its name and write the **residue-only** policy (see 2b below). If no family overlay applies, set `inherits` to `none` and author every section in full.
 
-### 2. Populate each section
+### 2b. If `inherits` is set — write the residue-only policy (do this INSTEAD of a full §2 fill)
+
+When `inherits` names a family overlay, the project policy does **not** restate the shared rules. Read the overlay (`shared/<inherits>.md`) and write only the project-unique residue, which the overlay's `§Z` ("what stays project-local") enumerates explicitly:
+
+- **Visual Direction** — the one-sentence identity for THIS product (the overlay covers the family register/tone; state only what is unique here).
+- **Exemplar domain content** — the real records, identifiers, and surfaces of this product.
+- **Surface topology unique to this product** — any split-by-view / multi-handler / mode rules driven by this product's operations, not the family.
+- **Product-specific hard failures and positive assertions** — appended on top of the family floor (§E / §I in the overlay), never duplicating it.
+- **Concrete tokens, routes, file paths** — this project's precedence #1.
+- A short **"Inherits"** note at the top: "This policy inherits `shared/<inherits>.md` (the family overlay). Rules not stated here are inherited verbatim; sections below are this project's residue or explicit overrides."
+
+To **override** an inherited rule, state the override in the relevant section and add a changelog row — the project policy wins. Then skip the full per-section fill in step 2 (the overlay already provides those sections) and go to step 3.
+
+### 2. Populate each section _(full fill — for standalone projects where `inherits: none`)_
 
 For each section in the template, translate the gathered inputs into concrete policy:
 
