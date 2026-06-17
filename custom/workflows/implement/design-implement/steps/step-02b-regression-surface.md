@@ -45,32 +45,31 @@ Record one line — "Regression surface: none — the handoff retains every prod
 
 **If `{dropped_capabilities}` is non-empty → HALT and present the regression report + strategy choice.** Do not proceed to the grid until the user chooses. Present:
 
-```
-Regression check — this handoff DROPS {N} capabilit(y/ies) the live page has today:
+**Be ADVISORY, not interrogative.** The analysis is YOURS to do — give a per-capability verdict (keep / safe-to-drop) with a one-line reason each, then a single recommended plan the user can approve in one word. Do **not** hand the user a blank menu and ask "which of these do you want?" — making them assemble the keep/drop list is the offload this step exists to avoid. The user's job is to approve or adjust your recommendation, not to enumerate it.
 
-  1. {capability} ({class}) — {why it matters}.        prod: {evidence}   handoff: {absent|unclear}
-  2. {capability} ({class}) — {why it matters}.        prod: {evidence}   handoff: {absent|unclear}
+```
+Regression check — this handoff DROPS {N} capabilit(y/ies) the live page has today.
+My read on each, then a recommended plan:
+
+  1. {capability} ({class}) — KEEP. {why it's load-bearing}.        prod: {evidence}
+  2. {capability} ({class}) — KEEP. {why}.                          prod: {evidence}
+  3. {capability} ({class}) — SAFE TO DROP. {why it's genuinely droppable here}.   prod: {evidence}
   …
 
-These may be intentional simplifications or accidental omissions — I can't tell from the
-design, so it's your call. How should I implement this handoff?
-
-  [restyle-only]  Adopt the new design's TREATMENT only; keep ALL {N} capabilities.
-                  Nothing is dropped — the handoff is styling guidance. (Safest; recommended
-                  if any of the above is load-bearing.)
-  [additive]      Adopt the new design's structure/composition AND retain all {N} dropped
-                  capabilities (merge the new look with the existing functionality).
-  [partial]       You pick which of the {N} to keep and which to drop (I'll list them to toggle).
-  [replacement]   Adopt the handoff wholesale — the {N} capabilities are intentionally removed.
-                  (I'll run the step-04 §9 orphaned-action check so nothing leaks as a silent half-loss.)
+Recommended: {strategy} — keep {…}, drop {…}. {one-line rationale}.
+I'll apply this unless you'd rather change it (e.g. "also keep 3", "drop 1 too", "restyle only").
 ```
 
-Lead with the **recommendation**: if any dropped capability is load-bearing (a §13 linked record, a §15 economics path, an action-wired mutation, an audit/history surface), recommend **restyle-only** or **additive** — never silently lean toward replacement. State the recommendation in one line above the menu.
+Rules for the advisory:
 
-### 5. Record the choice
+- **Every dropped capability gets YOUR verdict — KEEP or SAFE-TO-DROP — with a grounded one-line reason.** A §13 linked record, a §15 economics/cost-recon path, an audit/history/raw-exchange surface, an action-wired mutation → almost always **KEEP** (these are functional capabilities operators rely on). A genuinely redundant, decorative, or superseded element → **SAFE TO DROP**. Reason from what the capability *does*, not from whether the handoff happened to draw it.
+- **Default the recommendation non-destructive; when in doubt on a capability, advise KEEP.** Never lean toward dropping a load-bearing surface. The recommended `{implementation_strategy}` falls out of the per-capability verdicts: all KEEP ⇒ `restyle-only` (or `additive` if the new composition is adopted); a genuine subset droppable ⇒ `partial` (the advised mix you just proposed); everything droppable ⇒ `replacement` (rare).
+- **State the plan as a decision you're ready to execute, then invite adjustment.** "I'll apply this unless you'd rather change it" — a confirm-or-tweak, not an open question. The strategy names are shorthand for what the plan resolves to; the user replies in plain language.
 
-- `{implementation_strategy}` ∈ `restyle-only | additive | partial | replacement`.
-- `{capability_dispositions}` — for `partial`, the per-capability `keep | drop` map; for the others, derived (restyle-only/additive ⇒ all `keep`; replacement ⇒ all `drop`).
+### 5. Record the approved plan
+
+- `{implementation_strategy}` ∈ `restyle-only | additive | partial | replacement` — the strategy your recommendation resolved to, as approved or adjusted by the user.
+- `{capability_dispositions}` — the per-capability `keep | drop` map. For `partial` this is **the advised mix you proposed** (AI-authored, user-confirmed), NOT a list the user assembled; for the others it is derived (restyle-only/additive ⇒ all `keep`; replacement ⇒ all `drop`). If the user adjusted the recommendation, record the adjusted map.
 
 **Autonomous mode does NOT override this.** A capability-drop decision is *intent*, outside decision autonomy (see autonomy scoping). In autonomous mode, default to the **non-destructive** strategy — `restyle-only` (keep every capability) — and disclose loudly in the run output (`autonomous: kept all {N} dropped capabilities — confirm if replacement was intended`). Autonomous mode never silently drops a production capability.
 
@@ -94,6 +93,7 @@ Read fully and follow: `{project-root}/_bmad/bmm/workflows/implement/design-impl
 ## FAILURE MODES
 
 - **Reproducing the handoff's omission as fact.** Treating "the new design doesn't show the cost-recon / the activity timeline / the linked records" as "remove them" without asking. The redesign is a proposal; the drop is an intent decision that belongs to the user.
+- **Offloading the keep/drop analysis to the user.** Presenting a bare strategy menu and asking "which of these do you want to keep?" is the failure §4 exists to prevent. You read the page and the handoff — so YOU advise, per capability, with reasons, and propose a single plan to approve. Make the user assemble the list and you've handed back the work that was yours to do.
 - **Skipping the halt because the grid looked clean.** The component sweep greens out on a redesign that drops a whole capability (its inner primitives exist elsewhere) — exactly why this preflight runs before the grid, not after.
 - **Mis-scoring an undrawn-but-promised frame as dropped.** A §13 lookup the brief §7 / frame inventory promises but the static bundle didn't render is present-in-intent, not a regression — check the contract before flagging.
 - **Letting autonomous mode pick `replacement`.** Intent autonomy is out of scope; autonomous defaults to keep-all and discloses.

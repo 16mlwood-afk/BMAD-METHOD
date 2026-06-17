@@ -7,7 +7,7 @@ description: 'Ingest the design source — either fetch and extract a Claude Des
 
 **Progress: Step 1 of 4** (+ a step-02b regression-surface preflight between map and grid) — Next: Map Implementation (autonomous)
 
-**Announce the plan up front (one line to the user) before ingesting:** this run will ingest the handoff, map the current implementation, then — *before changing any code* — **run a regression-surface check: what does this handoff DROP relative to what production does today?** If it drops a capability, the run pauses and asks how to implement (restyle-only · additive · partial · replacement) rather than silently reproducing the omission (step-02b). State this so the user knows the capability check is coming; then proceed autonomously through ingest + map.
+**Announce the plan up front (one line to the user) before ingesting:** this run will ingest the handoff, map the current implementation, then — *before changing any code* — **run a regression-surface check: what does this handoff DROP relative to what production does today?** If it drops a capability, the run pauses and **advises a per-capability keep/drop plan to approve** — not a blank menu to fill in — rather than silently reproducing the omission (step-02b). State this so the user knows the capability check is coming; then proceed autonomously through ingest + map.
 
 ## RULES:
 
