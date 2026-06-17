@@ -82,7 +82,7 @@ Re-read each modified file, then walk the Step-3 grid **row by row** and give EV
 | Disposition | Meaning | Required note |
 |---|---|---|
 | `✓ applied` | The delta is now fixed in the implementation (re-verified by re-reading the file). | — |
-| `⊘ deferred` | Intentionally not applied this pass. | **Reason, one of:** `needs-data` (the page load / server doesn't provide the value — name the field), `out-of-scope` (explicitly outside this run's target), `judgment` (a product decision the implementer made — state it), `content-lane` (a formatter/enum-driven identifier cell from step-03 §2c — its rendered value cannot be verified against a mock-data bundle; routed to design-review / design-tuning on the LIVE page). |
+| `⊘ deferred` | Intentionally not applied this pass. | **Reason, one of:** `needs-data` (the page load / server doesn't provide the value — name the field), `out-of-scope` (explicitly outside this run's target), `judgment` (a product decision the implementer made — state it), `content-lane` (a formatter/enum-driven identifier cell from step-03 §2c — its rendered value cannot be verified against a mock-data bundle; routed to design-review / design-tuning on the LIVE page), `capability-protected` (the row would remove a production capability the user chose to KEEP at step-02b — `{capability_dispositions}` marks it `keep`; the handoff's treatment is applied around it, the capability is not deleted). |
 | `✗ dropped` | Cannot or will not apply at all. | **Reason** — why it's not implementable as specified. |
 
 Every `content-lane` row from step-03 §2c (`{content_unverified_count}` of them) is disposed `⊘ deferred(content-lane)` — its CSS may well have been applied, but its *value-formatting* is explicitly NOT certified here. Do not silently `✓` it; do not drop it. It carries into §9 under "Content-lane verification owed (live page)" with the routing command, so the run hands the content lane off out loud instead of implying the grid covered it.
@@ -168,6 +168,12 @@ Output — the **"Deltas not applied" section is mandatory and never omitted.** 
 Design implementation complete.
 
 Baseline: {baseline_commit}
+Implementation strategy (step-02b): {implementation_strategy}
+{if dropped_capabilities was non-empty:}
+  Regression surface vs production: {N} capabilit(y/ies) the handoff dropped —
+  {for each: capability — KEPT (protected) | DROPPED (removed, confirmed clean below)}
+{else:}
+  Regression surface vs production: none — handoff retained every production capability.
 Deltas: applied {A}/{delta_count} · deferred {D} · dropped {X}
 PR: {pr_url}
 Deploy: handled by ./scripts/bmad-deploy.sh — run after merge per the BMAD contract

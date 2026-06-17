@@ -5,11 +5,13 @@ description: 'Ingest the design source — either fetch and extract a Claude Des
 
 # Step 1: Ingest Design
 
-**Progress: Step 1 of 4** — Next: Map Implementation (autonomous)
+**Progress: Step 1 of 4** (+ a step-02b regression-surface preflight between map and grid) — Next: Map Implementation (autonomous)
+
+**Announce the plan up front (one line to the user) before ingesting:** this run will ingest the handoff, map the current implementation, then — *before changing any code* — **run a regression-surface check: what does this handoff DROP relative to what production does today?** If it drops a capability, the run pauses and asks how to implement (restyle-only · additive · partial · replacement) rather than silently reproducing the omission (step-02b). State this so the user knows the capability check is coming; then proceed autonomously through ingest + map.
 
 ## RULES:
 
-- FULLY AUTONOMOUS. No user interaction. No menus. No halting.
+- FULLY AUTONOMOUS through ingest + map. No user interaction in steps 01–02. The first (and usually only) halt is step-02b's strategy choice, and only when the handoff drops a production capability.
 - **Branch on `{input_kind}` at the top.** Two ingestion paths converge on the same downstream state. Never mix them: a `synthesize_bundle` path never calls curl; a `claude_design_url` path never reads `manifest.yaml`.
 - If download fails (URL path only), retry once. If it fails again, report the error and stop.
 - Read every file in the bundle that the target design file references — do not skip any.

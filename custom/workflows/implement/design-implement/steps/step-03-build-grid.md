@@ -209,6 +209,10 @@ For every token in `{impl_token_provenance}` (step-02 §5) with `scope: per-scre
 
 Count these as `{token_noncanonical_count}` (separate from `{delta_count}` — disclosure items, not deltas applied here). They carry into the step-04 §9 report under "Token provenance (non-canonical)" with the cede routing, so the run says "these tokens resolve only from per-screen CSS — promotion to the canonical surface is a design-review call" rather than implying the token mapping was clean.
 
+### 2h. Flag protected-capability rows (honor the step-02b strategy)
+
+Before counting, reconcile the grid against `{capability_dispositions}` (step-02b). The chosen `{implementation_strategy}` governs what the apply is allowed to remove: any grid row whose effect would **delete or strip a capability the user marked `keep`** (a §13 lookup drawer, a cost-recon/economics surface, an activity timeline, a wired action — anything in `{production_capabilities}` disposed `keep`) is tagged **`capability-protected`**. The handoff's treatment is applied *around* the kept capability; the capability itself is not removed just because the new design's frame omits it. Step-04 disposes these `⊘ deferred(capability-protected)`, never `applied`. (For `replacement` / dropped capabilities, no flag — the handoff governs and step-04 §9's orphaned-action check confirms the removal is clean.) If `{implementation_strategy}` is `restyle-only`, treatment rows apply normally but **no** row may remove any capability — the whole point of that strategy.
+
 ### 3. Count Deltas
 
 Count the number of rows where the Delta column is NOT `✓`:

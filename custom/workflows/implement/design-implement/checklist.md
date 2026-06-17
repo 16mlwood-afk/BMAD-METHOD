@@ -24,6 +24,14 @@
 - [ ] Page-shell wrapper chain walked (§1a) — `{impl_page_shell}` effective container width resolved after every nested layout cap (+ sibling-page convention note)
 - [ ] Baseline commit SHA recorded
 
+## Regression-Surface Preflight (Step 2b)
+
+- [ ] `{production_capabilities}` and `{handoff_capabilities}` inventoried at the FEATURE level (routing/sub-surfaces, §13 linked records, economics/cost-recon, composite status/header, activity/audit, bulk actions/filters, action-wired mutations) — not CSS
+- [ ] `{dropped_capabilities}` computed (prod minus handoff); an undrawn-but-promised handoff frame (brief §7 / `{design_frame_inventory}`) NOT mis-scored as dropped
+- [ ] If the dropped set is non-empty, the run **HALTED** with the regression report + strategy menu and recorded `{implementation_strategy}` + `{capability_dispositions}` — it did NOT proceed to the grid on an unconfirmed replacement (autonomous mode defaulted to non-destructive keep-all and disclosed)
+- [ ] Kept capabilities flagged **protected** for step-03/04; dropped capabilities routed to the step-04 §9 orphaned-action confirmation
+- [ ] New surface with no production page → recorded "no regression surface" and proceeded
+
 ## Comparison Grid (Step 3)
 
 - [ ] Every design component matched to its implementation counterpart

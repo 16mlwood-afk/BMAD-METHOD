@@ -175,7 +175,7 @@ Store as `{baseline_commit}`.
 
 ## COMPLETION
 
-Read fully and follow: `{project-root}/_bmad/bmm/workflows/implement/design-implement/steps/step-03-build-grid.md`
+Read fully and follow: `{project-root}/_bmad/bmm/workflows/implement/design-implement/steps/step-02b-regression-surface.md`
 
 ---
 
