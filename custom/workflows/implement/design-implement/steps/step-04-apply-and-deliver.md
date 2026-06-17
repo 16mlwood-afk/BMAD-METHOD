@@ -41,6 +41,7 @@ For each delta, determine the correct fix approach:
 | Grid template edit | Column widths differ | `grid-cols-[28px_1fr_auto]` → `grid-cols-[32px_1fr_auto]` |
 | Content text change | Label or sub-text differs | `{count} invoices scored` → `vs previous batch` |
 | New component | Design has a component the implementation lacks | Create the component file |
+| Capability build | A `capability-build` row (step-03 §2h) — the net-new structure of an ADDED/DEEPENED capability from `{uplift_capabilities}` (a new band, lane segmentation, action column, drawer) | Construct it — wire its data + actions, not just its markup. This is feature work, not a CSS swap; it is `✓ applied (built)` in the ledger, never deferred as "MISSING component, out of scope." |
 
 ### 2. Apply Fixes Component by Component
 
@@ -88,6 +89,7 @@ Re-read each modified file, then walk the Step-3 grid **row by row** and give EV
 Every `content-lane` row from step-03 §2c (`{content_unverified_count}` of them) is disposed `⊘ deferred(content-lane)` — its CSS may well have been applied, but its *value-formatting* is explicitly NOT certified here. Do not silently `✓` it; do not drop it. It carries into §9 under "Content-lane verification owed (live page)" with the routing command, so the run hands the content lane off out loud instead of implying the grid covered it.
 
 Rules:
+- **A `capability-build` row (step-03 §2h) must be `✓ applied (built)` — never `⊘ deferred(out-of-scope: MISSING component)`.** The step-02b uplift inventory makes the net-new structure in-scope by definition; a `capability-build` row left deferred-as-out-of-scope is the exact "read the uplift as a reskin" failure, just relocated to the ledger. Build it, or carry it as an explicit `✗ dropped` with a named reason the user will see in §9 — never let it lapse silently. An UNBUILT uplift capability surfaces in the §9 "Capabilities built" section as a Tier-1 incompletion.
 - **No row without a disposition.** A grid row you neither applied nor explicitly deferred/dropped means the run is incomplete — go back and resolve it. "I didn't get to it" is not a disposition.
 - **`deferred`/`dropped` must carry a reason from the table above.** A bare "deferred" is the silent-drop in disguise.
 - Write the disposition into the grid artifact next to each row, and update the summary line at the bottom:
@@ -188,6 +190,11 @@ Implementation strategy (step-02b): {implementation_strategy}
   {for each: capability — KEPT (protected) | DROPPED (removed, confirmed clean below)}
 {else:}
   Regression surface vs production: none — handoff retained every production capability.
+{if uplift_capabilities was non-empty:}
+  Uplift surface vs production: {N} net-new/deepened capabilit(y/ies) the handoff added —
+  {for each: capability — BUILT (constructed, see "Capabilities built" below) | UNBUILT (Tier-1 failure — must not ship)}
+{else:}
+  Uplift surface vs production: none — handoff added no capability the live page lacked (a true restyle).
 Deltas: applied {A}/{delta_count} · deferred {D} · dropped {X}
 PR: {pr_url}
 Deploy: handled by ./scripts/bmad-deploy.sh — run after merge per the BMAD contract
@@ -252,6 +259,20 @@ Policy-conformance & behavior (ceded — NOT certifiable from a generated bundle
     the `verify` skill (drive the live app and exercise it)  ·  or design-review (live Chrome)
   Do not let "implementation complete" imply these were checked here.
 
+Capabilities built (uplift — net-new / deepened structure the handoff added):
+{Mandatory whenever step-02b's `{uplift_capabilities}` was non-empty. Enumerate EVERY added/deepened
+ capability and confirm it was CONSTRUCTED — the mirror of the "Capabilities removed" disclosure below.
+ An uplift item that did not get built is a Tier-1 failure: the run must NOT declare done while a
+ capability the handoff specified ships unbuilt. This is the section that stops an uplift redesign from
+ being silently delivered as a reskin (the inbound-flow supply-orders miss: lanes + analytics/disposition
+ band + action column + co-views, read as "treatment alignment" and never built).}
+{if uplift_capabilities was empty:}
+  None — handoff added no capability (pure restyle/regression run).
+{else, one bullet per added/deepened capability:}
+  - {capability} ({ADDED | DEEPENED}) — built at {file(s)} ⇒ {one-line: what the operator can now do}.
+  {or, if any was NOT built:}
+  - {capability} ({ADDED | DEEPENED}) — ✗ UNBUILT (Tier-1) ⇒ the handoff specified it and it is not in the impl. This run is INCOMPLETE — build it or carry it as an explicit, named deferral, never ship silently as "done."
+
 Capabilities removed (orphaned actions):
 {Derive this MECHANICALLY, do not recall it. If the apply DELETED or REPLACED any component
 file (a redesign that swaps the surface — not a pure in-place restyle), then for every server
@@ -277,6 +298,7 @@ A completion report that prints a fixed-count but omits the "Deltas not applied"
 - **The completion report's "Frame coverage" section is present whenever step-03 §2f resolved a frame contract from ANY source** (brief §7, or the bundle's `{design_frame_inventory}` on a raw-URL run, or the manifest) — every contract frame accounted for as built / missing-in-impl (Tier-1) / not-drawn (routed); a "green" report that never enumerated the frame contract is non-conformant, including the no-brief URL run where the §13 lookup drawers are the contract
 - **The completion report's "Content-lane verification owed (live page)" section is present** — every `content-lane` deferral (step-03 §2c) enumerated with its formatter ref + the design-review / design-tuning routing, or stating "None"
 - **The completion report's "Token provenance (non-canonical)" section is present** — every shared-semantic token that resolved only from a per-screen stylesheet (step-03 §2g) enumerated with its source file + the design-review cede, or stating "None". A run must never report token mapping as "1:1 / matches" while a per-screen-only shared-semantic token is unsurfaced
+- **The completion report's "Capabilities built (uplift)" section is present whenever step-02b's `{uplift_capabilities}` was non-empty** — every added/deepened capability enumerated and confirmed BUILT (with its file + what the operator can now do), or any UNBUILT one flagged Tier-1 incomplete. A run that read an uplift redesign as "treatment alignment" and shipped without constructing the net-new surface is non-conformant — this is the mirror of the orphaned-action disclosure.
 - **The completion report's "Capabilities removed (orphaned actions)" section is present whenever the apply deleted/replaced components** — derived by grepping for now-zero-caller actions among those the removed files invoked, or stating "None — no capability lost". A surface-swapping redesign never ships without this disclosure.
 - **Copy & frame chrome are transcribed verbatim or logged as a forced deviation (§5b)** — every literal string and wrapper element (header / breadcrumb / footer) matches the design, or its deviation is in the ledger with a reason; and the **render-compare done-gate was run** (built surface beside the design render), or explicitly marked owed-and-routed. "Done" is never declared off the green grid alone.
 - Build passes; PR created and merged; grid artifact updated with dispositions; no regressions introduced
@@ -289,6 +311,7 @@ A completion report that prints a fixed-count but omits the "Deltas not applied"
 - **A bare `deferred` with no reason** — the silent drop wearing a label. Every deferral names `needs-data` / `out-of-scope` / `judgment` / `content-lane` + detail.
 - **Letting "implementation complete" imply the identifier *values* were checked.** design-implement aligns a marketplace/supplier/ASIN cell's CSS against the bundle; it does NOT verify the formatter renders the right value on real data (the bundle is mock data). Omitting the "Content-lane verification owed" section ships that false implication — it is the design-implement counterpart of the inbound-flow `/orders` raw-enum leak that the grid's mock-data comparison could never catch.
 - **Collapsing a per-screen-only token into "tokens map ~1:1."** A shared-semantic token (status / colour / type) that resolves only from a per-screen stylesheet is design debt per `docs/design-policy.md` §8, not a clean canonical mapping — and "the bundle was generated from that same CSS" does not launder it (the bundle is a generated proposal, §2e). Declaring 1:1 because the token is "defined somewhere" buries the §3/§13 cross-surface-drift risk. Disclose it (§2g / §9) and cede promotion to design-review; do NOT gate the render on it either — the token works, placement is an architecture call this workflow does not own.
+- **Shipping an uplift redesign as a reskin — the net-new capability never built.** The mirror of the orphaned-action miss: step-02b inventoried `{uplift_capabilities}` (a new analytics/disposition band, lane-by-handler segmentation, an action column, a co-view, a drawer), step-03 tagged them `capability-build`, and the apply restyled the existing shell while never constructing them — then declared done off a green-ish grid. The "Capabilities built" §9 disclosure is the backstop: every added/deepened capability must be confirmed built, or flagged Tier-1 incomplete. This is the inbound-flow supply-orders failure that read lanes + the disposition band + the action column as "treatment/token alignment, production is a superset."
 - **Deleting/replacing components without the orphaned-action check.** A surface-swapping redesign removes files that called server actions; if the new surface doesn't re-wire one, that capability is silently gone — and because it was never a grid row, the apply ledger can't catch it. The grid-driven apply makes this *more* likely, not less, by focusing attention on enumerated deltas. The orphaned-action grep + the "Capabilities removed" disclosure is the backstop; skipping it is how the EOS batch-detail EAN→ASIN remap shipped as a silent loss.
 - **Interpreting where transcription was required — copy & chrome drift.** The grid has no row for a literal string or a wrapper element, so relabeling a footer, paraphrasing a sub-caption, swapping currency codes for symbols, or substituting a stock shell for the design's breadcrumbed header all leave the CSS grid all-green while the surface reads visibly worse than the handoff. Each is a small "I'll improve this" the workflow gives no license for (workflow.md Critical Rules). The grid's CSS-exhaustiveness *manufactures* the false confidence — "every cell matched" feels done. The §5b transcription pass + render-compare done-gate is the backstop; declaring done off the green grid is the leak (the supply-order cost drawer: generic header, relabeled footer, "import" for "deferred import", "€ → £" for "EUR → GBP" — every cell green).
 - Fixing some deltas but not all ("the rest are minor" — fix them all, or defer-with-reason)
