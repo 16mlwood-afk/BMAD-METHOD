@@ -187,6 +187,26 @@ Rules:
 - **A frame present in both** runs the full §2 component × state × property sweep *within that frame* (a drawer's own pills, money cells, lookups get the same per-property rigor as the page) — the Frame-coverage row only certifies the frame exists; the components inside it are still compared normally.
 - **Drawer money cells inherit the content-lane (§2c) and policy-cede (§2e) rules** — a drawer's `€60`-style figure is bundle-mock data; its basis-completeness (`docs/design-policy.md` §15) is policy-conformance, ceded to design-review, not certified here. The Frame-coverage row certifies the drawer was *drawn and built*; whether its money is basis-complete is design-review's call.
 
+### 2g. Token-provenance row — a shared-semantic token resolved only from a per-screen stylesheet (DISCLOSE + cede, never gate)
+
+A `var(--*)` that resolves cleanly is **not automatically a clean "1:1" mapping** — *which layer* it resolved from is a distinction the project's token precedence treats as load-bearing. `docs/design-policy.md` §8 names the **canonical token surface** narrowly: `src/styles/tokens.css` + the `@theme inline` block in `globals.css` are "ground truth for what exists in the system," and the v3 note marks the ~25 per-screen stylesheets as migration debt. So a design token (e.g. `--status-success-text`) that the impl resolves **only from a per-screen file** (`supply-orders.css` lines 34–50) is resolvable at runtime but is **not a system token** — and a *status / colour / type* token in that position is the exact cross-surface-drift risk §3/§13 forbid (the same status reads a different colour on a sibling surface that doesn't load that screen's CSS). The miss this section closes is the run that resolves such a token, finds it "defined somewhere," and collapses it into "the mapping is effectively 1:1" — papering over real design debt.
+
+**But promote-or-leave is token *architecture*, which design-implement does NOT own** — the same boundary as the policy cede (§2e). The token works on this screen; whether it should be lifted into `tokens.css` is a refactor call for `design-review` (or the owner), not a gate that blocks this render. So design-implement **discloses and cedes**, it does not gate or thrash:
+
+For every token in `{impl_token_provenance}` (step-02 §5) with `scope: per-screen` **AND** `semantic_class: shared-semantic`:
+
+1. **Do NOT gate the render and do NOT score it a Tier-1/2/3 delta.** Its treatment rows (the resolved colour value, radius, font) are compared normally in §2/§2b — a per-screen token whose *value* differs from the design is still a real colour delta there. §2g is only about the token's *placement*, which is not a pixel the grid can fix.
+2. **Emit one Token-provenance row** — fixed shape, not a delta, not counted in `{delta_count}`:
+
+   | Component | State | Property | Design | Implementation | Delta |
+   |-----------|-------|----------|--------|----------------|-------|
+   | {token} | — | `token-provenance: {semantic_class} resolved per-screen` | canonical surface (`tokens.css` / `@theme`) | resolved only from `{source_file}` (not canonical) | `NON-CANONICAL TOKEN → cede promote-or-leave to design-review (token architecture)` |
+
+3. **A `local-constant` per-screen token is NOT flagged** — a one-off spacing/layout var with no cross-surface contract legitimately lives local; disclosing it would be noise. Only shared-semantic tokens (status / colour / type) earn the row.
+4. **Never "resolve" the debt by declaring 1:1.** Finding the token in a per-screen stylesheet is not evidence the mapping is canonical — it is the evidence it is *non*-canonical. The bundle being generated from that same per-screen CSS does not launder it; a generated bundle is a proposal, not the spec (§2e).
+
+Count these as `{token_noncanonical_count}` (separate from `{delta_count}` — disclosure items, not deltas applied here). They carry into the step-04 §9 report under "Token provenance (non-canonical)" with the cede routing, so the run says "these tokens resolve only from per-screen CSS — promotion to the canonical surface is a design-review call" rather than implying the token mapping was clean.
+
 ### 3. Count Deltas
 
 Count the number of rows where the Delta column is NOT `✓`:
@@ -284,6 +304,7 @@ Read fully and follow: `{project-root}/_bmad/bmm/workflows/implement/design-impl
 - **Every primitive with ≥2 implementations ran the §2a consistency pass; sibling-divergence Tier-1 deltas surfaced explicitly in the summary**
 - **Every colour delta compared resolved values numerically (§2b), never by class name or family**
 - **Every formatter/enum-driven canonical-identifier cell (`{impl_identifier_cells}`) carries a `content-lane: CONTENT-LANE-UNVERIFIED` row (§2c) — its value was NOT pixel-matched against the mock bundle, and `{content_unverified_count}` is surfaced separately in the summary**
+- **Every shared-semantic token that resolved only from a per-screen stylesheet (`{impl_token_provenance}` `scope: per-screen`) carries a `token-provenance: NON-CANONICAL TOKEN` row (§2g) — disclosed and ceded to design-review, never collapsed into "1:1" and never gated; `{token_noncanonical_count}` surfaced separately**
 - **Exactly one Page-shell row exists (§2d), comparing `{design_layout_constraints}` against `{impl_page_shell}`'s effective container width — its Design value is the policy-authoritative entry; a width/centering mismatch is surfaced as Tier-1, never omitted because "no component owns it"**
 - **One Ceded-dimensions note exists (§2e) — policy-conformance (prohibitions/tone/motion/iconography) + behavior are explicitly ceded to design-review / design-review-pr / verify, NOT faked into a grid check against the generated bundle**
 - **One Frame-coverage row per frame in the resolved contract (§2f) — brief §7, OR (raw-URL, no brief) the bundle's declared `{design_frame_inventory}`, OR the manifest. A frame absent from the bundle is `FRAME NOT DRAWN`, routed (`{frame_uncovered_count}`) not inferred; a drawn-but-unbuilt frame is Tier-1 (this is the verdict for the §13 lookup drawers on a no-brief URL run); frames present in both ran the full per-property sweep inside them. Emitting zero Frame-coverage rows because "there was no brief" is non-conformant — the bundle declares its own lookup frames.**

@@ -149,13 +149,18 @@ Flag every site that is `formatter` or `enum-map` **AND** renders a **canonical-
 - **In design but not implementation:** Mark as `MISSING — needs creation`. Note what the component does.
 - **In implementation but not design:** Mark as `EXTRA — verify intentional`. These might be implementation-only UI (loading states, error boundaries).
 
-### 5. Handle CSS Custom Properties and Computed Styles
+### 5. Handle CSS Custom Properties and Computed Styles — resolve the value AND record its provenance
 
-Some implementations use CSS custom properties (e.g., shadcn tokens like `bg-card`, `text-foreground`). For these:
+Some implementations use CSS custom properties (e.g., shadcn tokens like `bg-card`, `text-foreground`). For each one a design token maps to:
 
-1. Find where the custom property is defined (usually in `app.css` or a theme file)
-2. Resolve to the actual computed value
-3. Record both the property reference and the resolved value
+1. **Find where the custom property is defined** and resolve it to the actual computed value.
+2. **Record the resolved value** AND the **source layer** it resolved from — this is the provenance axis step-03 §2g needs. A `var(--*)` that resolves is not automatically a clean "1:1" mapping; *where* it resolves from matters per the project's token precedence (`docs/design-policy.md` §8: the **canonical token surface** is `src/styles/tokens.css` + the `@theme inline` block in `globals.css` — those are "ground truth for what exists in the system"). Tag each resolved token:
+   - **`canonical`** — defined in `tokens.css` or the `globals.css @theme` block.
+   - **`per-screen`** — defined ONLY in a per-screen / per-feature stylesheet (e.g. `supply-orders.css`), not the canonical surface. (The project has ~25 such stylesheets the policy's v3 note marks as migration debt — a token living only here is resolvable at runtime but is NOT a system token.)
+3. Also tag the token's **semantic class** — `shared-semantic` (a status / colour / type token, which §3 mandates read identically across sibling surfaces) vs `local-constant` (a one-off spacing/layout value with no cross-surface contract). This is what lets step-03 §2g flag only the tokens that *should* be canonical, not every per-screen var.
+4. Store as `{impl_token_provenance}` — a list of `{ token, resolved_value, source_file, scope: canonical | per-screen, semantic_class: shared-semantic | local-constant }`.
+
+**Resolve every referenced token before reporting any mapping as "1:1."** A token still pending lookup, or one that only half-resolved (some screens define it, others don't), is NOT resolved — do not fold it into a "tokens map ~1:1" claim. Carry the unresolved set forward explicitly; the premature "effectively 1:1" is the exact miss step-03 §2g exists to catch.
 
 ### 6. Record Baseline Commit
 
@@ -181,6 +186,7 @@ Read fully and follow: `{project-root}/_bmad/bmm/workflows/implement/design-impl
 - **Every render site of every primitive enumerated (not just the named component) — `{impl_render_sites}` populated, multi-implementation primitives captured in full**
 - **Every render site tagged with its value-source (§3d); formatter/enum-driven canonical-identifier cells captured in `{impl_identifier_cells}` for step-03 §2c routing**
 - Every CSS property on every implementation component cataloged with resolved values
+- **Every design-mapped CSS custom property resolved AND tagged with provenance (§5) — `{impl_token_provenance}` populated with `scope` (canonical vs per-screen) + `semantic_class`; no token reported as "1:1" while still unresolved**
 - **Page-shell wrapper chain walked (§1a) — `{impl_page_shell}` populated with the EFFECTIVE container width after every nested layout cap, centering, and padding (plus a sibling-page convention note if relevant)**
 - Missing/extra components flagged
 - `{impl_components}` and `{impl_config}` populated

@@ -41,6 +41,8 @@ This uses **step-file architecture** for focused execution:
 - `{comparison_grid}` — The full component × state × property delta table
 - `{delta_count}` — Number of (component, state, property) triples with non-zero deltas
 - `{content_unverified_count}` — Number of `content-lane: CONTENT-LANE-UNVERIFIED` rows (step-03 §2c) — formatter-driven identifier cells routed to design-review / design-tuning, counted separately from `{delta_count}` (they are routed items, not deltas applied here).
+- `{impl_token_provenance}` — List of every design-mapped CSS custom property with its resolved value AND provenance: `{ token, resolved_value, source_file, scope: canonical | per-screen, semantic_class: shared-semantic | local-constant }`. Cataloged in step-02 §5. `canonical` = defined in `tokens.css` / `globals.css @theme` (the `docs/design-policy.md` §8 ground-truth surface); `per-screen` = resolvable only from a per-screen stylesheet (migration debt, not a system token).
+- `{token_noncanonical_count}` — Number of `token-provenance: NON-CANONICAL TOKEN` rows (step-03 §2g) — shared-semantic tokens (status / colour / type) that resolve only from a per-screen stylesheet, disclosed and ceded to design-review (promote-or-leave is token architecture), counted separately from `{delta_count}` and never gated.
 - `{baseline_commit}` — Git SHA before any changes
 
 ### Step Processing Rules

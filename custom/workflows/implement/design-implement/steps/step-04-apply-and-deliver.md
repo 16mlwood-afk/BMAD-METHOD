@@ -210,6 +210,19 @@ Content-lane verification owed (live page):
   → run:  /bmad:bmm:workflows:design-review   (live Chrome §13(a) check)
      or:  /bmad:bmm:workflows:design-tuning   (step-02 §2b, live screenshots)
 
+Token provenance (non-canonical — resolved but not from the canonical token surface):
+{if token_noncanonical_count == 0:}
+  None — every design-mapped token resolves from the canonical surface (tokens.css / @theme).
+{else:}
+  {token_noncanonical_count} shared-semantic token(s) (status / colour / type) resolve ONLY from a
+  per-screen stylesheet, not the canonical token surface (docs/design-policy.md §8). The render
+  works on this screen, but the token is not a system token — a sibling surface that doesn't load
+  that CSS won't reproduce the value (§3/§13 cross-surface drift). Promotion is a token-architecture
+  call, NOT gated here:
+  - {token} — resolves from {source_file}, not tokens.css / @theme
+  → run:  /bmad:bmm:workflows:design-review   (decide promote-to-canonical vs leave; token architecture)
+  (This is a disclosure, not a delta — the run did NOT collapse it into "tokens map 1:1.")
+
 Policy-conformance & behavior (ceded — NOT certifiable from a generated bundle-diff):
   Treatment + structure + page-shell were verified against the bundle/policy. These were NOT,
   because the bundle is a Claude-Design-generated proposal that can itself violate the policy:
@@ -243,6 +256,7 @@ A completion report that prints a fixed-count but omits the "Deltas not applied"
 - **The completion report's "Deltas not applied" section is present** — enumerating every deferred/dropped delta with its reason, or stating "None — all N applied"
 - **The completion report's "Frame coverage" section is present whenever step-03 §2f resolved a frame contract from ANY source** (brief §7, or the bundle's `{design_frame_inventory}` on a raw-URL run, or the manifest) — every contract frame accounted for as built / missing-in-impl (Tier-1) / not-drawn (routed); a "green" report that never enumerated the frame contract is non-conformant, including the no-brief URL run where the §13 lookup drawers are the contract
 - **The completion report's "Content-lane verification owed (live page)" section is present** — every `content-lane` deferral (step-03 §2c) enumerated with its formatter ref + the design-review / design-tuning routing, or stating "None"
+- **The completion report's "Token provenance (non-canonical)" section is present** — every shared-semantic token that resolved only from a per-screen stylesheet (step-03 §2g) enumerated with its source file + the design-review cede, or stating "None". A run must never report token mapping as "1:1 / matches" while a per-screen-only shared-semantic token is unsurfaced
 - **The completion report's "Capabilities removed (orphaned actions)" section is present whenever the apply deleted/replaced components** — derived by grepping for now-zero-caller actions among those the removed files invoked, or stating "None — no capability lost". A surface-swapping redesign never ships without this disclosure.
 - Build passes; PR created and merged; grid artifact updated with dispositions; no regressions introduced
 
@@ -253,6 +267,7 @@ A completion report that prints a fixed-count but omits the "Deltas not applied"
 - **Declaring "0 deltas / green" off a sweep of only the frames that already exist in the impl.** The component grid is structurally blind to a whole frame the impl never built — it produces zero rows for an absent frame, so "all matched" reads as "all present." Without the §7 Frame-coverage enumeration (step-03 §2f → the §9 Frame-coverage section), a run greens out having silently skipped every designed-but-unbuilt drawer. This is the inbound-flow `/orders` miss: 9 §7 frames promised, 5 swept and matched, 4 (inbound-batch / import / shipping-lane / comms-case) never built and never surfaced — "green" meant "we only looked at what was already there." The §7 list, not the found-frame set, is the denominator for a green claim. The **no-brief URL variant** is the same leak without a brief to consult: the bundle's own declared frame inventory (`{design_frame_inventory}`, step-01 URL.3a — the §13 lookup drawers Orders.html consumes) is the denominator, and skipping coverage because "there was no brief" lets those lookups vanish exactly as the 4 `/orders` drawers did.
 - **A bare `deferred` with no reason** — the silent drop wearing a label. Every deferral names `needs-data` / `out-of-scope` / `judgment` / `content-lane` + detail.
 - **Letting "implementation complete" imply the identifier *values* were checked.** design-implement aligns a marketplace/supplier/ASIN cell's CSS against the bundle; it does NOT verify the formatter renders the right value on real data (the bundle is mock data). Omitting the "Content-lane verification owed" section ships that false implication — it is the design-implement counterpart of the inbound-flow `/orders` raw-enum leak that the grid's mock-data comparison could never catch.
+- **Collapsing a per-screen-only token into "tokens map ~1:1."** A shared-semantic token (status / colour / type) that resolves only from a per-screen stylesheet is design debt per `docs/design-policy.md` §8, not a clean canonical mapping — and "the bundle was generated from that same CSS" does not launder it (the bundle is a generated proposal, §2e). Declaring 1:1 because the token is "defined somewhere" buries the §3/§13 cross-surface-drift risk. Disclose it (§2g / §9) and cede promotion to design-review; do NOT gate the render on it either — the token works, placement is an architecture call this workflow does not own.
 - **Deleting/replacing components without the orphaned-action check.** A surface-swapping redesign removes files that called server actions; if the new surface doesn't re-wire one, that capability is silently gone — and because it was never a grid row, the apply ledger can't catch it. The grid-driven apply makes this *more* likely, not less, by focusing attention on enumerated deltas. The orphaned-action grep + the "Capabilities removed" disclosure is the backstop; skipping it is how the EOS batch-detail EAN→ASIN remap shipped as a silent loss.
 - Fixing some deltas but not all ("the rest are minor" — fix them all, or defer-with-reason)
 - Editing without re-reading to verify (edits can silently fail or land in the wrong location)
