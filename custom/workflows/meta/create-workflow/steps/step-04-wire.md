@@ -79,6 +79,8 @@ Files created:
 - {wf_target_dir}/template.md (if created)
 - {wf_target_dir}/checklist.md (if created)
 
+Adversarial review (step-3b): {wf_review_verdict} — Blocking [all resolved] · N Concerns · N Nits
+
 Sync status: {covered by existing SYNC_DIRS entry / added to SYNC_DIRS}
 
 To distribute to all projects:

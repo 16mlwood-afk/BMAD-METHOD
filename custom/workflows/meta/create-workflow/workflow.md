@@ -17,8 +17,9 @@ main_config: '{project-root}/_bmad/bmm/config.yaml'
 This uses **step-file architecture**:
 
 - Step 1 is the only interactive step — a short brainstorm to define the workflow
-- Steps 2-4 are fully autonomous — no user input, no menus, no halting
-- State persists via variables: `{wf_name}`, `{wf_slug}`, `{wf_description}`, `{wf_type}`, `{wf_steps}`, `{wf_inputs}`, `{wf_outputs}`, `{wf_target_dir}`, `{bmad_root}`
+- Steps 2 through 4 are fully autonomous — no user input, no menus, no halting. The flow is: 2 (investigate) → 3 (build) → **3b (adversarial review)** → 4 (wire)
+- **Step 3b is a mandatory adversarial review gate** — the freshly built workflow is attacked against the durable principles (context budget, grounding, autonomy scoping, provenance, structure) and every blocking issue is fixed before wiring. A built-but-unreviewed workflow is never wired or distributed.
+- State persists via variables: `{wf_name}`, `{wf_slug}`, `{wf_description}`, `{wf_type}`, `{wf_steps}`, `{wf_inputs}`, `{wf_outputs}`, `{wf_target_dir}`, `{wf_review_verdict}`, `{bmad_root}`
 
 ### Step Processing Rules
 

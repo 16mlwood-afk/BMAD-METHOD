@@ -5,7 +5,7 @@ description: 'Autonomously create all workflow files — workflow.md, steps, tem
 
 # Step 3: Build All Workflow Files
 
-**Progress: Step 3 of 4** — Next: Wire & Verify (autonomous)
+**Progress: Step 3 of 4** — Next: Adversarial Review (autonomous)
 
 ## RULES:
 
@@ -123,9 +123,11 @@ Before proceeding, verify:
 - [ ] No placeholder text, TODOs, or incomplete sections in any file
 - [ ] **Context budget respected** — no step carries more than ~10 hard must-dos or inlines a large corpus it could point to; load-bearing constraints sit at the top + point of use, not buried mid-step; read-heavy steps delegate rather than inline
 
-### 7. Proceed to Wiring
+### 7. Proceed to Adversarial Review
 
-Read fully and follow: `{project-root}/_bmad/bmm/workflows/meta/create-workflow/steps/step-04-wire.md`
+The workflow is built but UNREVIEWED. Do not wire or distribute it yet — it must survive an adversarial pass first.
+
+Read fully and follow: `{project-root}/_bmad/bmm/workflows/meta/create-workflow/steps/step-03b-review.md`
 
 ---
 
