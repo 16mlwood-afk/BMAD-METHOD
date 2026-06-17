@@ -82,6 +82,7 @@ For each component, confirm these properties were checked (mark N/A if the compo
 - [ ] `tailwind.config.js` was NOT modified (arbitrary values used instead)
 - [ ] Copy & frame chrome transcribed VERBATIM (§5b) — header, `‹ Back to …` breadcrumb, footer (caption + cross-link label AND target), every group title / label / sub-caption; any deviation logged in the ledger with a *forced* reason (no silent relabel / paraphrase / code↔symbol swap / generic-shell substitution)
 - [ ] Render-compare done-gate run (§5b) — built surface placed beside the design render and stepped through top-to-bottom — OR explicitly marked owed-and-routed (`verify` / design-review). "Done" was NOT declared off the green grid alone
+- [ ] **(ingest_manifest runs only) Resumable apply honored (§5a)** — applied frame-by-frame with each frame's dispositions persisted back into the manifest at its boundary; prior-pass `✓ applied` rows skipped (not re-applied); `{frame_scope}` respected if set; if the pass stopped early it set `{run_completion_mode} = checkpointed`, delivered the slice (incl. the updated manifest), and printed the resume command — a large manifest was NOT forced through one single-window pass
 
 ## Delivery
 

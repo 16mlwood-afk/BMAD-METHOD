@@ -15,6 +15,7 @@ description: 'Apply all deltas from the comparison grid to the implementation, r
 - **Every grid row ends this step with an explicit disposition: `applied` | `deferred(reason)` | `dropped(reason)`.** A row left with no disposition means the run is INCOMPLETE — you cannot declare done. `deferred`/`dropped` are legitimate (needs server data the load doesn't provide, genuinely out of scope, a judgment call) — but only when *named with a reason*, never by omission. This is the apply ledger (§5).
 - **The completion report MUST enumerate every non-applied delta with its reason (§9).** Zero non-applied deltas is stated explicitly ("all N deltas applied"); it is never left implicit. Silent partial implementation — shipping a count like "47/47" while the grid under-enumerated, or applying most rows and never listing the skipped ones — is the precise failure this step exists to prevent (accounting-tools /queries #900: 6 detail deltas dropped, caught only by user review, fixed in #903).
 - After applying fixes, re-verify by re-reading the modified files. Do not trust that the edit was correct without checking.
+- **On an `ingest_manifest` run, the apply is RESUMABLE and CHECKPOINTED — proceed frame by frame, persist each frame's dispositions back into the manifest the moment it is done, and STOP at a frame boundary before the context budget is at risk** (workflow.md Critical Rule "Resumable apply on an ingest manifest"). Pre-dispose rows from `{resume_prior_dispositions}` that are already `✓ applied` (carry as `✓ applied (prior pass)` — do not re-apply) and, if `{frame_scope}` is set, rows outside it (`⊘ deferred(out-of-scope: not in {frame_scope})`). Walk only the remaining UNVERIFIED in-scope rows. A checkpointed pass is a CLEAN exit that still delivers the slice it built — it is not a failure and not a wait-for-input halt. URL and bundle runs are unaffected (single-pass as before).
 - Follow the project's CLAUDE.md for commit, PR, and merge procedures. Deploy is NOT part of this workflow — see the BMAD deploy contract at `_bmad/bmm/workflows/shared/deployment-to-prod.md` and run `./scripts/bmad-deploy.sh` after merge.
 - YOU MUST ALWAYS SPEAK OUTPUT in your agent communication style with the config `{communication_language}`
 
@@ -95,6 +96,17 @@ Rules:
 - Write the disposition into the grid artifact next to each row, and update the summary line at the bottom:
   `Applied: {A}/{delta_count} · Deferred: {D} · Dropped: {X}` (A + D + X must equal `{delta_count}`).
 - The deferred + dropped rows are carried verbatim into the §9 completion report's mandatory "Deltas not applied" section — they are NOT allowed to live only in the artifact where the user won't see them.
+
+### 5a. Resumable manifest apply — persist-as-you-go + frame-boundary checkpoint
+
+**This sub-section applies ONLY when `{input_kind} == "ingest_manifest"`.** On a URL/bundle run, skip it — there is no durable manifest to checkpoint into, the pass is single-window, and §5 above is the whole ledger.
+
+The manifest's grid scaffold is the durable ledger (workflow.md Critical Rule "Resumable apply on an ingest manifest"). Execute the apply as a sequence of frames, not one undifferentiated walk:
+
+1. **Pre-dispose carried rows (no work).** Rows in `{resume_prior_dispositions}` already `✓ applied` → write `✓ applied (prior pass)`; rows outside `{frame_scope}` (if set) → `⊘ deferred(out-of-scope: not in {frame_scope})`. These are already terminal — do not read their component files.
+2. **Apply one frame at a time.** For each in-scope frame with UNVERIFIED rows: apply every section's deltas (the §2–§5 ledger discipline, unchanged), re-verify by re-reading, then **write that frame's dispositions back into the manifest file on disk immediately** (`Edit`/`Write` the scaffold rows from `UNVERIFIED` → `✓ applied` / `⊘ deferred(reason)` / `✗ dropped(reason)`). Durable progress lands at each frame boundary, BEFORE any auto-summarization can drop it — this is the whole point.
+3. **Checkpoint decision (after each completed frame).** Ask: can I apply AND re-verify another full frame without my recall of earlier frames' exact values degrading? Soft budget (per the context-budget principle — thresholds, not cliffs): do not attempt more than ~one heavy frame or ~10–12 sections in a pass; checkpoint sooner the moment recall feels lossy. If continuing is safe, take the next frame. If not, **checkpoint**: set `{run_completion_mode} = checkpointed`, stop taking new frames (never mid-frame), and proceed to deliver what you built. Otherwise, when no in-scope UNVERIFIED rows remain, set `{run_completion_mode} = complete`.
+4. **A checkpointed pass still delivers.** The frames you DID apply are real code changes — commit → push → PR → merge them in §6/§7 as normal, AND include the updated manifest in the commit (force-add; it lives under gitignored `_bmad-output/`) so the persisted progress travels to main and a fresh session/worktree resumes from it. Then report per §9 with the resume command.
 
 ### 5b. Copy & chrome fidelity, then the render-compare done-gate
 
@@ -181,7 +193,20 @@ Output these as a `**Brand Identity Updates**` section in the completion report.
 Output — the **"Deltas not applied" section is mandatory and never omitted.** If everything was applied, say so explicitly; if anything was deferred or dropped, every such delta is listed here with its reason (pulled from the §5 apply ledger). The user must be able to see, from the completion report alone and without opening the artifact, exactly what did NOT make it in.
 
 ```
+{if run_completion_mode == "checkpointed":}
+Design implementation CHECKPOINTED — slice delivered, more frames remain.
+
+This pass applied {frames_applied} of {frames_in_scope} in-scope frames and stopped at a
+frame boundary to stay inside the context budget (a single pass over the whole manifest would
+risk auto-summarization silently dropping rows). Progress is persisted in the manifest. Resume
+in a FRESH session — same command, no flags — to continue from here:
+
+  /bmad:bmm:workflows:design-implement {ingest_manifest_path}
+
+Remaining (still UNVERIFIED in the manifest): {comma-separated remaining frame ids}
+{else:}
 Design implementation complete.
+{/if}
 
 Baseline: {baseline_commit}
 Implementation strategy (step-02b): {implementation_strategy}
@@ -310,6 +335,7 @@ A completion report that prints a fixed-count but omits the "Deltas not applied"
 - **The completion report's "Capabilities removed (orphaned actions)" section is present whenever the apply deleted/replaced components** — derived by grepping for now-zero-caller actions among those the removed files invoked, or stating "None — no capability lost". A surface-swapping redesign never ships without this disclosure.
 - **Copy & frame chrome are transcribed verbatim or logged as a forced deviation (§5b)** — every literal string and wrapper element (header / breadcrumb / footer) matches the design, or its deviation is in the ledger with a reason; and the **render-compare done-gate was run** (built surface beside the design render), or explicitly marked owed-and-routed. "Done" is never declared off the green grid alone.
 - Build passes; PR created and merged; grid artifact updated with dispositions; no regressions introduced
+- **On an `ingest_manifest` run: dispositions were persisted into the manifest frame-by-frame (not only at the end), prior-pass `✓ applied` rows were skipped, and if the pass stopped early it set `{run_completion_mode} = checkpointed` and printed the exact resume command** — a large manifest is never attempted as one undifferentiated single-window pass
 
 ## FAILURE MODES
 
@@ -322,6 +348,8 @@ A completion report that prints a fixed-count but omits the "Deltas not applied"
 - **Shipping an uplift redesign as a reskin — the net-new capability never built.** The mirror of the orphaned-action miss: step-02b inventoried `{uplift_capabilities}` (a new analytics/disposition band, lane-by-handler segmentation, an action column, a co-view, a drawer), step-03 tagged them `capability-build`, and the apply restyled the existing shell while never constructing them — then declared done off a green-ish grid. The "Capabilities built" §9 disclosure is the backstop: every added/deepened capability must be confirmed built, or flagged Tier-1 incomplete. This is the inbound-flow supply-orders failure that read lanes + the disposition band + the action column as "treatment/token alignment, production is a superset."
 - **Deleting/replacing components without the orphaned-action check.** A surface-swapping redesign removes files that called server actions; if the new surface doesn't re-wire one, that capability is silently gone — and because it was never a grid row, the apply ledger can't catch it. The grid-driven apply makes this *more* likely, not less, by focusing attention on enumerated deltas. The orphaned-action grep + the "Capabilities removed" disclosure is the backstop; skipping it is how the EOS batch-detail EAN→ASIN remap shipped as a silent loss.
 - **Interpreting where transcription was required — copy & chrome drift.** The grid has no row for a literal string or a wrapper element, so relabeling a footer, paraphrasing a sub-caption, swapping currency codes for symbols, or substituting a stock shell for the design's breadcrumbed header all leave the CSS grid all-green while the surface reads visibly worse than the handoff. Each is a small "I'll improve this" the workflow gives no license for (workflow.md Critical Rules). The grid's CSS-exhaustiveness *manufactures* the false confidence — "every cell matched" feels done. The §5b transcription pass + render-compare done-gate is the backstop; declaring done off the green grid is the leak (the supply-order cost drawer: generic header, relabeled footer, "import" for "deferred import", "€ → £" for "EUR → GBP" — every cell green).
+- **Forcing a whole large manifest through one pass (`context-budget-overflow`).** Attempting all frames × all sections in a single window hits the harness auto-summarization boundary, which drops the exact CSS values and per-row dispositions first — so rows get marked `✓ applied` that were never really verified, and the run reads "green." The fix is structural, not vigilance: apply frame-by-frame, persist into the manifest at each frame boundary, and checkpoint (§5a). Not checkpointing a large manifest "because the step says fully autonomous" is the misread — the checkpoint is a clean terminal exit that delivers a slice, not a wait-for-input halt.
+- **Re-applying prior-pass rows on resume.** A fresh resume session that re-reads and re-applies rows already `✓ applied` in the manifest wastes the budget it was trying to save and risks re-forking consolidated components. Honor `{resume_prior_dispositions}` — skip them.
 - Fixing some deltas but not all ("the rest are minor" — fix them all, or defer-with-reason)
 - Editing without re-reading to verify (edits can silently fail or land in the wrong location)
 - Changing `tailwind.config.js` when an arbitrary value would work
