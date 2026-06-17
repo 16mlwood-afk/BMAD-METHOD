@@ -78,6 +78,8 @@ For each component, confirm these properties were checked (mark N/A if the compo
 - [ ] Fix log records the before/after value for each change
 - [ ] No files outside the target page's component tree were modified
 - [ ] `tailwind.config.js` was NOT modified (arbitrary values used instead)
+- [ ] Copy & frame chrome transcribed VERBATIM (§5b) — header, `‹ Back to …` breadcrumb, footer (caption + cross-link label AND target), every group title / label / sub-caption; any deviation logged in the ledger with a *forced* reason (no silent relabel / paraphrase / code↔symbol swap / generic-shell substitution)
+- [ ] Render-compare done-gate run (§5b) — built surface placed beside the design render and stepped through top-to-bottom — OR explicitly marked owed-and-routed (`verify` / design-review). "Done" was NOT declared off the green grid alone
 
 ## Delivery
 
