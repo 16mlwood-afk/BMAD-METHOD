@@ -79,7 +79,24 @@ For each workflow.md:
 - `phase-count-mismatch` (moderate) — documented phase count doesn't match actual step count
 - `stale-phase-list` (low) — phase names don't match step descriptions
 
-### 5. Compile Health Report
+### 5. Context Budget
+
+Workflows are dense instruction documents executed by a model with a finite *usable* context. A step that is too long or too instruction-dense gets silently compressed and detail gets dropped — the workflow's logic is fine but its output is wrong because it couldn't be ingested reliably. For each step file:
+
+- **Count the hard must-dos.** A step carrying more than ~10 distinct must-do instructions is in the curse-of-instructions danger zone — it is doing more than one job and should be split.
+- **Check for inlined corpora.** A step that inlines a large body of content (a whole file's text, a big table, a long reference) it could instead point to and read on demand drives context rot. Flag it for pointer-over-inline.
+- **Check constraint placement.** Load-bearing constraints buried in the middle of a long step (rather than at the top + restated at their point of use) are followed less reliably (lost-in-the-middle).
+- **Check read-heavy steps for delegation.** A step whose job is a large multi-file scan / research / audit, performed inline rather than delegated to a sub-agent that returns a distilled artifact, pulls raw material into the orchestrator's context unnecessarily.
+
+**Finding categories:**
+- `overdense-step` (moderate) — a step carries 15+ hard must-dos, or two-plus distinct jobs; recommend splitting into one-job-per-step
+- `inlined-corpus` (low) — a step inlines content it could reference on demand
+- `buried-constraint` (low) — a load-bearing rule sits mid-step, not at the top + point of use
+- `undelegated-read` (low) — a read-heavy/parallelizable step inlines its corpus instead of delegating to a sub-agent
+
+(Decision-rule and thresholds: the `context-budget` durable principle — see the mason-bmad-workflow-expert skill's `references/context-budget.md`.)
+
+### 6. Compile Health Report
 
 For each finding:
 
@@ -96,7 +113,7 @@ For each finding:
 
 Store as `{health_checks}`.
 
-### 6. Proceed to Contract Analysis
+### 7. Proceed to Contract Analysis
 
 Read fully and follow: `{project-root}/_bmad/bmm/workflows/meta/orchestrate-workflows/steps/step-03-contract-analysis.md`
 
@@ -108,6 +125,7 @@ Read fully and follow: `{project-root}/_bmad/bmm/workflows/meta/orchestrate-work
 - Every state variable flow verified (producer before consumer)
 - Frontmatter consistency checked across all step files
 - Workflow.md phase counts and lists verified
+- Every step checked against the context budget (must-do density, inlined corpora, constraint placement, undelegated reads)
 - All findings stored with specific file references and fixes
 - `{health_checks}` populated
 

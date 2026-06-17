@@ -13,6 +13,7 @@ description: 'Autonomously create all workflow files — workflow.md, steps, tem
 - Write real, complete files — no placeholders, no TODOs, no "fill in later."
 - Follow the exact patterns observed in peer workflows from Step 2.
 - Every file must be self-contained and production-ready.
+- **Respect the context budget.** Workflows are dense instruction documents executed step-by-step by a model with a finite *usable* context (reliably ~50–65% of the advertised window, far less for reasoning). A step that is too long or too instruction-dense gets silently compressed and detail gets dropped. Build within the budget: **one job per step, ≤ ~10 hard must-dos per step.** If a step would carry more, split it. Never emit a single mega-step.
 
 ## SEQUENCE OF INSTRUCTIONS
 
@@ -87,6 +88,9 @@ description: '{one-line goal}'
 - Use code blocks for output formats
 - Include shape/format examples for any data the step produces
 - Reference `{state_variables}` for data from prior steps
+- **Place load-bearing constraints at the top of the step file AND restate the one or two that govern an action immediately beside that action.** A critical rule buried in the middle of a long step is followed less reliably (lost-in-the-middle); don't rely on a constraint stated only in a distant global preamble.
+- **Pointer over inline.** Reference a file/query the step reads on demand rather than inlining a large corpus. Keep mutually-exclusive branches in separate step files so unused paths cost zero tokens.
+- **Classify each step's shape and structure it accordingly** (the context-budget decision-rule): a *read-heavy / parallelizable* step (multi-file scan, research, audit) should delegate the heavy reading to a sub-agent and consume its distilled ~1–2k-token return, so raw material never enters the orchestrator's context; a *long sequential build* keeps continuity through a durable progress/manifest artifact written between fresh-context phases; a *write-one-coherent-artifact* step stays single-threaded. Any delegated step carries an explicit handoff contract: objective, output schema, tools/sources, boundaries.
 
 ### 4. Write Template (if applicable)
 
@@ -117,6 +121,7 @@ Before proceeding, verify:
 - [ ] Template exists if `{wf_needs_template}` (with all variable placeholders)
 - [ ] Checklist exists if `{wf_needs_checklist}` (with measurable criteria)
 - [ ] No placeholder text, TODOs, or incomplete sections in any file
+- [ ] **Context budget respected** — no step carries more than ~10 hard must-dos or inlines a large corpus it could point to; load-bearing constraints sit at the top + point of use, not buried mid-step; read-heavy steps delegate rather than inline
 
 ### 7. Proceed to Wiring
 
@@ -140,3 +145,4 @@ Read fully and follow: `{project-root}/_bmad/bmm/workflows/meta/create-workflow/
 - Step files that assume context from other steps without declaring it
 - Template variables that no step produces
 - Checklist criteria that are subjective ("good documentation" instead of "each function has a JSDoc comment")
+- A single over-dense mega-step (20+ must-dos, or a whole corpus inlined) that overruns the model's usable context and gets silently compressed — split it into one-job-per-step instead
