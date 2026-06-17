@@ -22,10 +22,13 @@ This uses **step-file architecture** for focused execution:
 
 ### State Variables
 
-- `{input_kind}` — `claude_design_url` | `synthesize_bundle`. Determines whether step 1 fetches a URL or reads a local bundle directory.
+- `{input_kind}` — `claude_design_url` | `synthesize_bundle` | `ingest_manifest`. Determines whether step 1 fetches a URL, reads a local bundle directory, or reads a pre-built `design-ingest` manifest (and skips re-ingest entirely).
 - `{design_url}` — Claude Design artifact URL (when `{input_kind} == "claude_design_url"`)
 - `{bundle_dir}` — Absolute path to a local design-synthesize bundle directory (when `{input_kind} == "synthesize_bundle"`)
 - `{bundle_manifest}` — Parsed `bundle/manifest.yaml` contents (when `{input_kind} == "synthesize_bundle"`)
+- `{ingest_manifest_path}` — Absolute path to a `design-ingest-*.md` manifest (when `{input_kind} == "ingest_manifest"`). Produced by the `design-ingest` workflow; carries the frame inventory + the gated per-frame section inventory + a pre-seeded grid scaffold (every (frame, section) already a row), so step 1 reads it instead of downloading/extracting and re-cataloging a large bundle in one context.
+- `{ingest_manifest}` — Parsed contents of `{ingest_manifest_path}` (when `{input_kind} == "ingest_manifest"`): the `ingest:` receipt, frame inventory, section inventory, and grid scaffold rows.
+- `{section_rows_source}` — `ingest_manifest` | `in_context`. Records whether the per-frame **section-coverage** rows (step-03 §2f-bis) came from a gated, reviewed `design-ingest` scaffold or were enumerated in-context on a URL/bundle run. Set in step-01 (MANIFEST.3 → `ingest_manifest`; URL/BUNDLE paths → `in_context`).
 - `{design_file}` — Target design file name (e.g., `Data Quality Dashboard.html`)
 - `{design_dir}` — Extracted bundle directory on disk
 - `{design_components}` — Map of component name → file path within the extracted bundle
@@ -101,12 +104,13 @@ Load config from `{main_config}` and resolve:
 
 ### Input Resolution
 
-The user provides ONE of two input kinds:
+The user provides ONE of three input kinds:
 
 - **Claude Design artifact URL** — `https://api.anthropic.com/v1/design/h/...`. Sets `{input_kind} = "claude_design_url"`.
 - **Local design-synthesize bundle directory** — an absolute path to a directory containing `manifest.yaml`, `<screen>.html`, and `tokens.css`. Sets `{input_kind} = "synthesize_bundle"`.
+- **`design-ingest` manifest file** — an absolute path to a `design-ingest-*.md` file (the durable artifact produced by the `design-ingest` workflow). Sets `{input_kind} = "ingest_manifest"`. This is the preferred path for a large bundle: `design-ingest` has already fanned out per-frame, enumerated every section under its completeness gate, and emitted a reviewed grid scaffold — so step 1 reads the manifest and skips download/extract + re-cataloging entirely.
 
-Detection rule: if the input string starts with `http://` or `https://`, treat as a URL; otherwise treat as a filesystem path and verify it is a directory containing `manifest.yaml`. If neither matches, halt with: `"input must be a Claude Design URL (https://...) or a directory containing manifest.yaml. Got: <input>"`.
+Detection rule, in order: (1) starts with `http://` or `https://` → URL; (2) a file path ending `.md` whose basename starts `design-ingest-` AND whose frontmatter has `ingest.workflow: design-ingest` → ingest_manifest; (3) a directory containing `manifest.yaml` → synthesize_bundle. If none matches, halt with: `"input must be a Claude Design URL (https://...), a design-ingest-*.md manifest, or a directory containing manifest.yaml. Got: <input>"`.
 
 #### When `{input_kind} == "synthesize_bundle"`: Bundle gating
 
@@ -169,6 +173,29 @@ If neither refusal fires, set `{design_dir} = {bundle_dir}` and `{design_file}` 
 #### When `{input_kind} == "claude_design_url"`: existing flow
 
 Store as `{design_url}` and `{design_file}`. Continue to step 1.
+
+#### When `{input_kind} == "ingest_manifest"`: manifest gating
+
+Parse `{ingest_manifest_path}` into `{ingest_manifest}`. Then check one refusal gate — the completeness invariant the `design-ingest` workflow is required to uphold:
+
+**Refusal — incomplete manifest.** If `{ingest_manifest}.ingest.completeness.frames_with_empty_section_list` is non-empty (a `drawn: true` frame with no enumerated sections), refuse:
+
+```
+══════════════════════════════════════════════════════════════════
+✗ design-implement refused this ingest manifest.
+
+Reason: a drawn frame has an empty section list —
+        completeness.frames_with_empty_section_list: {list}
+
+design-ingest's frame-completeness gate should have halted on this. A manifest
+with an unenumerated drawn frame would reintroduce the exact blind spot the
+manifest exists to close (a section dropped inside a present frame). Re-run:
+
+  /bmad:bmm:workflows:design-ingest {ingest.source}
+══════════════════════════════════════════════════════════════════
+```
+
+Halt — do NOT proceed to step 1. If the invariant holds, set `{design_file} = {ingest_manifest}.ingest.target_file`, carry `{ingest_manifest}` forward, and continue to step 1, which reads the manifest directly and skips the URL/bundle ingest paths.
 
 ### Paths
 

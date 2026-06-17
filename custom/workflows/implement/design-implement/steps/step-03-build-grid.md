@@ -196,6 +196,27 @@ Rules:
 - **A `LOOKUP UNDER-ENUMERATED` row (from the `{design_linked_record_rows}` reconciliation above) is routed, not silently dropped.** It means a rendered linked-record row had no harvested frame — the harvest, not the design, is incomplete. Count it in `{frame_uncovered_count}`, surface it in §9 with the re-trace / needs-human-confirmation routing, and never let "I only found N frames" override "the drawer renders N+1 linked-record rows." The rendered list wins.
 - **Drawer money cells inherit the content-lane (§2c) and policy-cede (§2e) rules** — a drawer's `€60`-style figure is bundle-mock data; its basis-completeness (`docs/design-policy.md` §15) is policy-conformance, ceded to design-review, not certified here. The Frame-coverage row certifies the drawer was *drawn and built*; whether its money is basis-complete is design-review's call.
 
+### 2f-bis. Section-coverage rows — every top-level SECTION of every present frame is a mandatory grid row
+
+Frame-coverage (§2f) is **frame-granular**: it certifies "the drawer exists / is built," and §195 already says a present frame must be as DEEP as the bundle drew it. But §2f's *denominator* is the frame list — it has no row per **top-level section** of a present frame, so a whole section dropped *inside* an otherwise-present frame slips through: the section's inner primitives (pills, money cells, tiles) are shared and match elsewhere in the impl, so the component sweep greens out over the absence. This is the exact miss that shipped a present Supply-Order drawer with **no Reconciliation block** and **no SellerSmart-dispatch section** while every component row was ✓. Frame-present is necessary; section-complete is the missing axis.
+
+**The denominator is the frame's top-level section list. Resolve it in precedence order:**
+
+1. **`ingest_manifest` scaffold — authoritative.** When `{section_rows_source} == "ingest_manifest"` (step-01 MANIFEST.3), the `design-ingest` manifest's Grid scaffold already carries one reviewed, completeness-gated row per `(frame, section)`. Use it verbatim — the enumeration was done exhaustively, per-frame, under `design-ingest`'s frame-completeness gate, and reviewed at its handoff. This is the path that structurally cannot under-enumerate.
+2. **In-context enumeration — URL / bundle path.** When `{section_rows_source} == "in_context"`, enumerate each `drawn: true` frame's top-level sections HERE, the same way `design-ingest` step-02 does: read the frame source fully, list every section (`<h4>`/`grp`/`data-region` block, conditionally-rendered banner) in render order. An empty section list for a drawn primary or detail frame is the under-enumeration defect — do not proceed with a frame that has zero section rows.
+
+**Emit one Section-coverage row per (present frame, section)** — always, even when the frame is otherwise green:
+
+| Component | State | Property | Design | Implementation | Delta |
+|-----------|-------|----------|--------|----------------|-------|
+| {frame} / {section} | — | `section present` | design renders it ({verbatim heading/copy}) | {present & aligned? present w/ delta? absent?} | {✓ \| `SECTION MISSING in impl → Tier-1 structural` \| `COPY-DELTA` \| `STRUCTURE-DELTA`} |
+
+Rules:
+- **A section the design renders that the impl frame lacks is Tier-1 structural** (`SECTION MISSING in impl`), counted in `{delta_count}` — it is actionable here (build the section), unlike a not-drawn *frame* (which is routed). If the section needs view-model fields the impl lacks, flag per the data-availability lane (do not fabricate), same as the content-lane cede.
+- **A present section still runs the full §2 component × state × property sweep within it** — the Section-coverage row certifies the section exists; its components are compared normally. "Present" means as deep as the design drew the section, not merely that a heading exists (the §195 inferred-thin rule applies at section granularity too).
+- **Never collapse a frame to one row.** A drawer with 10 design sections produces 10 Section-coverage rows. A run that emits one "drawer ✓" row and moves on is the precise false-green this gate closes.
+- Section-coverage uncovered items count in `{delta_count}` (missing sections are actionable deltas), distinct from `{frame_uncovered_count}` (routed not-drawn frames).
+
 ### 2g. Token-provenance row — a shared-semantic token resolved only from a per-screen stylesheet (DISCLOSE + cede, never gate)
 
 A `var(--*)` that resolves cleanly is **not automatically a clean "1:1" mapping** — *which layer* it resolved from is a distinction the project's token precedence treats as load-bearing. `docs/design-policy.md` §8 names the **canonical token surface** narrowly: `src/styles/tokens.css` + the `@theme inline` block in `globals.css` are "ground truth for what exists in the system," and the v3 note marks the ~25 per-screen stylesheets as migration debt. So a design token (e.g. `--status-success-text`) that the impl resolves **only from a per-screen file** (`supply-orders.css` lines 34–50) is resolvable at runtime but is **not a system token** — and a *status / colour / type* token in that position is the exact cross-surface-drift risk §3/§13 forbid (the same status reads a different colour on a sibling surface that doesn't load that screen's CSS). The miss this section closes is the run that resolves such a token, finds it "defined somewhere," and collapses it into "the mapping is effectively 1:1" — papering over real design debt.

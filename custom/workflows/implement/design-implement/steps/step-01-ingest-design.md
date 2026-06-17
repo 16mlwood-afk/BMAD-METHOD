@@ -22,14 +22,17 @@ description: 'Ingest the design source — either fetch and extract a Claude Des
 
 ## INPUT-KIND BRANCH
 
-This step has two parallel ingestion paths. Both populate the same downstream state — `{design_dir}`, `{design_file}`, `{design_components}`, `{design_tokens}`, and the CSS-property catalog — so steps 2-4 are agnostic to which path ran.
+This step has three parallel ingestion paths. All populate the same downstream state — `{design_dir}` (or, on the manifest path, no dir), `{design_file}`, `{design_components}`, `{design_tokens}`, `{design_frame_inventory}`, `{design_layout_constraints}`, and the CSS-property catalog — so steps 2-4 are agnostic to which path ran.
 
 ```
 if {input_kind} == "claude_design_url":  → execute §URL PATH below
 if {input_kind} == "synthesize_bundle":  → execute §BUNDLE PATH below
+if {input_kind} == "ingest_manifest":    → execute §MANIFEST PATH below
 ```
 
-Workflow.md's Input Resolution has already populated `{input_kind}`, `{design_url}` (URL path), or `{bundle_dir}` + `{bundle_manifest}` (bundle path). For the bundle path, the refusal gates (`dev_no_render`, `needs_human_review`) have already cleared — if execution reached this step with `{input_kind} == "synthesize_bundle"`, the manifest is good.
+Workflow.md's Input Resolution has already populated `{input_kind}`, `{design_url}` (URL path), `{bundle_dir}` + `{bundle_manifest}` (bundle path), or `{ingest_manifest}` (manifest path). For the bundle path, the refusal gates (`dev_no_render`, `needs_human_review`) have cleared; for the manifest path, the completeness-invariant gate (no drawn frame with an empty section list) has cleared — if execution reached this step with that `{input_kind}`, the manifest is good.
+
+**The MANIFEST PATH is the context fix.** A large bundle (~140KB JSX) does not fit one ingest context — the failure mode was shortcutting the exhaustive per-component catalog to fit, which let a whole *section* go unenumerated. When `design-ingest` has already fanned out per-frame and emitted a reviewed grid scaffold, this step reads that scaffold instead of re-cataloging; the exhaustive enumeration already happened, durably, in `design-ingest`.
 
 ---
 
@@ -339,6 +342,37 @@ Note: bundles MUST NOT contain config-dependent Tailwind classes (per design-syn
 ### BUNDLE.6. Skip to §SHARED
 
 Continue at §SHARED — Property catalog and ingestion summary.
+
+---
+
+## MANIFEST PATH (`{input_kind} == "ingest_manifest"`)
+
+No download, no extract, no per-component re-catalog. `design-ingest` already did the exhaustive, fanned-out enumeration and persisted it. This path READS the manifest into the same downstream state the other two paths produce.
+
+### MANIFEST.1. Read the manifest
+
+`{ingest_manifest}` is already parsed (workflow Input Resolution). It conforms to `design-ingest/manifest-schema.md`. Read, do not re-derive:
+
+- `{design_layout_constraints}` ← `{ingest_manifest}.ingest.layout_constraints` (skip URL.2 / BUNDLE layout derivation entirely).
+- `{design_tokens}` ← `{ingest_manifest}.ingest.tokens`.
+- `{design_frame_inventory}` ← the manifest's **Frame inventory** table verbatim (skip URL.3a re-derivation). Each `drawn: false` frame carries into §2f as FRAME NOT DRAWN, exactly as on the URL path.
+- `{design_file}` ← `{ingest_manifest}.ingest.target_file`.
+
+### MANIFEST.2. Build `{design_components}` + catalog from the grid scaffold
+
+The manifest's **Grid scaffold** has one row per `(frame, section)` — already the unit step-03 grids over. Map each scaffold row into `{design_components}` and the flat `{css_property_catalog}`:
+
+- Component key = `"{frame} / {section}"` (so the grid iterates section-by-section, the granularity that closes the missing-section blind spot).
+- `.properties` ← the row's `component×property rows`; `.copy` ← the verbatim design copy/structure; `.data_fields` ← the fields the section reads; carry the row's `status` (UNVERIFIED) so step-03 fills the verdict.
+- Carry the manifest's **Data-availability notes** into `{content_unverified_count}` / the apply ledger's flag lane — a section whose fields the impl view-model lacks is flagged, never fabricated (same discipline as the content-lane cede).
+
+### MANIFEST.3. Section-coverage is pre-satisfied — record it
+
+Because the scaffold already enumerates every `(frame, section)`, the §2d-bis section-coverage gate (step-03) is seeded, not reconstructed. Record `{section_rows_source} = "ingest_manifest"` so step-03 knows the rows came from a gated, reviewed inventory rather than an in-context enumeration. (On the URL/bundle paths, `{section_rows_source} = "in_context"` and step-03 must enumerate each drawn frame's sections itself.)
+
+### MANIFEST.4. Skip to §SHARED
+
+Continue at §SHARED — the catalog is already populated from the scaffold; SHARED.1 verifies it is non-empty (a manifest that yielded zero rows is a malformed manifest — halt) and SHARED.2 reports the summary.
 
 ---
 

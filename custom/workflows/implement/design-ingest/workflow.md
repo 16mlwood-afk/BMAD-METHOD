@@ -1,0 +1,97 @@
+---
+name: design-ingest
+description: 'Decoupled, context-bounded INGEST half of design-implement. Takes a Claude Design URL (or a design-synthesize bundle), builds the frame inventory, then FANS OUT one isolated agent per frame to enumerate that frame''s COMPLETE top-level section list + a component×property catalog into a durable manifest on main, with a pre-seeded grid scaffold (every section already a row, status UNVERIFIED). Then PAUSES for a reviewable section-inventory handoff. design-implement consumes the manifest via input_kind: ingest_manifest and skips re-ingest. Use when a bundle is too large to ingest in one design-implement context, or whenever you want the section inventory reviewed before any apply.'
+main_config: '{project-root}/_bmad/bmm/config.yaml'
+
+# Related workflows
+design_implement_workflow: '{project-root}/_bmad/bmm/workflows/implement/design-implement/workflow.md'
+design_synthesize_workflow: '{project-root}/_bmad/bmm/workflows/design/design-synthesize/workflow.md'
+---
+
+# Design Ingest Workflow
+
+**Goal:** Produce a durable, reviewable **ingest manifest** that enumerates EVERY frame the design delivers AND every top-level section within each frame, with a component×property catalog and a pre-seeded grid scaffold — so `design-implement` can consume a complete contract instead of re-ingesting a large bundle in one overloaded context. This workflow is the front-half of `design-implement` (step-01 ingest) extracted into its own phase, for two reasons: **context** (a ~140KB JSX bundle does not fit one context, so ingest fans out per-frame) and **completeness** (the section inventory becomes a persisted, reviewable artifact with a structural gate, not an in-context list that a narrow scope can silently truncate).
+
+**Your Role:** You are the design cataloguer. You do not implement and you do not judge treatment — you ENUMERATE. Your output is a manifest whose value is its exhaustiveness: every frame, every section of every frame, every styled component within a section. A section you fail to enumerate is a section that ships wrong, because `design-implement`'s grid can only flag a row that exists. Enumeration completeness is the entire job.
+
+**Key Insight — the frame-coverage check is too coarse to catch a missing SECTION inside a present frame.** `design-implement` step-03 §2f verifies frame coverage at frame granularity ("is the drawer built? yes → green"). It is structurally blind to a whole *section* (a Reconciliation block, a SellerSmart-dispatch section) dropped *inside* an otherwise-present frame — the section's inner primitives are shared and match elsewhere, so the component sweep greens out. The fix is not vigilance; it is a structural artifact: this workflow records each frame's complete top-level section list as a REQUIRED, non-empty field, and emits a grid scaffold where every section is already a row. An empty section list for a non-trivial frame is a gating defect here, surfaced before a line of code is touched. This is the same shape as the page-shell gate (PR #2017) and the §13-lookup frame-coverage gate (`56d44fc9`) — a blind spot promoted to a named, structural check after its miss.
+
+---
+
+## SOURCE-OF-TRUTH PRECEDENCE — CRITICAL
+
+This workflow is non-interpretive about treatment, the same way `design-implement` is. It records what the design source contains; it does not decide what is correct.
+
+1. **The design source** — the Claude Design bundle resolved from the URL, or the `design-synthesize` bundle directory. The frames, their sections, and their CSS values are read from here verbatim. This is the canonical input for *what the design contains*.
+2. **Project `docs/design-policy.md`** — authoritative ONLY for the one statically-checkable framing rule (page-shell / layout intent, `{design_layout_constraints}`), captured for `design-implement` step-03 §2d. The rest of the policy contract (prohibitions, tone, motion, iconography) is NOT this workflow's to check — it is ceded downstream, same as in `design-implement`.
+3. **Workflow defaults** — used only for operational defaults with no design meaning.
+
+**Implication:** Every section and every property recorded in the manifest must trace to (1). This workflow invents nothing — an unreadable frame is recorded `drawn: false`, not inferred; a frame with no enumerable sections is a `frame-completeness` defect, not an empty success.
+
+---
+
+## WORKFLOW ARCHITECTURE
+
+This uses **step-file architecture** for focused execution:
+
+- Steps 01–02 are autonomous. **Step 03 emits the manifest and PAUSES** — the section inventory is a reviewable handoff, not an auto-proceed. This is the one deliberate halt; it is what makes the section inventory auditable before apply.
+- The per-frame enumeration in step-02 FANS OUT — one isolated sub-agent per frame — so no single context holds the whole bundle. Each agent returns structured rows; the orchestrator assembles the manifest. This is the context fix.
+- State persists via variables (below) and, durably, via the emitted manifest on disk.
+
+### State Variables
+
+- `{input_kind}` — `claude_design_url` | `synthesize_bundle`. Same detection as `design-implement` Input Resolution.
+- `{design_url}` / `{bundle_dir}` / `{bundle_manifest}` — per input kind (see Input Resolution).
+- `{design_dir}` — Extracted/located bundle directory on disk.
+- `{design_frame_inventory}` — The frames the target surface delivers or consumes: the primary frame, the drilled detail drawer(s), and each §13 expand-in-context lookup. Built in step-01 (same derivation as `design-implement` URL.3a — `<script src>` modules + their "… lookups consumed" comments, per-frame banners, lookup→target maps, sibling standalone `<frame>.html`). Each entry: `{ frame, role: primary|drilled-detail|§13-lookup, parent, declared_in, drawn }`.
+- `{frame_sections}` — Map of frame → **complete ordered list of top-level sections** that frame renders, each with its heading/copy. Built in step-02 by the per-frame fan-out. **REQUIRED non-empty for every `drawn: true` frame** — the structural completeness gate.
+- `{section_catalog}` — Per (frame, section): the component×state×property rows (radius/color/spacing/type), the verbatim copy strings, and the data fields the section reads. Built in step-02.
+- `{design_tokens}` — Design system tokens (radii, type scale, colors, spacing).
+- `{design_layout_constraints}` — Page-shell intent, sourced authoritatively from `docs/design-policy.md` (see `design-implement` URL.2). Carried for step-03 §2d downstream.
+- `{manifest_path}` — Absolute path to the emitted ingest manifest on disk.
+
+### Step Processing Rules
+
+1. **READ COMPLETELY** before acting on any step file.
+2. **FOLLOW SEQUENCE** — no skipping.
+3. **Steps 01–02 autonomous; step 03 pauses** at the handoff.
+4. **SAVE STATE** — carry variables between steps; the manifest is the durable carrier across the pause.
+5. **Enumerate exhaustively** — a frame's section list is REQUIRED non-empty; an empty list halts step-02 with the frame-completeness diagnostic.
+
+### Critical Rules
+
+- **Every frame's top-level sections are a REQUIRED field — an empty list for a drawn frame is a gating defect.** This is the named structural gate this workflow exists to add. It fires in step-02 (per frame) and is re-asserted in step-03 before the manifest is emitted.
+- **Enumerate by frame → section, never by feature-area.** The failure this workflow fixes was delegating by feature-area with narrow prompts, so a section fell in the seam between two agents' scopes. The fan-out unit is the FRAME; each frame agent is told to enumerate its frame COMPLETELY (every top-level section), not a named subset. There is no "the cost-recon section" prompt — there is "every section of the order drawer."
+- **The manifest is a PROPOSAL-CATALOG, not an apply plan.** It records what the design contains and scaffolds the grid; it makes no keep/drop or treatment decisions. Those belong to `design-implement` step-02b and step-03/04. This workflow never edits implementation code.
+- **Read source, not screenshots, for values.** Same as `design-implement`: exact values come from JSX inline styles / `<style>` blocks / `tokens.css`, never measured off an image.
+- **The pause is non-negotiable.** Step-03 emits the manifest and stops with the next-step command. It does not chain into `design-implement`. The whole point is a reviewable section inventory between ingest and apply.
+
+---
+
+## INITIALIZATION
+
+### Configuration Loading
+
+Load config from `{main_config}` and resolve `user_name`, `communication_language`, `implementation_artifacts` path, and `date`. SPEAK OUTPUT in `{communication_language}`.
+
+### Input Resolution
+
+Same two input kinds as `design-implement`:
+
+- **Claude Design artifact URL** — `https://api.anthropic.com/v1/design/h/...` → `{input_kind} = "claude_design_url"`, store `{design_url}` and the `open_file` target.
+- **Local design-synthesize bundle directory** — an absolute path to a directory containing `manifest.yaml` → `{input_kind} = "synthesize_bundle"`, parse `{bundle_dir}` + `{bundle_manifest}`.
+
+Detection: starts with `http(s)://` → URL; else a filesystem directory containing `manifest.yaml` → bundle; else halt with `"input must be a Claude Design URL (https://...) or a directory containing manifest.yaml. Got: <input>"`.
+
+For `synthesize_bundle`, the same refusal gates apply as `design-implement` (`synthesis.dev_no_render`, `visual_review.needs_human_review`) — a bundle the synthesizer doesn't trust never becomes an ingest manifest. Halt with the equivalent diagnostic if either fires.
+
+### Paths
+
+- `installed_path` = `{project-root}/_bmad/bmm/workflows/implement/design-ingest`
+- `manifest-schema` = `{installed_path}/manifest-schema.md` — the durable artifact contract this workflow emits.
+
+---
+
+## EXECUTION
+
+Read fully and follow: `{project-root}/_bmad/bmm/workflows/implement/design-ingest/steps/step-01-frame-inventory.md` to begin.
