@@ -219,12 +219,20 @@ Frame coverage ({brief §7 Surface Inventory | bundle frame inventory (URL) | ma
  section — when a frame contract exists — is non-conformant, re-emit it. On a no-brief URL run the
  §13 lookup drawers (warehouse / inbound-batch / import-run / accounting-outcome / catalog /
  supply-source) are exactly the frames this section exists to keep from vanishing.}
-{if every contract frame is present in both bundle and impl:}
+{Lookup reconciliation (§2f) — state the AUTHORITATIVE denominator first: the detail drawer
+ renders `{len(design_linked_record_rows)}` linked-record rows ({comma-separated labels}), so that
+ many §13-lookup frames must be accounted for. Every rendered row maps to a Frame-coverage line
+ below; a row whose lookup frame the harvest missed is LOOKUP UNDER-ENUMERATED, NOT silently absent.}
+{if every contract frame is present (and deep) in both bundle and impl:}
   All {N} contract frames built — {frame_1}, {frame_2}, … present in impl and component-swept.
+  §13 lookups: all {len(design_linked_record_rows)} linked-record rows covered & swept for depth.
 {else, one bullet per gap:}
   - {frame} — FRAME MISSING in impl (Tier-1: designed-but-unbuilt) → carried in "Deltas not applied" above; this is feature work, not a CSS apply
+  - {lookup} — LOOKUP UNDER-ENUMERATED (rendered as a Linked-records row, no harvested frame) → re-trace the bundle for this lookup's frame; if absent, needs human confirmation. This is the "often missed" lookup (e.g. Shipping lane); counted in {frame_uncovered_count}
+  - {frame} — PRESENT BUT THIN in impl (Tier-1: drawer opens, interior under-built vs the bundle) → its missing interior rows are in "Deltas not applied" above; "the drawer exists" is not "the drawer matches"
   - {frame} — FRAME NOT DRAWN in bundle (routed, NOT inferred) → /bmad:bmm:workflows:design-handoff (re-render the frame); counted in {frame_uncovered_count}
-Frames in contract: {N} · built & swept: {B} · missing-in-impl (Tier-1): {M} · not-drawn (routed): {frame_uncovered_count}
+Frames in contract: {N} · built & swept: {B} · missing-in-impl (Tier-1): {M} · thin-in-impl (Tier-1): {T} · under-enumerated (routed): {U} · not-drawn (routed): {frame_uncovered_count}
+Linked-records rows (authoritative §13-lookup denominator): {len(design_linked_record_rows)} · §13-lookup frames accounted: {must be ≥ the row count}
 
 Content-lane verification owed (live page):
 {if content_unverified_count == 0:}
