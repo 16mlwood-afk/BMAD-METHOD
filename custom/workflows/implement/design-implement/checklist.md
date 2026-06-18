@@ -2,6 +2,7 @@
 
 ## Ingestion (Step 1)
 
+- [ ] (ingest_manifest path) `ingest.supersede_status` read — if `superseded`, the supersede surfaced to the user BEFORE apply; a no-delta run self-explained the no-op (named `superseded_by`), a with-deltas run HALTED for explicit confirmation (never auto-applied a superseded handoff). `brief-revision-policy.md` §8
 - [ ] Design bundle downloaded and extracted successfully
 - [ ] README read — target design file identified
 - [ ] Chat transcripts read (if referenced in README)

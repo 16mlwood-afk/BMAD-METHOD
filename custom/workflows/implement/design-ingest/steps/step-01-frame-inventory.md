@@ -45,9 +45,25 @@ Each entry: `{ frame, role: primary|drilled-detail|§13-lookup, parent, declared
 
 On the bundle path, the frame inventory comes from `{bundle_manifest}.screens` + the `data-region` roots; same `{ frame, role, drawn }` shape.
 
-## 5. Tell the user what you found, then hand to step-02
+## 5. Derive `{target_slug}` + supersede awareness → `{handoff_supersede_status}`
 
-Say it conversationally — lead with a sentence a colleague would say, not a table. Name the screens plainly (the worklist, the order drawer, the lookups), how many there are, and which are actually drawn vs. only referenced. If a screen that should be there looks missing, or something seems off, say so and tell them you'll keep an eye on it. Then say you're about to go through each screen in turn to list its sections.
+The surface identity is known once the primary frame is in hand. Derive `{target_slug}` by kebab-casing the surface the design targets (primary frame, row 0). **Prefer an exact match to an existing brief's `target_slug`** when the surface clearly corresponds — the slug is the join key to the brief, so matching the brief's slug (not inventing a near-miss) is what makes the supersede check work. This slug names the manifest (`design-ingest-<target_slug>.md`) AND keys the supersede check below.
+
+Then resolve the handoff's supersede status against the briefs on disk — the "cope with a superseded handoff" contract (workflow Critical Rules; `brief-revision-policy.md` §8). This is autonomous and silent; the *reporting* happens at the step-03 pause.
+
+1. List briefs in `{implementation_artifacts}` whose Block-A `target_slug` matches `{target_slug}` (read frontmatter per `brief-revision-policy.md` Block A). If the surface does not confidently correspond to any brief's `target_slug`/`route`, do NOT force a match.
+2. Set `{handoff_supersede_status}`:
+   - **No confident match** → `no_brief`. A raw-URL/bundle run with no brief on disk: supersede CANNOT be known. Record it; do NOT infer `active`.
+   - **Exactly one match, `brief_status: active`** → `active`. Normal flow. `{source_brief}` = that file.
+   - **The matched brief is `brief_status: superseded`** → `superseded`. Set `{superseded_by}` = the matched brief's `superseded_by` (the active successor it names). `{source_brief}` = the superseded file.
+   - **More than one `active` for the slug** → `ambiguous`. The active-uniqueness invariant (`brief-revision-policy.md` §2.6) is already broken upstream. Record it and carry the list; do NOT block — ingest is non-destructive and surfacing it at the pause is enough.
+3. Capture `{source_brief}` provenance (`brief_status`, `change_class`, `last_modified_by` / `last_modified_date`) for the manifest receipt stamp (step-03 §1).
+
+**Do NOT refuse on any value.** This step records the status; step-03 stamps it into the manifest and leads the pause with it. Tolerance is the whole point — the hard refuse belongs to brief *consumers*, not to this non-destructive cataloguer.
+
+## 6. Tell the user what you found, then hand to step-02
+
+Say it conversationally — lead with a sentence a colleague would say, not a table. Name the screens plainly (the worklist, the order drawer, the lookups), how many there are, and which are actually drawn vs. only referenced. If a screen that should be there looks missing, or something seems off, say so and tell them you'll keep an eye on it. **If `{handoff_supersede_status} == superseded`, flag it here too** — a quick "heads up, this handoff looks superseded by `{superseded_by}`; I'll still build the manifest but I'll walk you through that at the end" — so it isn't a surprise at the pause. Then say you're about to go through each screen in turn to list its sections.
 
 Keep it brief and human. A compact line or two is plenty — for example: *"Pulled the design — it's got the Supply Orders worklist, the order drawer, and six linked-record lookups (eight screens, all drawn). Layout reads full-width. Going through each one now to list its sections."* The figures below are what you're conveying, not a format to print verbatim:
 
@@ -69,4 +85,5 @@ Read fully and follow: `{project-root}/_bmad/bmm/workflows/implement/design-inge
 - `{design_frame_inventory}` non-empty, with the primary frame as row 0 and `drawn` set on every entry.
 - `{design_layout_constraints}` populated (authoritative from policy where readable).
 - `{design_tokens}` non-empty with resolved values.
+- `{target_slug}` derived and `{handoff_supersede_status}` resolved to one of `active | superseded | no_brief | ambiguous` (with `{superseded_by}` / `{source_brief}` captured) — never left unset, never refused.
 - NO section enumeration attempted in this step (that is step-02's fan-out — keeping the whole bundle out of one context is the point).

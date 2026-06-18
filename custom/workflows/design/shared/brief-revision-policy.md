@@ -1,6 +1,6 @@
 ---
 name: brief-revision-policy
-description: 'Canonical policy for how design briefs may be revised. Defines the minor/material split, the provenance frontmatter contract, the editing rules, and the halt conditions consumer workflows enforce at intake. Referenced by design-handoff (producer) and design-artifact-loop / design-synthesize (consumers).'
+description: 'Canonical policy for how design briefs may be revised. Defines the minor/material split, the provenance frontmatter contract, the editing rules, and the halt conditions consumer workflows enforce at intake. Referenced by design-handoff (producer) and design-artifact-loop / design-synthesize (consumers). §8 adds tolerant supersede-awareness for the non-consumer downstream pair design-ingest / design-implement (stamp + explain, never refuse).'
 ---
 
 # Design Brief Revision Policy
@@ -292,7 +292,7 @@ This carries provenance forward so the downstream consumer of the consumer's out
 - **Brief consumers** (apply the §5 checks at intake): `design-artifact-loop`, `design-synthesize`, `design-tuning`.
 - **Screen-reviews are out of scope.** This policy governs briefs produced by `design-handoff` (today: `design-brief-*.md` and `design-handoff-*.md` in the handoff-from-implementation flow). Screen-review artifacts (`screen-review-*.md`) have their own V-ID lineage model documented in `design-review/workflow.md` and `design-artifact-loop/workflow.md` ("POLISH ITEMS BELOW V3"). They are not affected by this policy.
 - **`design-review` is not a brief consumer.** It audits live screens and emits screen-reviews; it does not read briefs. So it has no intake checks to add.
-- **`design-implement` is downstream of the consumers.** It reads the consumer's output (a handoff or response), not the brief directly. The provenance log added by consumers in §5 is the bridge.
+- **`design-ingest` / `design-implement` are downstream of the consumers**, and read a handoff/manifest, not the brief directly — so they do NOT run the §5 *refuse* checks. They run a distinct **tolerant supersede-awareness check** instead (§8): `design-ingest` detects + stamps + reports, `design-implement` explains a no-op and guards apply. The provenance log added by consumers in §5 is the bridge for the brief→handoff hop.
 
 ---
 
@@ -304,3 +304,16 @@ Existing briefs in `{implementation_artifacts}` that predate this policy do not 
 - **One-time manual backfill** for briefs that should remain consumable: add the provenance block with `revision_mode: workflow_generated`, `change_class: original`, `last_modified_by: workflow`, and dates matching the brief's existing `date:` field. This is acceptable because we are reconstructing what the producer *would have* written; the brief is otherwise unchanged.
 
 Migration is best-effort. Briefs that aren't currently in active use can be left as-is — they will halt loudly the next time anyone tries to consume them, at which point the active/superseded decision is obvious.
+
+---
+
+## 8. Ingest-tolerance for superseded handoffs
+
+`design-ingest` and `design-implement` are downstream of the brief consumers (§6) — they read a handoff/manifest, not the brief — so they do NOT run the §5 *refuse* contract. But `design-ingest` IS the non-destructive checkpoint (it catalogs and pauses; it never applies), which makes it the right place to surface supersede BEFORE any code moves. So these two workflows run a distinct, **tolerant** supersede-awareness check:
+
+- **`design-ingest`** derives the handoff's `target_slug` (step-01) and resolves it against the briefs in `{implementation_artifacts}`. If the matched brief is `brief_status: superseded`, ingest does NOT refuse — it builds the manifest anyway (you stay able to ingest a superseded handoff for review/audit/diff), **stamps** `ingest.supersede_status` + `ingest.superseded_by` into the manifest, and **leads its handoff pause** by naming the successor and noting the work may already be applied. On a raw-URL run with no brief on disk it records `supersede_status: no_brief` and says so — it never infers `active`. On `>1 active` it records `ambiguous` and surfaces the broken predecessor chain (§2.6) without blocking.
+- **`design-implement`** reads that stamp at intake. It is symmetric: no hard refuse, but no silent apply. A superseded manifest with no remaining deltas yields a no-op that *explains itself* ("already applied, and superseded by `<X>`"); a superseded manifest **with** deltas HALTS for explicit confirmation, because applying it would regress the surface toward the superseded design — applying superseded deltas is intent, not decision autonomy, so autonomous mode does not do it unasked.
+
+This is deliberately weaker than the §5 consumer refuse: a consumer that synthesizes off a superseded brief silently corrupts everything downstream, so it must refuse; a non-destructive cataloguer that pauses for review only needs to *tell the truth loudly*. The `--allow-superseded` escape hatch in §5 Check 3 has no analog here because `design-ingest` never blocks in the first place — the gate that matters is `design-implement`'s apply-time confirmation on a superseded-with-deltas run.
+
+**The honest limit.** Supersede status lives in the *brief* frontmatter, but ingest's input is a design URL/bundle. So ingest can only know a handoff is superseded when its surface confidently corresponds to a brief's `target_slug` on disk. A raw-URL run with no brief is `no_brief` — ingest states it cannot check, rather than asserting the handoff is current. Diffing a superseded handoff against its successor (so `design-implement` applies only the delta) is explicitly **out of scope** here — it would require both to be ingestable design sources of the same kind, which a handoff and a markdown brief are not; it is a candidate for a future dedicated workflow.

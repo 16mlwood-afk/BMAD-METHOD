@@ -18,7 +18,7 @@ description: 'Assemble the durable ingest manifest per manifest-schema.md (frame
 
 Build `design-ingest-<target_slug>.md` per `{installed_path}/manifest-schema.md`:
 
-- **Frontmatter receipt** — `ingest:` block (workflow/version/input_kind/source/target/baseline_commit), `layout_constraints` (from `{design_layout_constraints}`), `completeness` counts, `tokens`.
+- **Frontmatter receipt** — `ingest:` block (workflow/version/input_kind/source/target/baseline_commit), the **supersede stamp** (`supersede_status: {handoff_supersede_status}`, `superseded_by: {superseded_by | empty}`, `source_brief: {source_brief.filename | none}`), `layout_constraints` (from `{design_layout_constraints}`), `completeness` counts, `tokens`. The supersede stamp is REQUIRED — it travels with the manifest so `design-implement` can explain a no-op and guard against re-applying stale design (`manifest-schema.md` → "Supersede stamp").
 - **Frame inventory** table — `{design_frame_inventory}` verbatim.
 - **Section inventory** — for every `drawn: true` frame, its complete ordered `{frame_sections}[frame]` list with headings/copy. This is the gated, reviewable core.
 - **Grid scaffold** — one row per (frame, section): the verbatim design copy/structure, the data fields read, the component×property rows from `{section_catalog}`, status `UNVERIFIED`. This is what `design-implement` consumes AS its grid skeleton.
@@ -42,6 +42,7 @@ This is the moment the whole workflow exists for, so don't end it with a status 
 
 Cover these, in your own words and in this spirit:
 
+- **If the handoff is superseded (`{handoff_supersede_status} == superseded`), LEAD with it — before the walkthrough.** Tell them plainly: this handoff is superseded by `{superseded_by}` — that newer brief is the current truth. You built the manifest anyway so they can review/audit/diff it, but if they want the *current* design they should re-run `design-ingest` against `{superseded_by}`. And note the work may already be applied, so `design-implement` would likely find no deltas. Don't bury this under the section list — it's the first thing they need to know. (If `ambiguous`, say two briefs claim `active` for this slug and the predecessor chain needs fixing — point at `brief-revision-policy.md` §2.6 — but the manifest itself is fine. If `no_brief`, a one-liner that there's no brief on disk for this slug, so supersede couldn't be checked — you're not asserting it's current, you just can't tell.)
 - **Where things stand:** you've gone through the design and listed everything out, and nothing has been changed yet — this is a checkpoint, not a result.
 - **Walk them through what you found:** screen by screen, the sections each one has — in plain language, with the heavy/important screen (usually the detail drawer) spelled out in full so they can actually eyeball it. This is the part they're meant to read, so make it readable, not a dump.
 - **Call out anything you're unsure about:** a screen that came back thin, a section whose data the implementation might not have, anything that made you hesitate.
@@ -52,7 +53,8 @@ The concrete facts to hand them (weave these in naturally, don't print a form):
 
 - the manifest's saved at `{manifest_path}`
 - it covers `{frames_drawn}` drawn screens (`{frames_total}` declared) and `{sections_total}` sections, one grid row each
-- the next command is `/bmad:bmm:workflows:design-implement {manifest_path}`
+- supersede status: `{handoff_supersede_status}` (and, if `superseded`, that the stamp is on the manifest and the current design is `{superseded_by}`)
+- the next command is `/bmad:bmm:workflows:design-implement {manifest_path}` — and if `superseded`, the alternative is to re-run ingest against the current brief: `/bmad:bmm:workflows:design-ingest <source of {superseded_by}>`
 
 Then stop and wait. If something has genuinely failed (an empty manifest, a broken invariant — §2 above), that's the one case where a short, plain failure note is the right call instead of the friendly walkthrough.
 
@@ -63,6 +65,7 @@ Then stop and wait. If something has genuinely failed (an empty manifest, a brok
 - `{manifest_path}` written to `{implementation_artifacts}`, readable on `main`.
 - `completeness.frames_with_empty_section_list` empty; `sections_total` == grid-scaffold row count.
 - Every drawn frame present in both the section inventory and the grid scaffold.
+- The `ingest.supersede_status` stamp is present on the manifest (one of `active | superseded | no_brief | ambiguous`), with `superseded_by` set iff `superseded`. If `superseded`, the pause LED with the heads-up — it was not buried under the section list.
 - The workflow PAUSED at the handoff — it did not chain into apply.
 
 ## FAILURE MODES
