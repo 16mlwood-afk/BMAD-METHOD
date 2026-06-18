@@ -402,6 +402,21 @@ source (URL path: design file has no JSX style blocks; bundle path: HTML has no
 inline style attributes) or a parsing bug. Investigate before proceeding.
 ```
 
+### SHARED.1a. Supersede awareness (URL / bundle paths) → `{handoff_supersede_status}`
+
+Skip on the manifest path — `{handoff_supersede_status}` is already set from the stamp at intake (Input Resolution). On the URL and bundle paths there is no stamp, so resolve it HERE, now that the frame inventory exists (the slug isn't knowable before it). This is what lets a handoff handed STRAIGHT to `design-implement` cope with supersede, not only one that came through `design-ingest`. `brief-revision-policy.md` §8.
+
+Resolve exactly as `design-ingest` step-01 §5 (same contract — do not duplicate the logic):
+
+1. Derive `{target_slug}` from the primary frame (`{design_frame_inventory}` entry 0). Prefer an exact match to an existing brief's `target_slug`.
+2. Match it against the briefs in `{implementation_artifacts}`, read `brief_status`, and set `{handoff_supersede_status}` to `active` | `superseded` | `no_brief` | `ambiguous` (`no_brief` when the surface doesn't confidently correspond to any brief — do NOT force a match or infer `active`; capture `{superseded_by}` when `superseded`).
+
+Then gate — symmetric with the manifest path, but a direct URL/bundle run has no prior dispositions, so it is effectively the "there is work to apply" case:
+
+- **`active` / `no_brief`** → continue normally.
+- **`superseded`** → SURFACE it now ("this handoff is superseded by `{superseded_by}`; that newer brief is the current truth") and **HALT before the apply pipeline (steps 2–4) for explicit confirmation** — proceeding would build the surface toward the superseded design, which is intent, not decision autonomy, so autonomous mode does NOT proceed unasked. Halting here (before the grid) also avoids wasting the mapping/grid work. On explicit confirmation — or after the user re-points at `{superseded_by}` — continue. **Never** silently apply a superseded handoff.
+- **`ambiguous`** → warn (two briefs claim `active` for this slug; `brief-revision-policy.md` §2.6) and continue — the design source itself is fine.
+
 ### SHARED.2. Report ingestion summary
 
 Output a brief summary:
@@ -474,6 +489,7 @@ URL-path-only:
 - All imported files traced and read.
 - `{design_frame_inventory}` populated (URL.3a) — the primary frame plus every drilled drawer and §13 lookup the target declares (via `<script src>` modules + comments, per-frame banners, lookup→target maps, sibling standalone `<frame>.html`). Each linked standalone frame opened and its components folded into `{design_components}`. This is step-03 §2f's frame-coverage denominator on a no-brief run.
 - **`{design_linked_record_rows}` populated AND reconciled (URL.3a source 5)** — the detail drawer's rendered "Linked records" rows enumerated (the AUTHORITATIVE lookup denominator), and every row confirmed to map to a `§13-lookup` frame in `{design_frame_inventory}`. Any row that sources 1–4 failed to declare was re-traced or added as an under-enumerated lookup frame, never silently dropped. The harvested §13-lookup count ≥ the Linked-records row count.
+- `{handoff_supersede_status}` resolved on this run (manifest path: from the stamp at intake; URL/bundle paths: independently in §SHARED.1a). A `superseded` URL/bundle run SURFACED and HALTED for explicit confirmation before the apply pipeline — it never silently built the superseded design.
 
 Bundle-path-only:
 - No curl invocation occurred.

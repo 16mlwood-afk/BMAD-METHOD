@@ -31,8 +31,9 @@ This uses **step-file architecture** for focused execution:
 - `{section_rows_source}` — `ingest_manifest` | `in_context`. Records whether the per-frame **section-coverage** rows (step-03 §2f-bis) came from a gated, reviewed `design-ingest` scaffold or were enumerated in-context on a URL/bundle run. Set in step-01 (MANIFEST.3 → `ingest_manifest`; URL/BUNDLE paths → `in_context`).
 - `{frame_scope}` — OPTIONAL (ingest_manifest runs only). A comma-separated frame-id list (or single frame id) restricting THIS pass to those frames; rows in other frames are pre-disposed `⊘ deferred(out-of-scope: not in {frame_scope})`. Absent ⇒ all not-yet-applied in-scope rows. Parsed from a trailing input token in Input Resolution. This is the EXPLICIT slice lever; the self-checkpoint below is the automatic one — you do not need `{frame_scope}` for safe large-manifest runs, only when you want to target a specific frame.
 - `{resume_prior_dispositions}` — (ingest_manifest runs only) the map of (frame, section) → disposition read from the manifest's grid scaffold at run start. Rows already `✓ applied` in the manifest are carried forward as `✓ applied (prior pass)` and NOT re-applied — this is what makes re-invoking the SAME command in a fresh session auto-resume. Computed in Input Resolution (manifest gating); honored by step-04 §5.
-- `{handoff_supersede_status}` — (ingest_manifest runs only) `active` | `superseded` | `no_brief` | `ambiguous`, read from `{ingest_manifest}.ingest.supersede_status` at intake (stamped by `design-ingest`; absent ⇒ `no_brief`). Drives the supersede branch in Input Resolution: `superseded` makes a no-op self-explaining and HALTS a with-deltas run for confirmation. Symmetric tolerance — never a hard refuse. `brief-revision-policy.md` §8.
-- `{superseded_by}` — (ingest_manifest runs only) the active successor brief filename, read from `ingest.superseded_by` when `{handoff_supersede_status} == superseded`. Named to the user in the supersede surface/halt.
+- `{target_slug}` — Kebab-case identifier for the target surface. On the manifest path it is `{ingest_manifest}.ingest.target_slug`; on the URL/bundle paths it is derived in step-01 §SHARED.1a from the primary frame (same slug semantics as `brief-revision-policy.md` Block A). Keys the supersede resolution.
+- `{handoff_supersede_status}` — `active` | `superseded` | `no_brief` | `ambiguous`. Resolved on EVERY path: the manifest path reads `{ingest_manifest}.ingest.supersede_status` at intake (stamped by `design-ingest`; absent ⇒ `no_brief`); the URL/bundle paths resolve it INDEPENDENTLY in step-01 §SHARED.1a by matching `{target_slug}` against briefs in `{implementation_artifacts}`, mirroring `design-ingest` step-01 §5 — so a handoff handed straight to `design-implement` (no ingest in front) still copes. Symmetric tolerance — never a hard refuse. `brief-revision-policy.md` §8.
+- `{superseded_by}` — the active successor brief filename, set when `{handoff_supersede_status} == superseded` (manifest: `ingest.superseded_by`; URL/bundle: the matched brief's `superseded_by`). Named to the user in the supersede surface/halt.
 - `{run_completion_mode}` — `complete` (every in-scope row reached a terminal disposition this pass) | `checkpointed` (the pass stopped at a frame boundary with in-scope rows still UNVERIFIED, to stay inside the context budget — see the resumable-apply Critical Rule). Set in step-04; drives the §9 report's done-vs-resume framing.
 - `{design_file}` — Target design file name (e.g., `Data Quality Dashboard.html`)
 - `{design_dir}` — Extracted bundle directory on disk
@@ -178,11 +179,11 @@ passes).
 
 Halt — do NOT proceed to step 1.
 
-If neither refusal fires, set `{design_dir} = {bundle_dir}` and `{design_file}` defaults to the first entry in `{bundle_manifest}.screens` (use `<screen>.html` resolution within `{bundle_dir}`). Continue to step 1, which will skip the URL download path and read directly from `{bundle_dir}`.
+If neither refusal fires, set `{design_dir} = {bundle_dir}` and `{design_file}` defaults to the first entry in `{bundle_manifest}.screens` (use `<screen>.html` resolution within `{bundle_dir}`). Continue to step 1, which will skip the URL download path and read directly from `{bundle_dir}`. **Supersede awareness for this path is resolved in step-01 §SHARED.1a** (the slug isn't known until the frame inventory is built), same as the URL path — a bundle handed straight to `design-implement` still copes with a superseded handoff.
 
 #### When `{input_kind} == "claude_design_url"`: existing flow
 
-Store as `{design_url}` and `{design_file}`. Continue to step 1.
+Store as `{design_url}` and `{design_file}`. Continue to step 1. **Supersede awareness is resolved in step-01 §SHARED.1a** (the slug isn't known until the frame inventory is built), not here — a direct URL run still copes with a superseded handoff.
 
 #### When `{input_kind} == "ingest_manifest"`: manifest gating
 
