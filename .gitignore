@@ -9,6 +9,9 @@ package-lock.json
 test-output/*
 coverage/
 
+# v6.8 skills migration — generated, re-runnable build output of tools/port-workflows-to-skills.sh
+custom/skills-native/
+
 # Logs
 logs/
 *.log
