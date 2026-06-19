@@ -1,6 +1,6 @@
 ---
 name: 'step-03b-review'
-description: 'Adversarially review the just-built workflow against the durable principles — including the context budget — and fix every blocking issue before wiring'
+description: 'Adversarially review the just-built workflow against the durable principles — including the context budget and (when it owns policy or routes between skills) the policy-skill/router quality rules — and fix every blocking issue before wiring'
 ---
 
 # Step 3b: Adversarial Review
@@ -41,6 +41,7 @@ For `workflow.md` and each step file, try to find a concrete failure on each axi
 - **Provenance** — if the workflow consumes briefs, are the 6 intake checks present before any consumption? If it produces briefs, is the full provenance emission present?
 - **Greenfield-in-brownfield** — does any step assume PRD/epic/story artifacts that may not exist in maintenance work?
 - **Structural** — a `nextStepFile` pointer that doesn't resolve, a state variable consumed before any step produces it, a phase-count/name mismatch in `workflow.md`, or leftover placeholder/TODO text.
+- **Policy-skill / router** — applies ONLY when the new flow **owns policy** (it encodes necessity, materiality, domain ownership, or safety/correctness — i.e. *when it should engage at all* and *who owns a decision*) OR acts as a **router** that dispatches between skills/sub-flows. Skip this axis for a plain mechanical-transform workflow. When it applies, require the workflow to declare, near the top of `workflow.md`: its **purpose / ownership / "do not use when"** (a plain-language materiality gate — use / don't-use / if-uncertain — not domain jargon), any **skill dependencies** (`uses_skills:` — the skills it leans on, by name), and an **abstain behavior** ("if uncertain, abstain by …" — it must never guess a policy call). Then, for any NEW skill this workflow introduces or requires, confirm it follows the policy-skill creation rules: a plain-language invoke block (`missing-invoke-block`), every declared mode wired to a real caller (`dormant-mode`), sister-skill symmetry within its domain family (`asymmetric-sibling`), and routing documented both ways — the skill names its callers and each caller defers by name (`undocumented-routing`). A missing declaration or an unwired mode is a finding. For a full read-only sweep of the affected skills, **call the `policy-skills-healthcheck` skill** (it runs exactly these four checks and returns findings + proposed fixes — it does not modify anything).
 
 ### 3. Classify findings
 
@@ -51,6 +52,8 @@ Group exactly as a Mode 1 review does:
 - **Nits** — style/consistency.
 
 A context-budget overrun is a **Concern** by default, escalating to **Blocking** only when a step is so dense or so long that the workflow cannot reliably execute its own contract.
+
+A policy-skill/router finding follows the doctrine's severity split: a **contract-breaker** (a new/changed policy-skill with no invoke block, a declared mode with no caller that consumers depend on, a caller re-deriving policy logic the skill owns, or a missing ownership/abstain declaration on a policy-owning flow) is **Blocking**; **structural debt** (a dormant mode, one-way routing, near-symmetry with a sister skill) is a **Concern** that must be named with a follow-up, never dropped silently.
 
 ### 4. Fix every blocking issue, then re-review
 

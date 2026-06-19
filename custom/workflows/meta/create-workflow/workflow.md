@@ -1,6 +1,6 @@
 ---
 name: create-workflow
-description: 'Create a new BMAD workflow from a short brainstorm. Autonomously builds all files, steps, templates, and sync config. Use when the user says "create a workflow" or "I want a workflow that does X"'
+description: 'Create a new BMAD workflow from a short brainstorm. Autonomously builds all files, steps, templates, and sync config. Use when the user says "create a workflow" or "I want a workflow that does X". If the new flow will OWN POLICY (necessity, materiality, domain ownership, safety/correctness) or act as a ROUTER between skills, step-03b additionally applies the policy-skill/router quality rules and calls the policy-skills-healthcheck skill (read-only) on the affected skills.'
 main_config: '{project-root}/_bmad/bmm/config.yaml'
 ---
 
@@ -18,7 +18,7 @@ This uses **step-file architecture**:
 
 - Step 1 is the only interactive step — a short brainstorm to define the workflow
 - Steps 2 through 4 are fully autonomous — no user input, no menus, no halting. The flow is: 2 (investigate) → 3 (build) → **3b (adversarial review)** → 4 (wire)
-- **Step 3b is a mandatory adversarial review gate** — the freshly built workflow is attacked against the durable principles (context budget, grounding, autonomy scoping, provenance, structure) and every blocking issue is fixed before wiring. A built-but-unreviewed workflow is never wired or distributed.
+- **Step 3b is a mandatory adversarial review gate** — the freshly built workflow is attacked against the durable principles (context budget, grounding, autonomy scoping, provenance, structure — and, *when the flow owns policy or routes between skills*, the policy-skill/router quality rules) and every blocking issue is fixed before wiring. A built-but-unreviewed workflow is never wired or distributed.
 - State persists via variables: `{wf_name}`, `{wf_slug}`, `{wf_description}`, `{wf_type}`, `{wf_steps}`, `{wf_inputs}`, `{wf_outputs}`, `{wf_target_dir}`, `{wf_review_verdict}`, `{bmad_root}`
 
 ### Step Processing Rules
