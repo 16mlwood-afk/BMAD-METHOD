@@ -61,20 +61,39 @@ esac
 
 echo "▶ Onboarding '$PROJECT_NAME' at $PROJECT_DIR (phase: $PROJECT_PHASE)"
 
+# Self-heal: make sure the global bmad-onboard skill is installed (best-effort, non-fatal) so the
+# natural-language trigger keeps working even if ~/.claude was wiped. Canonical copy lives in the fork.
+if [[ -x "$SCRIPT_DIR/install-global-assets.sh" ]]; then
+  "$SCRIPT_DIR/install-global-assets.sh" >/dev/null 2>&1 || true
+fi
+
 # --- Resolve reference project ---
 [[ -f "$REFERENCE_FILE" ]] || { echo "ERROR: $REFERENCE_FILE not found — can't locate the BMAD base source." >&2; exit 1; }
 REF_ROOT="$(grep -v '^#' "$REFERENCE_FILE" | grep -v '^$' | head -1 | xargs)"
 [[ -n "$REF_ROOT" && -d "$REF_ROOT/_bmad" ]] || { echo "ERROR: reference project '$REF_ROOT' has no _bmad/ tree." >&2; exit 1; }
-# Guard: the reference must be an OLD-LAYOUT install (6.0.4 base + overlay), not a v6.8.0
-# skills-layout one. Onboarding clones its base; a skills-layout reference yields a broken
-# project. _bmad/bmm/workflows/1-analysis is the old-layout marker (absent in skills layout).
-if [[ ! -d "$REF_ROOT/_bmad/bmm/workflows/1-analysis" ]]; then
-  echo "ERROR: reference '$REF_ROOT' is not an old-layout BMAD install (no _bmad/bmm/workflows/1-analysis)." >&2
-  echo "       Onboarding needs an old-layout reference. Do NOT point ~/.bmad-reference at a fresh" >&2
-  echo "       'bmad-cli install' (v6.8.0 skills layout). Point it at a healthy existing project." >&2
+# Guard: the reference must be a HEALTHY OLD-LAYOUT install (6.0.4 base + overlay), not a
+# v6.8.0 skills-layout one and not a partial/broken tree — onboarding clones its base, so
+# whatever the reference is missing, every new project inherits.
+REF_REQUIRED=(
+  "_bmad/bmm/workflows/1-analysis"      # old-layout marker (absent in v6.8.0 skills layout)
+  "_bmad/core/agents"
+  "_bmad/bmm/agents"
+  "_bmad/bmm/data"
+  "_bmad/_config/manifest.yaml"
+)
+ref_missing=()
+for item in "${REF_REQUIRED[@]}"; do
+  [[ -e "$REF_ROOT/$item" ]] || ref_missing+=("$item")
+done
+if [[ ${#ref_missing[@]} -gt 0 ]]; then
+  echo "ERROR: reference '$REF_ROOT' is not a healthy old-layout BMAD install — missing:" >&2
+  printf '         %s\n' "${ref_missing[@]}" >&2
+  echo "       Onboarding clones the reference base, so a new project would inherit these gaps." >&2
+  echo "       Do NOT point ~/.bmad-reference at a fresh 'bmad-cli install' (v6.8.0 skills layout);" >&2
+  echo "       point it at a healthy, complete old-layout project." >&2
   exit 1
 fi
-echo "  reference: $REF_ROOT"
+echo "  reference: $REF_ROOT (health check passed)"
 
 # --- Guard against clobbering an existing install ---
 if [[ -d "$PROJECT_DIR/_bmad" ]] && ! $FORCE; then
@@ -146,9 +165,9 @@ else
   echo "  ✓ registered in ~/.bmad-targets"
 fi
 
-# --- 6. Sync ---
-echo "  → running sync-bmad-workflows.sh ..."
-"$SYNC_SCRIPT" >/tmp/onboard-sync.log 2>&1 || { echo "ERROR: sync failed. See /tmp/onboard-sync.log" >&2; exit 1; }
+# --- 6. Sync (just this project) ---
+echo "  → running sync-bmad-workflows.sh --only $PROJECT_DIR ..."
+"$SYNC_SCRIPT" --only "$PROJECT_DIR" >/tmp/onboard-sync.log 2>&1 || { echo "ERROR: sync failed. See /tmp/onboard-sync.log" >&2; exit 1; }
 grep -A14 "$(basename "$PROJECT_DIR")\b" /tmp/onboard-sync.log | head -16 || true
 
 echo

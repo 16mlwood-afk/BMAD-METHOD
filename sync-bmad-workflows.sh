@@ -19,14 +19,16 @@ PULL_TARGET=""
 WORKTREE_TARGET=""
 REAP_ONLY=false
 REAP_PATH=""
+ONLY_TARGET=""
 
 usage() {
-  echo "Usage: $0 [--check] [--force] [--pull <path> | --worktree <path> | --reap [<path>]]"
+  echo "Usage: $0 [--check] [--force] [--only <path>] [--pull <path> | --worktree <path> | --reap [<path>]]"
   echo ""
   echo "  (no args)       Sync source → all targets (aborts if targets have local-only content)"
   echo "                  Includes automatic stale-worktree reap on each target."
   echo "  --check         Report drift without modifying anything"
   echo "  --force         Sync even if targets have local-only content (DESTRUCTIVE)"
+  echo "  --only PATH     Sync just ONE project (its root or _bmad/bmm/workflows path); skip all others"
   echo "  --pull PATH     Pull changes from a project back to the source of truth"
   echo "  --worktree PATH Sync custom workflow dirs + skills into a single worktree path"
   echo "                  (minimal — no hooks/commands/CLAUDE.md; git-tracked files propagate via checkout)"
@@ -53,10 +55,19 @@ while [[ $# -gt 0 ]]; do
       else
         shift
       fi ;;
+    --only)
+      [[ -z "${2:-}" ]] && { echo "ERROR: --only requires a project path argument"; usage; }
+      ONLY_TARGET="$2"; shift 2 ;;
     -h|--help) usage ;;
     *) echo "ERROR: Unknown argument: $1"; usage ;;
   esac
 done
+
+# Normalize --only to a project root (accept either the root or its workflows path).
+if [[ -n "$ONLY_TARGET" ]]; then
+  ONLY_TARGET="${ONLY_TARGET%/}"
+  ONLY_TARGET="${ONLY_TARGET%/_bmad/bmm/workflows}"
+fi
 
 # Dependency checks
 for cmd in rsync jq; do
@@ -809,6 +820,12 @@ while IFS= read -r target || [[ -n "$target" ]]; do
   target="${target%%[[:space:]]}"
   target="${target##[[:space:]]}"
   [[ -z "$target" || "$target" == \#* ]] && continue
+
+  # --only <path>: process just this one project (match its root or workflows path); skip the rest.
+  if [[ -n "$ONLY_TARGET" ]]; then
+    only_proot="${target%/_bmad/bmm/workflows}"
+    [[ "$target" != "$ONLY_TARGET" && "$only_proot" != "$ONLY_TARGET" ]] && continue
+  fi
 
   # Deduplicate
   for seen in "${seen_targets[@]+"${seen_targets[@]}"}"; do

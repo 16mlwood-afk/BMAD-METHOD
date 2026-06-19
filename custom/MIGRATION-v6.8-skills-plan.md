@@ -129,6 +129,23 @@ mid-migration.
 3. Roll the rest via a bash-driven multi-repo pass (per CLAUDE.md cross-repo-edits guidance).
 4. Keep the old overlay until every project is validated on skills; remove it only after cutover.
 
+## Phase 6 — Retarget the onboarding tooling (do NOT forget)
+
+Onboarding is now real tooling built for the CURRENT old layout. When this migration lands it must
+be retargeted, or new projects will keep being created in the old layout:
+
+- `onboard-project.sh` — today it clones the reference project's old-layout `_bmad/` base. Under the
+  skills layout, replace the reference-clone path with: run `bmad-cli install` (or the skills-native
+  successor), then have the sync overlay the fork's custom skills. Drop the `1-analysis` old-layout
+  guard / `~/.bmad-reference` dependency once the base no longer comes from a reference clone.
+- `bmad-onboard` skill (`custom/claude-global/skills/bmad-onboard/`) — rewrite the "do NOT run
+  bmad-cli install" guidance, since under the migrated layout the installer becomes correct again.
+- Global `CLAUDE.md` "New project bootstrap" section + `new-project-bootstrap.snippet.md` — update to
+  match.
+- `~/.bmad-reference` header + the reference-health guard — remove or repurpose.
+
+Until then, the old-layout onboarding is the supported path and these guards are load-bearing.
+
 ---
 
 ## Verification (every phase)
