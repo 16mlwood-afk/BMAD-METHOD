@@ -108,6 +108,30 @@ The *decision* counterpart, one rung above §1b-2 and the narrowest. §1b-2 chec
 
 - **Not a decision route** (route not in `{brief_decision_map}`): do nothing — decision analysis does not apply (the norm). Never invent a decision finding on a dashboard/coverage/status surface.
 
+### 1b-4. Evaluate C-FINANCE-01 (finance-semantics conformance)
+
+The PR-time partner to `design-handoff`'s `finance-domain-pass`. Runs ONLY for routes in `{brief_finance_map}` (whose brief is `is_finance_surface` / carries §2b). Non-finance routes → skip silently. The mechanical sub-checks come from the step-03 §3d harvest; representability + accounting-truth are semantic.
+
+- **Hard finding (P1) — unambiguous mechanical violations only** (from the §3d harvest): a monetary negative with a leading minus instead of parentheses; ≥2 currencies in one table with no per-row currency column; a cell blending a quantity and a monetary value.
+
+  > Finance-semantics break on `{route}` — the brief (`{brief_filename}` §2b) requires {parentheses-negatives / single-currency-per-table / quantity-value separation}, but the surface renders {the offending cell, quoted}. {Render the negative as `(…)` / label currency per row / split quantity and value into separate columns.}
+
+- **Human-judgment prompt (always, when a §2b contract exists):**
+
+  ```
+  **[manual] C-FINANCE-01** — Finance surface must preserve the brief's §2b semantics.
+  - Route: {route}  ·  Brief: {brief_filename} §2b
+  - Representability: for each required exception state ({exception_expectations}) — missing cost,
+    negative/zero stock, reconciliation break, pending receipt, duplicate/exploded references — does
+    the surface have somewhere to show it, or is it a silent gap?
+  - Accounting truth: does the render honour {must_not_infer} (no invented figures/valuation; missing
+    marked, not imputed)?
+  - Open questions (do NOT treat as defects): {unresolved_assumptions or "none"} — surface, don't resolve.
+  ```
+
+- **Finance-shaped route with no §2b** (noted in coverage at step-01 §7): report "finance semantics not specified — not verifiable" + flag the possible handoff defect (`finance-domain-pass` may not have run). Never report it as passing.
+- **Not a finance route** (not in `{brief_finance_map}`): do nothing — the norm.
+
 ### 1c. Evaluate C-IDENTFMT-01 (canonical-identifier formatting)
 
 For each route in `{affected_routes}`:
@@ -168,6 +192,7 @@ Always emit a coverage section:
 - identifier formatting (C-IDENTFMT-01): {checked {R} route(s) in dom-render §3c / deferred to manual — dom-render skipped, source-arm surfaced {C} advisory candidate(s)}. §13(a) canonical-identifier consistency.
 - analytic depth (C-RIGOR-01): {checked {Q} route(s) against a captured brief §4d rigor spec — {hard naked-number findings} + manual prompt(s) / no §4d specs in scope}. {List any affected routes that present decision figures but have no brief §4d — depth NOT specified (possible handoff defect).} Data gaps named in a spec are enrichment requirements, not defects.
 - decision quality (C-DECISION-01): {checked {D} capital-decision route(s) against a captured brief §4e spec — {hard unmodelled/unsized findings} + manual prompt(s) / no §4e specs in scope (the norm — most routes commit nothing)}. A `single-scenario` verdict is honest, not a defect; a fabricated outcome distribution is the failure.
+- finance semantics (C-FINANCE-01): {checked {F} finance-shaped route(s) against a captured brief §2b contract — {hard mechanical findings: parentheses-negative / mixed-currency / blended qty-value} + manual prompt(s) / no §2b in scope}. {List any finance-shaped routes with no brief §2b — semantics NOT specified (possible handoff defect).} Unresolved assumptions named in §2b are open questions, not defects.
 - Rules with no diff context: {list of rule IDs that had nothing to check this PR}.
 ```
 

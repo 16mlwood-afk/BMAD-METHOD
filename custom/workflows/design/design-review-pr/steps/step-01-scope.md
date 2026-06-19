@@ -141,7 +141,12 @@ Match the one whose frontmatter `accompanies_brief == {brief_filename}`. Record 
 - **§4e present:** capture the spec. This is what `C-DECISION-01` checks the rendered surface against.
 - **§4e absent:** the route is not a capital decision (most routes) — do not add a `{brief_decision_map}` entry; decision analysis does not apply. NOT a failure, and NOT noted (its absence is the norm, unlike §4d).
 
-If `{brief_archetype_map}` is empty, `C-ARCHETYPE-01` is a no-op this run; note it in coverage. Likewise if `{brief_rigor_map}` is empty, `C-RIGOR-01` is a no-op; note it. `{brief_decision_map}` empty → `C-DECISION-01` is a no-op (expected on non-decision routes; no note needed).
+**Capture the finance contract (finance-shaped surfaces only).** When the active brief is `is_finance_surface: true` (its frontmatter) / carries a **§2b (Finance semantics)** block, build `{brief_finance_map}[route]` for `C-FINANCE-01`: the `column_semantics` (which columns are quantity vs money), the `exception_expectations` (states that must be representable), the `must_not_infer` list (accounting-truth constraints), and the `terminology`. Read from the **brief**, not re-derived.
+
+- **§2b present:** capture it — this is what `C-FINANCE-01` checks the rendered surface against.
+- **§2b absent on a finance-shaped route:** if the route clearly handles ledger/inventory/statement/reconciliation data yet the brief has no §2b, that is a possible handoff defect (`finance-domain-pass` may not have run); note it in `{findings.coverage_notes}` ("route X is finance-shaped but the brief has no §2b — finance semantics not specified"). Otherwise (non-finance route) do not add an entry; not a failure, not noted (the norm).
+
+If `{brief_archetype_map}` is empty, `C-ARCHETYPE-01` is a no-op this run; note it in coverage. Likewise if `{brief_rigor_map}` is empty, `C-RIGOR-01` is a no-op; note it. `{brief_decision_map}` empty → `C-DECISION-01` is a no-op (expected on non-decision routes; no note needed). `{brief_finance_map}` empty → `C-FINANCE-01` is a no-op (expected on non-finance routes; no note needed).
 
 ---
 
@@ -156,6 +161,7 @@ The workflow now has:
 - `{brief_archetype_map}` — declared analytics archetype per affected route that has a brief-declared band (may be empty)
 - `{brief_rigor_map}` — declared rigor spec (read sentence, decision numbers + uncertainty/base-rate, deciding fields, data gaps) per affected route whose active brief carries a §4d Analytic depth section (may be empty)
 - `{brief_decision_map}` — declared decision spec (framed bet, modelled outcome, sizing, breakeven driver, verdict) per affected route whose active brief carries a §4e Decision analysis section (empty on every non-capital-decision route — the norm)
+- `{brief_finance_map}` — declared finance contract (column semantics, exception expectations, must-not-infer, terminology) per affected route whose active brief is `is_finance_surface` / carries a §2b Finance-semantics section (empty on non-finance routes)
 
 Proceed to step-02.
 

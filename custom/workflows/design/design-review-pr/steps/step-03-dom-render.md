@@ -257,6 +257,8 @@ A contradiction is a P1 `change-requested` finding citing the brief filename and
 
 **Authoritative judgment — defer to the single brain (critique mode).** The harvest + table above are the cheap DOM evidence and the deterministic fallback. When the `analytics-surface-architect` skill is synced, invoke it **mode: critique**, passing the route's user question (from the active brief / `{brief_archetype_map}[route].rationale`), the declared archetype, and the harvested form signals; it returns the corrected archetype + the specific reason in its output contract. Fire `C-ARCHETYPE-01` (P1) when critique reports the rendered shape does not answer the question. This is the PR-time use of the same brain `design-handoff` §5c calls in `select` mode, so author and reviewer defer to one logic — and it catches the case the table structurally cannot: a band that renders **exactly as declared** yet the declared archetype was the wrong shape for the question (a grounded-but-stale choice, or a question that shifted after handoff). **Fallback (skill absent):** apply the harvest + comparison table above directly — identical impl-drift coverage; the declared-archetype-soundness judgment is the increment only the skill adds. Conservative either way: ambiguous → defer to the step-04 human-judgment prompt, never false-fire.
 
+**Teach, don't just flag (`explain` mode).** When `C-ARCHETYPE-01` fires — or the ambiguous case emits a step-04 human-judgment prompt — additionally invoke `analytics-surface-architect` **mode: explain** to articulate which shape fits the question and why, so the finding *teaches* the correct archetype rather than only flagging the wrong one. This is the wired caller for `explain` (its other entry is human onboarding, per the skill's "When to invoke").
+
 ### 3c. Canonical-identifier formatting conformance (C-IDENTFMT-01)
 
 The authoritative arm of the §13(a) check — policy §13 "Canonical identifier": a record *"reads, formats … and links the same way everywhere it appears … do not relabel, reformat, or re-key the same record per surface."* §3b covers §13's *component-treatment* half; this covers its *identifier-formatting* half. Run on every route in `{affected_routes}` (no brief map needed — it reads the rendered page).
@@ -307,6 +309,41 @@ Fire `C-IDENTFMT-01` (P1 `change-requested`) on a clear result:
 | Raw-enum leakage | `rawEnumRendered` non-empty AND a sibling surface renders the same class as a human label (e.g. `AMAZON_ES` rendered while `Amazon UK` appears elsewhere) |
 
 Quote the divergent strings verbatim in the finding and cite policy §13 (and §4 for casing). A single isolated `alpha_token` casing variant that is not a canonical-identifier class is at most P3 — do not P1 a one-off. When the harvest is ambiguous (e.g. `alpha_token` clashes that may be distinct real values, not the same record), do NOT fire — defer to the step-04 human-judgment prompt. False-firing trains reviewers to ignore the check.
+
+### 3d. Finance-semantics conformance (C-FINANCE-01)
+
+Run this ONLY for routes present in `{brief_finance_map}` (the brief's §2b Finance-semantics contract). Skip entirely otherwise. This is the PR-time partner to `design-handoff`'s `finance-domain-pass` enrichment: the brief captured the finance MEANING; this verifies the build preserved it.
+
+Harvest the rendered finance table in one round-trip:
+
+```javascript
+(() => {
+  const table = document.querySelector('table, [role="table"]');
+  if (!table) return JSON.stringify({ noTable: true });
+  const cells = [...table.querySelectorAll('td, [role="cell"]')].map(c => (c.textContent || '').trim());
+  const moneyRe = /[€$£¥]\s?-?[\d.,]+|-?[\d.,]+\s?(EUR|USD|GBP|JPY)\b/;
+  const money = cells.filter(c => moneyRe.test(c));
+  return JSON.stringify({
+    // leading-minus negatives in money cells (policy: negatives in parentheses)
+    leadingMinusMoney: money.filter(c => /(^|[€$£¥]\s?)-[\d.,]/.test(c) && !/\([\d.,]/.test(c)).slice(0, 8),
+    // distinct currency symbols/codes present
+    currencies: [...new Set(money.map(c => (c.match(/[€$£¥]|EUR|USD|GBP|JPY/) || [''])[0]))].filter(Boolean),
+    // a cell mixing a quantity and a money value (blended qty+value)
+    blendedQtyValue: cells.filter(c => moneyRe.test(c) && /\b\d+\s*(pcs|units|qty|×|x)\b/i.test(c)).slice(0, 8),
+    hasCurrencyColumn: [...table.querySelectorAll('th, [role="columnheader"]')].some(h => /currency|ccy/i.test(h.textContent || '')),
+  }, null, 2);
+})();
+```
+
+Fire `C-FINANCE-01` (P1) only on an **unambiguous mechanical** violation of the §2b contract:
+
+| Sub-check | Fires C-FINANCE-01 |
+|---|---|
+| Negatives in parentheses | `leadingMinusMoney` non-empty — a monetary negative rendered with a leading minus, not `(…)` |
+| Single currency per table | `currencies.length` ≥ 2 AND `hasCurrencyColumn` false — currencies mixed with no per-row label |
+| Quantity/value separation | `blendedQtyValue` non-empty — a cell blends a quantity and a monetary value (must be separate columns) |
+
+The **semantic** half is a precise human-judgment prompt seeded by §2b, NOT a DOM fire: (a) **representability** — for each `exception_expectations` entry in `{brief_finance_map}[route]` (missing cost, negative/zero stock, reconciliation break, pending receipt, duplicate/exploded references), does the surface have *somewhere* to show that state, or is it a silent gap? (b) **accounting-truth** — does the render appear to honour the §2b `must_not_infer` list (no invented figures / valuation; missing marked, not imputed)? **Never fabricated:** an `unresolved_assumption` the brief named (valuation basis, status SoT) is an open question to surface, not a rendering defect. When the harvest is ambiguous, do NOT fire — defer to the step-04 prompt. Quote the offending cell verbatim and cite the brief filename + §2b.
 
 ### 4. Apply established-pattern exceptions
 

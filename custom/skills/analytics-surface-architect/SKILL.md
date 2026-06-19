@@ -78,7 +78,7 @@ Lock one mode per invocation.
 
 - **select** (default) — given a data shape + user question, run the procedure and return the output contract. This is what design-handoff §5c calls.
 - **critique** — given a proposed or existing surface (its declared archetype, or its rendered form), check the shape against the question. Flag mismatches: a `trend` strip answering a coverage question; an element with no drill; two co-equal archetypes; a KPI-card wall. Return the corrected archetype + the specific reason, in the output contract.
-- **explain** — teach which archetype fits and why, for onboarding or a brief's reviewer. Lead with the user's question, then the archetype, then one concrete example and the most tempting wrong choice.
+- **explain** — teach which archetype fits and why, for onboarding or a brief's reviewer. Lead with the user's question, then the archetype, then one concrete example and the most tempting wrong choice. **Callers:** human onboarding (per "When to invoke"), and `design-review-pr` step-03 §3b when a `C-ARCHETYPE-01` finding fires (so the finding teaches the right shape, not just flags the wrong one).
 
 ## Refusals (and what to offer instead)
 

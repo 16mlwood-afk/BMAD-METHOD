@@ -35,6 +35,18 @@ The compact, always-current state. The skill reads THIS block + the top of `## C
 
 Newest first. **One discrete entry per wave** — `### YYYY-MM-DD — title (commit)` + a bounded paragraph (what · why · scope · delivery). NEVER a single run-on line. Keep ~12 entries here; when it grows past that, move the oldest (in newest-first order) into [`STATUS-archive.md`](./STATUS-archive.md).
 
+### 2026-06-19 — foundation-token reconciliation: close the design→code token-scale handoff (`67d3ae35`)
+
+A faithful `design-implement` port (matching class names + markup) rendered ~23% large because the app's canonical type scale (`--font-size-base: 1rem`/16px) diverged from the design system AND `docs/design-policy.md` (13px), and no pipeline step caught it — inbound-flow held-orders (PR #2412), where the implementer "fixed" it with `var(--font-size-base, 0.8125rem)`, a dead fallback the defined global overrides. Closed the loop across three workflows: **design-implement** gains step-03 §2i Foundation-token reconciliation (design-system vs app-canonical vs policy-declared), fed by URL.4 now reading the bundle's foundational `tokens/*.css` (the missing URL-path denominator) + step-02 §5a; drift is routed-not-patched, the dead `var(--token,<literal>)` fallback banned, §9 discloses it (+ workflow rule + 4 state vars). **design-review-pr** gains standing check `F-FOUNDTOKEN-01` (P1 dead-fallback, P2 tokens-vs-policy) for the bypass case. **apply-design-policy-change** gains **Level 0 Foundation-Token Migration** — the single-source `tokens.css` edit that was homeless (why v3's 13px shipped "flagged, not auto-migrated"). Detect + catch now route to a fix that exists. Delivery: committed `67d3ae35`, pushed `myfork/custom`. Self-review (Mode 1): autonomy = detect+route, never auto-migrate; routing target verified real before shipping. Owed: `sync bmad` to the 13 targets · the inbound-flow app token migration itself (run Level 0 on `inventory-manager`) · step-03-build-grid context-budget watch (now 10 axes).
+
+### 2026-06-19 — clear policy-skill debt: analytics explain wired + C-FINANCE-01 added
+
+**What.** Cleared both seeded S2 items. (1) **`analytics-surface-architect` `explain`** is no longer dormant — wired into design-review-pr step-03 §3b (on a `C-ARCHETYPE-01` finding, invoke `explain` so the finding teaches the right shape, not just flags the wrong one) + a documented human-onboarding entry; all three modes (`select`/`critique`/`explain`) now have callers. (2) **`C-FINANCE-01`** added to design-review-pr — the finance symmetry partner to `C-ARCHETYPE-01`: for routes whose brief is `is_finance_surface` (carries §2b), it audits at PR time that the build preserved the finance contract — DOM-detectable mechanical fires (leading-minus negatives, unlabelled mixed currency, blended qty+value cell) + a human-judgment prompt for exception representability and accounting-truth (`must_not_infer`), never fabricating against a named `unresolved_assumption`.
+
+**Why.** "Do it" — clear the policy-skill debt. Restores symmetry: finance now has both handoff-enrich (`finance-domain-pass`) AND PR-audit (`C-FINANCE-01`), matching analytics (`analytics-surface-architect` select + `C-ARCHETYPE-01`).
+
+**Scope.** `analytics-surface-architect/SKILL.md` (explain callers) + design-review-pr `workflow.md` (`{brief_finance_map}` + `C-FINANCE-01` def, "five checks"→"six") + `step-01-scope.md` (build the map) + `step-03-dom-render.md` (§3b explain wire + §3d finance harvest/fires) + `step-04-deliver.md` (§1b-4 aggregate + coverage note). Ports 0-dangling; validate:budget passes (step-03 over soft line-budget, under byte-budget + hard ceiling — soft warning). Synced 15/15; pushed `myfork/custom`. Policy-skill debt now empty.
+
 ### 2026-06-19 — policy-skill severity scheme (S1/S2/S3) + debt tracking
 
 **What.** Gave the policy-skill checks a three-level severity scheme and routing. **S1 contract-breaker** (no invocation block on a new/changed policy-skill; mode repurposed without updating callers; caller re-deriving policy logic; symmetry break that contradicts policy) → blocks the PR, fix or explicitly waive. **S2 structural debt** (never-called dormant mode; "just-behind" asymmetry; one-way routing) → may merge but only WITH a follow-up task or a `STATUS.md` "Policy-skill debt" entry. **S3 hygiene** (inconsistent wording, missing examples) → opportunistic. Wired into `policy-skills-healthcheck` (output contract `severity: S1|S2|S3` + reason + suggested_fix, plus a Severity & Routing section) and the mason-bmad "Policy-skills" doctrine. New **"Policy-skill debt"** section in STATUS seeded with the two real S2 items (analytics `explain` dormant; finance has no PR-time audit counterpart).
@@ -275,8 +287,9 @@ Foundational capabilities, shipped. The wave-by-wave feature history (what lande
 
 S2 findings from the policy-skill doctrine (safe-to-merge structural debt; clear opportunistically — see `policy-skills-healthcheck`). S1 never lands here (it blocks); S3 is opportunistic and untracked.
 
-- **S2 · dormant-mode · `analytics-surface-architect`** — `explain` mode has no caller (only `select` @ design-handoff §5c and `critique` @ design-review-pr §3b are wired). Fix: wire `explain` into an onboarding/brief-reviewer entry, or drop the mode. (`select`/`critique` are healthy.)
-- **S2 · symmetry · `finance-domain-pass`** — no design-review-pr counterpart: nothing audits at PR time whether a built finance surface preserved the brief's required semantics (qty/value separation, exception representability), where analytics has `C-ARCHETYPE-01`. "Just behind," not contradicting policy. Fix: a `C-FINANCE-01`-style check in design-review-pr.
+**None open.** Both seeded S2 items were cleared (see changelog `2026-06-19 — clear policy-skill debt`):
+- ~~`analytics-surface-architect` `explain` dormant~~ → wired in design-review-pr §3b (teach on a C-ARCHETYPE-01 finding) + documented human-onboarding entry; all three modes now have callers.
+- ~~`finance-domain-pass` no PR counterpart~~ → `C-FINANCE-01` added to design-review-pr (the finance symmetry partner to `C-ARCHETYPE-01`).
 
 ## In-Flight Work
 
