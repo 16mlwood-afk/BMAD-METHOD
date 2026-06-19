@@ -819,7 +819,7 @@ while IFS= read -r target || [[ -n "$target" ]]; do
   seen_targets+=("$target")
 
   if [[ ! -d "$target" ]]; then
-    echo "SKIP  $target (not found)"
+    echo "SKIP  $target (not found — run onboard-project.sh to set this project up, or remove the stale line from ~/.bmad-targets)"
     skipped=$((skipped + 1))
     continue
   fi
