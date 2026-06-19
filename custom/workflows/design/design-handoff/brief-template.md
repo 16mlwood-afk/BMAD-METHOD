@@ -154,6 +154,40 @@ Project design-policy **§13 (linked records & lookups) is a functional mandate,
 
 ---
 
+{if {is_finance_surface}}
+## 2b. Finance semantics & accounting truth
+
+*This surface is finance-shaped ({finance_report_type}). The semantics below MUST survive the
+blank-canvas redesign — they describe meaning the design must preserve, never how to lay it out.*
+
+**Column semantics (what each value means):**
+{for s in {finance_column_semantics}}
+- `{s.column}` — {s.group} · {s.meaning}
+{endfor}
+Quantities and monetary values are distinct concepts — never present them blended in one field.
+
+**Exception states the design must be able to represent** (somewhere in the journey — these are
+outcomes, not a prescribed panel):
+{for e in {finance_exception_expectations}}
+- {e}
+{endfor}
+
+**Accounting-truth constraints (must NOT be inferred):**
+{for m in {finance_must_not_infer}}
+- {m}
+{endfor}
+
+**Open questions — unresolved definitions (do NOT guess these; surface them in the user's journey
+or as workflow questions):**
+{for u in {finance_unresolved_assumptions}}
+- {u}
+{endfor}
+
+**Terminology — use consistently:** {finance_terminology}
+
+---
+{endif}
+
 ## 3. Who Uses This
 
 {user_context — role, job-to-be-done, frequency, emotional state}

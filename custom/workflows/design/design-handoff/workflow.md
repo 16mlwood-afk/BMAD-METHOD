@@ -127,6 +127,15 @@ This uses **step-file architecture** for focused execution:
 - `{required_variants}` - Edge states parsed from the artifact (required design variants in refine-screen mode)
 - `{peer_steals}` - Peer-pattern transplants parsed from the artifact (used as visual references in refine-screen mode)
 - `{already_fine}` - Keepers parsed from the artifact (things refine-screen must NOT break — folded into hard constraints. State-variable name kept for compatibility with step-03 templates.)
+- **Finance-domain pass** — set in step-01 §3b, only when the surface is finance-shaped (`{is_finance_surface}` = `true`); empty/absent otherwise. Captures finance MEANING for the brief, never layout. Produced by the `finance-domain-pass` skill (inline fallback if not synced).
+  - `{is_finance_surface}` - `true` iff the source is a ledger / transactions / inventory movement / reconciliation / P&L / balance sheet / cash flow / FP&A surface. Gates §3b and the finance render in step-03.
+  - `{finance_report_type}` - detected finance report/data type (e.g. "inbound inventory reconciliation"). A §1 context signal — does NOT set `{page_mode}` or composition.
+  - `{finance_column_semantics}` - each source column → semantic group (`quantity|money|status|identity|date|meta`) + meaning; enriches `{data_shape}` (Domain Data). Quantity and value stay distinct.
+  - `{finance_exception_expectations}` - finance exceptions the design must be able to REPRESENT somewhere (missing cost, negative stock/value, reconciliation break, pending receipt, duplicate/exploded references, estimated-vs-actual cost) — as outcomes, not a panel design.
+  - `{finance_unresolved_assumptions}` - finance definitions that must stay explicit and NEVER be inferred (status source-of-truth, valuation/costing basis, block/line semantics, FX basis). Rendered as brief Open Questions; the workflow never resolves them.
+  - `{finance_terminology}` - canonical finance terms to use consistently in the brief (per `finance-presentation`).
+  - `{finance_must_not_infer}` - accounting-truth acceptance constraints (no invented figures, account mappings, or valuation methods; missing → mark, never impute).
+  - (The pass's `must_preserve_capabilities` fold into `{must_support_capabilities}`; `dropped_capability_flags` cross-check into `{dropped_capabilities}`; `implied_surfaces` feed `{spawned_surfaces}` via §5f — so capability/surface outputs travel the existing vars, no new ones needed.)
 
 ---
 

@@ -157,6 +157,50 @@ Project design-policy **§13 (Cross-surface relational coherence — linked reco
 
 Set `{linked_records_inventory}` — one entry per foreign reference, each with the four facts above. **Empty only when nothing on the surface resolves to a foreign record** (a true leaf surface); empty-by-omission is the silent failure this step exists to prevent — the §13 mandate is invisible to the designer unless this inventory carries it into the brief. The §13 *form* guardrail (the affordance is the quiet demoted-blue §4 link + the §7 drawer, **never** a button, CTA, colored pill, chip, or Airtable modal chrome) travels with the inventory into brief §2a — Airtable's **relation** imported (expand-in-context + lookups), Airtable's **form** rejected.
 
+### 3b. Finance-domain pass — semantics a blank-canvas redesign must preserve (conditional)
+
+Fires **only when the surface is finance-shaped** — its data/workflow is a ledger, transactions/journal,
+inventory movement, stock reconciliation, P&L / income statement, balance sheet, cash flow, trial
+balance, or FP&A report. Otherwise skip this section entirely (`{is_finance_surface}` = `false`) — it is
+inert for non-finance surfaces. Finance surfaces hide load-bearing semantics inside the layout this
+brief withholds (lifecycle states, quantity/value separation, reconciliation, exceptions); without this
+pass a blank-canvas redesign silently drops them or guesses them as taste. This pass captures the
+finance **meaning** — never the layout.
+
+**Invoke the skill (mode: extract).** Load `finance-domain-pass` via the Skill tool and pass it:
+- the **source artifact** (the data file / page / export the handoff is about),
+- the **`{data_shape}`** and **`{linked_records_inventory}`** just derived (§3, §3a),
+- read-only awareness of `docs/design-policy.md` (so it surfaces collisions as open questions, never overrides).
+
+The skill runs its procedure (detect type → column semantics → capabilities-as-outcomes → shed-capability
+flags → exception expectations → implied surfaces → unresolved assumptions → terminology → must-not-infer)
+and returns its **appendix object**. It governs finance meaning, NOT layout — it never names a bar, card,
+drawer, or composition. Capture it and route each field into the existing machinery:
+
+| Appendix field | Captured / routed into |
+| --- | --- |
+| `report_type_detected` | `{finance_report_type}` — a §1 context signal; does **not** set `{page_mode}` or composition |
+| `source_column_semantics` | `{finance_column_semantics}` — enriches `{data_shape}` (Domain Data); never blends qty + value |
+| `must_preserve_capabilities` | **merge into** `{must_support_capabilities}` (§4) — as outcomes |
+| `dropped_capability_flags` | **cross-check into** `{dropped_capabilities}` (§3 mutation audit) — confirm each, don't auto-drop |
+| `exception_expectations` | `{finance_exception_expectations}` — representability requirements (NOT a panel design) |
+| `implied_surfaces` | **feed §5f** `{spawned_surfaces}` as candidates (frame-name keyed, depth-1; §5f reconciles + owns the final inventory) |
+| `unresolved_assumptions` | `{finance_unresolved_assumptions}` — rendered as brief Open Questions; **never resolved here** |
+| `terminology` | `{finance_terminology}` — canonical terms for brief labeling |
+| `must_not_infer` | `{finance_must_not_infer}` — acceptance constraints preserving accounting truth |
+| `policy_collisions` | surface to the user as `modify-design-policy` candidates — do **not** patch the brief around policy |
+
+**Outcomes, never mechanics.** If any captured capability or surface can't be stated without naming a
+component, it was a layout leak — drop it. **Never resolve an unknown:** a flagged `unresolved_assumption`
+(status source-of-truth, valuation/costing basis, block/line semantics, FX basis) goes to the brief's
+Open Questions verbatim; the pass never decides it and the brief never invents it.
+
+**Fallback (skill not synced).** If `finance-domain-pass` is absent (older sync), apply the same
+procedure inline using `{project-root}/_bmad/bmm/workflows/shared/` finance conventions + the
+`finance-presentation` standard, and populate the same capture fields by hand. The skill is preferred
+(it makes the must-not-infer and capability outputs mandatory rather than skippable prose), but handoff
+must not hard-fail when it is absent.
+
 ### 4. Capture Feature Purpose
 
 Write `{feature_purpose}`:
