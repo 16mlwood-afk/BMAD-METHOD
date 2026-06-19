@@ -35,6 +35,14 @@ The compact, always-current state. The skill reads THIS block + the top of `## C
 
 Newest first. **One discrete entry per wave** — `### YYYY-MM-DD — title (commit)` + a bounded paragraph (what · why · scope · delivery). NEVER a single run-on line. Keep ~12 entries here; when it grows past that, move the oldest (in newest-first order) into [`STATUS-archive.md`](./STATUS-archive.md).
 
+### 2026-06-19 — policy-skill severity scheme (S1/S2/S3) + debt tracking
+
+**What.** Gave the policy-skill checks a three-level severity scheme and routing. **S1 contract-breaker** (no invocation block on a new/changed policy-skill; mode repurposed without updating callers; caller re-deriving policy logic; symmetry break that contradicts policy) → blocks the PR, fix or explicitly waive. **S2 structural debt** (never-called dormant mode; "just-behind" asymmetry; one-way routing) → may merge but only WITH a follow-up task or a `STATUS.md` "Policy-skill debt" entry. **S3 hygiene** (inconsistent wording, missing examples) → opportunistic. Wired into `policy-skills-healthcheck` (output contract `severity: S1|S2|S3` + reason + suggested_fix, plus a Severity & Routing section) and the mason-bmad "Policy-skills" doctrine. New **"Policy-skill debt"** section in STATUS seeded with the two real S2 items (analytics `explain` dormant; finance has no PR-time audit counterpart).
+
+**Why.** Make the healthcheck actionable without becoming a second rating system — three levels are enough to route (block / schedule / opportunistic) and the S2 bucket gets a tracked home so debt isn't ship-and-forgotten.
+
+**Scope.** Fork (git-tracked): `policy-skills-healthcheck/SKILL.md` + STATUS (debt section). `mason-bmad-workflow-expert` doctrine (in `~/.claude`, not tracked) gained the severity routing. Synced 15/15; pushed `myfork/custom`.
+
 ### 2026-06-19 — policy-skill doctrine + policy-skills-healthcheck meta-skill
 
 **What.** Generalized the finance/analytics invocation-policy work into a reusable doctrine. A **policy-skill** encodes necessity (materiality / domain ownership / safety / correctness); when one is discovered, authored, or modified, proactively run four health checks — plain-language invocation policy present? no dormant modes (every mode has a real caller)? symmetry with sister skills? routing documented both ways? — and surface gaps as **system-health** findings, not local notes. (1) New "Policy-skills — invocation health" section in `mason-bmad-workflow-expert` (v1.6→**1.7**; woven into Mode 1 review list + Mode 2 + closeout triage). (2) New `custom/skills/policy-skills-healthcheck/` — the on-demand corpus auditor (read-only; "sanity-check our skills").
@@ -262,6 +270,13 @@ Foundational capabilities, shipped. The wave-by-wave feature history (what lande
 - [ ] **Quick-dev split into `spec-dev` and `direct-dev` entry points** — current `quick-dev` carries both modes behind one entry; split would make the safety boundary explicit at the entry point
 - [ ] **`tech-spec` workflow** — lightweight artifact between `maintenance-triage` and dev, for brownfield work that needs more than direct instructions but less than a full PRD
 - [ ] **Full brownfield maintenance pipeline** — `maintenance-triage → tech-spec → spec-dev` (1 of 3 surfaces shipped)
+
+## Policy-skill debt
+
+S2 findings from the policy-skill doctrine (safe-to-merge structural debt; clear opportunistically — see `policy-skills-healthcheck`). S1 never lands here (it blocks); S3 is opportunistic and untracked.
+
+- **S2 · dormant-mode · `analytics-surface-architect`** — `explain` mode has no caller (only `select` @ design-handoff §5c and `critique` @ design-review-pr §3b are wired). Fix: wire `explain` into an onboarding/brief-reviewer entry, or drop the mode. (`select`/`critique` are healthy.)
+- **S2 · symmetry · `finance-domain-pass`** — no design-review-pr counterpart: nothing audits at PR time whether a built finance surface preserved the brief's required semantics (qty/value separation, exception representability), where analytics has `C-ARCHETYPE-01`. "Just behind," not contradicting policy. Fix: a `C-FINANCE-01`-style check in design-review-pr.
 
 ## In-Flight Work
 

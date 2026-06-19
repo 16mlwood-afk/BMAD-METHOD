@@ -67,13 +67,40 @@ audited:        [ <skill>, ... ]              # policy-skills examined
 findings:
   - skill:      <name>
     check:      <invocation-policy | dormant-mode | symmetry | routing>
-    severity:   <blocking | concern | nit>
-    finding:    "<what's wrong, concretely>"
-    evidence:   "<the caller/grep/asymmetry that proves it>"
-    fix:        "<the concrete proposed change — not applied>"
+    severity:   <S1 | S2 | S3>
+    reason:     "<what's wrong, concretely + the evidence: caller/grep/asymmetry>"
+    suggested_fix: "<the concrete proposed change — NOT applied>"
 healthy:        [ <skill that passed all four>, ... ]
 ```
 
-Severity: **blocking** = a mode the workflow relies on has no caller, or two skills conflict on the
-same decision; **concern** = dormant secondary mode, missing invocation policy, or domain asymmetry;
-**nit** = jargon-only trigger that still has a workflow caller. If nothing is wrong, say so plainly.
+## Severity (three levels — enough to route, not a second rating system)
+
+**S1 — Contract breaker (block PR; fix before merge or explicitly waive with a comment).** The change
+is unsafe as-is:
+- a NEW or materially-changed policy-skill with **no** plain-language invocation block;
+- a mode **removed or repurposed without updating its callers** (runtime behavior mismatch);
+- a caller that **re-derives policy logic** instead of deferring to the skill (duplicated truth);
+- a change that **breaks symmetry in a way that contradicts existing policy** (e.g. finance has a
+  materiality rule, analytics hardcodes a different one).
+
+**S2 — Structural debt (safe to merge; log + schedule).** Track it; clear it soon — do NOT silently
+ship-and-forget:
+- an existing policy-skill with a **dormant mode that never had a caller** (design oversight, not breakage);
+- **asymmetry with a sister skill that is "just behind"** (not contradicting policy) — e.g. analytics
+  missing an invoke-block that finance has;
+- **routing documented only one way** (callers know the skill, but the skill text doesn't name its
+  callers, or vice versa).
+
+**S3 — Hygiene / style (opportunistic; fix when you're in the file anyway).**
+- technically-correct but inconsistent wording (slightly different "use when" phrasing across skills);
+- missing examples / edge-case notes in an otherwise-sound skill;
+- minor duplication between a README/comment and the SKILL.md.
+
+## Routing (how the severities are used)
+
+- **S1** → block the PR / skill change; must be fixed, or explicitly waived with a comment saying why.
+- **S2** → allowed to merge, but requires EITHER a follow-up task/issue OR an entry in the
+  **"Policy-skill debt"** section of `STATUS.md`. Never merge an S2 with no trace.
+- **S3** → optional; fix opportunistically.
+
+If nothing is wrong, say so plainly.
