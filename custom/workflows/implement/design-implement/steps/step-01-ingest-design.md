@@ -130,7 +130,7 @@ Record each frame as:
 
 The primary frame (`{design_file}` itself) is always entry 0 with `role: primary`. **Open and catalog the components of every frame in the inventory.** A traced module's components are already cataloged in URL.5; a sibling standalone `<frame>.html` the target links to but does NOT `<script src>` import must be opened here (same trace as URL.3) so its components enter `{design_components}` rather than being invisible. A frame declared in a comment/map but with NO module and NO standalone HTML in the bundle is `drawn: false` → it carries into §2f as `FRAME NOT DRAWN` (routed, not inferred).
 
-### URL.4. Extract Design Tokens
+### URL.4. Extract Design Tokens — incl. the FOUNDATIONAL scale (read the CSS token files, not just the JSX theme)
 
 Read the token/theme file (typically `theme/tokens.jsx` or similar). Extract and store `{design_tokens}`:
 
@@ -144,6 +144,8 @@ Read the token/theme file (typically `theme/tokens.jsx` or similar). Extract and
 | Type | h2 | 18px |
 | Type | body | 13px |
 | ... | ... | ... |
+
+**ALSO read the bundle's FOUNDATIONAL token files — the `tokens/*.css` CSS custom properties — into `{design_foundation_tokens}`.** A Claude Design bundle keeps its *foundation* in CSS custom properties (`tokens/typography.css` → `--font-size-base: 0.8125rem`, `tokens/spacing.css` → `--control-h`, `--radius*`, `tokens/colors.css` → `--status-*`), NOT in the JSX theme object — so a JSX-theme-only read SILENTLY MISSES the type scale, and step-03 §2i / §2 property #2 then have no resolved design value for `var(--font-size-base)` and no-op (greening a 13px-vs-16px drift). `ls {design_dir}/tokens/*.css` (or `{design_dir}/../tokens/*.css`); read each with the Read tool (not `cat`); extract the foundational subset — the **type scale** (`--font-size-base/-sm/-xs/-md`), **control heights** (`--control-h/-sm`), the **radius scale** (`--radius/-md/-lg`), and the **status-colour set** (`--status-*`) — resolving each `rem` to px. Store as `{design_foundation_tokens}` (a list of `{ token, value_px_or_hex, source_file }`). This is the design-side denominator for the §2i foundation-token reconciliation. If no `tokens/*.css` exists in the bundle, set `{design_foundation_tokens}` empty and note it — §2i will mark the foundation comparison `needs human confirmation` rather than silently skipping.
 
 ### URL.5. Catalog Every Component's CSS Properties (JSX inline styles + state-conditional branches)
 

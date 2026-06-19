@@ -84,7 +84,7 @@ Re-read each modified file, then walk the Step-3 grid **row by row** and give EV
 | Disposition | Meaning | Required note |
 |---|---|---|
 | `✓ applied` | The delta is now fixed in the implementation (re-verified by re-reading the file). | — |
-| `⊘ deferred` | Intentionally not applied this pass. | **Reason, one of:** `needs-data` (the page load / server doesn't provide the value — name the field), `out-of-scope` (explicitly outside this run's target), `judgment` (a product decision the implementer made — state it), `content-lane` (a formatter/enum-driven identifier cell from step-03 §2c — its rendered value cannot be verified against a mock-data bundle; routed to design-review / design-tuning on the LIVE page), `capability-protected` (the row would remove a production capability the user chose to KEEP at step-02b — `{capability_dispositions}` marks it `keep`; the handoff's treatment is applied around it, the capability is not deleted). |
+| `⊘ deferred` | Intentionally not applied this pass. | **Reason, one of:** `needs-data` (the page load / server doesn't provide the value — name the field), `out-of-scope` (explicitly outside this run's target), `judgment` (a product decision the implementer made — state it), `content-lane` (a formatter/enum-driven identifier cell from step-03 §2c — its rendered value cannot be verified against a mock-data bundle; routed to design-review / design-tuning on the LIVE page), `foundation-token-drift` (a step-03 §2i Foundation-token row — the app's canonical token VALUE diverges from the design system AND/OR `docs/design-policy.md`'s declared scale; routed to `apply-design-policy-change` for a single-source token migration, NEVER patched in-component and NEVER encoded as a dead `var(--token, <literal>)` fallback), `capability-protected` (the row would remove a production capability the user chose to KEEP at step-02b — `{capability_dispositions}` marks it `keep`; the handoff's treatment is applied around it, the capability is not deleted). |
 | `✗ dropped` | Cannot or will not apply at all. | **Reason** — why it's not implementable as specified. |
 
 Every `content-lane` row from step-03 §2c (`{content_unverified_count}` of them) is disposed `⊘ deferred(content-lane)` — its CSS may well have been applied, but its *value-formatting* is explicitly NOT certified here. Do not silently `✓` it; do not drop it. It carries into §9 under "Content-lane verification owed (live page)" with the routing command, so the run hands the content lane off out loud instead of implying the grid covered it.
@@ -258,6 +258,22 @@ Frame coverage ({brief §7 Surface Inventory | bundle frame inventory (URL) | ma
   - {frame} — FRAME NOT DRAWN in bundle (routed, NOT inferred) → /bmad:bmm:workflows:design-handoff (re-render the frame); counted in {frame_uncovered_count}
 Frames in contract: {N} · built & swept: {B} · missing-in-impl (Tier-1): {M} · thin-in-impl (Tier-1): {T} · under-enumerated (routed): {U} · not-drawn (routed): {frame_uncovered_count}
 Linked-records rows (authoritative §13-lookup denominator): {len(design_linked_record_rows)} · §13-lookup frames accounted: {must be ≥ the row count}
+
+Foundation-token reconciliation owed (token migration):
+{Mandatory whenever step-03 §2i emitted any Foundation-token row. Never omitted.}
+{if foundation_token_drift_count == 0:}
+  None — the app's canonical foundation (type scale / control heights / radii / status colours) agrees with the design system and docs/design-policy.md.
+{else, one bullet per drift + the headline caveat:}
+  ⚠ {foundation_token_drift_count} foundational token(s) diverge — component type/radius rows were
+     compared at the app's foundation scale, which is NOT the design system / policy scale, so their
+     green verdicts are NOT proven parity until the tokens are reconciled.
+  - {token} — app canonical {app_value} vs design {design_value} / policy {policy_value} ({kind}) →
+    route to /bmad:bmm:workflows:apply-design-policy-change (single-source token migration of src/styles/tokens.css)
+  {if any dead_fallback_sites:}
+  - DEAD-FALLBACK (inert): {site} writes var(--{token}, {literal}) but the global is defined → the
+    literal never applies; remove it and reconcile the token, do NOT add more.
+  This is NOT fixable in this workflow — patching each component (or adding a var(--token, <literal>)
+  fallback) is the #2412 anti-pattern. The fix is one token migration owned by apply-design-policy-change.
 
 Content-lane verification owed (live page):
 {if content_unverified_count == 0:}

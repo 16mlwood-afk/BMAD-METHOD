@@ -89,6 +89,19 @@ Run against `{diff_files}` only:
 
 For each candidate, emit an **advisory** finding: `rule_id: C-IDENTFMT-01`, `severity: P2`, `lane: source-grep`, `advisory: true`, with `suggested_fix: "Render <field> through the project's display-format helper and confirm it matches how the same record renders on sibling surfaces; confirm in dom-render §3c or the C-IDENTFMT-01 human prompt."` Suppress matches inside `*.test.*`, `*.fixture.*`, `mocks/**`, enum/const *definitions*, and `data-*` attributes (per the over-broad-regex failure mode). If `{diff_files}` touches no rendered identifier text, record C-IDENTFMT-01 source-arm as "no diff context" for step-04 coverage.
 
+### 6. Standing check: F-FOUNDTOKEN-01 — dead foundation-token fallback + tokens-vs-policy drift
+
+This is the source-side backstop for the design-implement §2i foundation-token reconciliation — it catches a wrong-foundation render at PR time even when `design-implement` was bypassed (a hand-written stylesheet, a direct edit). It closes the inbound-flow held-orders miss (PR #2412): a foundation token written as `var(--font-size-base, 0.8125rem)` is an **inert no-op** — the fallback fires only when the variable is *undefined*, and the canonical surface (`src/styles/tokens.css`) *defines* it — so the literal is silently overridden and the surface renders at the global scale, not the design scale.
+
+Run against `{diff_files}` only:
+
+| Signal | Pattern (PCRE2) | Verdict |
+|---|---|---|
+| Dead foundation-token fallback | `var\(\s*--(font-size\|control-h\|radius)[\w-]*\s*,\s*[\d.]+(rem\|px)\s*\)` inside a CSS / `style=` / template-literal context | **P1, deterministic.** The named globals ARE defined on the canonical surface, so the literal never applies. Emit `rule_id: F-FOUNDTOKEN-01`, `severity: P1`, `lane: source-grep`, `suggested_fix: "Remove the inert fallback. If the design intends a different value, that is a foundation-token divergence — reconcile src/styles/tokens.css to docs/design-policy.md via /bmad:bmm:workflows:apply-design-policy-change; never encode the intended value as a var() fallback or a per-component literal."` |
+| Canonical type-scale touched | `{diff_files}` includes `src/styles/tokens.css` OR `globals.css` AND the hunk changes a `--font-size-*` / `--control-h*` / `--radius*` value | **P2, advisory.** Emit `rule_id: F-FOUNDTOKEN-01`, `severity: P2`, `advisory: true`, `suggested_fix: "Confirm the changed foundation token still matches the scale docs/design-policy.md declares (§4). A canonical-token change is app-wide; if it is the policy migration, say so in the PR and confirm every ported surface was re-verified."` |
+
+Suppress matches inside `*.test.*`, `*.fixture.*`, `mocks/**`. If `{diff_files}` touches no stylesheet/style context, record F-FOUNDTOKEN-01 as "no diff context" for step-04 coverage.
+
 ---
 
 ## OUTPUT

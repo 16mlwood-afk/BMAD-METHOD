@@ -163,6 +163,16 @@ Some implementations use CSS custom properties (e.g., shadcn tokens like `bg-car
 
 **Resolve every referenced token before reporting any mapping as "1:1."** A token still pending lookup, or one that only half-resolved (some screens define it, others don't), is NOT resolved — do not fold it into a "tokens map ~1:1" claim. Carry the unresolved set forward explicitly; the premature "effectively 1:1" is the exact miss step-03 §2g exists to catch.
 
+### 5a. Catalog the app's CANONICAL foundation + the POLICY-declared scale (the §2i denominator)
+
+§5 resolves the tokens a design component happens to reference. §2i additionally needs the app's FOUNDATIONAL scale **as a set**, and the value the policy DECLARES for it — independent of any one component. Read both sources:
+
+1. **App canonical values.** From the canonical surface (`docs/design-policy.md` §8: `src/styles/tokens.css` + the `globals.css @theme inline` block), read the foundational tokens' actual definitions — the **type scale** (`--font-size-base/-sm/-xs/-md`), **control heights** (`--control-h/-sm`), the **radius scale** (`--radius/-md/-lg`), and the **status-colour set** (`--status-*`). Resolve each `rem` to px.
+2. **Policy-declared values.** From `docs/design-policy.md`, read the scale the policy DECLARES canonical (e.g. §4 "Body text is 13px by default"). The policy is the spec; a token in `tokens.css` is merely "what exists" and may violate it. If the policy's changelog records a deferred token migration ("flagged, not auto-migrated"), capture the note — it is the documented origin of any drift §2i will find.
+3. **Dead-fallback scan.** Grep the impl's stylesheets for the `var(--token, <rem/px-literal>)` pattern where the named global IS defined on the canonical surface. Each hit is an **inert** fallback (the global overrides it) — a prior wrong-fix of exactly the drift §2i routes. Record the sites.
+
+Store as `{app_canonical_scale}` — a list of `{ token, app_value, policy_declared_value, policy_ref, dead_fallback_sites[] }`. This feeds step-03 §2i. (Foundation reconciliation runs on ALL input paths — the design side is `{design_foundation_tokens}` from step-01; this is the impl + spec side.)
+
 ### 6. Record Baseline Commit
 
 ```bash
@@ -188,6 +198,7 @@ Read fully and follow: `{project-root}/_bmad/bmm/workflows/implement/design-impl
 - **Every render site tagged with its value-source (§3d); formatter/enum-driven canonical-identifier cells captured in `{impl_identifier_cells}` for step-03 §2c routing**
 - Every CSS property on every implementation component cataloged with resolved values
 - **Every design-mapped CSS custom property resolved AND tagged with provenance (§5) — `{impl_token_provenance}` populated with `scope` (canonical vs per-screen) + `semantic_class`; no token reported as "1:1" while still unresolved**
+- **The app's CANONICAL foundation scale + the POLICY-declared scale cataloged (§5a) — `{app_canonical_scale}` populated with each foundational token's `app_value` (from `tokens.css` / `@theme`), `policy_declared_value` (from `docs/design-policy.md`), and any inert `dead_fallback_sites` — the impl + spec side of the §2i foundation-token reconciliation**
 - **Page-shell wrapper chain walked (§1a) — `{impl_page_shell}` populated with the EFFECTIVE container width after every nested layout cap, centering, and padding (plus a sibling-page convention note if relevant), AND `injected_chrome` capturing any hero/banner/masthead an ancestor layout renders above `{children}` that the design frame doesn't contain**
 - Missing/extra components flagged
 - `{impl_components}` and `{impl_config}` populated
