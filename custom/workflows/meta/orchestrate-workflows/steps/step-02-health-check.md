@@ -96,6 +96,22 @@ Workflows are dense instruction documents executed by a model with a finite *usa
 
 (Decision-rule and thresholds: the `context-budget` durable principle — see the mason-bmad-workflow-expert skill's `references/context-budget.md`.)
 
+### 5b. Policy-skill / router quality
+
+Applies ONLY to a workflow that **owns policy** (it encodes necessity, materiality, domain ownership, or safety/correctness — *when it should engage at all* and *who owns a decision*) OR acts as a **router** that dispatches between skills/sub-flows. Skip a plain mechanical-transform workflow. This is the audit-time counterpart of create-workflow's step-03b policy-skill axis — authoring-time builds it right, this catches drift across the corpus. For each such workflow:
+
+- **Check the ownership declaration.** Does `workflow.md` state, near the top, its **purpose / ownership / "do not use when"** (a plain-language materiality gate — use / don't-use / if-uncertain), its **skill dependencies** (`uses_skills:`), and an **abstain behavior** ("if uncertain, abstain by …")? A policy-owning flow with none of these can't be invoked correctly or know when to stay out.
+- **Check the skills it depends on.** For every skill in `uses_skills:` (and any skill the workflow introduces), confirm the four policy-skill rules: a plain-language invoke block, every declared mode wired to a real caller, sister-skill symmetry, and routing documented both ways. For a full read-only sweep of the affected skills, call the **`policy-skills-healthcheck`** skill (it runs exactly these checks and returns findings — it does not modify anything).
+
+**Finding categories:**
+- `missing-ownership-decl` (moderate) — a policy-owning/router workflow with no purpose/ownership/"do not use when", `uses_skills:`, or abstain declaration
+- `missing-invoke-block` (moderate) — a depended-on policy-skill with no plain-language invocation policy
+- `dormant-mode` (low) — a declared skill mode with no real caller
+- `asymmetric-sibling` (low) — a skill not wired at the same lifecycle points as its domain siblings
+- `undocumented-routing` (low) — the workflow names no skill caller, or a caller re-derives policy the skill owns
+
+(Doctrine: the mason-bmad-workflow-expert skill's "Policy-skills — invocation health" section + the `policy-skills-healthcheck` skill.)
+
 ### 6. Compile Health Report
 
 For each finding:
@@ -126,6 +142,7 @@ Read fully and follow: `{project-root}/_bmad/bmm/workflows/meta/orchestrate-work
 - Frontmatter consistency checked across all step files
 - Workflow.md phase counts and lists verified
 - Every step checked against the context budget (must-do density, inlined corpora, constraint placement, undelegated reads)
+- Every policy-owning or router workflow checked for ownership declaration + depended-on-skill invocation health (or cleanly skipped if mechanical)
 - All findings stored with specific file references and fixes
 - `{health_checks}` populated
 
