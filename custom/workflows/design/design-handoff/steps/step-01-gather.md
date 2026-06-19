@@ -159,10 +159,14 @@ Set `{linked_records_inventory}` — one entry per foreign reference, each with 
 
 ### 3b. Finance-domain pass — semantics a blank-canvas redesign must preserve (conditional)
 
-Fires **only when the surface is finance-shaped** — its data/workflow is a ledger, transactions/journal,
-inventory movement, stock reconciliation, P&L / income statement, balance sheet, cash flow, trial
-balance, or FP&A report. Otherwise skip this section entirely (`{is_finance_surface}` = `false`) — it is
-inert for non-finance surfaces. Finance surfaces hide load-bearing semantics inside the layout this
+Fires **only when finance presentation is material** to the surface — money is a primary data type
+(not an incidental field); the operator reviews/reconciles quantities, values, balances, costs, taxes,
+landed costs, or variances; the data is inventory/ledger/payout/statement/VAT/reconciliation/accounting
+export; or mispresenting missing/estimated/anomalous/duplicate-grouped values could distort financial
+truth. **Skip** (`{is_finance_surface}` = `false`) when money is a minor field on a general CRUD page,
+the task is pure styling/layout, or another domain owns the semantics; if uncertain, fire only when bad
+presentation could distort operational or financial truth, else proceed without it and note the
+ambiguity. (Full gate: `finance-domain-pass` "When to invoke".) Finance surfaces hide load-bearing semantics inside the layout this
 brief withholds (lifecycle states, quantity/value separation, reconciliation, exceptions); without this
 pass a blank-canvas redesign silently drops them or guesses them as taste. This pass captures the
 finance **meaning** — never the layout.

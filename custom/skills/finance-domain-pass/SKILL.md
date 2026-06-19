@@ -6,7 +6,9 @@ description: >
   FP&A). Returns a structured finance-domain appendix — capabilities-as-outcomes, exception
   expectations, unresolved assumptions, implied runtime surfaces, terminology, source-column
   semantics, and a must-not-infer list — for design-handoff step-01 to capture and step-03 to render
-  into a brief. Use when a workflow needs the finance MEANING of a surface for brief authoring. Do NOT
+  into a brief. Use when money is a PRIMARY data type or bad presentation of quantities/values/balances/costs/taxes/
+  landed-costs/variances/reconciliation could distort financial truth; skip when money is incidental on
+  a general CRUD page or the task is pure visual styling. Do NOT
   use for visual treatment, layout, composition, summary bars, cards, drawers, tokens, or chart style
   (that is the project design policy + the blank-canvas design process). Never invents figures,
   account mappings, or valuation methods; never resolves an unknown — it flags it.
@@ -26,6 +28,26 @@ surfaces hide load-bearing semantics inside that withheld UI — lifecycle state
 separation, reconciliation, exceptions — and a designer starting blank will silently drop them or
 guess them as taste. This pass makes those semantics an explicit, auditable input so the redesign
 preserves accounting truth without the brief leaking layout.
+
+## When to invoke
+
+Use this skill when the screen or brief involves finance-shaped operational data **where presentation
+rules affect meaning.** Invoke when one or more are true:
+
+- money is a **primary** data type, not incidental;
+- the user is reviewing or reconciling quantities, values, balances, costs, taxes, landed costs, or variances;
+- the page contains inventory, ledger, payout, statement, margin, VAT, reconciliation, or accounting-style exports;
+- missing values, estimates, anomalies, or duplicate-grouping could mislead users if presented incorrectly;
+- the brief must preserve finance-specific capabilities, assumptions, or exception states.
+
+Do **not** use when:
+
+- money appears only as a minor field in a general CRUD page;
+- the task is purely visual styling, layout polish, or generic dashboard design;
+- another domain skill fully owns the semantics and finance rules are not material.
+
+If uncertain: invoke **only when bad presentation could distort operational or financial truth**;
+otherwise continue without the skill and note the ambiguity.
 
 ## Trust hierarchy
 

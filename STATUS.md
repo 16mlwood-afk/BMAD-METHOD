@@ -35,6 +35,14 @@ The compact, always-current state. The skill reads THIS block + the top of `## C
 
 Newest first. **One discrete entry per wave** — `### YYYY-MM-DD — title (commit)` + a bounded paragraph (what · why · scope · delivery). NEVER a single run-on line. Keep ~12 entries here; when it grows past that, move the oldest (in newest-first order) into [`STATUS-archive.md`](./STATUS-archive.md).
 
+### 2026-06-19 — finance-domain-pass: sharpened invocation policy (materiality gate)
+
+**What.** Owner-supplied invocation policy installed on `finance-domain-pass`: a "When to invoke" section (invoke when money is a primary data type or bad presentation of quantities/values/balances/costs/taxes/landed-costs/variances/reconciliation could distort financial truth; **do not** use for incidental-money CRUD pages, pure styling, or another-domain-owned semantics; if-uncertain → fire only when bad presentation could distort financial truth, else note the ambiguity). Frontmatter description gated on materiality so auto-activation doesn't trip on incidental money. Same materiality gate mirrored into design-handoff step-01 §3b, replacing the keyword list (net-neutral: step-01 +3 lines).
+
+**Why.** Tighten when the finance pass engages — finance-shaped operational data where presentation affects meaning, not every page with a money field.
+
+**Scope.** `custom/skills/finance-domain-pass/SKILL.md` (description + When-to-invoke) + `design-handoff/steps/step-01-gather.md` §3b gate. Ports regenerate 0-dangling; validate:budget passes. Synced 15/15.
+
 ### 2026-06-19 — design-handoff: finance-domain-pass (semantics enrichment, not layout) (`f44dc05b`)
 
 **What.** A finance twin of `analytics-surface-architect`: new `custom/skills/finance-domain-pass/` that `design-handoff` step-01 §3b invokes (conditional on a finance-shaped surface) to extract the finance MEANING a blank-canvas redesign must preserve — column semantics, capabilities-as-outcomes, exception expectations, implied surfaces, unresolved assumptions, terminology, must-not-infer — returned as a structured appendix. step-01 routes its fields into the existing machinery (`must_support_capabilities` / `dropped_capabilities` / §5f `spawned_surfaces`) plus new `{finance_*}` vars; brief-template §2b (conditional) renders the finance semantics + accounting-truth constraints + unresolved assumptions as Open Questions; step-03 self-review gained a finance/no-layout-leak check.
