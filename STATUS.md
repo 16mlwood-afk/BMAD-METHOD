@@ -35,6 +35,14 @@ The compact, always-current state. The skill reads THIS block + the top of `## C
 
 Newest first. **One discrete entry per wave** — `### YYYY-MM-DD — title (commit)` + a bounded paragraph (what · why · scope · delivery). NEVER a single run-on line. Keep ~12 entries here; when it grows past that, move the oldest (in newest-first order) into [`STATUS-archive.md`](./STATUS-archive.md).
 
+### 2026-06-19 — policy-skill doctrine + policy-skills-healthcheck meta-skill
+
+**What.** Generalized the finance/analytics invocation-policy work into a reusable doctrine. A **policy-skill** encodes necessity (materiality / domain ownership / safety / correctness); when one is discovered, authored, or modified, proactively run four health checks — plain-language invocation policy present? no dormant modes (every mode has a real caller)? symmetry with sister skills? routing documented both ways? — and surface gaps as **system-health** findings, not local notes. (1) New "Policy-skills — invocation health" section in `mason-bmad-workflow-expert` (v1.6→**1.7**; woven into Mode 1 review list + Mode 2 + closeout triage). (2) New `custom/skills/policy-skills-healthcheck/` — the on-demand corpus auditor (read-only; "sanity-check our skills").
+
+**Why.** The `analytics-surface-architect` under-routing catch was lucky, not systematic. This makes "this skill is dormant / mis-wired / asymmetrical" a default reflex fired early, and it's domain-agnostic — no hard-coded finance/analytics.
+
+**Scope.** Fork (git-tracked): new `policy-skills-healthcheck` skill. The `mason-bmad-workflow-expert` edits live in `~/.claude` (NOT git-tracked — live immediately; v1.6 snapshot rolled to `versions/`, version → 1.7). Synced 15/15; pushed `myfork/custom`.
+
 ### 2026-06-19 — analytics-surface-architect: plain invocation policy + critique wired into design-review-pr
 
 **What.** Gave the analytics skill the same treatment as finance-domain-pass. (1) Added a plain-language "When to invoke" section + materiality-gated description: invoke when the main question is "what analytical SHAPE answers this user question from this dataset?" (select/critique/explain); do NOT use for the band-belongs decision (upstream §5b), visual styling/tokens, or a plain worklist with no band; if-uncertain → invoke only when shape is the question, else stay silent. (2) Wired **critique** mode into design-review-pr `C-ARCHETYPE-01` (step-03 §3b): the archetype audit now defers to the skill (the DOM-harvest comparison table becomes the evidence-it-passes + deterministic fallback), so it additionally catches a band that renders **exactly as declared** yet whose declared archetype was the wrong shape for the question — the case the heuristic table structurally cannot. workflow.md §53 updated.
