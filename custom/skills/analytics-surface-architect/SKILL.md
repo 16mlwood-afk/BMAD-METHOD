@@ -1,6 +1,6 @@
 ---
 name: analytics-surface-architect
-description: Decide HOW a dataset should be presented as an analytics surface — which archetype (trend, distribution, composition, ranking, coverage, flow, single-metric, correlation) fits the user's question, why, and what was rejected. Use when choosing or auditing the SHAPE of an analytics band, microchart row, or evidence layer; when a workflow needs an archetype + grounded rationale for a brief; or when someone asks "what shape should this data be?". Returns a structured decision (archetype + grounding + candidates-weighed + drill map). Do NOT use for visual treatment / tokens / colors (that is the project design policy and operational-analytics-band), for whether a page needs a band at all (that is the upstream page-mode/band-belongs decision), or for backend/schema/data work.
+description: Decide HOW a dataset should be presented as an analytics surface — which archetype (trend, distribution, composition, ranking, coverage, flow, single-metric, correlation) fits the user's question, why, and what was rejected. Use when choosing or auditing the SHAPE of an analytics band, microchart row, or evidence layer; when a workflow needs an archetype + grounded rationale for a brief; or when someone asks "what shape should this data be?". Returns a structured decision (archetype + grounding + candidates-weighed + drill map). Invoke only when the main question is "what analytical shape should answer this user question from this dataset?" — choosing OR auditing (critique mode) an analytics band's archetype; skip a plain operational worklist with no band. Do NOT use for visual treatment / tokens / colors (that is the project design policy and operational-analytics-band), for whether a page needs a band at all (that is the upstream page-mode/band-belongs decision), or for backend/schema/data work.
 metadata:
   short-description: Pick the analytics archetype for a dataset and explain why
 ---
@@ -10,6 +10,24 @@ metadata:
 The single brain for one decision: **given a dataset and the question a user is trying to answer, what *shape* should the analytics surface take — and why?** It selects an archetype, grounds the choice, records what it rejected, and maps every element to a drill target. It governs **shape and reasoning, not visual treatment**.
 
 This is the decision that, left to reflex, makes every analytics surface come back looking the same (a coverage strip + microchart + counter row). The skill exists to make the choice deliberate and auditable, and to be the one place that choice is reasoned — so a workflow, a reviewer, and a human all defer to the same logic instead of re-deriving it.
+
+## When to invoke
+
+Use this skill when the main question is **"what analytical SHAPE should answer this user question from this dataset?"** — choosing or auditing the shape of an analytics band / chart / evidence layer.
+
+Invoke when:
+
+- choosing the archetype for a new analytics band/surface (**mode: select**);
+- auditing whether an existing or proposed surface uses the right archetype — a trend-strip answering a coverage question, an element with no drill, two co-equal archetypes, a KPI-card wall (**mode: critique**);
+- teaching which shape fits and why, for onboarding or a brief reviewer (**mode: explain**).
+
+Do **not** use when:
+
+- the question is "does this page even need analytics / a band at all?" — that's the upstream page-mode / band-belongs decision (design-handoff §5b), not this skill;
+- the page is a plain operational worklist with no analytics band;
+- the request is visual styling, colours, tokens, density, or front-end implementation detail (the project design policy + `operational-analytics-band` own that).
+
+If uncertain: invoke **only when the main question is "what analytical shape should answer this user question from this dataset?"**; otherwise stay silent and note the ambiguity.
 
 ## Trust hierarchy
 
