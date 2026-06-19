@@ -93,8 +93,9 @@ For each function, component, or schema field you modified:
 - [ ] **No callers broken.** Type-checked or compiled — no errors introduced. If the project has tests for the affected files, they pass. If not, the absence of tests is itself noted.
 - [ ] **Behavior contract documented.** If the change is non-trivial, a one-sentence "before → after" of the contract is recorded (in the tech-spec for Mode A; in your summary for Mode B).
 - [ ] **Rollback path known.** You can state in one sentence how to revert this change if production breaks.
+- [ ] **Provenance of changed/removed lines checked.** For any existing line you modified or deleted, you traced its originating commit (`git log -S` / `git blame`) and confirmed the change *extends*, not regresses, whatever it deliberately protected (step-03 existing-code provenance pre-flight). If it undid a deliberate guard, the protected case is still covered by a passing test.
 
-If you can't tick all four boxes, the change is not done — return to step-03 and address the gap. Do NOT proceed to adversarial review until the regression surface is clean.
+If you can't tick all five boxes, the change is not done — return to step-03 and address the gap. Do NOT proceed to adversarial review until the regression surface is clean.
 
 ```
 **Regression Surface Report (brownfield/mixed):**
@@ -158,3 +159,4 @@ Proceed immediately to `{project-root}/_bmad/bmm/workflows/implement/quick-dev/s
 - Not updating tech-spec status (Mode A)
 - Shipping UI for fields that are 100% null in production without documenting the gap
 - Skipping §6 Regression Surface on a brownfield/mixed project
+- Deleting or rewriting a deliberate guard without reading its originating commit (step-03 existing-code provenance pre-flight)

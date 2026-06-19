@@ -157,6 +157,46 @@ Skip this section if the task does not originate from a design brief — e.g. bu
 
 ---
 
+## PRE-FLIGHT: EXISTING-CODE PROVENANCE CHECK
+
+**Trigger:** Run this check whenever the task **modifies or removes existing code** — a condition, guard, branch, default, constant, or any line that is already there. It does NOT apply to pure additions.
+
+A line that looks redundant, over-cautious, or "obviously simplifiable" is the single most dangerous thing to delete: it may be a deliberate guard added to fix a specific past bug, and removing it silently re-opens that bug. The author's reason is rarely in the line itself — it lives in the commit that introduced it.
+
+### 1. Trace the provenance of the lines you intend to change
+
+Before editing, for each non-trivial line you plan to modify or delete:
+
+```bash
+git log -S '<exact code fragment>' --oneline -- <path>   # commits that added/removed this exact text
+git log -L '<start>,<end>:<path>' --oneline               # or line-range history
+git blame -L '<start>,<end>' <path>                        # who/when → find the commit
+```
+
+Then **read the originating commit message and diff** (`git show <sha>`).
+
+### 2. Classify: deliberate vs incidental
+
+- **Incidental** — the line arrived with a bulk move, scaffold, or unrelated change; the commit says nothing about *why this line exists*. Lower risk to change.
+- **Deliberate** — the commit message or its PR explains the line as a guard/fix/workaround for a specific case ("fix:", "guard against…", a linked issue, a regression test added alongside it). **Treat it as load-bearing until proven otherwise.**
+
+### 3. For deliberate code, understand the intent before you implement
+
+- Read the commit (and any test it added) until you can state, in one sentence, **what case the code protects**.
+- Confirm your change **extends** that intent rather than regressing it: *does the case the original commit protected still hold under my change?*
+- If the original guard relied on an assumption that is now wrong, state the **corrected invariant** explicitly and verify your change still covers the original's protected case (via the existing test, or a new one).
+
+### 4. If your change would undo a deliberate guard
+
+- **Non-autonomous mode:** halt and surface — name the originating commit, what it protected, and why your change is still safe (or ask).
+- **Autonomous mode:** proceed only if you can show the protected case is still covered (a passing test that exercises it), and log the originating commit + the preserved invariant in your summary so it lands in the PR description. If you cannot show coverage, halt.
+
+### 5. Skip condition
+
+Skip if the task touches no existing lines (pure addition), or if `project_phase: greenfield` and the touched code has no production consumers.
+
+---
+
 ## EXECUTION LOOP
 
 For each task:
