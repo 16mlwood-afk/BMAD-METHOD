@@ -1,8 +1,16 @@
 # Migration plan — custom corpus → v6.8.0 skills-native layout
 
-**Status:** PROPOSAL with all design decisions resolved (not started). Authored 2026-06-19,
-decisions locked 2026-06-19, from the cash-recovery onboarding session.
-**Multi-session, touches the provenance layer — execute deliberately, not ad hoc.**
+**Status:** MACHINERY COMPLETE + proven end-to-end (`c589223c`) — Phases 0–4 + Phase-5 pilot done
+(port engine, 28-workflow corpus 0-dangling, sync delivery via `deliver_skills_layout_project`,
+real-install proof, guarded `bmad-quick-dev` override). **Pilot cutover LIVE on `cash-recovery`** —
+the sole skills-layout project: clean v6.8 install → sync → 72 skills (28 fork ports + 44 base BMAD),
+15 `bmad-shared` policies, design-handoff refs all resolve, 0 stale refs; reversible backup at
+`/tmp/cash-recovery-bmad-bak`. **What remains is DECISION, not engineering:** the other 13 projects'
+cutover (owner go/no-go — dual-layout, no rush; cash-recovery proves it works), Phase 6 (retarget
+`onboard-project.sh`'s default to skills-layout), and the orchestrate/dispatch Mode-1 review.
+Authored 2026-06-19; status corrected 2026-06-19 from the cash-recovery slash-command-parity
+investigation. See `STATUS.md` `## Now` (the "Owed / in-flight" line) for the authoritative volatile state.
+**Per-project cutover is multi-session and touches the provenance layer — execute deliberately, not ad hoc.**
 
 ---
 

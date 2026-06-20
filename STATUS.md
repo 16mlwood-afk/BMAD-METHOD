@@ -7,7 +7,7 @@ description: Volatile state of the Mason-BMAD fork. Read by mason-bmad-workflow-
 
 > Update whenever you ship a change to the fork, absorb upstream, or change the shipped/designed status of a feature.
 
-**Last updated:** 2026-06-19 by bison-ops session (create-workflow policy-skill/router axis wave).
+**Last updated:** 2026-06-19 by cash-recovery session (migration-plan Status-line correction + pilot reconfirm).
 
 ---
 
@@ -35,6 +35,10 @@ The compact, always-current state. The skill reads THIS block + the top of `## C
 ## Changelog
 
 Newest first. **One discrete entry per wave** — `### YYYY-MM-DD — title (commit)` + a bounded paragraph (what · why · scope · delivery). NEVER a single run-on line. Keep ~12 entries here; when it grows past that, move the oldest (in newest-first order) into [`STATUS-archive.md`](./STATUS-archive.md).
+
+### 2026-06-19 — migration-plan Status line corrected; cash-recovery pilot reconfirmed healthy
+
+A cash-recovery session asked why its slash commands differ from the other 14 projects (`/bmad-foo` skills vs `/bmad:bmm:workflows:foo` commands). Diagnose pass (mason-bmad-workflow-expert) confirmed this is the **intended** v6.8 skills-native pilot, not drift — `deliver_skills_layout_project` delivers the 28 fork ports from `custom/skills-native/`, and this `## Now` block already records the pilot cutover. Only stale artifact: `custom/MIGRATION-v6.8-skills-plan.md`'s header still read `Status: … (not started)` while the machinery shipped (`c589223c`) and the pilot is live — corrected to match. On-disk composition verified: cash-recovery `.claude/skills` = 72 `bmad-*` (28 match a fork port; 44 are base BMAD from the v6.8 install — the same un-customized base command-layout siblings also carry) + 6 helper skills. No fork code changed; **no project sync owed** (plan doc is fork-local). The earlier instinct to "reconcile cash-recovery back to the command layout" was caught and rejected — it would have undone the pilot.
 
 ### 2026-06-19 — create-workflow: policy-skill/router quality axis in step-03b (`3c04ba6e`)
 
