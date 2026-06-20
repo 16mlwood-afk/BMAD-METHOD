@@ -18,7 +18,9 @@ This contract applies to any project that:
 - Has `_bmad/bmm/config.yaml` with a populated `deploy:` block (§5 defines the schema).
 - Ships `scripts/bmad-deploy.sh` (synced from the fork via `sync-bmad-workflows.sh`).
 
-A project can opt out by setting `deploy.bmad_contract: skip` in its config. The agent then defers entirely to that project's own CLAUDE.md for deploy rules.
+A project can opt out by setting `deploy.bmad_contract: skip` in its config. The agent then defers entirely to that project's own CLAUDE.md for deploy rules (see §4 for the skip-mode posture — state-and-stop, never ask).
+
+**Delivery is single-track regardless of deploy mode.** Whether the contract applies or is skipped, code reaches the default branch ONE way: commit → push → **PR** → merge. Never `git merge` a feature branch into a local `main` you don't push — that forks local `main` from `origin/<default-branch>` and the two diverge silently (domain work piling up on an unpushed local `main` while other work ships via PR). Local `main` only moves by fast-forwarding from `origin/<default-branch>`. This is enforced by the `bmad-single-track-guard` hook and owned in prose by CLAUDE.md "ALWAYS Deliver Your Work"; the deploy contract assumes it.
 
 This contract does NOT cover:
 
@@ -114,6 +116,8 @@ deploy:
 ```
 
 `bmad-deploy.sh` then exits with code 99 (skip-no-op) and the agent defers to that project's own CLAUDE.md for deploy choreography. The skip is permanent for that project until the config is changed.
+
+**Posture under skip — NO per-session deploy question.** A skipped contract means deploy is the project owner's **deliberate, manual step**, not the agent's — so a session must NOT turn it into a recurring end-of-implementation question. After merging a PR to the default branch, **state the deploy status as a fact and STOP**: e.g. *"Merged to `origin/<default-branch>`; undeployed — deploy is the owner's manual step (see the project's CLAUDE.md / deployment doc)."* Deploy ONLY when the owner explicitly asks. The merge is the agent's delivery boundary; the deploy is the owner's. "Want me to deploy?" at the end of every implementation is exactly the friction this posture removes. (When the contract is ACTIVE, the agent runs `./scripts/bmad-deploy.sh` after merge — also no question.)
 
 ---
 
