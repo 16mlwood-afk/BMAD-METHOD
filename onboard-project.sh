@@ -135,6 +135,9 @@ project_phase: $PROJECT_PHASE
 
 # Deployment contract (see _bmad/bmm/workflows/shared/deployment-to-prod.md).
 # Opted out on onboard — set real deploy config when this project has a pipeline.
+# Skip-mode posture: deploy is the owner's manual step — the agent states deploy
+# status after merge and STOPS, it never asks "want me to deploy?" (CLAUDE.md
+# "Deployment — BMAD contract" section).
 deploy:
   bmad_contract: skip
 EOF

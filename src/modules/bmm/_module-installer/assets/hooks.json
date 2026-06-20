@@ -88,6 +88,18 @@
         ]
       },
       {
+        "matcher": "Bash",
+        "name": "bmad-single-track-guard",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "_in=$(cat 2>/dev/null); CMD=$(printf '%s' \"$_in\" | jq -r '.tool_input.command // empty' 2>/dev/null); [ -z \"$CMD\" ] && CMD=\"${CLAUDE_TOOL_INPUT_COMMAND:-}\"; cmd=\"$CMD\"; [ -z \"$cmd\" ] && exit 0; echo \"$cmd\" | grep -qE \"(^|[[:space:];&|])git[[:space:]]+merge([[:space:]]|$)\" || exit 0; echo \"$cmd\" | grep -qE \"(^|[[:space:]])--(ff-only|abort|continue|quit)([[:space:]]|=|$)\" && exit 0; [ -d \"$PWD/_bmad/bmm/workflows\" ] || exit 0; branch=$(git -C \"$PWD\" rev-parse --abbrev-ref HEAD 2>/dev/null); [ \"$branch\" = \"main\" ] || exit 0; printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"BLOCKED: git merge into local main forks it from origin/main — the single-delivery-track violation that creates the recurring divergence (domain work piling up on an unpushed local main). Deliver via PR instead: push the branch, gh pr create, gh pr merge --squash. Local main only moves by git merge --ff-only origin/main. See CLAUDE.md ALWAYS Deliver Your Work.\"}}\\n'",
+            "timeout": 5,
+            "statusMessage": "Single-track delivery guard..."
+          }
+        ]
+      },
+      {
         "matcher": "Edit|Write",
         "name": "bmad-workflow-guard",
         "hooks": [

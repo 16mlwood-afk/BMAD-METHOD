@@ -58,23 +58,12 @@
 
 ### ALWAYS Deliver Your Work — CRITICAL
 <!-- bmad:deliver-work -->
-- **Work that isn't merged to main doesn't exist.** Never end a session with code sitting on an unmerged branch.
-<!-- TODO: Choose ONE delivery method and delete the other -->
-
-<!-- OPTION A: PR-based delivery (recommended for team projects) -->
-- The delivery pipeline is: **commit -> push -> PR -> merge -> deploy**. Skipping any step means the work isn't live.
+- **Work that isn't merged to `origin/main` doesn't exist.** Never end a session with code sitting on an unmerged branch.
+- **SINGLE DELIVERY TRACK — PR to `origin/main`, always. There is no "solo project" local-merge exception.** EVERY implementation workflow (dev-story, quick-dev, design-implement) and every hand edit delivers the same way: **commit → push → PR → merge → deploy**. Skipping a step means the work isn't live.
+- **NEVER `git merge` a feature branch into a local `main` you don't push.** That forks local `main` from `origin/main`, and the two diverge silently — the canonical failure is domain/Story work piling up on an unpushed local `main` while UI work ships via PR, producing an N-commits-ahead fork that someone later has to reconcile by hand. `origin/main` is the one source of truth; local `main` only ever moves by fast-forwarding from `origin/main` (`git merge --ff-only origin/main`), never by merging a branch into it.
 - In worktrees: use `gh pr view` to verify merge (you can't `git checkout main` from a worktree). Then call `ExitWorktree` with `action: "remove"` to clean up.
-- Never push directly to `main` — always use a feature branch + PR.
-
-<!-- OPTION B: Local merge delivery (for solo projects without PR gates) -->
-<!-- Delivery sequence:
-  1. Commit work on worktree branch
-  2. Rebase onto latest main: `git fetch origin && git rebase main`
-  3. `ExitWorktree action: "keep"` — returns to main working directory
-  4. `git merge <branch-name>` from main
-  5. `git worktree remove .claude/worktrees/<name> && git branch -d <branch-name>` -->
-
-- If the worktree branch name is generic (auto-generated), rename it to something descriptive (`feat/`, `fix/`, `refactor/`) before pushing.
+- Never push directly to `main` — always a feature branch + PR.
+- If the worktree branch name is generic (auto-generated), rename it to `<type>/<short-description>` (`feat/`, `fix/`, `refactor/`) before pushing.
 
 ### Deployment — BMAD contract
 <!-- bmad:deploy-contract -->
@@ -86,6 +75,7 @@
 - **Admin-merge on code PRs** is allowed iff the failing required check is structurally unavailable (zero-step quota-exhausted: `conclusion: failure`, `steps: 0`, elapsed < 15s) AND `npm run build` (or equivalent) passed locally. Substantive CI failures never qualify.
 - Doc-only / config-only PRs can admin-merge freely and skip the deploy.
 - Opt-out: set `deploy.bmad_contract: skip` in `_bmad/bmm/config.yaml` for projects whose deploy doesn't fit the contract (auto-deploy-on-push platforms like Railway/Vercel, multi-step deploys, etc.). The script exits 99 (no-op) and the agent defers to the project's own CLAUDE.md.
+- **Posture when `bmad_contract: skip` — NO per-session deploy question.** A skipped contract means deploy is the **owner's deliberate, manual step**, not the agent's. After merging a PR, **state the deploy status as a fact and STOP — do NOT ask "want me to deploy?"**: e.g. *"Merged to `origin/main`; undeployed — deploy is your manual step (see `docs/deployment.md`)."* Deploy ONLY when the owner explicitly says "deploy." This turns a recurring end-of-run question into a one-line status statement. (When the contract is ACTIVE, the rule above already stands — run `./scripts/bmad-deploy.sh` after merge — so neither posture asks.)
 
 ### CI Health Check — diagnosis
 <!-- bmad:ci-health-check -->
