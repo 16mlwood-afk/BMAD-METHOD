@@ -29,6 +29,17 @@ From context:
 
 ---
 
+## OPEN: ENTER A WORKTREE BEFORE EDITING `src/`
+
+**Before writing or editing any file under `src/` (or any tracked, non-`_bmad-output` path), enter an isolated git worktree** — do NOT edit `src/` on the main checkout. Follow `shared/parallel-sessions.md` §A1:
+
+- Base the worktree on **local `main`** (parallel sessions merge locally, so `origin` is usually behind and a fresh-from-origin worktree would lack the foundation your work depends on), on a descriptive branch (`<type>/<short-description>`), then `EnterWorktree` into it.
+- From inside the worktree, resolve `{project-root}` via `git rev-parse --show-toplevel` (`shared/worktree-portability.md` §1) — every path is worktree-relative from here.
+
+Skip ONLY if the user explicitly said "you're the only session, skip the worktree," or this run writes nothing under `src/` (an `_bmad-output`-only change — that dir is hook-allowlisted and needs no worktree). When in doubt, open one: a worktree of one is free; a collision is not.
+
+---
+
 ## PRE-FLIGHT: PRODUCTION DATA REALITY CHECK
 
 **Trigger:** Run this check when the task involves displaying, mapping, or building UI for database fields — especially fields a spec claims "already exist" or "are populated."

@@ -35,6 +35,14 @@
       <action>Compile list of actually changed files from git output</action>
     </check>
 
+    <!-- Parallel-session / worktree reality (shared/parallel-sessions.md): a story delivered by
+         quick-dev / dev-story is already committed + merged to main, so the working-tree `git diff`
+         is EMPTY even though the implementation exists. Recover it from the story's baseline_commit. -->
+    <check if="git diff AND git diff --cached are both empty AND the story frontmatter contains baseline_commit">
+      <action>The story was already delivered (committed/merged) — do NOT treat the empty working-tree diff as "nothing changed." Recover the delivered change set: `git diff {{baseline_commit}}..HEAD -- {{story_files}}` (scoped to the story's File List), and review THAT diff as the implementation.</action>
+      <action>Resolve `{project-root}` via `git rev-parse --show-toplevel` so paths are correct whether this runs from the main checkout or a worktree (shared/worktree-portability.md §1).</action>
+    </check>
+
     <!-- Git state precondition: detect no-commit / all-untracked state -->
     <check if="git diff returns empty AND git diff --cached returns empty AND untracked files exist">
       <critical>NO GIT HISTORY DETECTED — all files are untracked with no commits.</critical>

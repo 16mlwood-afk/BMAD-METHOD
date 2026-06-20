@@ -67,6 +67,15 @@ git diff --stat
 
 ## DELIVERY SEQUENCE
 
+### 0. Integrate the advancing `main` first (parallel-session reality)
+
+Another session has very likely merged to `main` since this run started. **Before delivering, integrate it** — from the worktree branch, `git merge main` (or rebase), then resolve any conflicts per `shared/parallel-sessions.md` §A4: **resolve-don't-halt** the mechanical collision classes (barrel re-exports → keep both export lines; additive `schema.ts` tables → keep both; two `0001` migrations → take theirs, regenerate yours as `0002`; `sprint-status.yaml` → per-key edits). **Re-run the full gate afterward** — the integrated tree is new code neither session tested together. Halt ONLY on a genuine *semantic* conflict.
+
+### 0b. Pick the delivery mode
+
+- **No git remote** (`git remote` prints nothing — local-merge projects per the project `CLAUDE.md`): follow the local-merge variant in `shared/parallel-sessions.md` §A5 — commit on the branch → `ExitWorktree` keep → `git merge --no-ff <branch>` from the main checkout → re-verify the gate on `main` → `git worktree remove` + `git branch -d`. **Skip the push/PR steps (1–6) below.**
+- **Has a remote:** continue with the PR sequence below.
+
 ### 1. Check Branch Name
 
 Worktrees auto-generate branch names that may not be descriptive. If the current branch name is generic (e.g., a random worktree name), rename it before pushing:
@@ -130,7 +139,7 @@ gh pr merge <pr-number> --squash
 - Use `--squash` to keep main history clean
 - Do NOT use `--delete-branch` if in a worktree — the local branch is still the worktree's checkout and deleting it causes errors. The remote branch will be cleaned up by `ExitWorktree` or manually.
 - If NOT in a worktree, add `--delete-branch` to clean up the feature branch.
-- If merge fails (e.g., merge conflict with main), report the error and halt — do not force-push or force-merge
+- If the merge conflicts with `main`, **do not halt blindly** — re-integrate via step 0 above and resolve the mechanical collision classes per `shared/parallel-sessions.md` §A4. Halt and report ONLY on a genuine *semantic* conflict. Never force-push or force-merge.
 
 ### 6. Verify Merge
 
