@@ -138,13 +138,18 @@ project_phase: $PROJECT_PHASE
 # Skip-mode posture: deploy is the owner's manual step — the agent states deploy
 # status after merge and STOPS, it never asks "want me to deploy?" (CLAUDE.md
 # "Deployment — BMAD contract" section).
+# autonomous: when a real deploy is configured, the agent OWNS deploy choices
+# end-to-end and never routes them back to the owner (fresh origin/main checkout,
+# verify the deploy target, apply ADDITIVE migrations) — it still gates a
+# DESTRUCTIVE migration. Set false to keep the owner-only state-and-stop posture.
 deploy:
   bmad_contract: skip
+  autonomous: true
 EOF
 # Clear the reference's project-specific sidecar memory + stale sync stamp.
 find "$PROJECT_DIR/_bmad/_memory" -type f -name '*.md' -delete 2>/dev/null || true
 rm -f "$PROJECT_DIR/_bmad/_config/sync-stamp.yaml" 2>/dev/null || true
-echo "  ✓ generated clean config (name=$PROJECT_NAME, phase=$PROJECT_PHASE, deploy=skip) + cleared reference state"
+echo "  ✓ generated clean config (name=$PROJECT_NAME, phase=$PROJECT_PHASE, deploy=skip, deploy.autonomous=true) + cleared reference state"
 
 # --- 4. CLAUDE.md from template ---
 if [[ ! -f "$PROJECT_DIR/CLAUDE.md" ]]; then

@@ -119,6 +119,15 @@ deploy:
 
 **Posture under skip — NO per-session deploy question.** A skipped contract means deploy is the project owner's **deliberate, manual step**, not the agent's — so a session must NOT turn it into a recurring end-of-implementation question. After merging a PR to the default branch, **state the deploy status as a fact and STOP**: e.g. *"Merged to `origin/<default-branch>`; undeployed — deploy is the owner's manual step (see the project's CLAUDE.md / deployment doc)."* Deploy ONLY when the owner explicitly asks. The merge is the agent's delivery boundary; the deploy is the owner's. "Want me to deploy?" at the end of every implementation is exactly the friction this posture removes. (When the contract is ACTIVE, the agent runs `./scripts/bmad-deploy.sh` after merge — also no question.)
 
+**Opt-in: agent-owned deploy (`deploy.autonomous: true`).** A project can flip the owner-only posture above by setting `deploy.autonomous: true` in its config. When set, the agent **OWNS the deploy end-to-end and never routes deploy choices/questions back to the owner** — it runs the deploy itself (via its tools, not by asking the owner to run it) and makes the in-flight calls autonomously:
+
+- Deploy from a **fresh `origin/<default-branch>` checkout** (never local `main` — which may be ahead/behind or carry uncommitted cruft).
+- **Verify the deploy target before shipping** — the one non-negotiable guard even under full autonomy. (E.g. on Railway, confirm the linked project/service is *this* app before `railway up`; a mis-linked/home-dir checkout can resolve to a *different* production app — the catastrophic footgun.)
+- Apply pending **additive** migrations (`CREATE TABLE` / `ADD COLUMN` / `ADD CONSTRAINT` / `CREATE INDEX`) as a separate, idempotent step against the confirmed prod DB.
+- **Still gate ONE thing for the owner:** a **destructive** migration (`DROP` / column-narrowing / data backfill / `TRUNCATE`) stops even under autonomy — it can lose data, and the global "never run a destructive migration without asking" rule is not erased by this flag.
+
+This is the explicit override for projects that want hands-off shipping; absent the flag (or with `autonomous: false`), the state-and-stop posture above is the default. The two postures share one DNA — *don't ask the owner* — they differ only on *don't deploy* (default) vs *do deploy* (autonomous).
+
 ---
 
 ## 5. Config schema — `_bmad/bmm/config.yaml` → `deploy:`
