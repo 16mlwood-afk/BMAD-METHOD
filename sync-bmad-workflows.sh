@@ -827,6 +827,50 @@ ensure_skills_native_built() {
   return 0
 }
 
+# Colon-command aliases for skills-layout projects. For every delivered bmad-<name>
+# skill, emit a thin wrapper at .claude/commands/bmad/bmm/workflows/<name>.md so the
+# skill is ALSO invokable as /bmad:bmm:workflows:<name> — the old command-layout slash
+# format — in addition to the native /bmad-<name> skill invocation. Same proven shape
+# as sync_agents_for_project's /bmad:bmm:agents:<name> wrappers. Skills-layout-only:
+# this runs from deliver_skills_layout_project, so it only touches projects on the v6.8
+# skills layout (cash-recovery is the sole one today; future migrated projects inherit
+# it). These wrappers are NOT reaped — cleanup_orphaned_commands runs only in the
+# old-layout path. Args: $1 = project root. Returns count of (re)written wrappers.
+sync_skill_command_aliases_for_project() {
+  local proot="$1"
+  local count=0
+  local skills_dir="$proot/.claude/skills"
+  local cmds_dir="$proot/.claude/commands/bmad/bmm/workflows"
+  [[ ! -d "$skills_dir" ]] && { echo "0"; return; }
+
+  local d nm slug skillmd desc wrapper_dst wrapper_content
+  for d in "$skills_dir"/bmad-*/; do
+    [[ -d "$d" ]] || continue
+    nm="$(basename "$d")"
+    slug="${nm#bmad-}"
+    skillmd="$d/SKILL.md"
+    [[ -f "$skillmd" ]] || continue
+    # Pull the frontmatter description (single- or double-quoted), strip one quote layer.
+    desc=$(sed -n '/^description:/{ s/^description:[[:space:]]*//; s/^"//; s/"[[:space:]]*$//; s/^'\''//; s/'\''[[:space:]]*$//; p; q; }' "$skillmd")
+    [[ -z "$desc" ]] && desc="$nm skill"
+    # Escape single quotes for the YAML single-quoted scalar.
+    desc="${desc//\'/\'\'}"
+    wrapper_dst="$cmds_dir/$slug.md"
+    wrapper_content="---
+description: '$desc'
+---
+
+IT IS CRITICAL THAT YOU FOLLOW THIS COMMAND: invoke the Skill tool with skill name \`$nm\` and follow its instructions exactly. Pass through any arguments supplied after the command."
+
+    if [[ ! -f "$wrapper_dst" ]] || [[ "$(cat "$wrapper_dst" 2>/dev/null)" != "$wrapper_content" ]]; then
+      mkdir -p "$cmds_dir"
+      printf '%s\n' "$wrapper_content" > "$wrapper_dst"
+      count=$((count + 1))
+    fi
+  done
+  echo "$count"
+}
+
 deliver_skills_layout_project() {
   local proot="$1"
   echo "SYNC  $(basename "$proot") (skills-layout)"
@@ -851,6 +895,8 @@ deliver_skills_layout_project() {
   local cs; cs=$(sync_skills_for_project "$proot" "sync"); [[ "$cs" -gt 0 ]] && echo "  OK    custom skills ($cs)"
   sync_scripts_for_project "$proot" "sync" >/dev/null 2>&1 || true
   sync_agents_for_project "$proot" "sync" >/dev/null 2>&1 || true
+  # 3b. Colon-command aliases (/bmad:bmm:workflows:<name>) for every delivered skill.
+  local ca; ca=$(sync_skill_command_aliases_for_project "$proot"); [[ "$ca" -gt 0 ]] && echo "  OK    colon-command aliases ($ca wrapper(s))"
   # 4. Hooks
   local sdir="$proot/.claude" sfile="$proot/.claude/settings.local.json"
   if [[ -f "$HOOKS_SRC" ]]; then

@@ -78,4 +78,4 @@ Upstream changes you're considering absorbing. Each line: change → reconciliat
 
 Short bullet log of policy-level decisions made recently. Helps future-you and the skill stay coherent.
 
-- YYYY-MM-DD: decided to ___ because ___
+- YYYY-MM-DD: decided to {what} because {why}

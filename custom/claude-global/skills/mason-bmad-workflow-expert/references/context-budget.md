@@ -91,14 +91,14 @@ And durable state **must live in a file**, not in chat memory that evaporates at
 
 ## Sources
 
-- Liu et al., *Lost in the Middle* — https://arxiv.org/abs/2307.03172
-- NVIDIA, *RULER* (effective vs. advertised window) — https://github.com/NVIDIA/RULER
-- Modarressi et al., *NoLiMa* (reasoning-retrieval collapse by 32K) — https://arxiv.org/html/2502.05167v1
-- Chroma, *Context Rot* — https://www.trychroma.com/research/context-rot
-- Jaroslawicz et al., *IFScale: How Many Instructions Can LLMs Follow at Once?* — https://arxiv.org/abs/2507.11538
-- Anthropic, *Effective context engineering for AI agents* — https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents
-- Anthropic, *How we built our multi-agent research system* — https://www.anthropic.com/engineering/multi-agent-research-system
-- Anthropic, *Effective harnesses for long-running agents* — https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents
-- Anthropic, *Equipping agents with Agent Skills* (progressive disclosure) — https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills
-- Cognition, *Don't Build Multi-Agents* — https://cognition.ai/blog/dont-build-multi-agents
-- Microsoft, *Magentic-One* (Task/Progress ledgers) — https://www.microsoft.com/en-us/research/articles/magentic-one-a-generalist-multi-agent-system-for-solving-complex-tasks/
+- Liu et al., *Lost in the Middle* — <https://arxiv.org/abs/2307.03172>
+- NVIDIA, *RULER* (effective vs. advertised window) — <https://github.com/NVIDIA/RULER>
+- Modarressi et al., *NoLiMa* (reasoning-retrieval collapse by 32K) — <https://arxiv.org/html/2502.05167v1>
+- Chroma, *Context Rot* — <https://www.trychroma.com/research/context-rot>
+- Jaroslawicz et al., *IFScale: How Many Instructions Can LLMs Follow at Once?* — <https://arxiv.org/abs/2507.11538>
+- Anthropic, *Effective context engineering for AI agents* — <https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents>
+- Anthropic, *How we built our multi-agent research system* — <https://www.anthropic.com/engineering/multi-agent-research-system>
+- Anthropic, *Effective harnesses for long-running agents* — <https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents>
+- Anthropic, *Equipping agents with Agent Skills* (progressive disclosure) — <https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills>
+- Cognition, *Don't Build Multi-Agents* — <https://cognition.ai/blog/dont-build-multi-agents>
+- Microsoft, *Magentic-One* (Task/Progress ledgers) — <https://www.microsoft.com/en-us/research/articles/magentic-one-a-generalist-multi-agent-system-for-solving-complex-tasks/>
