@@ -828,22 +828,33 @@ ensure_skills_native_built() {
 }
 
 # Colon-command aliases for skills-layout projects. For every delivered bmad-<name>
-# skill, emit a thin wrapper at .claude/commands/bmad/bmm/workflows/<name>.md so the
-# skill is ALSO invokable as /bmad:bmm:workflows:<name> — the old command-layout slash
-# format — in addition to the native /bmad-<name> skill invocation. Same proven shape
-# as sync_agents_for_project's /bmad:bmm:agents:<name> wrappers. Skills-layout-only:
-# this runs from deliver_skills_layout_project, so it only touches projects on the v6.8
-# skills layout (cash-recovery is the sole one today; future migrated projects inherit
-# it). These wrappers are NOT reaped — cleanup_orphaned_commands runs only in the
-# old-layout path. Args: $1 = project root. Returns count of (re)written wrappers.
+# skill, emit a thin wrapper so the skill is ALSO invokable in the old command-layout
+# slash format — in addition to the native /bmad-<name> skill invocation. Namespacing:
+#   bmad-agent-<role>  -> .claude/commands/bmad/bmm/agents/<role>.md  -> /bmad:bmm:agents:<role>
+#   bmad-<name> (else) -> .claude/commands/bmad/bmm/workflows/<name>.md -> /bmad:bmm:workflows:<name>
+# Agent-persona skills belong in the agents/ namespace, matching sync_agents_for_project's
+# /bmad:bmm:agents:<name> wrappers (bmad-create-agent / bmad-design-agent are WORKFLOWS,
+# not personas — they stay in workflows/). Skills-layout-only: this runs from
+# deliver_skills_layout_project, so it only touches projects on the v6.8 skills layout
+# (cash-recovery is the sole one today; future migrated projects inherit it).
+#
+# These aliases ARE reaped: cleanup_orphaned_commands (the old-layout reaper) keys off an
+# @_bmad/... target ref these Skill-invoking wrappers don't carry, and isn't called here.
+# Instead we reap against the desired set — any wrapper WE own (carries our marker) that
+# we did not (re)write this run, i.e. its backing skill was removed OR relocated namespace.
+# The marker check leaves fork-lane agent wrappers (LOAD-from-file form) and any non-alias
+# command untouched. Args: $1 = project root. Returns count of changes (writes + reaps).
+SKILL_ALIAS_MARKER='invoke the Skill tool with skill name'
 sync_skill_command_aliases_for_project() {
   local proot="$1"
   local count=0
   local skills_dir="$proot/.claude/skills"
-  local cmds_dir="$proot/.claude/commands/bmad/bmm/workflows"
+  local wf_dir="$proot/.claude/commands/bmad/bmm/workflows"
+  local ag_dir="$proot/.claude/commands/bmad/bmm/agents"
   [[ ! -d "$skills_dir" ]] && { echo "0"; return; }
 
-  local d nm slug skillmd desc wrapper_dst wrapper_content
+  local desired=$'\n'   # newline-delimited, newline-bracketed list of wrappers we own this run
+  local d nm slug skillmd desc sub out_slug wrapper_dst wrapper_content
   for d in "$skills_dir"/bmad-*/; do
     [[ -d "$d" ]] || continue
     nm="$(basename "$d")"
@@ -855,7 +866,14 @@ sync_skill_command_aliases_for_project() {
     [[ -z "$desc" ]] && desc="$nm skill"
     # Escape single quotes for the YAML single-quoted scalar.
     desc="${desc//\'/\'\'}"
-    wrapper_dst="$cmds_dir/$slug.md"
+    # Route agent-persona skills (bmad-agent-<role>) to the agents/ namespace.
+    if [[ "$slug" == agent-* ]]; then
+      sub="$ag_dir"; out_slug="${slug#agent-}"
+    else
+      sub="$wf_dir"; out_slug="$slug"
+    fi
+    wrapper_dst="$sub/$out_slug.md"
+    desired+="$wrapper_dst"$'\n'
     wrapper_content="---
 description: '$desc'
 ---
@@ -863,11 +881,24 @@ description: '$desc'
 IT IS CRITICAL THAT YOU FOLLOW THIS COMMAND: invoke the Skill tool with skill name \`$nm\` and follow its instructions exactly. Pass through any arguments supplied after the command."
 
     if [[ ! -f "$wrapper_dst" ]] || [[ "$(cat "$wrapper_dst" 2>/dev/null)" != "$wrapper_content" ]]; then
-      mkdir -p "$cmds_dir"
+      mkdir -p "$sub"
       printf '%s\n' "$wrapper_content" > "$wrapper_dst"
       count=$((count + 1))
     fi
   done
+
+  # Reap stale aliases in both namespaces: a wrapper we own but didn't (re)write means its
+  # skill was removed or its alias moved namespace (e.g. workflows/agent-pm -> agents/pm).
+  local f
+  for f in "$wf_dir"/*.md "$ag_dir"/*.md; do
+    [[ -f "$f" ]] || continue
+    grep -qF "$SKILL_ALIAS_MARKER" "$f" 2>/dev/null || continue   # not ours — leave it alone
+    case "$desired" in
+      *$'\n'"$f"$'\n'*) : ;;                       # still desired — keep
+      *) rm -f "$f"; count=$((count + 1)) ;;       # stale — reap
+    esac
+  done
+
   echo "$count"
 }
 
@@ -896,7 +927,7 @@ deliver_skills_layout_project() {
   sync_scripts_for_project "$proot" "sync" >/dev/null 2>&1 || true
   sync_agents_for_project "$proot" "sync" >/dev/null 2>&1 || true
   # 3b. Colon-command aliases (/bmad:bmm:workflows:<name>) for every delivered skill.
-  local ca; ca=$(sync_skill_command_aliases_for_project "$proot"); [[ "$ca" -gt 0 ]] && echo "  OK    colon-command aliases ($ca wrapper(s))"
+  local ca; ca=$(sync_skill_command_aliases_for_project "$proot"); [[ "$ca" -gt 0 ]] && echo "  OK    colon-command aliases ($ca change(s): written/reaped)"
   # 4. Hooks
   local sdir="$proot/.claude" sfile="$proot/.claude/settings.local.json"
   if [[ -f "$HOOKS_SRC" ]]; then
