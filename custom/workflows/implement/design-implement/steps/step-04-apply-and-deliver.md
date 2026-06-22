@@ -156,7 +156,7 @@ gh pr create --title "fix: align {page-name} with Meridian design spec" --body "
 
 ## Test plan
 - [ ] Visual comparison against design artifact
-- [ ] Build passes (`npm run build`)
+- [ ] Build passes (`npm run build`) — diagnostics gate: any new diagnostic (incl. after a merge/worktree teardown) is RED until a re-run in the current checkout proves zero errors; quote the result, never reason it away as "stale" (`shared/diagnostics-gate.md`)
 - [ ] No regressions on adjacent pages
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

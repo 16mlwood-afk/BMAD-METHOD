@@ -39,6 +39,7 @@ Verify test status:
 - [ ] All existing tests still pass
 - [ ] New tests written for new functionality
 - [ ] No test warnings or skipped tests without reason
+- [ ] **Diagnostics gate — prove, don't assert** (`{project-root}/_bmad/bmm/workflows/shared/diagnostics-gate.md`). If ANY new diagnostic surfaced (type error, "cannot find module", lint/compile failure) — including after a merge or worktree teardown — re-run the relevant check IN THE CURRENT CHECKOUT and confirm zero errors. Quote the result. Do NOT reason a diagnostic away as "stale" — a true-stale diagnostic disappears on re-run, and that disappearance is the proof; the explanation is not.
 
 ### 3. Acceptance Criteria Satisfied
 

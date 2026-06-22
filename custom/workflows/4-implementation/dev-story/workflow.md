@@ -392,6 +392,7 @@ Activation is complete. If `activation_steps_prepend` or `activation_steps_appen
     <action>Confirm implementation matches EXACTLY what the task/subtask specifies - no extra features</action>
     <action>Validate that ALL acceptance criteria related to this task are satisfied</action>
     <action>Run full test suite to ensure NO regressions introduced</action>
+    <action>DIAGNOSTICS GATE (prove, don't assert — `{project-root}/_bmad/bmm/workflows/shared/diagnostics-gate.md`): if ANY new diagnostic surfaced during this task (type error, "cannot find module", lint/compile failure) — including after a merge or worktree teardown — the gate is RED until a re-run IN THE CURRENT CHECKOUT proves zero errors. Re-run the relevant check and quote the result; never reason a diagnostic away as "stale". "Gate green" with no quoted re-run is an unbacked claim.</action>
 
     <!-- REVIEW FOLLOW-UP HANDLING -->
     <check if="task is review follow-up (has [AI-Review] prefix)">
