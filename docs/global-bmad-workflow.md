@@ -1,0 +1,90 @@
+---
+title: Global BMAD Workflow Management
+description: Sync, upgrade, onboarding, and autonomous-maintenance procedures for the Mason-BMAD fork.
+---
+
+# Global BMAD Workflow Management
+
+> Factored out of `~/.claude/CLAUDE.md` (Executive-summary / pointer-style refactor). The global
+> CLAUDE.md keeps a short What/Why/Where pointer to this file; the full procedures live here.
+
+The user maintains a fork of BMAD-METHOD at `~/bmad-method-v6/` (remote: `16mlwood-afk/BMAD-METHOD`, branch: `custom`). Custom workflows live in `custom/workflows/` and are distributed to all projects via a sync script. The `custom` branch tracks `origin/main` (upstream) and rebases custom commits on top.
+
+## "sync bmad" — Push custom workflows + hooks to projects
+
+1. If this project's `_bmad/bmm/workflows` path isn't in `~/.bmad-targets`, append it first
+2. Run `~/bmad-method-v6/sync-bmad-workflows.sh` — syncs workflows and merges worktree enforcement hooks into `.claude/settings.local.json` (preserves existing permissions)
+3. If the sync **blocks** a project (local-only content detected), pull changes first: `sync-bmad-workflows.sh --pull <path>`, review, commit to the fork, then re-sync
+4. Diff this project's `CLAUDE.md` against `~/bmad-method-v6/src/modules/bmm/_module-installer/assets/CLAUDE.md.template`
+5. Propose updates for any missing sections — preserve project-specific values (structure, deploy command, conventions)
+
+**Never modify workflows directly in `_bmad/bmm/workflows/`.** Changes made in projects will be overwritten on next sync. Instead, modify `~/bmad-method-v6/custom/workflows/` and re-sync, or use `--pull` to bring project changes back to the source first.
+
+## Parallel work does NOT isolate BMAD state
+
+**Guardrail.** Worktrees isolate the source tree only. They do **not** isolate BMAD planning state
+(stories / sprint-status / epics are untracked and live on the main checkout), shared infra (one
+database, object store, and external API account across every worktree), or build artifacts
+(`node_modules` / build caches symlink back to main). So parallel sessions collide on planning,
+data, and builds even when their code edits never touch the same files.
+
+**Until** BMAD planning state is committed (worktree-self-sufficient) **and** a parallel-work
+protocol is defined (story-level ownership + "no migrations in parallel"), **treat story ownership
+as single-threaded.** Don't run two sessions against the same story, and never run a migration while
+another session is live.
+
+Full reasoning (the four structural reasons + what a real fix looks like) → `parallel-work-and-bmad-state.md`.
+
+## "upgrade bmad" — Pull upstream BMAD updates into the fork
+
+1. Run `~/bmad-method-v6/upgrade-bmad.sh`
+2. If merge conflicts occur, resolve them in `~/bmad-method-v6/`, commit, then re-run
+
+## New project bootstrap
+
+To onboard a new project to the fork, run **one command** — it is idempotent and self-verifying:
+
+```
+~/bmad-method-v6/onboard-project.sh [<project-dir>] [--name <name>] [--phase greenfield|brownfield|mixed]
+```
+
+Defaults: `<project-dir>` = cwd, `--name` = dir basename, `--phase` = greenfield. The script does
+git init, clones the reference project's `_bmad/` base (per `~/.bmad-reference`), sanitizes
+project-specific config, creates `CLAUDE.md` from the template, registers the project in
+`~/.bmad-targets`, and runs the sync (custom workflows, skills, hooks, commands). The `bmad-onboard`
+skill wraps this for natural-language invocation ("install the BMAD fork", "set up BMAD here").
+
+**Do NOT run `bmad-cli install` / `npx bmad-method install`.** The installer now produces the
+upstream v6.8.0 skills layout (`.claude/skills/bmad-*`), which the fork's custom layer and
+`sync-bmad-workflows.sh` do not support — a fresh install yields vanilla BMAD with none of the fork's
+safety layer. All projects run the 6.0.4 base + custom overlay layout, which `onboard-project.sh`
+reproduces. (Migrating the fork to the v6.8.0 skills layout is planned in
+`~/bmad-method-v6/custom/MIGRATION-v6.8-skills-plan.md`.)
+
+## Autonomous maintenance — make these calls yourself, don't ask
+
+You are responsible for keeping the BMAD fork and project workflows in a healthy state. The following decisions do NOT require asking the user — when you hit them, just resolve.
+
+**BMAD-managed paths.** These directories are owned by the BMAD fork sync. Treat their contents as derivable, not authored locally in projects:
+
+- `_bmad/` (entire tree)
+- `.claude/commands/bmad/`
+- `.claude/settings.local.json` (BMAD-injected hooks/permissions only — preserve other entries)
+
+**`git pull` blocked by untracked files in BMAD-managed paths.** This is the standard "stale local sync vs newly-committed sync" race. Resolution:
+
+1. Confirm every blocking path is inside a BMAD-managed directory above. If any blocking path is outside (real local work), stop and surface to the user.
+2. Move the local untracked copies to `.claude/orphaned-main-commits/<YYYYMMDD-HHMMSS>/` (preserving directory structure). Do not `rm` — preserve for inspection.
+3. `git pull --ff-only`.
+4. If `~/.bmad-targets` includes this project, run `~/bmad-method-v6/sync-bmad-workflows.sh` afterward to confirm fork-of-truth state.
+
+Never block a pull on these files; they are either stale duplicates of fork content or will be re-emitted by the next sync.
+
+**Session-start drift warnings.** Do NOT run upgrade/sync scripts unprompted at session start — they are slow and affect shared resources (the fork's git state, every targeted project). But:
+
+- The moment the user invokes a `/bmad:` workflow that depends on the fork being current, OR you hit a pull conflict caused by drift, OR the user asks anything about BMAD state — resolve the drift first by running the appropriate script (`upgrade-bmad.sh` for fork-behind-upstream, `sync-bmad-workflows.sh` for projects-behind-fork). Don't ask first.
+- If `upgrade-bmad.sh` hits merge conflicts in `~/bmad-method-v6/`, surface them — that's the one case where you need the user.
+
+**Editing files inside `_bmad/bmm/workflows/`.** Never edit in place — these are sync targets and your edits get overwritten on next sync. Edit `~/bmad-method-v6/custom/workflows/` instead and re-sync. If the user asks for a workflow change, do this without asking which copy to edit.
+
+**Memory changelog when cross-syncing.** Sync operations that touch `.claude/settings.local.json` or memory-relevant files in other projects must be logged per the Memory Hygiene → Breadcrumb trail rules (see `~/.claude/projects/-Users-masonwood/memory/docs/memory-hygiene.md`). The sync script itself is silent; you must write the entry.
