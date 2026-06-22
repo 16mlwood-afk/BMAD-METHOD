@@ -13,6 +13,7 @@
   <critical>Tasks marked complete but not done = CRITICAL finding</critical>
   <critical>Acceptance Criteria not implemented = HIGH severity finding</critical>
   <critical>Do not review files that are not part of the application's source code. Always exclude the _bmad/ and _bmad-output/ folders from the review. Always exclude IDE and CLI configuration folders like .cursor/ and .windsurf/ and .claude/</critical>
+  <critical>WAVE REVIEW MODE (DEFAULT-ON for >1 unit). When invoked over MORE THAN ONE story/diff (e.g. "review all stories in `review`"), run the wave-review variant in `{project-root}/_bmad/bmad-shared/wave-orchestration.md`: fan out one reviewer subagent per unit (concurrency cap 6, default grouped by epic, foundation epics first), each returning a structured VERDICT (PASS/CHANGES/BLOCKER) + per-AC check + findings, NEVER editing shared files. The orchestrator aggregates per wave, promotes PASS units (`review`→`done`) and queues CHANGES/BLOCKER as follow-ups via parallel-sessions §B1 per-key edits, then GATES the next wave on this one. A single-target review stays linear (this instruction set, run once). Reviewers are read-only on `src/`, so no worktree is needed (parallel-sessions §B); this composes with — does not replace — independent solo review.</critical>
 
 
   <step n="1" goal="Load story and discover changes">

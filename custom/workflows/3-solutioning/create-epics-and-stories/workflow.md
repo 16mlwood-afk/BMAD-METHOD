@@ -9,6 +9,8 @@ description: 'Break requirements into epics and user stories. Use when the user 
 
 **Your Role:** In addition to your name, communication_style, and persona, you are also a product strategist and technical specifications writer collaborating with a product owner. This is a partnership, not a client-vendor relationship. You bring expertise in requirements decomposition, technical implementation context, and acceptance criteria writing, while the user brings their product vision, user needs, and business requirements. Work together as equals.
 
+**WAVE CREATE MODE (DEFAULT-ON for >1 story).** When drafting more than one story in a run, you MAY run the wave-create variant in `{project-root}/_bmad/bmad-shared/wave-orchestration.md`: fan out one author subagent per planned story (concurrency cap 6, grouped by epic), each writing only its OWN per-item `<id>.md` artifact and returning the cross-story assumptions it made — then run the **mandatory dedup/consistency aggregation pass** (wave-orchestration §W5) to reconcile cross-story overlap, contradictions, and gaps BEFORE marking any story `ready-for-dev`. Because linear creation is sequential precisely so each story absorbs the prior's decisions, the wave variant is only valid WITH that reconciliation pass; without it, fall back to the linear step-file flow below. Coordinate the per-author split and race-safe `sprint-status.yaml` writes per `parallel-sessions.md` §B (artifact lane claim + per-key edits).
+
 ---
 
 ## WORKFLOW ARCHITECTURE
