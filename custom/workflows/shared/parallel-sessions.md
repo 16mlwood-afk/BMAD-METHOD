@@ -1,6 +1,6 @@
 ---
 name: parallel-sessions
-description: 'Shared protocol for implementation and review workflows that run while OTHER agent sessions edit the same repo concurrently. Covers (A) src-editing workflows — enter a worktree before editing, integrate an advancing main before delivery, and resolve the named collision classes instead of halting; and (B) artifact workflows — race-safe sprint-status edits and lane claiming. Composes with worktree-portability.md (path mechanics) and delivery-to-main.md (artifact/PR delivery). Referenced by quick-dev (step-03 execute, step-07 deliver), quick-spec, code-review.'
+description: 'Shared protocol for implementation and review workflows that run while OTHER agent sessions edit the same repo concurrently. Covers (A) src-editing workflows — enter a worktree before editing, integrate an advancing main before delivery, and resolve the named collision classes instead of halting; (B) artifact workflows — race-safe sprint-status edits and lane claiming; and (C) story claim + reconcile — atomically claim a story before working it, refuse one already held by a live session, and reconcile the story-file Status vs sprint-status on entry (heals the "done-but-unchecked" and "claimed-but-zombie" drift classes). Composes with worktree-portability.md (path mechanics) and delivery-to-main.md (artifact/PR delivery). Referenced by quick-dev (step-03 execute, step-07 deliver), quick-spec, code-review, dev-story (step-01 claim, step-04 reconcile).'
 ---
 
 # Parallel Sessions — Concurrent-Work Protocol
@@ -20,7 +20,8 @@ This protocol is the missing layer. It composes with — does not duplicate — 
 
 - **§A** — any workflow that edits `src/` (or other tracked, non-`_bmad-output` files): `quick-dev`, `dev-story`, the source-touching half of `quick-spec`.
 - **§B** — any workflow that writes `_bmad-output/` artifacts and updates `sprint-status.yaml`: `create-story`, `create-epics-and-stories`, sprint planning.
-- A workflow that does both applies both.
+- **§C** — any **sprint-driven implementer that picks a story from `sprint-status.yaml`**: `dev-story` (and any future workflow that auto-discovers "the next ready story"). §C runs at story selection (claim) and on entry (reconcile); it composes with §A's worktree (the claim's `session=` reuses the worktree branch slug — one identity, no double-warn).
+- A workflow that does several of these applies all of them. `dev-story` applies §A (it edits `src/`) **and** §C (it claims a story); a `quick-dev` run driven straight from a tech-spec (not from sprint-status) applies §A only.
 
 Detect concurrency cheaply: if `ps -eo command | grep -c '^claude'` (or the project's own parallel-session signal) is `> 1`, treat the session as parallel. **The protocol is safe to follow even when alone** — a worktree of one, a no-op integrate — so when in doubt, follow it. Do NOT gate the worktree on detecting parallelism: the project `CLAUDE.md` mandates a worktree for src edits regardless; §A1 just moves that from "the human remembered" to "the workflow does it."
 
@@ -86,8 +87,82 @@ When two sessions generate stories/epics for the same plan, **split the work exp
 
 ---
 
+## §C — Story claim + reconcile (dev-story / any sprint-driven implementer)
+
+**Why this exists.** §A keeps two sessions' *edits* from colliding; §B keeps their *sprint-status writes* from clobbering. Neither stops two sessions from **picking the same story** in the first place, and neither reconciles the two places a story's state is recorded. Both failures were observed live (cash-recovery, 2026-06):
+
+1. **Drift — "done-but-unchecked".** `sprint-status.yaml` said `done`; the story `.md` said `Status: review` with every task checkbox empty — yet the code was built, reviewed, and merged. The two ledgers disagreed and nothing reconciled them to reality.
+2. **Zombie claim.** `sprint-status.yaml` said `ready-for-dev`; the story `.md` said `Status: in-progress` with a `baseline_commit` set and ZERO commits. A session set the claim, then vanished. The next session could not tell a dead claim from genuine in-progress work.
+
+Root cause: story discovery is "read sprint-status top-to-bottom, take the first `ready-for-dev`," with **no atomic claim** (nothing records WHO holds a story or detects a dead hold) and **two un-reconciled sources of truth**.
+
+### C0. Source-of-truth rule
+
+- The **story file `Status:` line is authoritative for the story's lifecycle** (`ready-for-dev` → `in-progress` → `review` → `done`). It is the per-story record of record, versioned alongside the code in the same branch/PR.
+- `sprint-status.yaml` is the **shared index + claim ledger** — the only place a parallel session can see, in one read, what every other session is working and what is free. Its `development_status[<key>]` value mirrors the story file's lifecycle; it additionally carries the **claim token** (below).
+- **On any disagreement, reconcile per C3 before doing anything else.** When evidence exists (commits past `baseline_commit`, checked task boxes, a merged PR), the evidence wins and BOTH ledgers are healed to match it. When there is no evidence, the more-conservative state wins (treat as un-started/free, not done).
+
+### C1. The claim token — what "claimed" looks like
+
+Do **not** invent a new top-level status value (existing readers parse the five-word vocabulary). Instead keep the value as the existing `in-progress` and attach an inline **claim token** as a trailing YAML comment on that one key — a §B1 per-key edit, byte-identical to every other line:
+
+```yaml
+  2-8-resolve-by-lpn: in-progress  # claim: owner=<user_name> session=<sig> at=<iso8601> baseline=<sha>
+```
+
+- `owner` — `{user_name}` from config (the human the session acts for).
+- `session` — a stable per-session signature. Use the worktree branch slug when in a worktree (`git rev-parse --abbrev-ref HEAD`), else the controlling `claude` PID (`echo $PPID`), else `unknown`. The branch slug is preferred: it survives across the session and is what a teammate can `git worktree list` to verify.
+- `at` — ISO-8601 UTC claim time.
+- `baseline` — the `baseline_commit` captured at claim (mirrors the story-file frontmatter).
+
+The token lives ONLY in the comment, so `development_status[<key>]` stays a clean `in-progress` for every existing reader. A read-modify-write that rewrites only this line (asserting its prior value first, per §B1) is the safe shape.
+
+### C2. CLAIM — atomic, before any work
+
+Run this the moment a candidate story is selected in discovery, **before** loading deep context, writing `baseline_commit`, or touching code:
+
+1. **Re-read `sprint-status.yaml` fresh** (do not trust an earlier in-context copy — a parallel session may have just claimed).
+2. **Inspect the candidate key's value + claim token:**
+   - `ready-for-dev`, no token → **free. Claim it:** flip the value to `in-progress` and write the claim token (one per-key edit). Re-read the line back to confirm your token landed (last-writer-wins detection: if a different `session=` is now present, you lost the race — go to step 4).
+   - `in-progress` **with a token whose `session=` is YOURS** → you already hold it (resume). Proceed.
+   - `in-progress` **with a token whose `session=` is ANOTHER live session** (C4 dead-claim check says live) → **REFUSE.** Do not work this story. Return to discovery and take the next `ready-for-dev`. Emit: `⛔ {key} is claimed by {owner}/{session} since {at} — skipping to the next free story.`
+   - `in-progress` **with a token whose session is DEAD** (C4) → **reclaim** after reconcile (C3): take over the token (rewrite `session=` to yours, keep/refresh `baseline` per C3's evidence check).
+   - `in-progress` with **no token** (legacy, or claimed before this protocol) → treat as a dead/ambiguous claim: run C4; if no live session and no evidence of in-flight work, reclaim; if evidence exists, reconcile per C3.
+   - `review` / `done` → not claimable as fresh work; this is a reconcile case (C3) or a review-continuation (the workflow's own review-continuation path), not a claim.
+3. **Worktree composition (no double-warn).** The claim is orthogonal to §A1's worktree. The `session=` signature *reuses* the worktree branch slug, so claiming inside the worktree you opened in §A1 is one identity, not two. Do NOT open a second worktree for the claim and do NOT re-emit the parallel-session warning — §A1 already entered the worktree; C2 just records who holds the story in the shared ledger. If `ps`-based detection says you are the only `claude` session, still write the token (a claim of one is free and makes the next arriving session safe).
+4. **Lost the race** → return to discovery, pick the next free story, repeat C2. Never two sessions on one key.
+
+### C3. RECONCILE — on entry, heal the two drift classes
+
+Before claiming (or immediately after, for a `review`/`done` candidate), reconcile the candidate's story-file `Status:` against its `sprint-status` value. Gather evidence once:
+
+- `git log {baseline}..HEAD --oneline -- <story's code paths>` (or, if delivered, `git log --all --oneline` for the merged PR) → are there commits past baseline?
+- Story file task checkboxes → any `[x]`? all `[x]`?
+- Is there a merged PR / a "Senior Developer Review (AI)" section?
+
+Then:
+
+- **Class 1 — "done-but-unchecked" (sprint says `done`/`review`, story says an earlier state, but evidence shows work landed).** The evidence is authoritative. Heal BOTH ledgers UP to the evidenced state: set the story-file `Status:` and `development_status[<key>]` to the highest justified value (`done` if a merged PR exists, else `review` if implementation is complete), and check the task boxes that the merged code satisfies (or, if you cannot verify each task individually, add a Dev Agent Record note: `Reconciled: status set to {x} from merge evidence {sha/PR}; task boxes not individually back-verified`). **Do NOT silently re-open** a story that is actually finished. Emit a reconcile note naming the evidence. This is NOT a claim — a reconciled-to-`done` story is removed from the candidate pool.
+- **Class 2 — "zombie claim" (sprint or story says `in-progress`/claimed, `baseline == HEAD`, zero commits past baseline, no checked boxes).** There is no work to preserve. If C4 says the holding session is dead (or there is no token): **reset to free** — clear the claim token, set both ledgers back to `ready-for-dev`, and discard the stale `baseline_commit` from the story-file frontmatter (it will be re-captured at the next real claim). Then C2 may claim it cleanly. Emit: `🧟 {key} was a stale claim (baseline==HEAD, no commits, holder dead) — reset to ready-for-dev.`
+- **No drift** (both ledgers agree, or the only difference is the lifecycle step this run is about to perform) → nothing to heal; proceed.
+
+Reconcile edits to `sprint-status.yaml` are §B1 per-key edits. Reconcile edits to the story file touch only the permitted areas (Status, frontmatter `baseline_commit`, Tasks/Subtasks checkboxes, Dev Agent Record).
+
+### C4. Dead-claim detection — zombie vs genuine in-progress
+
+A claim is **live** if ANY of these hold; otherwise treat it as **dead**:
+
+- Its `session=` is a worktree branch that still exists: `git worktree list --porcelain | grep -q <branch-slug>` → live. (A worktree present means a session is — or recently was — actively on it.)
+- Its `session=` is a PID that is still a running `claude` process: `ps -p <pid> -o comm= 2>/dev/null | grep -q claude` → live.
+- The claim `at` timestamp is **recent** (within a freshness window — default **2 hours**) AND there is evidence of progress (commits past `baseline`, or checked boxes) → live (an active session that simply hasn't updated the ledger this minute).
+
+Dead signals (the zombie shape from incident 2): worktree branch gone AND PID not running (or `session=unknown`), `baseline == HEAD`, no commits, no checked boxes, `at` older than the freshness window. When dead, C2/C3 may reclaim or reset.
+
+**Conservatism rule:** if liveness is genuinely ambiguous (e.g. `session=unknown`, no worktree, but `at` is 10 minutes old) prefer to **skip to the next story** rather than reclaim — refusing costs you one story; stealing a live claim corrupts a peer's run. Only reclaim on a clear dead signal.
+
 ## Costs
 
 - A worktree per src-editing run — cheap, and the project `CLAUDE.md` already mandates it; §A1 just moves it from "the human remembered" into the workflow.
+- One fresh `sprint-status.yaml` re-read + a single per-key claim edit at story start (§C2), plus an entry-time reconcile pass (§C3) — seconds. The alternative is two sessions on one story, or a zombie claim no one can clear.
 - An integrate-and-re-gate pass before each delivery — seconds to minutes. The alternative is a stranded branch.
 - A little more delivery logic in the workflow. Worth it: the failure it prevents — finished, tested work halted because `main` moved one commit — is the most demoralizing one in the implement loop, and it is fully mechanical to avoid.
