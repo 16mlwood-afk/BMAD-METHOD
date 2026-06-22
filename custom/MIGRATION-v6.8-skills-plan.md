@@ -172,6 +172,26 @@ the fix locally (revert-exposed on re-install — this list is the durable recor
   should add a check: every "subagent" instruction names a real `subagent_type` AND states whether the
   method is inlined or Skill-tool-invoked.
 
+- **`bmad-code-review` — step-02-review.md Acceptance Auditor: diff-scoped, blind to omitted ACs (found 2026-06-22, cash-recovery pilot).**
+  The skills-layout Acceptance Auditor prompt said *"Review this DIFF against the spec"* — structurally blind to an AC
+  that was never implemented (an un-built AC produces no diff). Concrete incident: Story 1-4 was marked `done` with
+  its AC4 (persist reimbursements by reimbursement-id) and AC1 (persist Customer-Return `status`) never delivered —
+  no reimbursements table, no `units.status` column — and the Epic 1 batch review never caught it (it reviewed the
+  changes made, never "is each AC present in the current code?"). A green build + ticked tasks passed because no test
+  asserted the table exists. **The fork's XML overlay (`custom/workflows/4-implementation/code-review/instructions.xml`)
+  ALREADY has the correct check** ("AC Validation: for EACH AC → search implementation files for evidence →
+  IMPLEMENTED/PARTIAL/MISSING → MISSING/PARTIAL = HIGH") — the v6.8 skills-layout PORT silently dropped it. So this is
+  a **carry-over, not a new invention**: the port must preserve the XML's current-state AC validation. Fix applied to
+  the in-project pilot copy (`.claude/skills/bmad-code-review/steps/step-02-review.md`): the Acceptance Auditor now
+  (a) gets project read access, (b) verifies EACH AC against the CURRENT codebase state (grep the table/column/route/
+  function the AC demands), not just the diff, (c) marks IMPLEMENTED/PARTIAL/MISSING with MISSING/PARTIAL = HIGH even
+  when the diff is clean and the build green, and (d) prefers a TEST as the per-AC verifiable artifact, flagging an
+  untested AC as unverified. The XML overlay was also strengthened with (d) (the test-artifact discipline) so the
+  owned source carries the full fix. Recurrence audit: the **dev-story "done" gate** has the same too-weak signal
+  (tasks ticked + build green ≠ ACs verified) — its done-check should require a per-load-bearing-AC verifiable
+  artifact; flagged for the dev-story promote/port. Root-cause class: `contract-dimension-gap` (acceptance review's
+  evidence source missing the current-state axis) on the skills-layout copy = `upstream-fork-mismatch`.
+
 ## Phase 5 — Migrate the 14 projects (dual-layout, pilot-first)
 
 **DECISION:** dual-layout transition, not a big-bang re-install. The sync can populate BOTH the old

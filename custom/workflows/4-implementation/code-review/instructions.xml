@@ -150,12 +150,17 @@
     <!-- Use scoped review file list built in Step 1 -->
     <action>Use {{review_files}} as the comprehensive review file list (already scoped and capped in Step 1)</action>
 
-    <!-- AC Validation -->
+    <!-- AC Validation — verify each AC against the CURRENT codebase, not the diff.
+         The diff is blind to an AC that was never implemented (no change → no diff);
+         a green build + ticked tasks does NOT prove an AC was built. -->
     <action>For EACH Acceptance Criterion:
       1. Read the AC requirement
-      2. Search implementation files for evidence
+      2. Search the CURRENT codebase for the artifact it demands (grep/read the
+         table/column/migration, route, function, upsert, field) — NOT just the diff
       3. Determine: IMPLEMENTED, PARTIAL, or MISSING
-      4. If MISSING/PARTIAL → HIGH SEVERITY finding
+      4. If MISSING/PARTIAL → HIGH SEVERITY finding (even if the diff looks clean / build is green)
+      5. Prefer a TEST as the verifiable artifact for each load-bearing AC; if an AC has
+         no test asserting it, flag the AC as unverified
     </action>
 
     <!-- Task Completion Audit -->
