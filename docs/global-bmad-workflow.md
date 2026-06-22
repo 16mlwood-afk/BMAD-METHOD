@@ -10,6 +10,32 @@ description: Sync, upgrade, onboarding, and autonomous-maintenance procedures fo
 
 The user maintains a fork of BMAD-METHOD at `~/bmad-method-v6/` (remote: `16mlwood-afk/BMAD-METHOD`, branch: `custom`). Custom workflows live in `custom/workflows/` and are distributed to all projects via a sync script. The `custom` branch tracks `origin/main` (upstream) and rebases custom commits on top.
 
+## Workflow routing — route from intent, don't make the user the dispatcher
+
+When a user's natural-language intent clearly maps to a named BMAD workflow and project state makes
+the route unambiguous, **select and invoke that workflow** — don't ask the user to name it. BMAD's
+workflows are an explicit, named routing surface; the friction to remove is being forced to act as a
+dispatcher when the next step is obvious. This **complements, does not override, the grounding gate**:
+auto-route when verb + target are clear from the input; halt when they aren't.
+
+Default routes:
+
+| Intent | Route |
+| --- | --- |
+| "carry on implementing the stories" / "do the next story" | `create-story` (if no valid story exists) → `dev-story` |
+| "create the next story" | `create-story` |
+| "review this code" | `code-review` |
+| "check sprint status" | `sprint-status` |
+| "run sprint planning" | `sprint-planning` |
+| "run a retrospective" | `retrospective` |
+
+**Approval boundaries — stop and confirm, do not auto-proceed:** deploy, push, commit, DB migration,
+promoting an epic / expanding scope, any live external-state write, or genuine ambiguity (two+ valid
+routes with materially different consequences, or intent not groundable to a verb + target). At a
+boundary, state the recommended route and ask one scoped question — never a multi-item menu.
+
+Full cross-project policy → the `workflow-routing` global memory; this is its BMAD-specific mapping.
+
 ## "sync bmad" — Push custom workflows + hooks to projects
 
 1. If this project's `_bmad/bmm/workflows` path isn't in `~/.bmad-targets`, append it first
