@@ -80,6 +80,10 @@ You are responsible for keeping the BMAD fork and project workflows in a healthy
 
 Never block a pull on these files; they are either stale duplicates of fork content or will be re-emitted by the next sync.
 
+## Fork hygiene
+
+- **Docs frontmatter is mandatory.** Any `docs/*.md` file in the BMAD fork must include `title:` and `description:` frontmatter; otherwise the Starlight docs build in the pre-commit hook fails and strands the commit (the file stays staged-but-uncommitted with no obvious cause). `docs/` is symlinked into `website/src/content/docs`, so every doc is a Starlight content entry and must satisfy its schema.
+
 **Session-start drift warnings.** Do NOT run upgrade/sync scripts unprompted at session start — they are slow and affect shared resources (the fork's git state, every targeted project). But:
 
 - The moment the user invokes a `/bmad:` workflow that depends on the fork being current, OR you hit a pull conflict caused by drift, OR the user asks anything about BMAD state — resolve the drift first by running the appropriate script (`upgrade-bmad.sh` for fork-behind-upstream, `sync-bmad-workflows.sh` for projects-behind-fork). Don't ask first.
