@@ -126,6 +126,52 @@ Each: name==dir gate satisfied, Mode-1 self-review against durable principles.
   users invoke `bmad-quick-dev`; we want to replace it, not run a parallel one. (Unique IDs are only
   for net-new skills, which already have unique names.) Do NOT edit upstream `src/` skills in place.
 
+### Tracked patches to bake in at port time (deep-logic tier)
+
+Defects found while RUNNING the upstream skills-layout copy on the pilot. Each must be applied to the
+fork-owned `custom/skills/bmad-<name>/` override when the collision is ported — NOT to `src/bmm-skills/`
+(upstream-vendored; revert-exposed). Until then, the pilot's installed `.claude/skills/` copy carries
+the fix locally (revert-exposed on re-install — this list is the durable record).
+
+- **`bmad-code-review` — step-02-review.md §2: skill-vs-subagent conflation (found 2026-06-22, cash-recovery pilot).**
+  The step says "Launch parallel subagents … Blind Hunter — Invoke via the `bmad-review-adversarial-general`
+  skill; Edge Case Hunter — Invoke via the `bmad-review-edge-case-hunter` skill." The Agent tool takes a
+  `subagent_type` from the AGENT registry, not a skill name — there is no agent type named after those
+  skills, so the launch errors ("Agent type not found"). The file is also internally inconsistent: the
+  Acceptance Auditor prompt is fully inlined while the other two are left as "invoke via skill." Fix =
+  remove the conflation, name real `subagent_type`s, and make INLINING the default mechanism for all three
+  (consistent with the Acceptance Auditor). Exact replacement for §2:
+
+  > 2. Launch each review layer as a SEPARATE subagent via the Agent tool. Run them in parallel (one
+  >    message, multiple Agent calls) without conversation context.
+  >
+  >    **Mechanism — read before launching.** A subagent is launched with a `subagent_type` drawn from
+  >    the AGENT registry (e.g. `general-purpose`, or `Explore` for read-access layers). A SKILL name is
+  >    NOT an agent type — never pass `bmad-review-*` (or any skill name) as `subagent_type`; the launch
+  >    errors with "Agent type not found". Deliver each layer's review method by INLINING its instructions
+  >    into the subagent's prompt — this is the default, reliable mechanism, and the Acceptance Auditor
+  >    prompt below is the template for the shape. (Only if the named review skill is verified available
+  >    to subagents may the prompt instead instruct the subagent to invoke it via its Skill tool; when in
+  >    doubt, inline.)
+  >
+  >    If subagents are not available at all, generate prompt files in `{implementation_artifacts}` — one
+  >    per reviewer role below — and HALT. [keep existing fallback sentence]
+  >
+  >    - **Blind Hunter** — `subagent_type: general-purpose`. Receives inline `{diff_output}` only: no
+  >      spec, no context docs, and the prompt MUST forbid reading any other project file (diff-only
+  >      judgment). Inline the `bmad-review-adversarial-general` adversarial-review method into the prompt.
+  >    - **Edge Case Hunter** — `subagent_type: general-purpose` (it needs project read access to
+  >      confirm/refute edge cases). Receives `{diff_output}` and read access to the project. Inline the
+  >      `bmad-review-edge-case-hunter` exhaustive boundary-condition method into the prompt.
+  >    - **Acceptance Auditor** (only if `{review_mode}` = `"full"`) — `subagent_type: general-purpose`.
+  >      Receives `{diff_output}`, the spec, and context docs. Its prompt: [unchanged]
+
+  Recurrence audit: the sibling collisions `bmad-review-adversarial-general` and
+  `bmad-review-edge-case-hunter`, plus any other upstream v6.8 skill whose steps say "launch subagents /
+  invoke via the X skill," share this conflation shape. The Phase-4 / Verification Mode-1 self-review
+  should add a check: every "subagent" instruction names a real `subagent_type` AND states whether the
+  method is inlined or Skill-tool-invoked.
+
 ## Phase 5 — Migrate the 14 projects (dual-layout, pilot-first)
 
 **DECISION:** dual-layout transition, not a big-bang re-install. The sync can populate BOTH the old
