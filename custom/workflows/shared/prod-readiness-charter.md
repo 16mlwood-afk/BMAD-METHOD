@@ -81,7 +81,7 @@ Prose does not enforce; hooks do. A fresh session will not read a guide it is me
 ## 6. Rollout — phased, each step independently revertible
 
 - **Phase 0 — this charter.** Policy only, zero blast radius. *(shipped — this document)*
-- **Phase 1 — detection, warn-only.** SessionStart probes (prod-readiness; later memory) emit reminders, block nothing. Observe the false-positive rate across the 13 before any gate. Requires `contract_version` on `deployment-to-prod.md` for State 3. *(designed)*
+- **Phase 1 — detection, warn-only.** SessionStart probes (prod-readiness; later memory) emit reminders, block nothing. Observe the false-positive rate across the 13 before any gate. Requires `contract_version` on `deployment-to-prod.md` for State 3. *(DEPLOY probe SHIPPED — `~/.claude/hooks/prod-readiness-probe.sh`, a global SessionStart hook: walks up to the BMAD root, warns only when `project_phase` is brownfield/mixed AND there is no `deploy:` block / `bmad-deploy.sh` / CLAUDE.md deploy section / `docs/*deploy*`; conservative, no block. Lives in `~/.claude` (global, NOT fork-synced) so it auto-covers every project with no per-project distribution. Memory probe + the State-3 `contract_version` drift check still designed.)*
 - **Phase 2 — action lane.** A `maintenance-triage` lane (not a new top-level workflow) that authors the contract/config or reconciles drift per this charter. *(designed)*
 - **Phase 3 — hard gate.** PreToolUse deploy block + the CLAUDE.md reactive guardrail + the hook-distribution track — gated on Phase 1 proving detection is quiet and accurate. *(designed)*
 
