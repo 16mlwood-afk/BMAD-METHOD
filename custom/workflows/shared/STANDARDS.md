@@ -1,63 +1,102 @@
 ---
 name: STANDARDS
-description: 'The canon — the single index of every shared standard a BMAD-managed project follows (deploy, delivery, webhook boundaries, diagnostics, worktree/parallel-session safety, prod-readiness, AND memory discipline). One place to answer "what is the canonical way to do X?". Each standard lives once at its Home, syncs to projects under _bmad/bmad-shared/, and is referenced BY PATH — never restated. Carries the contract_version key that drift-detection compares against.'
+description: 'The canon — the single index of every shared standard a BMAD-managed project follows (deploy, delivery, webhook boundaries, diagnostics, worktree/parallel-session safety, prod-readiness, AND memory discipline). One place to answer "what is the canonical way to do X?". Each standard lives once at its Home, syncs to projects, and is referenced BY PATH — never restated. Machine-parsable: each synced standard has an ID/Version/Home/Applies block that the SessionStart drift check (check-standards-drift.sh) scans.'
 contract_version: 1
 ---
 
 # STANDARDS — the canon
 
-The single index of the standards every BMAD-managed project follows. If you're asking *"what is the canonical way to do X?"*, the answer is one of the rows below — open its **Home** doc.
+The single index of the standards every BMAD-managed project follows. If you're asking *"what is the canonical way to do X?"*, the answer is one of the blocks below — open its **Home** doc.
 
 ## How to use this
 
-- **The Home doc is the source of truth.** A project's `CLAUDE.md` only *points at* a standard; its prose summary is a convenience, never authoritative.
-- **A restatement that disagrees with the Home doc is drift** — the Home doc wins, and the stale restatement should be logged (`docs/fork-gaps.md`) and fixed. The wrong "`railway up` from `inventory-manager/`" deploy note was exactly this class.
-- **Reference by path, don't copy.** Workflows and CLAUDE.md sections cite the standard (`_bmad/bmad-shared/<name>.md`); they never paste its body. `cash-recovery` is the reference project for this shape (thin CLAUDE.md pointer + the manual in `docs/`, citing `bmad-shared/`).
+- **The Home doc is the source of truth.** A project's `CLAUDE.md` only *points at* a standard; its prose summary is a convenience, never authoritative. A restatement that disagrees with the Home doc is drift — log it in `docs/fork-gaps.md` and fix it.
+- **Reference by path, don't copy.** `cash-recovery` is the reference project for this shape (thin CLAUDE.md pointer + the manual in `docs/`, citing the synced standard).
+- **Drift is checked automatically.** `check-standards-drift.sh` (SessionStart, WARN-only) compares this canonical's `Version:` lines against the copy synced into the current project; a project behind a bumped standard is flagged. The project's synced `STANDARDS.md` copy IS its declaration of "what I last pulled" — no separate lock file or CLAUDE.md block to maintain.
 
-## The standards
+## The standards (machine-parsable index)
 
-### Deploy & delivery lifecycle
-| Standard | Governs | Home | Version |
-|---|---|---|---|
-| `prod-readiness-charter` | Getting a project READY to deploy — the 3 states (greenfield-no-contract / live-brownfield-never-had-one / drifted-from-canonical), detection, enforcement. The layer *above* the deploy contract. | `shared/prod-readiness-charter.md` | 1 |
-| `deployment-to-prod` | The post-merge deploy contract — admin-merge rules, dirty-path filters, dep auto-heal, `bmad-deploy.sh` exit-code grammar. Per-project values in `config.yaml → deploy:`. | `shared/deployment-to-prod.md` | 1 |
-| `delivery-to-main` | Getting an artifact from local disk to `origin/<default-branch>` so external consumers can read it. | `shared/delivery-to-main.md` | 1 |
+Each block below is scanned line-by-line: `ID` then `Version` then `Home` then `Applies`, each on its own line. Keep it boring — no nesting, no inline prose on those four lines.
 
-### Boundaries & contracts
-| Standard | Governs | Home | Version |
-|---|---|---|---|
-| `webhook-contract-charter` | Every webhook boundary — sender-strict/receiver-lenient rollout order, breaking-change taxonomy, fail-loud, per-boundary template. | `shared/webhook-contract-charter.md` | 1 |
+### deployment lifecycle
 
-### Implementation safety
-| Standard | Governs | Home | Version |
-|---|---|---|---|
-| `diagnostics-gate` | Prove-don't-assert: a new diagnostic after edit/merge/teardown means the gate is RED until a re-run in the current checkout proves green. | `shared/diagnostics-gate.md` | 1 |
-| `parallel-sessions` | Concurrent-session protocol — worktree-before-edit, integrate-advancing-main, named collision classes, story claim+reconcile. | `shared/parallel-sessions.md` | 1 |
-| `worktree-portability` | Artifact paths resolve to the worktree root, not the main checkout. | `shared/worktree-portability.md` | 1 |
-| `wave-orchestration` | Fan-out-in-waves protocol for implement/review/create workflows (additive to solo parallel dev). | `shared/wave-orchestration.md` | 1 |
-| `detect-stack` | Shared utility — identify the project tech stack. | `shared/detect-stack.md` | 1 |
+deployment-to-prod — the post-merge deploy contract (admin-merge rules, dirty-path filters, dep auto-heal, exit-code grammar).
+ID: STD-DEPLOY-001
+Version: v1
+Home: shared/deployment-to-prod.md
+Applies: all
 
-### Memory & knowledge — Home is global `~/.claude`, NOT the fork
-Memory discipline is cross-project + machine-scoped, so it lives in global memory and does **not** sync through the fork. It is catalogued here so the canon answers "what's the standard for X?" in one place — but its Home docs are authoritative and `contract_version` does not apply (there is no per-project synced copy to drift).
+delivery-to-main — getting an artifact from local disk to origin/<default-branch> so external consumers can read it.
+ID: STD-DELIVERY-001
+Version: v1
+Home: shared/delivery-to-main.md
+Applies: all
 
-| Standard | Governs | Home |
-|---|---|---|
-| `memory-library-discipline` | How memory is WRITTEN — shelves, one stable slug each, backing-file-first-then-index. | `~/.claude/projects/-Users-masonwood/memory/memory-library-discipline.md` |
-| `memory-retrieval-policy` | How memory is READ — small task-specific retrieval, default cap of 3. | `~/.claude/projects/-Users-masonwood/memory/memory-retrieval-policy.md` |
-| `memory-hygiene` | Full procedure — global-vs-project scope, the `memory-changelog.md` breadcrumb rule, what never belongs in memory. | `~/.claude/projects/-Users-masonwood/memory/docs/memory-hygiene.md` |
+prod-readiness-charter — getting a project READY to deploy (the 3 states, detection, enforcement); the layer above the deploy contract.
+ID: STD-PRODREADY-001
+Version: v1
+Home: shared/prod-readiness-charter.md
+Applies: all
+
+### boundaries & contracts
+
+webhook-contract-charter — every webhook boundary (sender-strict/receiver-lenient rollout, breaking-change taxonomy, per-boundary template).
+ID: STD-WEBHOOK-001
+Version: v1
+Home: shared/webhook-contract-charter.md
+Applies: all
+
+### implementation safety
+
+diagnostics-gate — prove-don't-assert verification gate (a new diagnostic means RED until a clean re-run proves green).
+ID: STD-DIAG-001
+Version: v1
+Home: shared/diagnostics-gate.md
+Applies: all
+
+parallel-sessions — concurrent-session protocol (worktree-before-edit, integrate-advancing-main, named collision classes, story claim+reconcile).
+ID: STD-PARALLEL-001
+Version: v1
+Home: shared/parallel-sessions.md
+Applies: all
+
+worktree-portability — artifact paths resolve to the worktree root, not the main checkout.
+ID: STD-WORKTREE-001
+Version: v1
+Home: shared/worktree-portability.md
+Applies: all
+
+wave-orchestration — fan-out-in-waves protocol for implement/review/create workflows (additive to solo parallel dev).
+ID: STD-WAVE-001
+Version: v1
+Home: shared/wave-orchestration.md
+Applies: all
+
+detect-stack — shared utility: identify the project tech stack.
+ID: STD-STACK-001
+Version: v1
+Home: shared/detect-stack.md
+Applies: all
+
+## Memory & knowledge — catalogued, NOT version-tracked here
+
+Memory discipline is cross-project + machine-scoped, so it lives in global `~/.claude` and does **not** sync through the fork — there is no per-project copy to drift, so the drift check skips it (no `Home: shared/...` block). Its Home docs are authoritative:
+
+- **memory-library-discipline** (write side) — `~/.claude/projects/-Users-masonwood/memory/memory-library-discipline.md`
+- **memory-retrieval-policy** (read side) — `~/.claude/projects/-Users-masonwood/memory/memory-retrieval-policy.md`
+- **memory-hygiene** (full procedure + changelog rule) — `~/.claude/projects/-Users-masonwood/memory/docs/memory-hygiene.md`
 
 ## How to author a NEW standard
 
-A standard in this system is a markdown doc under `shared/` with:
-
-1. **Frontmatter:** `name`, `description` (one paragraph — what it governs + which workflows reference it), `contract_version` (integer, start at `1`).
-2. **Body:** the rule, its rationale, a per-X template if it's a contract of record, and — critically — its **enforcement tier**: which hook / CI gate / marker makes it actually hold. Prose alone is not enforcement; consult the `enforcement-expert` skill to classify DETERMINISTIC vs PROBABILISTIC before relying on it.
-3. **Add a row to this canon.**
-4. **Reference it by path** from every consumer (workflow step, CLAUDE.md section) — never paste its body.
-5. **Distribute:** `sync-bmad-workflows.sh` mirrors `shared/` into every project's `_bmad/bmad-shared/`. Authoring the doc does NOT ship it — the sync does.
+1. **Frontmatter:** `name`, `description` (what it governs + which workflows reference it), `contract_version` (integer, start at 1).
+2. **Body:** the rule, its rationale, a per-X template if it's a contract of record, and its **enforcement tier** — which hook / CI gate / marker makes it hold (prose alone is not enforcement; consult the `enforcement-expert` skill).
+3. **Add a parsable block to this canon** — an `ID:` (`STD-<AREA>-NNN`), `Version: v1`, `Home: shared/<file>.md`, `Applies: all` (or a narrower scope), in that order, each on its own line.
+4. **Reference it by path** from every consumer — never paste its body.
+5. **Distribute:** `sync-bmad-workflows.sh` mirrors `shared/` into every project. Authoring the doc does NOT ship it — the sync does.
 
 ## Versioning & drift
 
-- **`contract_version` is the drift key.** A project records the version it synced; `prod-readiness-charter` State-3 compares that against this canonical to detect a stale copy. (The comparison probe is charter Phase-1 — designed, not yet built; see `prod-readiness-charter.md` §Rollout.)
-- **Bump `contract_version`** on a BREAKING change — one a project's restatement or a consumer could now violate. Additive clarifications don't bump.
-- **Two physical copies of `shared/` exist** today: the command-layout source (`custom/workflows/shared/`) and the skills-layout mirror (`custom/skills-native/_shared/`). They must carry the same `contract_version`; a divergence between them is itself drift. Keeping these in lockstep is an open hardening item.
+- **`Version:` (here) + `contract_version:` (the doc's frontmatter) are the drift key.** `check-standards-drift.sh` compares this canonical's `Version:` against the project's synced copy each SessionStart (WARN-only). `prod-readiness-charter` State-3 is the same idea at the contract level.
+- **Bump the version** (`v1` → `v2`, and `contract_version`) only on a BREAKING change — one a project's restatement or a consumer could now violate. Additive clarifications don't bump.
+- **Enforcement is phased:** Phase 1 (now) everything WARN; Phase 2 missing-standard → hard-warn, mismatch → warn; Phase 3 (optional) a `Breaking: yes` marker on a block makes a mismatch BLOCK.
+- **Two physical copies of `shared/` exist** — the command-layout source (`custom/workflows/shared/`) and the skills-layout mirror (`custom/skills-native/_shared/`, gitignored + regenerated by sync). They must carry the same versions; a divergence is itself drift.
