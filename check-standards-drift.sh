@@ -28,7 +28,7 @@ python3 - "$CANON" "$PROJ" <<'PY' 2>/dev/null || true
 import json, re, sys
 
 def parse(path):
-    """Return {ID: Version}. Scans `ID:` then the next `Version:` line — block order."""
+    """Return {ID: {"version":v, "breaking":bool}}. Block order: ID, Version, Breaking."""
     out = {}
     if not path:
         return out
@@ -40,10 +40,16 @@ def parse(path):
     for line in text.splitlines():
         a = re.match(r"^ID:\s*(\S+)", line)
         if a:
-            cur = a.group(1); continue
+            cur = a.group(1); out[cur] = {"version": None, "breaking": False}; continue
+        if not cur:
+            continue
         v = re.match(r"^Version:\s*(\S+)", line)
-        if v and cur:
-            out[cur] = v.group(1); cur = None
+        if v:
+            out[cur]["version"] = v.group(1); continue
+        b = re.match(r"^Breaking:\s*(\S+)", line)
+        if b:
+            out[cur]["breaking"] = b.group(1).strip().lower() in ("yes", "true")
+            cur = None  # Breaking is the last scanned key in the block
     return out
 
 canon = parse(sys.argv[1])
@@ -63,28 +69,38 @@ if not proj_path:
          "deploy / memory / webhook-related tasks. WARN-only — not blocking.")
     sys.exit(0)
 
-ok, warn = [], []
+ok, warn, breaking = [], [], []
 for sid in sorted(canon):
-    cv = canon[sid]
-    pv = proj.get(sid)
+    cv = canon[sid]["version"]
+    is_breaking = canon[sid]["breaking"]
+    pentry = proj.get(sid)
+    pv = pentry["version"] if pentry else None
     if pv is None:
         warn.append(f"- {sid} missing (canonical={cv})")
     elif pv != cv:
-        warn.append(f"- {sid} project={pv} canonical={cv}")
+        if is_breaking:
+            breaking.append(f"- {sid} project={pv} canonical={cv} — ⚠ BREAKING, review before upgrading")
+        else:
+            warn.append(f"- {sid} project={pv} canonical={cv} — non-breaking, safe to auto-upgrade")
     else:
         ok.append(f"- {sid} @ {cv}")
 
-if not warn:
+if not warn and not breaking:
     sys.exit(0)  # conservative: silent when fully in sync
 
 parts = ["Standards Drift Check", ""]
+if breaking:
+    parts += ["BREAKING (review before upgrading):"] + breaking + [""]
+if warn:
+    parts += ["WARN:"] + warn + [""]
 if ok:
     parts += ["OK:"] + ok + [""]
-parts += ["WARN:"] + warn + [""]
-parts += ["Action:",
-          "- Re-sync this project (`sync bmad`) or update it to match the "
-          "canonical standards before deploy / memory / webhook-related tasks. "
-          "WARN-only — not blocking."]
+action = "- Re-sync this project (`sync bmad`) to pull the canonical standards."
+if breaking:
+    action += (" A BREAKING change is present — read the standard's `Recent changes` "
+               "in STANDARDS.md before deploy / memory / webhook tasks.")
+action += " WARN-only — not blocking."
+parts += ["Action:", action]
 emit("\n".join(parts))
 PY
 exit 0

@@ -1,6 +1,6 @@
 ---
 name: STANDARDS
-description: 'The canon — the single index of every shared standard a BMAD-managed project follows (deploy, delivery, webhook boundaries, diagnostics, worktree/parallel-session safety, prod-readiness, AND memory discipline). One place to answer "what is the canonical way to do X?". Each standard lives once at its Home, syncs to projects, and is referenced BY PATH — never restated. Machine-parsable: each synced standard has an ID/Version/Home/Applies block that the SessionStart drift check (check-standards-drift.sh) scans.'
+description: 'The canon — the single index of every shared standard a BMAD-managed project follows (deploy, delivery, webhook boundaries, diagnostics, worktree/parallel-session safety, prod-readiness, AND memory discipline). One place to answer "what is the canonical way to do X?". Each standard lives once at its Home, syncs to projects, and is referenced BY PATH — never restated. Machine-parsable: each synced standard has an ID/Version/Breaking/Home/Applies block that the SessionStart drift check (check-standards-drift.sh) scans.'
 contract_version: 1
 ---
 
@@ -10,31 +10,36 @@ The single index of the standards every BMAD-managed project follows. If you're 
 
 ## How to use this
 
-- **The Home doc is the source of truth.** A project's `CLAUDE.md` only *points at* a standard; its prose summary is a convenience, never authoritative. A restatement that disagrees with the Home doc is drift — log it in `docs/fork-gaps.md` and fix it.
-- **Reference by path, don't copy.** `cash-recovery` is the reference project for this shape (thin CLAUDE.md pointer + the manual in `docs/`, citing the synced standard).
-- **Drift is checked automatically.** `check-standards-drift.sh` (SessionStart, WARN-only) compares this canonical's `Version:` lines against the copy synced into the current project; a project behind a bumped standard is flagged. The project's synced `STANDARDS.md` copy IS its declaration of "what I last pulled" — no separate lock file or CLAUDE.md block to maintain.
+- **Starting a deploy flow?** Check `STD-DEPLOY-001` (and `STD-PRODREADY-001` if the project isn't deploy-ready yet) before writing anything.
+- **Changing how memory is written/read?** See the memory section below (`memory-library-discipline` / `memory-retrieval-policy`).
+- **Touching a webhook boundary?** `STD-WEBHOOK-001` is the contract of record.
+- **The Home doc is the source of truth.** A project's `CLAUDE.md` only *points at* a standard; a restatement that disagrees is drift — log it in `docs/fork-gaps.md` and fix it. Reference by path, never copy (`cash-recovery` is the reference shape).
+- **Drift is checked automatically.** `check-standards-drift.sh` (SessionStart, WARN-only) compares this canonical against the copy synced into the current project. The synced copy IS the project's declaration of "what I last pulled" — no lock file or CLAUDE.md block to maintain.
 
 ## The standards (machine-parsable index)
 
-Each block below is scanned line-by-line: `ID` then `Version` then `Home` then `Applies`, each on its own line. Keep it boring — no nesting, no inline prose on those four lines.
+Each block is scanned line-by-line: `ID` → `Version` → `Breaking` → `Home` → `Applies`, each on its own line. Keep it boring — no nesting, no inline prose on those lines. `Breaking` is the latest version's nature (`yes` = a behavioral shift a consumer could violate; `no` = a safe/clarifying edit safe to auto-upgrade).
 
 ### deployment lifecycle
 
 deployment-to-prod — the post-merge deploy contract (admin-merge rules, dirty-path filters, dep auto-heal, exit-code grammar).
 ID: STD-DEPLOY-001
 Version: v1
+Breaking: no
 Home: shared/deployment-to-prod.md
 Applies: all
 
 delivery-to-main — getting an artifact from local disk to origin/<default-branch> so external consumers can read it.
 ID: STD-DELIVERY-001
 Version: v1
+Breaking: no
 Home: shared/delivery-to-main.md
 Applies: all
 
 prod-readiness-charter — getting a project READY to deploy (the 3 states, detection, enforcement); the layer above the deploy contract.
 ID: STD-PRODREADY-001
 Version: v1
+Breaking: no
 Home: shared/prod-readiness-charter.md
 Applies: all
 
@@ -43,6 +48,7 @@ Applies: all
 webhook-contract-charter — every webhook boundary (sender-strict/receiver-lenient rollout, breaking-change taxonomy, per-boundary template).
 ID: STD-WEBHOOK-001
 Version: v1
+Breaking: no
 Home: shared/webhook-contract-charter.md
 Applies: all
 
@@ -51,52 +57,70 @@ Applies: all
 diagnostics-gate — prove-don't-assert verification gate (a new diagnostic means RED until a clean re-run proves green).
 ID: STD-DIAG-001
 Version: v1
+Breaking: no
 Home: shared/diagnostics-gate.md
 Applies: all
 
 parallel-sessions — concurrent-session protocol (worktree-before-edit, integrate-advancing-main, named collision classes, story claim+reconcile).
 ID: STD-PARALLEL-001
 Version: v1
+Breaking: no
 Home: shared/parallel-sessions.md
 Applies: all
 
 worktree-portability — artifact paths resolve to the worktree root, not the main checkout.
 ID: STD-WORKTREE-001
 Version: v1
+Breaking: no
 Home: shared/worktree-portability.md
 Applies: all
 
 wave-orchestration — fan-out-in-waves protocol for implement/review/create workflows (additive to solo parallel dev).
 ID: STD-WAVE-001
 Version: v1
+Breaking: no
 Home: shared/wave-orchestration.md
 Applies: all
 
 detect-stack — shared utility: identify the project tech stack.
 ID: STD-STACK-001
 Version: v1
+Breaking: no
 Home: shared/detect-stack.md
 Applies: all
 
 ## Memory & knowledge — catalogued, NOT version-tracked here
 
-Memory discipline is cross-project + machine-scoped, so it lives in global `~/.claude` and does **not** sync through the fork — there is no per-project copy to drift, so the drift check skips it (no `Home: shared/...` block). Its Home docs are authoritative:
+Cross-project + machine-scoped, so it lives in global `~/.claude` and does **not** sync through the fork — no per-project copy to drift, so the check skips it (no `Home: shared/...` block). Home docs are authoritative:
 
-- **memory-library-discipline** (write side) — `~/.claude/projects/-Users-masonwood/memory/memory-library-discipline.md`
-- **memory-retrieval-policy** (read side) — `~/.claude/projects/-Users-masonwood/memory/memory-retrieval-policy.md`
-- **memory-hygiene** (full procedure + changelog rule) — `~/.claude/projects/-Users-masonwood/memory/docs/memory-hygiene.md`
+- **memory-library-discipline** (write) — `~/.claude/projects/-Users-masonwood/memory/memory-library-discipline.md`
+- **memory-retrieval-policy** (read) — `~/.claude/projects/-Users-masonwood/memory/memory-retrieval-policy.md`
+- **memory-hygiene** (procedure + changelog rule) — `~/.claude/projects/-Users-masonwood/memory/docs/memory-hygiene.md`
+
+## Recent changes
+
+The "did anything important change since v0?" answer — one line per version bump, newest first. (Breaking changes are also flagged `Breaking: yes` on the block above so the drift check escalates them.)
+
+- **2026-06-26 — v1 (all standards):** initial canon — IDs, versions, and the drift check introduced. No behavioral change to any standard's content.
 
 ## How to author a NEW standard
 
-1. **Frontmatter:** `name`, `description` (what it governs + which workflows reference it), `contract_version` (integer, start at 1).
-2. **Body:** the rule, its rationale, a per-X template if it's a contract of record, and its **enforcement tier** — which hook / CI gate / marker makes it hold (prose alone is not enforcement; consult the `enforcement-expert` skill).
-3. **Add a parsable block to this canon** — an `ID:` (`STD-<AREA>-NNN`), `Version: v1`, `Home: shared/<file>.md`, `Applies: all` (or a narrower scope), in that order, each on its own line.
-4. **Reference it by path** from every consumer — never paste its body.
-5. **Distribute:** `sync-bmad-workflows.sh` mirrors `shared/` into every project. Authoring the doc does NOT ship it — the sync does.
+1. **Frontmatter:** `name`, `description`, `contract_version` (integer, start at 1).
+2. **Body:** the rule + rationale + (if a contract of record) a per-X template + its **enforcement tier** (which hook/CI/marker makes it hold — prose isn't enforcement; consult `enforcement-expert`).
+3. **Add a parsable block here** — `ID:` (`STD-<AREA>-NNN`), `Version: v1`, `Breaking: no`, `Home: shared/<file>.md`, `Applies: all`, in that order.
+4. **Add a `Recent changes` line.**
+5. **Reference by path** from every consumer; **`sync-bmad-workflows.sh`** distributes it (authoring ≠ shipping).
 
-## Versioning & drift
+## Versioning, drift & breaking changes
 
-- **`Version:` (here) + `contract_version:` (the doc's frontmatter) are the drift key.** `check-standards-drift.sh` compares this canonical's `Version:` against the project's synced copy each SessionStart (WARN-only). `prod-readiness-charter` State-3 is the same idea at the contract level.
-- **Bump the version** (`v1` → `v2`, and `contract_version`) only on a BREAKING change — one a project's restatement or a consumer could now violate. Additive clarifications don't bump.
-- **Enforcement is phased:** Phase 1 (now) everything WARN; Phase 2 missing-standard → hard-warn, mismatch → warn; Phase 3 (optional) a `Breaking: yes` marker on a block makes a mismatch BLOCK.
-- **Two physical copies of `shared/` exist** — the command-layout source (`custom/workflows/shared/`) and the skills-layout mirror (`custom/skills-native/_shared/`, gitignored + regenerated by sync). They must carry the same versions; a divergence is itself drift.
+- **Bump `Version` + `contract_version`** only on a real change; set **`Breaking: yes`** when the change is a behavioral shift a project's restatement or a consumer could now violate (e.g. *how deploys work* or *how memory is written* changes), **`no`** for a safe/clarifying edit.
+- **The drift check is Breaking-aware:** a version mismatch on a `Breaking: no` standard is a light "safe to auto-upgrade" note; on `Breaking: yes` it's a strong warning (and, in a later phase, a soft block on deploy-class actions). WARN-only today.
+- **Two physical copies of `shared/`** (command-layout `custom/workflows/shared/` + the gitignored, sync-regenerated skills mirror `custom/skills-native/_shared/`) must carry the same versions; a divergence is itself drift.
+
+## Governance (right-sized for a solo operator)
+
+Team design-system governance (named owner per standard, quarterly review *meetings*, drift dashboards) is overhead when one person owns all 9. The lean equivalents:
+
+- **Owner:** the fork maintainer (Mason) owns the baseline; changes land via the normal fork flow (edit `custom/workflows/shared/`, self-review, push, sync). No per-standard owner table.
+- **Periodic review:** a lightweight "still true? / what broke? / who actually uses this?" pass over the 9 — right-sized as a `/schedule` reminder, not a meeting. (Cadence TBD — quarterly is fine.)
+- **Explicit deviations (convention; enforcement is a later phase):** a project that must break a standard logs a conscious exception in `docs/standards-deviations.md` at its root — one block per deviation: `Standard:` (the ID), `Reason:`, `Date:`, `Expires:`. A logged, unexpired deviation is an *approved* drift; a quiet fork is a defect. The drift check will be taught to read these and suppress the WARN for an unexpired deviation (and re-WARN once it expires).
