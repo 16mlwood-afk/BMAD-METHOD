@@ -1,5 +1,6 @@
 ---
 name: deployment-to-prod
+contract_version: 1
 description: 'Universal post-merge deployment contract for BMAD-managed projects. Defines when admin-merge on code PRs is acceptable, what dirty paths block a deploy, how dependency state preconditions are auto-healed, and the exit-code grammar that the bmad-deploy.sh executable uses to signal outcomes. Each project encodes its specifics in `_bmad/bmm/config.yaml` → `deploy:`.'
 ---
 

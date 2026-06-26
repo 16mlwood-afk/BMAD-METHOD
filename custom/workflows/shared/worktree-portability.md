@@ -1,5 +1,6 @@
 ---
 name: worktree-portability
+contract_version: 1
 description: 'Rules for workflow path resolution inside git worktrees. Every BMAD workflow that writes artifacts to {implementation_artifacts} or {planning_artifacts} resolves those paths against the worktree root, not the main checkout. Referenced by design-review (step-01 §7), design-handoff (step-03 §1), design-synthesize, design-artifact-loop, design-tuning.'
 ---
 

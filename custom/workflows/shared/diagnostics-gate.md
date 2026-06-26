@@ -1,5 +1,6 @@
 ---
 name: diagnostics-gate
+contract_version: 1
 description: 'Prove-don''t-assert rule for the implementation verification gate. New diagnostics (type errors, "cannot find module", lint/compile failures) after an edit, merge, or worktree teardown mean the gate is RED until a re-run in the CURRENT checkout proves zero errors. Referenced by dev-story (step 8 validation gates), quick-dev (step-04-self-check §2), design-implement (step-04-apply-and-deliver).'
 ---
 

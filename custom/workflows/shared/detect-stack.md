@@ -1,5 +1,6 @@
 ---
 name: detect-stack
+contract_version: 1
 description: 'Shared utility — detects the project tech stack from project files. Referenced by any workflow that needs stack-aware behavior.'
 ---
 

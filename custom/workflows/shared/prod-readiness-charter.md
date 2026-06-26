@@ -1,5 +1,6 @@
 ---
 name: prod-readiness-charter
+contract_version: 1
 description: 'Lifecycle contract of record for getting a BMAD-managed project READY to deploy — the layer above deployment-to-prod. Codifies the three states a project can be caught in (greenfield crossing to prod with no contract; live brownfield that never had one; a contract that has drifted from the fork canonical), the conservative signals that detect each, the artifacts that satisfy each, and the three-tier enforcement (SessionStart awareness, PreToolUse gate, CLAUDE.md reactive guardrail) that makes a context-free fresh agent act. deployment-to-prod / delivery-to-main own the choreography ONCE a contract exists; this charter owns the moment it should come into existence, be detected as missing, or be reconciled. The same shape is declared for memory discipline.'
 ---
 

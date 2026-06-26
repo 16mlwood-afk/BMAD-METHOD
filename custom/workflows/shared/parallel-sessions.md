@@ -1,5 +1,6 @@
 ---
 name: parallel-sessions
+contract_version: 1
 description: 'Shared protocol for implementation and review workflows that run while OTHER agent sessions edit the same repo concurrently. Covers (A) src-editing workflows — enter a worktree before editing, integrate an advancing main before delivery, and resolve the named collision classes instead of halting; (B) artifact workflows — race-safe sprint-status edits and lane claiming; and (C) story claim + reconcile — atomically claim a story before working it, refuse one already held by a live session, and reconcile the story-file Status vs sprint-status on entry (heals the "done-but-unchecked" and "claimed-but-zombie" drift classes). Composes with worktree-portability.md (path mechanics) and delivery-to-main.md (artifact/PR delivery). Referenced by quick-dev (step-03 execute, step-07 deliver), quick-spec, code-review, dev-story (step-01 claim, step-04 reconcile).'
 ---
 

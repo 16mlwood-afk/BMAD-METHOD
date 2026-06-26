@@ -10,6 +10,8 @@ description: Sync, upgrade, onboarding, and autonomous-maintenance procedures fo
 
 The user maintains a fork of BMAD-METHOD at `~/bmad-method-v6/` (remote: `16mlwood-afk/BMAD-METHOD`, branch: `custom`). Custom workflows live in `custom/workflows/` and are distributed to all projects via a sync script. The `custom` branch tracks `origin/main` (upstream) and rebases custom commits on top.
 
+**The standards canon → `custom/workflows/shared/STANDARDS.md`.** Single index of every shared standard a project follows — deploy, delivery, webhook boundaries, diagnostics, worktree/parallel-session safety, prod-readiness, AND memory discipline. When you need "the canonical way to do X," start there: it names each standard, what it governs, its Home doc, and its `contract_version`. Standards are referenced BY PATH, never restated; a project CLAUDE.md that disagrees with the Home doc is drift (log it in `docs/fork-gaps.md`).
+
 ## Workflow routing — route from intent, don't make the user the dispatcher
 
 When a user's natural-language intent clearly maps to a named BMAD workflow and project state makes

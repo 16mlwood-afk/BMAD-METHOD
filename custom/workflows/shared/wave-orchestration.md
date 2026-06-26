@@ -1,5 +1,6 @@
 ---
 name: wave-orchestration
+contract_version: 1
 description: 'Shared protocol for running an implementation/review/creation workflow as WAVES of fanned-out subagents instead of one linear pass. Decompose the job into independent units (stories / diffs / review-dimensions), batch them into waves (default: by epic, concurrency cap 6), fan out one subagent per unit returning a STRUCTURED result (never a shared-file edit), then aggregate-and-act and GATE the next wave on the prior wave''s results. Composes with parallel-sessions.md: every implement-wave subagent enters its own worktree (§A1) and atomically claims its story (§C) — so an orchestrated wave and free-roaming solo parallel devs use the SAME primitives and coexist without colliding. Invariant W0: wave mode is ADDITIVE and never removes a dev''s ability to parallel-develop independently in a worktree. Referenced by code-review (wave review — default-on for >1 unit), create-epics-and-stories (wave create — default-on for >1 story, + dedup pass), dev-story (wave implement — OPT-IN flag only, §C-claimed).'
 ---
 

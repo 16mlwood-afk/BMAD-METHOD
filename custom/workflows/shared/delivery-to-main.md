@@ -1,5 +1,6 @@
 ---
 name: delivery-to-main
+contract_version: 1
 description: 'Shared policy for producer workflows that emit artifacts intended to be readable on the repository default branch. Closes the gap between "file written to disk" and "file accessible to external consumers (Claude Design, downstream synthesize, design-implement) via origin/<default-branch>". Referenced by design-handoff (step-04-deliver), design-synthesize, design-artifact-loop, design-tuning.'
 ---
 

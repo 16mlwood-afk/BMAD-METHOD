@@ -1,5 +1,6 @@
 ---
 name: webhook-contract-charter
+contract_version: 1
 description: 'Contract of record for every webhook boundary across BMAD-managed projects. Codifies sender/receiver duties, the sender-strict / receiver-lenient rollout-order rule, the breaking-change taxonomy, fail-loud / no-silent-fallback at the boundary, ambiguity ownership, and a per-boundary contract template. `webhook-contract-check` verifies against it; `quick-spec` / `quick-dev` consult it before changing emission or validation code.'
 ---
 
