@@ -49,7 +49,10 @@ rewrite_file() {
     }
     s#\{installed_path\}/steps/#{installed_path}/#g;     # 2. {installed_path} steps collapse
     # 3. SHARED: shared/ subdir, loose design assets, and bare shared/<policy>.md
-    s#\{project-root\}/_bmad/bmm/workflows/(?:design/)?shared/#{project-root}/_bmad/bmad-shared/#g;
+    #    {project-root}/ prefix is OPTIONAL — some source refs drop it (e.g. _bmad/bmm/workflows/
+    #    design/shared/design-standards.md); both forms resolve in the overlay but only the
+    #    rewritten form survives cutover. Left lookbehind (?<![\w]) prevents partial-token matches.
+    s#(?:\{project-root\}/)?(?<![\w])_bmad/bmm/workflows/(?:design/)?shared/#{project-root}/_bmad/bmad-shared/#g;
     s#\{project-root\}/_bmad/bmm/workflows/design/([A-Za-z0-9_-]+\.md)#{project-root}/_bmad/bmad-shared/$1#g;
     s#(?<![\w./-])shared/($alt)\.md#{project-root}/_bmad/bmad-shared/$1.md#g if $alt;
     # 4. CROSS-WORKFLOW -> sibling skills

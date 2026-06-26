@@ -946,6 +946,42 @@ deliver_skills_layout_project() {
   fi
 }
 
+# --- v6.8 DUAL-LAYOUT TRANSITION (old-layout project opts in) ---
+# An OLD-LAYOUT project (its _bmad/bmm/workflows overlay EXISTS) can opt into ALSO receiving the
+# skills-native layer alongside that overlay, so the v6.8 migration is gradual and never breaks a
+# project mid-flight (MIGRATION-v6.8-skills-plan.md Phase 5: "keep the old overlay until validated").
+# Opt-in is a per-project config key so it is DELIBERATE and travels with the project:
+#   skills_native_transition: true   (in _bmad/bmm/config.yaml)
+# It delivers ONLY the bits the old-layout path does not already cover — the ported skills + the
+# bmad-shared policy home. It deliberately does NOT emit the colon-command aliases: the overlay's
+# own generated /bmad:bmm:workflows:* commands already provide slash invocation, and adding aliases
+# on top re-introduces the skill-routing-surface dilution documented on the cash-recovery pilot
+# (bmad-v68-skills-pilot). Only after cutover — when the workflows overlay is removed and the project
+# becomes a pure skills-layout project — does deliver_skills_layout_project run and add the aliases.
+project_in_skills_transition() {
+  local cfg="$1/_bmad/bmm/config.yaml"
+  [[ -f "$cfg" ]] || return 1
+  grep -qE '^skills_native_transition:[[:space:]]*true([[:space:]]|$)' "$cfg"
+}
+
+deliver_skills_native_overlay() {
+  local proot="$1"
+  ensure_skills_native_built || { echo "  WARN  skills-native ports unavailable (engine: $PORT_ENGINE)"; return; }
+  local sk_dst="$proot/.claude/skills"; mkdir -p "$sk_dst"; local n=0 d nm
+  for d in "$SKILLS_NATIVE"/bmad-*/; do
+    [[ -d "$d" ]] || continue
+    nm="$(basename "$d")"
+    rsync -a --delete --exclude='.DS_Store' "$d" "$sk_dst/$nm/"
+    n=$((n + 1))
+  done
+  echo "  OK    skills-native transition ($n port(s) delivered alongside overlay)"
+  if [[ -d "$SKILLS_NATIVE/_shared" ]]; then
+    mkdir -p "$proot/_bmad/bmad-shared"
+    rsync -a --delete --exclude='.DS_Store' "$SKILLS_NATIVE/_shared/" "$proot/_bmad/bmad-shared/"
+    echo "  OK    bmad-shared ($(ls "$SKILLS_NATIVE/_shared" 2>/dev/null | wc -l | xargs) policies)"
+  fi
+}
+
 synced=0
 skipped=0
 stale=0
@@ -1135,6 +1171,10 @@ while IFS= read -r target || [[ -n "$target" ]]; do
       echo "  ↳  agents ($agents_drift agent(s) missing/outdated)"
     fi
 
+    if project_in_skills_transition "$project_root"; then
+      echo "  ↳  skills-native transition ON — sync delivers $(ls -d "$SKILLS_NATIVE"/bmad-*/ 2>/dev/null | wc -l | xargs) ported skill(s) + bmad-shared alongside overlay"
+    fi
+
     if $dirty; then
       stale=$((stale + 1))
     else
@@ -1314,6 +1354,13 @@ synced_at: "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 reference_project: "${REFERENCE_ROOT:-(none)}"
 reference_version: "${ref_version:-(unknown)}"
 STAMP
+    fi
+
+    # v6.8 dual-layout transition (opt-in via `skills_native_transition: true` in config.yaml):
+    # also deliver the skills-native layer alongside the commands overlay. Overlay stays until
+    # cutover (MIGRATION-v6.8-skills-plan.md Phase 5).
+    if project_in_skills_transition "$project_root"; then
+      deliver_skills_native_overlay "$project_root"
     fi
 
     synced=$((synced + 1))
