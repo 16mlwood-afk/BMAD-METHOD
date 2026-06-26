@@ -45,4 +45,45 @@ if [[ -f "$GLOBAL_CLAUDEMD" ]] && ! grep -q '^### New project bootstrap' "$GLOBA
   echo "    Restore it by pasting: $SNIPPET"
 fi
 
+# ── Global hooks (prod-readiness probe/gate, enforcement-expert nudge) ──
+SRC_HOOKS="$SCRIPT_DIR/custom/claude-global/hooks"
+DST_HOOKS="$HOME/.claude/hooks"
+if [[ -d "$SRC_HOOKS" ]]; then
+  mkdir -p "$DST_HOOKS/lib"
+  cp "$SRC_HOOKS"/*.sh "$DST_HOOKS"/ 2>/dev/null || true
+  cp "$SRC_HOOKS"/lib/*.sh "$DST_HOOKS"/lib/ 2>/dev/null || true
+  chmod +x "$DST_HOOKS"/*.sh "$DST_HOOKS"/lib/*.sh 2>/dev/null || true
+  echo "  ✓ installed/refreshed global hooks → $DST_HOOKS"
+fi
+
+# Register hook entries in ~/.claude/settings.json (idempotent; prod-readiness gate ships in DRY-RUN).
+SETTINGS="$HOME/.claude/settings.json"
+if [[ -f "$SETTINGS" ]] && command -v python3 &>/dev/null; then
+  python3 - "$SETTINGS" "$DST_HOOKS" <<'PY' || echo "  ! settings.json hook registration skipped (merge error)"
+import json, sys
+p, hooks = sys.argv[1], sys.argv[2]
+d = json.load(open(p)); H = d.setdefault('hooks', {})
+def ensure(event, matcher, script):
+    arr = H.setdefault(event, [])
+    for e in arr:
+        for h in e.get('hooks', []):
+            if h.get('command','').endswith(script): return 0
+    entry = {"hooks":[{"type":"command","command":f"{hooks}/{script}","timeout":5}]}
+    if matcher: entry["matcher"] = matcher
+    arr.append(entry); return 1
+ch = (ensure('SessionStart', None, 'prod-readiness-probe.sh')
+      + ensure('PreToolUse', 'Bash', 'prod-readiness-deploy-gate.sh')
+      + ensure('PreToolUse', 'Edit|Write', 'enforcement-expert-nudge.sh'))
+if ch: json.dump(d, open(p,'w'), indent=4); print(f"  ✓ registered {ch} hook(s) in settings.json")
+else: print("  • hooks already registered in settings.json")
+PY
+fi
+
+# Enforcement Gate CLAUDE.md section — presence check only (hand-maintained file).
+SNIPPET2="$SCRIPT_DIR/custom/claude-global/enforcement-gate.snippet.md"
+if [[ -f "$GLOBAL_CLAUDEMD" ]] && ! grep -q '^## Enforcement Gate Before Trusting a Rule' "$GLOBAL_CLAUDEMD"; then
+  echo "  ! ~/.claude/CLAUDE.md is missing the 'Enforcement Gate' section."
+  echo "    Restore it by pasting: $SNIPPET2"
+fi
+
 echo "✅ global assets installed."
