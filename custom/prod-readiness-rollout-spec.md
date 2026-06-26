@@ -8,8 +8,11 @@ the `enforcement-expert` skill (required by the charter §5 gate).
 ## Status snapshot
 
 - **Phase 0 — charter:** shipped (`53a8d810`).
-- **Phase 1 — deploy probe (warn-only):** shipped — `~/.claude/hooks/prod-readiness-probe.sh`, a global SessionStart hook, conservative, never blocks.
-- **Remaining:** Items A–E below.
+- **Phase 1 — deploy probe (warn-only):** shipped — `~/.claude/hooks/prod-readiness-probe.sh`, a global SessionStart hook.
+- **Shared foundation:** SHIPPED — `~/.claude/hooks/lib/prod-readiness-detect.sh` (`pr_find_root` / `pr_is_live` / `pr_has_deploy_doc` / `pr_is_gap`); the probe now sources it (regression-tested: still silent on a healthy project, warns on a gap).
+- **Phase-3 deploy gate:** BUILT and installed **in dry-run mode** — `~/.claude/hooks/prod-readiness-deploy-gate.sh`, a global `PreToolUse(Bash)` hook. On a confirmed deploy verb (`railway up` / `railway redeploy` / `bmad-deploy.sh`) against a gap project it logs `WOULD-BLOCK` to `~/.claude/prod-readiness-gate.log` and **allows** (no stdout, zero risk to the Bash call). This makes the **Item-A watch automatic** — the gate itself records exactly what enforce mode would have blocked. Tested: dry-run allows+logs, enforce denies, override-file allows+logs, healthy/non-deploy/ambiguous all no-op.
+- **Activation (flip to enforce):** write `enforce` to `~/.claude/prod-readiness-gate.mode` — ONLY after the dry-run log shows no false WOULD-BLOCK across the 13. This is the warn-then-gate promotion, now a one-line flip.
+- **Remaining:** Item C (memory probe), Item D (drift), Item E (onboarding install); git-push-auto-deploy detection (deferred from Item B until pre-enforce); plus the watch itself (just review the gate log over time).
 
 ## Shared foundation (do first — both probe and gate depend on it)
 
