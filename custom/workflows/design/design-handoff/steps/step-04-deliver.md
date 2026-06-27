@@ -12,7 +12,7 @@ thisStepFile: './step-04-deliver.md'
 
 This step implements `shared/delivery-to-main.md` for `design-handoff`. The shared policy carries the full rationale; this step is the executable form.
 
-**Voice — Rhea, Design Steward** (`shared/workflow-personas.md`): the close is a hand-off to the next consumer, not a recap of what you did. Emit the consumer-facing close-out shape in §10; **process narration is forbidden by default** (no "I did X then Y", no branch/PR choreography, no workflow-history or decision diary unless the user explicitly asks for the trace). A one-line re-orientation or a genuine implementation risk is allowed; a process essay is not. See workflow.md § "OUTPUT CONTRACT & WORKFLOW-FEEDBACK ROUTING" for the governing contract.
+**Voice — Rhea, Design Steward** (`shared/workflow-personas.md`): the close is a hand-off to the next consumer, not a recap of what you did. Emit the consumer-facing close-out shape in §10; **process narration is forbidden by default** (no "I did X then Y", no branch/PR choreography, no workflow-history or decision diary unless the user explicitly asks for the trace). A one-line re-orientation or a genuine implementation risk is allowed; a process essay is not. Governing standard: `shared/close-out-contract.md` (STD-CLOSEOUT-001); workflow.md § "OUTPUT CONTRACT & WORKFLOW-FEEDBACK ROUTING" points to it.
 
 ---
 
@@ -265,7 +265,7 @@ ExitWorktree action: "remove" discard_changes: true
 - Never push directly to `main`. Always via PR.
 - `--admin` merge is allowed only for doc-only artifacts with structurally-unavailable CI. Document the override in the PR thread or session log.
 - The merged-URL surfaced in step 10 MUST be the URL the consumer will actually read. If the operator chose `--no-deliver`, the warning says so — do not pretend the file is on main.
-- **Output-shape feedback is a workflow patch, not a one-off.** If the user critiques the SHAPE of this close-out ("stop narrating history", "lead with the active artifact / material delta / next-consumer instructions", "fix this at the workflow root"), patch §10 (and/or workflow.md's output contract) in the fork FIRST so the fix propagates by sync, then regenerate this message from the updated template. Do NOT resolve it by rewriting only the current message or by writing a project memory — see workflow.md § "OUTPUT CONTRACT & WORKFLOW-FEEDBACK ROUTING" §3.
+- **Output-shape feedback is a workflow patch, not a one-off.** If the user critiques the SHAPE of this close-out ("stop narrating history", "lead with the active artifact / material delta / next-consumer instructions", "fix this at the workflow root"), patch §10 (and/or workflow.md's output contract) in the fork FIRST so the fix propagates by sync, then regenerate this message from the updated template. Do NOT resolve it by rewriting only the current message or by writing a project memory — see `shared/close-out-contract.md` (STD-CLOSEOUT-001) §4.
 
 ---
 

@@ -70,7 +70,11 @@ This routing is itself part of the contract: a context-free agent reading a deli
 
 ## 5. Enforcement honesty
 
-This is a **PROBABILISTIC** standard — it shapes model output; there is no deterministic harness gate that can enforce "wrote it for the consumer, not as a recap." The durable lever is §4: when the shape drifts, the feedback patches the template, so the corpus converges over time rather than re-litigating per session. A deterministic close-out linter (e.g. a heuristic flag on first-person process-recap phrasing in a terminal step's emitted block) is a possible future tier; not built.
+Runtime conformance — the agent's actual emitted close-out message — is **PROBABILISTIC**: it shapes model output, and no file-based gate can read a conversational message. The durable lever for runtime drift is §4: when the shape drifts, the feedback patches the template, so the corpus converges over time rather than re-litigating per session.
+
+The **template files** ARE deterministically guarded. `tools/validate-close-out-contract.js` (npm `validate:close-out`, in the fork's pre-commit fast-path + `npm test`) is a **DETERMINISTIC GATE** over `custom/workflows/`: it fails the commit when a workflow file *instructs* narration (a high-precision phrase like "summarize key accomplishments", "recap of what you did", "narrate the workflow") **without** adopting this contract. Adopting it — referencing `close-out-contract.md` / `STD-CLOSEOUT-001` — is the logged, in-file escape hatch (a contract-aware file quotes those phrases as negative examples, not instructions). The gate is deliberately NOT "every close-out must reference the contract" — most close-outs are consumer-aware by their own design and never reference it, so demanding a reference would be the indiscriminate-gate anti-pattern. It guards against *template drift* (a new or edited step that re-introduces a narration instruction), which is the failure that propagates to every project.
+
+What is NOT linted, on purpose: the runtime message (not a file; a Stop-hook "first-person recap" scan would be an indiscriminate detector), and "did the agent obey the shape this turn" (probabilistic — §4 is its lever).
 
 ---
 

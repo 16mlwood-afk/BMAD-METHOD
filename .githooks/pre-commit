@@ -19,7 +19,7 @@ if [ -z "$changed" ] || [ "$non_fork" -gt 0 ]; then
   npm test
 else
   echo "pre-commit: fork-tooling-only diff → fast validators (skipping upstream install/urls/channels suites)"
-  npm run test:refs && npm run lint && npm run lint:md && npm run format:check && npm run validate:budget
+  npm run test:refs && npm run lint && npm run lint:md && npm run format:check && npm run validate:budget && npm run validate:close-out
 fi
 
 # Validate hooks actually function (exit 0 + correct stdin contract) so a broken
