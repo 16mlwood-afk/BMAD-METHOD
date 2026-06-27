@@ -10,6 +10,7 @@ description: 'Emit the exact next command with injected decisions, write the rou
 ## RULES — read before acting
 
 - **DO NOT auto-invoke the specialist.** This router emits the decision + the exact next command; the user (or a separate invocation) runs it. Mirrors `maintenance-triage` — one routing run must not cascade into unattended design work.
+- **Conforms to `{project-root}/_bmad/bmm/workflows/shared/escalation-on-class-change.md` (STD-ESCALATE-001).** This gateway's classify-and-emit-a-proposed-route — net-new scope and straddles surfaced not swallowed, the specialist never auto-invoked — IS the class-change escalation reflex for the design lane (it is what a code/dev workflow's tripwire routes *into* when the work turns out to be design-shaped). Named here so the standard has a real caller; routing logic unchanged.
 - **Carry injected decisions so the route is consumable.** A placement verdict from the leaf travels as `--placement`; a refine route names its `screen-review` artifact; a scoped restyle names the surface. A route that emits a bare workflow name with no target/decision is the implicit-routing problem this gateway exists to kill.
 - The route comes from the axis that fired in step-02 — do not re-classify here.
 - YOU MUST ALWAYS SPEAK OUTPUT in your agent communication style with the config `{communication_language}`.

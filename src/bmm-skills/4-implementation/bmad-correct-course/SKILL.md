@@ -256,6 +256,8 @@ Activation is complete. If `activation_steps_prepend` or `activation_steps_appen
 - **Moderate**: Requires backlog reorganization and PO/DEV coordination
 - **Major**: Needs fundamental replan with PM/Architect involvement
 
+> **Conforms to `{project-root}/_bmad/bmm/workflows/shared/escalation-on-class-change.md` (STD-ESCALATE-001).** correct-course IS the canonical class-change gateway: it classifies the scope delta and proposes-and-routes (Minor → Developer, Moderate → PO/DEV, Major → PM/Architect) after an explicit approval, rather than handing back a numbered menu. Named here so the standard has a real caller; this routing is unchanged — it is what other workflows escalate *into* when their tripwire fires.
+
 <action>Provide appropriate handoff based on scope:</action>
 
 </check>

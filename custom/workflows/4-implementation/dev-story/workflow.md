@@ -361,6 +361,8 @@ Activation is complete. If `activation_steps_prepend` or `activation_steps_appen
     <action if="3 consecutive implementation failures occur">HALT and request guidance</action>
     <action if="required configuration is missing">HALT: "Cannot proceed without necessary configuration files"</action>
 
+    <action>CLASS-CHANGE TRIPWIRE (propose-and-act, do NOT menu — `{project-root}/_bmad/bmm/workflows/shared/escalation-on-class-change.md`): if mid-implementation the work reveals it has changed CLASS from the story — scope materially larger or differently shaped than the story's tasks+ACs, a missing keystone/shared seam the story must build first, the work is really a re-plan rather than execution, or it belongs to another lane (design → `design-router`, production backlog → `maintenance-triage`) — do NOT silently keep coding the now-mis-scoped story and do NOT hand {user_name} a numbered 1–4 menu. STATE the detected class-change + the concrete evidence, NAME the BMAD-default gateway (execution-lane default: `correct-course`), PROPOSE the route in one line, and PROCEED to it unless the user vetoes — the story HALTs while the gateway runs. Conservative: when uncertain whether scope truly changed class, this does NOT fire (a missed escalation is recoverable next pass; a false one is friction).</action>
+
     <critical>NEVER implement anything not mapped to a specific task/subtask in the story file</critical>
     <critical>NEVER proceed to next task until current task/subtask is complete AND tests pass</critical>
     <critical>Execute continuously without pausing until all tasks/subtasks are complete or explicit HALT condition</critical>
@@ -485,6 +487,7 @@ Activation is complete. If `activation_steps_prepend` or `activation_steps_appen
     <action if="regression failures exist">HALT - Fix regression issues before completing</action>
     <action if="File List is incomplete">HALT - Update File List with all changed files</action>
     <action if="definition-of-done validation fails">HALT - Address DoD failures before completing</action>
+    <action>CLASS-CHANGE FINAL CHECK (escalation-on-class-change.md §1): before flipping to review, confirm the delivered work still matches the story's CLASS. If implementation revealed the story was materially mis-scoped — a seam was built that belongs in its own story, scope outgrew the unit, or a needed follow-on is really a re-plan — do NOT silently mark it review-complete. Surface the class-change and PROPOSE `correct-course` (proceed unless vetoed) per the standard, so the scope delta is recorded, not buried. Does not fire when the story was delivered as scoped.</action>
   </step>
 
   <step n="10" goal="Completion communication and user support">

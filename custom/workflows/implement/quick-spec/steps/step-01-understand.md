@@ -101,6 +101,10 @@ d) **Build mental model:**
 
 **This scan should take < 30 seconds. Just enough to ask smart questions.**
 
+e) **CLASS-CHANGE TRIPWIRE** (`{project-root}/_bmad/bmm/workflows/shared/escalation-on-class-change.md`, STD-ESCALATE-001):
+
+If the likely scope you just assessed is NOT a small/quick change — it is materially larger than a quick-spec unit, a re-plan rather than a defined delta, needs a missing keystone/shared seam built first, or belongs to another lane (design → `design-router`, production-driven backlog → `maintenance-triage`, full planning → `create-prd` / `correct-course`) — do NOT proceed to author a quick spec for work that isn't quick. STATE the class-change + evidence, NAME the BMAD-default gateway, PROPOSE it, and PROCEED there unless the user vetoes — never a numbered menu. Conservative: a normal small delta does NOT fire this. (Catches mis-scope at spec-time, before a wasted quick-dev cycle — the spec-time sibling of quick-dev §0.)
+
 ### 3. Ask Informed Questions
 
 a) **Now ask clarifying questions - but make them INFORMED by what you found:**

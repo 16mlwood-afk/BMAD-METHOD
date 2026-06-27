@@ -7,6 +7,8 @@ description: 'For each prioritized cluster, decide its shape (code-shaped vs des
 
 **Goal:** Convert prioritized clusters into actionable triage artifacts. Each cluster becomes one short markdown file routed by its **shape**: code-shaped clusters go to quick-spec (for investigation) or quick-dev (when the change is already clear); design-shaped clusters are dispatched to design-router (the design-lane single source of truth, which classifies and emits the precise specialist command).
 
+> **Conforms to `{project-root}/_bmad/bmm/workflows/shared/escalation-on-class-change.md` (STD-ESCALATE-001).** The shape gate (code-shaped vs design-shaped vs straddle → route each) IS the class-change reflex applied to production-driven work: it names the cluster's class and proposes-and-routes rather than handing the user a menu. Named here so the standard has a real caller; the routing below is unchanged.
+
 ---
 
 ## AVAILABLE STATE

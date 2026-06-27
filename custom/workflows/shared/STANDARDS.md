@@ -89,6 +89,15 @@ Breaking: no
 Home: shared/detect-stack.md
 Applies: all
 
+### workflow behavior & routing
+
+escalation-on-class-change — when work changes class mid-flow (scope outgrew the unit / missing keystone / planning-not-execution / wrong lane), state it, name the BMAD-default gateway, propose it, and proceed unless vetoed — never a numbered menu, never silent wrong-lane continuation. Implemented by dev-story; conformed-to by correct-course / design-router / maintenance-triage / design-elevation / quick-dev.
+ID: STD-ESCALATE-001
+Version: v1
+Breaking: no
+Home: shared/escalation-on-class-change.md
+Applies: all
+
 ### documentation & doctrine
 
 claude-md-standard — CLAUDE.md structure & discipline: global doctrine (machine-local) vs a thin, pointer-based project CLAUDE.md; canonical section shape; pointer-not-restate; edit discipline.

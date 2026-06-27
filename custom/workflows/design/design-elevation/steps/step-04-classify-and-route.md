@@ -10,6 +10,7 @@ description: 'Classify each user-selected enhancement on two axes — intent-cha
 ## RULES:
 
 - AUTONOMOUS. The user has already made the intent decision (which enhancements to build) at the step-03 halt. This step does not re-ask — it classifies and routes.
+- **Conforms to `{project-root}/_bmad/bmm/workflows/shared/escalation-on-class-change.md` (STD-ESCALATE-001).** Routing an intent-change enhancement to design-handoff (a re-brief) versus an in-surface refinement to its lane IS the class-change reflex: it classifies whether the surface's *brief* would need to change and routes accordingly, with per-item accountability, rather than menu-ing. Named here so the standard has a real caller; routing logic unchanged.
 - Per-item accountability is mandatory. Every selected enhancement gets an explicit disposition (routed-to-X / built-here / deferred). Never report success while silently dropping a selected item — that is the silent-partial-implementation failure class.
 - Preserve provenance. Routed work carries `{brief_provenance}` forward so the lineage from the original brief to the new work is unbroken.
 - Respect brownfield. If `project_phase = brownfield`, routed refinements carry the brownfield obligations (quick-spec §4b, quick-dev §6).

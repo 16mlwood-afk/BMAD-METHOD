@@ -37,6 +37,8 @@ Read fully and follow `{project-root}/_bmad/bmm/workflows/shared/blast-radius-el
 
 Do this **before** opening a worktree — no point isolating work you're about to reroute.
 
+**Conforms to `{project-root}/_bmad/bmm/workflows/shared/escalation-on-class-change.md` (STD-ESCALATE-001).** This §0 reroute IS the class-change escalation reflex — it detects that the work outgrew the quick-dev unit and proposes-and-routes to `quick-spec` rather than menu-ing or silently shipping. It is the deterministic-flavored sibling of the standard (a HARD trigger forces the exit). Named here so the standard has a real caller; the reroute logic above is unchanged.
+
 ---
 
 ## OPEN: ENTER A WORKTREE BEFORE EDITING `src/`
