@@ -19,6 +19,15 @@ This doc is **fork-local** (like `global-bmad-workflow.md` / `parallel-work-and-
 
 ## Open
 
+### Project memories written during a worktree session land under a worktree-cwd slug, not the canonical project → the project-memory write path (memory doctrine / whatever resolves `~/.claude/projects/<slug>/`)
+**Noticed:** 2026-06-27 (onboarding v2 rollout — spotted ~366 stray dirs). **Priority: medium** — the memories are real (insights, project facts) but stranded at a slug no normal main-checkout session loads, so they silently don't surface; and they accumulate without bound.
+
+**What fought us:** during the v2 rollout I found ~366 `~/.claude/projects/-Users-…--claude-worktrees-<branch>/` memory dirs accumulated over months. They get created whenever a session running *inside a worktree* writes a project memory: the memory path is derived from the session's cwd, so a worktree cwd (`…/.claude/worktrees/<branch>/`) becomes its own project slug, separate from the canonical `-Users-masonwood-code-<project>`. A memory written there is invisible to every normal (main-checkout) session of that project.
+
+**Why structural:** this is the SAME bug class v2 just fixed in `onboard-project.sh` (cwd-slug vs canonical-root slug), but one layer up — at the general project-memory write path, which the worktree discipline (mandatory here) routes through worktree cwds constantly. Worktrees are the norm, so the mis-keying is the norm, not an edge case. Two harms: (1) memories silently stranded; (2) unbounded junk-dir accumulation.
+
+**Proposed investigation:** make the project-memory slug resolver canonicalize a worktree cwd to its main checkout (same `git --git-common-dir → dirname` move onboard v2 uses) before forming `~/.claude/projects/<slug>/`. Plus a one-time sweep to merge/relocate the existing ~366 worktree-slug dirs into their canonical projects (or delete the empty/duplicate ones). The canonicalization is the durable fix; the sweep is cleanup.
+
 ### `onboard-project.sh --restamp` run from a worktree derives the wrong project identity → `onboard-project.sh`  `[resolved: 2026-06-27 — onboarding playbook v2. The script now resolves a CANON_ROOT (via git --git-common-dir → the MAIN checkout when PROJECT_DIR is a …/.claude/worktrees/<branch>/ worktree) and bases the project name default + the memory slug on it, while in-repo writes still target PROJECT_DIR so they remain committable from the worktree. Restamp-from-a-worktree now derives the canonical name + slug with no --name and no memory relocation. Verified with a REAL git worktree: name=canonical (not the branch), memory at the canonical slug, no worktree-slug leak. onboarding-playbook.version bumped 1→2.]`
 **Noticed:** 2026-06-27 (cash-recovery onboarding-marker demo). **Priority: medium** — every `--restamp` on an existing repo is naturally run from a worktree (BMAD artifacts live on main + the parallel-session worktree discipline), which is exactly where the script misbehaves.
 
