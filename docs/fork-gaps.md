@@ -19,6 +19,24 @@ This doc is **fork-local** (like `global-bmad-workflow.md` / `parallel-work-and-
 
 ## Open
 
+### Removing/renaming a shared standard deadlocks the whole sync on "local-only content" → `sync-bmad-workflows.sh`
+**Noticed:** 2026-06-27 (bmad-method-v6, CLAUDE.md-charter session). **Priority: high** — one removed shared file blocks standards delivery to ALL projects until manually cleaned in each.
+
+**What fought us:** the parallel-session charter (`claude-md-charter.md`) synced into 13 projects, then was deleted from the fork source. The next sync did NOT purge the orphaned copies — its anti-clobber safety flagged them as "local-only content" and BLOCKED all 13 projects (`Done: 1 synced, 13 blocked`). The pipeline was dead until I hand-`rm`'d the orphan from every project + the skills mirror.
+
+**Why structural:** the sync can't distinguish "a file that USED to be synced and should now be purged" from "genuine local work to protect." So deleting or renaming any `shared/` standard doesn't propagate the deletion — it deadlocks delivery for every project. Removal/rename is a first-class canon operation (it WILL happen) with no safe path.
+
+**Proposed investigation:** give the sync a memory of what it last delivered (a per-project manifest) so a file in the manifest but absent from source is a *deletion to propagate*, not local content to protect; or a `--purge-removed` mode; or at minimum a per-project "blocked because of `<file>`" message + a one-command remediation instead of a silent 13-blocked.
+
+### Hooks ship unvalidated — a broken hook misfires silently until caught by luck → `docs/hooks-registry.md` + a hook smoke-test
+**Noticed:** 2026-06-27 (bmad-method-v6). **Priority: medium** — a non-functional safety/awareness hook fails *silent*, which is worse than no hook (false confidence).
+
+**What fought us:** `check-friction-reflect.sh` (Stop hook) was shipped earlier this session with a `python3 - <<PY` pattern that makes the heredoc itself become stdin — so `session_id`/`stop_hook_active` never parsed and it would have fired once GLOBALLY instead of once per session. A manual test "passed" only because its marker masked the bug; it was caught later only because a sibling hook (built next) had the same latent flaw.
+
+**Why structural:** nothing validates a hook before it's wired. A hook that emits invalid JSON, mishandles stdin, or always-no-ops runs (or fails to run) silently every session. The hooks-registry catalogues hooks but never checks they FUNCTION.
+
+**Proposed investigation:** a tiny hook smoke-test — feed each registered hook a representative stdin fixture and assert it exits 0 and emits parseable JSON (or empty). Wire it into the registry / pre-push so a broken hook can't ship. Cheap, and would have caught the friction-reflect bug immediately.
+
 ### No collision protection for fork-DIRECT authoring of shared standards/workflows → `parallel-sessions.md` (+ the fork edit-guard allowlist)
 **Noticed:** 2026-06-27 (bmad-method-v6, during the CLAUDE.md-charter session). **Priority: high** — silent duplication of shared infra is exactly the failure worktrees exist to prevent, and it's currently unguarded for the fork itself.
 
