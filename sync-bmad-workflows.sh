@@ -982,6 +982,70 @@ deliver_skills_native_overlay() {
   fi
 }
 
+# ============================================================================
+# Local-only classification (manifest-aware) — the deadlock fix.
+#
+# diff alone cannot tell two kinds of "file in target but not in source" apart:
+#   (a) a file the sync DELIVERED earlier, since REMOVED/renamed at source
+#       → a propagated deletion → safe to purge (rsync --delete handles it).
+#   (b) a file that is GENUINE LOCAL WORK in the target → must be protected.
+# Before this, BOTH counted as local-only and BLOCKED the project — so removing
+# one shared standard at source deadlocked all targets ("Done: 1 synced, N blocked").
+#
+# The manifest gives the sync a MEMORY of what it delivered to each project.
+# Fail-safe bootstrap: with NO manifest yet, every local-only file is treated as
+# (b) BLOCKING — identical to the old behavior, so we never auto-delete a file we
+# have no record of delivering. The auto-purge path only activates once a manifest
+# exists (written on the first successful/forced sync after this lands).
+# ============================================================================
+MANIFEST_REL="_bmad/_config/sync-manifest.txt"
+
+# Emit the delivered-file set: every file under SOURCE/<SYNC_DIRS>, path relative
+# to the workflows dir (e.g. "shared/STANDARDS.md"). After an rsync of SYNC_DIRS
+# this is exactly what was laid down, so it == the delivered set.
+compute_source_manifest() {
+  local d
+  for d in "${SYNC_DIRS[@]}"; do
+    [[ -d "$SOURCE/$d" ]] || continue
+    ( cd "$SOURCE" && find "$d" -type f ! -name '.DS_Store' )
+  done | LC_ALL=C sort -u
+}
+
+# Classify a project's local-only content against its prior manifest. Sets two
+# newline-delimited globals: LOCAL_ONLY_BLOCKING (protect) and LOCAL_ONLY_PURGEABLE.
+# Args: $1 = target workflows dir, $2 = project_root
+classify_local_only() {
+  local target="$1" project_root="$2"
+  local manifest="$project_root/$MANIFEST_REL"
+  LOCAL_ONLY_BLOCKING=""
+  LOCAL_ONLY_PURGEABLE=""
+  local have_manifest=false
+  [[ -f "$manifest" ]] && have_manifest=true
+
+  local d rel legacy is_legacy src_dir_missing
+  for d in "${SYNC_DIRS[@]}"; do
+    [[ -d "$target/$d" ]] || continue
+    src_dir_missing=false
+    [[ -d "$SOURCE/$d" ]] || src_dir_missing=true
+    while IFS= read -r rel; do
+      [[ -z "$rel" ]] && continue
+      [[ -f "$SOURCE/$rel" ]] && continue          # still in source — not local-only
+      is_legacy=false
+      for legacy in "${LEGACY_SUBPATHS_TO_REMOVE[@]}"; do
+        [[ "$rel" == "$legacy" || "$rel" == "$legacy"/* ]] && { is_legacy=true; break; }
+      done
+      $is_legacy && continue                        # migration step removes these
+      if $src_dir_missing; then
+        LOCAL_ONLY_BLOCKING+="$rel"$'\n'            # whole source dir gone — anomaly, protect
+      elif $have_manifest && grep -qxF "$rel" "$manifest"; then
+        LOCAL_ONLY_PURGEABLE+="$rel"$'\n'           # we delivered it; source dropped it → purge
+      else
+        LOCAL_ONLY_BLOCKING+="$rel"$'\n'            # never delivered (or no manifest) → protect
+      fi
+    done < <( cd "$target" && find "$d" -type f ! -name '.DS_Store' )
+  done
+}
+
 synced=0
 skipped=0
 stale=0
@@ -1047,20 +1111,27 @@ while IFS= read -r target || [[ -n "$target" ]]; do
         fi
         echo "  ↳  $dir"
       fi
-
-      # Check for local-only content in target that would be deleted
-      if [[ -d "$dst_path" ]]; then
-        local_only=$(diff -rq --exclude='.DS_Store' "$dst_path" "$src_path" 2>/dev/null | grep "^Only in $dst_path" || true)
-        if [[ -n "$local_only" ]]; then
-          if ! $dirty; then
-            echo "STALE $project"
-            dirty=true
-          fi
-          echo "  ⚠  LOCAL-ONLY content in $dir (would be DELETED on sync):"
-          echo "$local_only" | sed 's/^/     /'
-        fi
-      fi
     done
+
+    # Local-only classification (manifest-aware): genuine local work (would be
+    # DELETED — protect) vs propagated deletions (source removed; would be purged).
+    classify_local_only "$target" "$project_root"
+    if [[ -n "$LOCAL_ONLY_BLOCKING" ]]; then
+      if ! $dirty; then
+        echo "STALE $project"
+        dirty=true
+      fi
+      echo "  ⚠  LOCAL-ONLY work (would be DELETED on sync — pull or --force):"
+      echo "$LOCAL_ONLY_BLOCKING" | sed '/^$/d; s/^/     /'
+    fi
+    if [[ -n "$LOCAL_ONLY_PURGEABLE" ]]; then
+      if ! $dirty; then
+        echo "STALE $project"
+        dirty=true
+      fi
+      echo "  ↻  propagated deletion(s) (source removed; purged on sync):"
+      echo "$LOCAL_ONLY_PURGEABLE" | sed '/^$/d; s/^/     /'
+    fi
 
     settings_file="$project_root/.claude/settings.local.json"
     if [[ -f "$HOOKS_SRC" ]]; then
@@ -1181,40 +1252,27 @@ while IFS= read -r target || [[ -n "$target" ]]; do
       echo "OK    $project"
     fi
   else
-    # --- Pre-sync safety check: detect local-only content ---
-    has_local_only=false
-    for dir in "${SYNC_DIRS[@]}"; do
-      src_path="$SOURCE/$dir"
-      dst_path="$target/$dir"
-      [[ ! -d "$dst_path" ]] && continue
-      [[ ! -d "$src_path" ]] && { has_local_only=true; continue; }
+    # --- Pre-sync safety check: local-only content (manifest-aware) ---
+    classify_local_only "$target" "$project_root"
 
-      local_only=$(diff -rq --exclude='.DS_Store' "$dst_path" "$src_path" 2>/dev/null | grep "^Only in $dst_path" || true)
-
-      # Strip lines for known-legacy subpaths — the migration step will clean them up.
-      for legacy in "${LEGACY_SUBPATHS_TO_REMOVE[@]}"; do
-        legacy_parent="${legacy%%/*}"
-        legacy_leaf="${legacy##*/}"
-        if [[ "$dir" == "$legacy_parent" ]]; then
-          local_only=$(echo "$local_only" | grep -v ": $legacy_leaf\$" || true)
-        fi
-      done
-
-      if [[ -n "$local_only" ]]; then
-        has_local_only=true
+    if [[ -n "$LOCAL_ONLY_BLOCKING" ]] && ! $FORCE; then
+      echo "BLOCK $project — local-only content NOT delivered by sync (protected from deletion):"
+      echo "$LOCAL_ONLY_BLOCKING" | sed '/^$/d; s/^/    /'
+      echo "  Resolve (pick one):"
+      echo "    • Promote into the fork:  $0 --pull $target   (then commit + re-sync)"
+      echo "    • Discard local-only:     $0 --force          (DESTRUCTIVE — overwrites & deletes local-only)"
+      if [[ -n "$LOCAL_ONLY_PURGEABLE" ]]; then
+        echo "  (Also $(echo "$LOCAL_ONLY_PURGEABLE" | grep -c .) propagated-deletion file(s) pending purge once unblocked.)"
       fi
-    done
-
-    if $has_local_only && ! $FORCE; then
-      echo "BLOCK $project — has local-only workflow content that would be deleted"
-      echo "  Options:"
-      echo "    1. Pull changes first:  $0 --pull $target"
-      echo "    2. Force overwrite:     $0 --force"
       blocked=$((blocked + 1))
       continue
     fi
 
-    echo "SYNC  $project"
+    if [[ -n "$LOCAL_ONLY_PURGEABLE" ]]; then
+      echo "SYNC  $project (purging $(echo "$LOCAL_ONLY_PURGEABLE" | grep -c .) propagated deletion(s))"
+    else
+      echo "SYNC  $project"
+    fi
 
     # Migration: remove legacy directories (reorganized into implement/verify/design/meta)
     for legacy_dir in "bmad-quick-flow" "build"; do
@@ -1354,6 +1412,12 @@ synced_at: "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 reference_project: "${REFERENCE_ROOT:-(none)}"
 reference_version: "${ref_version:-(unknown)}"
 STAMP
+    fi
+
+    # Delivered-file manifest: memory of what this sync laid down, so the NEXT
+    # run can tell a propagated deletion (purge) from genuine local work (protect).
+    if [[ -d "$stamp_dir" ]]; then
+      compute_source_manifest > "$stamp_dir/sync-manifest.txt"
     fi
 
     # v6.8 dual-layout transition (opt-in via `skills_native_transition: true` in config.yaml):
