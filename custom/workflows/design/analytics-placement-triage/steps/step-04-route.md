@@ -41,15 +41,15 @@ If `{topology_verdict}` = `unresolved`, do NOT pick a home. Surface the two co-e
 
 ### 2. Build the exact design-handoff invocation (carrying --placement)
 
-Set `{handoff_invocation}` to the precise next command the verdict implies. **Always pass `--placement <verdict>`** so the decided home is *consumable* by design-handoff (its step-01 §5b/§5d honor an injected placement and skip re-derivation) rather than advisory prose it might silently re-decide:
+Set `{handoff_invocation}` to the precise next command the verdict implies. **Always pass `--placement <verdict>`** — and, when a shape was chosen, **`--archetype {analytics_shape}`** — so both the decided home AND the shape are *consumable* by design-handoff (its step-01 §5b/§5d honor the placement and §5c honors the archetype, skipping re-derivation) rather than advisory prose it might silently re-decide:
 
-- **`band`** → `/bmad:bmm:workflows:design-handoff {target_route} --placement band` — the band lands on the operational page; the `operational-analytics-band` skill governs its build. If `{existing_band}` ≠ `none`, note "upgrade the existing band," not "add one."
-- **`tab`** → `/bmad:bmm:workflows:design-handoff {target_route} --placement tab` — a distinct analytics tab/mode on the same route.
-- **`sibling-page`** → `/bmad:bmm:workflows:design-handoff {target_route}/analytics --placement sibling-page` — a **new analytical surface** (`page_mode: analytical`, NOT operational). This is the net-new-scope case.
-- **`remove-band`** → `/bmad:bmm:workflows:design-handoff {target_route} --placement remove-band` — redesign the operational page WITHOUT the ornamental band (a real design task, not a no-op).
+- **`band`** → `/bmad:bmm:workflows:design-handoff {target_route} --placement band --archetype {analytics_shape}` — the band lands on the operational page; the `operational-analytics-band` skill governs its build. If `{existing_band}` ≠ `none`, note "upgrade the existing band," not "add one."
+- **`tab`** → `/bmad:bmm:workflows:design-handoff {target_route} --placement tab --archetype {analytics_shape}` — a distinct analytics tab/mode on the same route.
+- **`sibling-page`** → `/bmad:bmm:workflows:design-handoff {target_route}/analytics --placement sibling-page --archetype {analytics_shape}` — a **new analytical surface** (`page_mode: analytical`, NOT operational). This is the net-new-scope case.
+- **`remove-band`** → `/bmad:bmm:workflows:design-handoff {target_route} --placement remove-band` — redesign the operational page WITHOUT the ornamental band (a real design task, not a no-op). No `--archetype` (no surface to shape).
 - **`no-surface`** → no handoff. State plainly: the data + job do not justify an analytics surface here; stop.
 
-Carry `{analytics_shape}` and `{surface_hierarchy}` into the invocation note as **advisory context** for the downstream handoff. (design-handoff §5c currently still re-invokes `analytics-surface-architect`; since that is the same brain on the same inputs the archetype is idempotent, so this note *documents* the decision rather than overriding §5c. A §5c shape-injection short-circuit — mirroring the §5b/§5d ones — is a possible future tightening, tracked as follow-up.)
+`{analytics_shape}` now rides the command as `--archetype` — design-handoff §5c honors it and skips re-selection (the shape was chosen here via the same `analytics-surface-architect` skill — honored upstream-first, not re-derived). Carry `{surface_hierarchy}` into the invocation note as context for a multi-surface page.
 
 ### 3. Write the placement-decision artifact
 

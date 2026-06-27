@@ -5,7 +5,10 @@ main_config: '{project-root}/_bmad/bmm/config.yaml'
 
 # Single-sourced reasoning — this workflow is a ROUTER. It defers to these brains
 # by name and applies them verbatim; it NEVER re-derives their logic here.
-design_handoff_step01: '{project-root}/_bmad/bmm/workflows/design/design-handoff/steps/step-01-gather.md'
+# The §5x brains this leaf single-sources now live in two design-handoff sub-steps
+# (design-handoff's step-01-gather was split for context budget): §5b in -decide, §5d/§5e in -topology.
+design_handoff_decide: '{project-root}/_bmad/bmm/workflows/design/design-handoff/steps/step-01b-decide.md'
+design_handoff_topology: '{project-root}/_bmad/bmm/workflows/design/design-handoff/steps/step-01c-topology.md'
 design_handoff_workflow: '{project-root}/_bmad/bmm/workflows/design/design-handoff/workflow.md'
 band_skill: 'operational-analytics-band'
 uses_skills:

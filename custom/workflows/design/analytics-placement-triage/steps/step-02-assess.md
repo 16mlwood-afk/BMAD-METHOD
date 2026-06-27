@@ -17,13 +17,13 @@ description: 'Run the decision brains — band-belongs (§5b), topology (§5d), 
 ## AVAILABLE STATE
 
 From step-01: `{target_route}`, `{target_component}`, `{analytics_question}`, `{analytics_dataset}`, `{existing_band}`.
-Pointer to the brains: `{design_handoff_step01}` (= `.../design-handoff/steps/step-01-gather.md`).
+Pointers to the brains (design-handoff's step-01 gather was split for context budget): `{design_handoff_decide}` holds **§5b** (band-belongs); `{design_handoff_topology}` holds **§5d** (topology) and **§5e** (hierarchy).
 
 ## SEQUENCE OF INSTRUCTIONS
 
 ### 1. Band-belongs — does an analytics surface belong at all? (§5b)
 
-Read `{design_handoff_step01}` **§5b** and apply its three band-belongs questions (aggregate dimension / pattern job / changes-next-action) to `{analytics_dataset}` + `{analytics_question}`. Honor its `{existing_band}` distinction: a present primitive band resolves toward `inherited`, a bare page toward `recommended-new`.
+Read `{design_handoff_decide}` **§5b** and apply its three band-belongs questions (aggregate dimension / pattern job / changes-next-action) to `{analytics_dataset}` + `{analytics_question}`. Honor its `{existing_band}` distinction: a present primitive band resolves toward `inherited`, a bare page toward `recommended-new`.
 
 Set `{band_belongs}` ∈ `inherited | recommended-new | recommended-drop | none`.
 
@@ -35,7 +35,7 @@ Set `{band_belongs}` ∈ `inherited | recommended-new | recommended-drop | none`
 
 ### 2. Topology — is this its own surface? (§5d)
 
-Read `{design_handoff_step01}` **§5d** and apply its surface-topology reasoning to the *analytics surface* specifically: does the analytics constitute a distinct operator job at a different depth than the worklist, or does it ride alongside the rows?
+Read `{design_handoff_topology}` **§5d** and apply its surface-topology reasoning to the *analytics surface* specifically: does the analytics constitute a distinct operator job at a different depth than the worklist, or does it ride alongside the rows?
 
 Map §5d's verdict to a placement-relevant `{topology_verdict}`:
 
@@ -50,7 +50,7 @@ If §5d genuinely does not resolve to one home (two co-equal jobs), do NOT pick 
 
 ### 3. Hierarchy — rank co-resident surfaces (§5e, conditional)
 
-Only if `{analytics_dataset}` + `{analytics_question}` imply **more than one** distinct analytics surface (a dataset+question pair that earns its own shape): read `{design_handoff_step01}` **§5e** and rank them `hero | supporting | drill`. Store as `{surface_hierarchy}`. Otherwise set `{surface_hierarchy}` = `single`.
+Only if `{analytics_dataset}` + `{analytics_question}` imply **more than one** distinct analytics surface (a dataset+question pair that earns its own shape): read `{design_handoff_topology}` **§5e** and rank them `hero | supporting | drill`. Store as `{surface_hierarchy}`. Otherwise set `{surface_hierarchy}` = `single`.
 
 ### 4. Proceed to Shape
 
