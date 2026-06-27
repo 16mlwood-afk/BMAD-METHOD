@@ -34,6 +34,17 @@ enough — the repo's git must be told to run it. The fork owns BOTH halves:
 when a repo ships a `.githooks/` gate but isn't activated (or husky↔githooks conflict).
 Conservative: silent when wired, silent when no gate is present.
 
+## Bespoke-repo protection (the rail never clobbers a project's own gate)
+
+Many repos already own a bespoke `.githooks/` (tsc/build/lint/block-dirs), often **dormant**
+(`core.hooksPath` unset). The rail must never overwrite or silently switch those on. A repo
+whose `pre-push`/`pre-commit` lacks the fork marker (`STD-HOOKACTIVATE-001`) is treated as
+**bespoke**: the sync skips it wholesale (no delivery, no auto-activation) and the liveness
+probe surfaces it for a **deliberate per-repo decision** — turning on a dormant *blocking*
+gate is an owner choice, not a rollout side effect. The fork only manages truly gate-less
+repos (delivers the warn-only dispatcher + activates) and repos already carrying its own
+marked dispatcher (which it may update). gates.conf is create-only so a project can curate it.
+
 ## The honest enforcement ceiling
 
 - **Activation is DETERMINISTIC** (sync/onboard set it; the operator does not choose).
