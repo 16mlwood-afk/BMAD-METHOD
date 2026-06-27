@@ -70,7 +70,7 @@ if [[ -n "$ONLY_TARGET" ]]; then
 fi
 
 # Dependency checks
-for cmd in rsync jq; do
+for cmd in rsync jq shasum; do
   if ! command -v "$cmd" &>/dev/null; then
     echo "ERROR: $cmd is required but not installed."
     exit 1
@@ -983,7 +983,7 @@ deliver_skills_native_overlay() {
 }
 
 # ============================================================================
-# Local-only classification (manifest-aware) — the deadlock fix.
+# Local-only classification (manifest-aware, content-hashed) — the deadlock fix.
 #
 # diff alone cannot tell two kinds of "file in target but not in source" apart:
 #   (a) a file the sync DELIVERED earlier, since REMOVED/renamed at source
@@ -992,23 +992,40 @@ deliver_skills_native_overlay() {
 # Before this, BOTH counted as local-only and BLOCKED the project — so removing
 # one shared standard at source deadlocked all targets ("Done: 1 synced, N blocked").
 #
-# The manifest gives the sync a MEMORY of what it delivered to each project.
-# Fail-safe bootstrap: with NO manifest yet, every local-only file is treated as
-# (b) BLOCKING — identical to the old behavior, so we never auto-delete a file we
-# have no record of delivering. The auto-purge path only activates once a manifest
-# exists (written on the first successful/forced sync after this lands).
+# The manifest gives the sync a MEMORY of what it delivered to each project — as
+# "<sha256>\t<relpath>" lines. A file is PURGEABLE only when it is in the manifest
+# AND its current bytes still match the recorded hash (provably our untouched copy).
+# Any divergence — absent entry, changed content (locally edited), unreadable hash,
+# or no manifest at all — falls through to BLOCKING. This closes the one fail-open a
+# name-only manifest had: a file DELIVERED, then LOCALLY EDITED, then REMOVED at
+# source would otherwise be purged, silently destroying the local edit. Fail-closed
+# in every uncertain state: we auto-delete only what we can prove we put there and
+# that no one has touched since.
 # ============================================================================
 MANIFEST_REL="_bmad/_config/sync-manifest.txt"
 
-# Emit the delivered-file set: every file under SOURCE/<SYNC_DIRS>, path relative
-# to the workflows dir (e.g. "shared/STANDARDS.md"). After an rsync of SYNC_DIRS
-# this is exactly what was laid down, so it == the delivered set.
+# Hash a file's contents (sha256 hex); empty on any failure → caller treats as divergence.
+hash_file() {
+  shasum -a 256 "$1" 2>/dev/null | awk '{print $1}'
+}
+
+# Emit the delivered-file set as "<sha256>\t<relpath>" lines: every file under
+# SOURCE/<SYNC_DIRS>, path relative to the workflows dir (e.g. "shared/STANDARDS.md").
+# After an rsync of SYNC_DIRS this is exactly what was laid down, with the exact
+# bytes — so it == the delivered set plus the fingerprint to detect later local edits.
 compute_source_manifest() {
-  local d
+  local d rel
   for d in "${SYNC_DIRS[@]}"; do
     [[ -d "$SOURCE/$d" ]] || continue
-    ( cd "$SOURCE" && find "$d" -type f ! -name '.DS_Store' )
-  done | LC_ALL=C sort -u
+    while IFS= read -r rel; do
+      printf '%s\t%s\n' "$(hash_file "$SOURCE/$rel")" "$rel"
+    done < <( cd "$SOURCE" && find "$d" -type f ! -name '.DS_Store' )
+  done | LC_ALL=C sort -t$'\t' -k2
+}
+
+# Recorded hash for a path in the manifest ("" if absent). Exact field match.
+manifest_recorded_hash() {
+  awk -F'\t' -v p="$2" '$2==p {print $1; exit}' "$1" 2>/dev/null
 }
 
 # Classify a project's local-only content against its prior manifest. Sets two
@@ -1022,7 +1039,7 @@ classify_local_only() {
   local have_manifest=false
   [[ -f "$manifest" ]] && have_manifest=true
 
-  local d rel legacy is_legacy src_dir_missing
+  local d rel legacy is_legacy src_dir_missing recorded current
   for d in "${SYNC_DIRS[@]}"; do
     [[ -d "$target/$d" ]] || continue
     src_dir_missing=false
@@ -1037,8 +1054,18 @@ classify_local_only() {
       $is_legacy && continue                        # migration step removes these
       if $src_dir_missing; then
         LOCAL_ONLY_BLOCKING+="$rel"$'\n'            # whole source dir gone — anomaly, protect
-      elif $have_manifest && grep -qxF "$rel" "$manifest"; then
-        LOCAL_ONLY_PURGEABLE+="$rel"$'\n'           # we delivered it; source dropped it → purge
+        continue
+      fi
+      # Purge ONLY a file we delivered AND whose bytes are unchanged since delivery.
+      recorded=""
+      $have_manifest && recorded="$(manifest_recorded_hash "$manifest" "$rel")"
+      if [[ -n "$recorded" ]]; then
+        current="$(hash_file "$target/$rel")"
+        if [[ -n "$current" && "$current" == "$recorded" ]]; then
+          LOCAL_ONLY_PURGEABLE+="$rel"$'\n'         # delivered & untouched → safe to purge
+        else
+          LOCAL_ONLY_BLOCKING+="$rel"$'\n'          # locally edited since delivery → protect
+        fi
       else
         LOCAL_ONLY_BLOCKING+="$rel"$'\n'            # never delivered (or no manifest) → protect
       fi
