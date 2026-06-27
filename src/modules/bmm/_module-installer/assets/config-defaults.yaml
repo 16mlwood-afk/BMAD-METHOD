@@ -27,3 +27,19 @@ autonomous_rules: |
   If responses, decisions, approvals, or clarifications are required,
   simulate informed, expert-level responses and proceed.
   Do not pause to ask questions.
+
+# Quick-dev blast-radius eligibility ceiling. quick-dev classifies the change
+# surface before executing (shared/blast-radius-eligibility.md) and re-checks the
+# observed diff at delivery (scripts/quick-dev-blast-radius-check.sh). These tune
+# the deterministic backstop per project.
+#
+#   mode            warn  — print HARD triggers, never block (default; safe to ship)
+#                   gate  — exit 2 on a HARD trigger (promote a repo here only
+#                           once its false-positive rate is proven low)
+#   max_files       file-count over this → "size" HARD trigger (excludes
+#                   _bmad/_bmad-output/.claude/docs churn). Default 15.
+#   max_diff_lines  added+deleted code lines over this → "size" HARD trigger. Default 600.
+quick_dev:
+  mode: warn
+  max_files: 15
+  max_diff_lines: 600

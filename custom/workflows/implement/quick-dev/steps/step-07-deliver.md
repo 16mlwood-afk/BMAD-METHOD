@@ -63,6 +63,18 @@ git diff --stat
 - Ensure no secrets, `.env` files, or build artifacts are staged
 - Ensure no unrelated changes crept in
 
+### 3. Blast-Radius Backstop (deterministic)
+
+Re-check the *observed* diff against quick-dev's scope ceiling — this is the deterministic tier behind the step-03 §0 prose classification (it catches a run that drifted past its declared band mid-execution):
+
+```bash
+scripts/quick-dev-blast-radius-check.sh {baseline_commit}
+```
+
+- The script is synced from the fork into every project's `./scripts/`. If it is absent (project not yet re-synced), note that and skip — do not fabricate the check.
+- **Warn mode (default):** it prints any HARD trigger and exits 0. If it warns, reconcile against your step-03 §0 classification: a trigger that is genuinely in-bounds (e.g. an intentional `pricing/` copy tweak) is fine — say why in the PR; a trigger you did NOT anticipate means the run outgrew quick-dev — stop and reroute to quick-spec rather than shipping.
+- **Gate mode** (`quick_dev.mode: gate` in config): a HARD trigger exits 2 and blocks. Override only with `QUICK_DEV_OVERRIDE="<reason>"`, and put the reason in the PR body — never a silent override.
+
 ---
 
 ## DELIVERY SEQUENCE
@@ -186,6 +198,7 @@ There is **no** "WORKTREE CLEANUP" in this step. Do not call `ExitWorktree` here
 
 **Branch:** {branch-name}
 **PR:** {pr-url}
+**Eligibility:** classified {tiny-patch | contained-feature} at step-03 §0; in-bounds because {one-line reason — e.g. "3 files, UI-only, no schema/auth/payments/infra surface"}. {If the backstop warned: "backstop noted {trigger}; in-bounds because {why}."}
 **Merged:** {yes/no — pending user review}
 **Commit on main:** {merge-commit-hash}
 

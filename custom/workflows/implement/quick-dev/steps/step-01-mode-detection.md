@@ -131,6 +131,8 @@ This halt fires regardless of `autonomous_mode`. The mode grants execution latit
 
 ## ESCALATION THRESHOLD (Mode B only, after GROUNDING GATE passes)
 
+> **This is the cheap, early, linguistic pre-filter** — it scores the prompt wording before loading files, to reroute obviously-too-big work fast. It is NOT the authoritative scope ceiling. The authoritative, surface-based **blast-radius eligibility** check (covering BOTH modes, on the actual intended change surface) runs at **step-03 §0** via `shared/blast-radius-eligibility.md`, backed by a deterministic diff check at step-07. Keep this filter coarse; let step-03 §0 make the real call.
+
 Evaluate user input with minimal token usage (no file loading):
 
 **Triggers escalation (if 2+ signals present):**

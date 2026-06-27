@@ -29,6 +29,16 @@ From context:
 
 ---
 
+## §0. BLAST-RADIUS ELIGIBILITY — classify BEFORE any edit (both modes)
+
+**This is the one funnel both modes pass through** (Mode A: step-01→03; Mode B: step-01→02→03), so the scope ceiling lives here — it covers the tech-spec path that previously skipped step-01's Mode-B-only escalation check entirely.
+
+Read fully and follow `{project-root}/_bmad/bmm/workflows/shared/blast-radius-eligibility.md`. Classify the intended change surface into `tiny-patch` / `contained-feature` / `not-quick-dev`. On `not-quick-dev` (any HARD trigger — schema/migration, auth, payments, shared-infra, or over the project's file/diff threshold), **halt and reroute regardless of `autonomous_mode`** (mirrors the grounding gate), then **EXIT quick-dev**. Otherwise record the band + one-line reason — step-07 echoes it as the eligibility line, and step-07's deterministic `quick-dev-blast-radius-check` re-checks the *observed* diff as the backstop.
+
+Do this **before** opening a worktree — no point isolating work you're about to reroute.
+
+---
+
 ## OPEN: ENTER A WORKTREE BEFORE EDITING `src/`
 
 **Before writing or editing any file under `src/` (or any tracked, non-`_bmad-output` path), enter an isolated git worktree** — do NOT edit `src/` on the main checkout. Follow `shared/parallel-sessions.md` §A1:

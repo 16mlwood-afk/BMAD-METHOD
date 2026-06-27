@@ -32,14 +32,25 @@ Verify all tasks are marked complete:
 - [ ] No tasks skipped without documented reason
 - [ ] Any blocked tasks have clear explanation
 
-### 2. Tests Passing
+### 2. MUST-PASS — automated gates (a red here blocks delivery)
 
-Verify test status:
+These are binary and machine-checked. Any failure stops the workflow until fixed:
 
-- [ ] All existing tests still pass
-- [ ] New tests written for new functionality
+- [ ] All existing tests still pass; new tests written for new functionality
 - [ ] No test warnings or skipped tests without reason
+- [ ] Type-check / lint / build clean where the project configures them (the pre-push hook enforces these — don't discover a red at push time)
 - [ ] **Diagnostics gate — prove, don't assert** (`{project-root}/_bmad/bmm/workflows/shared/diagnostics-gate.md`). If ANY new diagnostic surfaced (type error, "cannot find module", lint/compile failure) — including after a merge or worktree teardown — re-run the relevant check IN THE CURRENT CHECKOUT and confirm zero errors. Quote the result. Do NOT reason a diagnostic away as "stale" — a true-stale diagnostic disappears on re-run, and that disappearance is the proof; the explanation is not.
+
+### 2b. MUST-OBSERVE — surfaces a green test suite does NOT cover
+
+Brownfield regressions usually escape through surfaces no unit test exercises. For each that your change touched, state explicitly what you checked (or "n/a — not touched"). Silence here is the failure mode, not a pass:
+
+- [ ] **Migrations / schema** — does a column/table change need a migration? Is it backward-compatible with rows already in production, and with the currently-running server until deploy? (If schema changed, you likely tripped the step-03 §0 ceiling — confirm this still belongs in quick-dev.)
+- [ ] **Background jobs / queues** — did a job payload, enqueue call, or worker registration change? A worker runs out-of-band; a stale or mis-shaped payload fails silently with no request to trace. (Cross-boundary payloads: validate via the schema registry per the project's MCP rule.)
+- [ ] **Auth / permission scope** — did the change alter who can see or do something — a route guard, role check, ownership filter, or API-key path? Under-restriction is a security bug a test rarely catches.
+- [ ] **Config / env / feature flags** — does this need a new env var, secret, or flag set in production? Code that works locally and 500s on deploy because an env var is unset is the classic miss.
+
+If any box surfaces a gap, resolve it here (or in step-03) — do not defer a must-observe gap to "follow-up."
 
 ### 3. Acceptance Criteria Satisfied
 
