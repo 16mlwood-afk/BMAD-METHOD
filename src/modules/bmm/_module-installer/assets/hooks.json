@@ -112,6 +112,18 @@
         ]
       },
       {
+        "matcher": "Bash",
+        "name": "bmad-fork-commit-atomicity",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "_in=$(cat 2>/dev/null); CMD=$(printf '%s' \"$_in\" | jq -r '.tool_input.command // empty' 2>/dev/null); [ -z \"$CMD\" ] && CMD=\"${CLAUDE_TOOL_INPUT_COMMAND:-}\"; cmd=\"$CMD\"; [ -z \"$cmd\" ] && exit 0; echo \"$cmd\" | grep -qE \"(^|[[:space:];&|])git[[:space:]]+commit([[:space:]]|$)\" || exit 0; echo \"$cmd\" | grep -qE \"[[:space:]]-o([[:space:]]|$)|--only([[:space:]]|=)\" && exit 0; FORK=\"/Users/masonwood/bmad-method-v6\"; tf=false; case \"$PWD\" in \"$FORK\"|\"$FORK\"/*) tf=true;; esac; case \"$cmd\" in *bmad-method-v6*) tf=true;; esac; $tf || exit 0; count=$(ps -eo command 2>/dev/null | grep -c \"^claude\"); [ \"$count\" -gt 1 ] || exit 0; printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"FORK COMMIT WITHOUT -o while %s parallel claude sessions are active: ~/bmad-method-v6 has ONE shared git index, so a plain git commit captures whatever ANY session has staged (the commingling hazard, parallel-sessions.md D3 — wrong provenance / latent lost work). Re-run scoped to your files only: git commit -o <your paths> -m ... . Proceed unscoped ONLY if you are certain no other session has staged fork work.\"}}\\n' \"$count\"",
+            "timeout": 5,
+            "statusMessage": "Fork-commit atomicity guard..."
+          }
+        ]
+      },
+      {
         "matcher": "Edit|Write",
         "name": "bmad-workflow-guard",
         "hooks": [
