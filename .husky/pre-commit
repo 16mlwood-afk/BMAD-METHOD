@@ -3,8 +3,20 @@
 # Auto-fix changed files and stage them
 npx --no-install lint-staged
 
-# Validate everything
-npm test
+# Validate.
+# Fast path for fork-tooling-only commits (custom/, docs/, *.md, *.sh, the onboarding/global-asset
+# tooling): run the fork-relevant validators (refs + lint + budget) and SKIP the upstream product
+# suites (test:install / test:urls / test:channels) that such a diff can't affect. Any change that
+# touches an upstream/product path falls back to the full suite. See fork-gaps "Full upstream test
+# suite on every fork push".
+changed="$(git diff --cached --name-only)"
+non_fork="$(printf '%s\n' "$changed" | grep -cvE '^(custom/|docs/|\.husky/|STATUS\.md$|STATUS-archive\.md$|onboarding-playbook\.version$|install-global-assets\.sh$|onboard-project\.sh$|check-[a-z-]*\.sh$|standards-drift-report\.sh$|.*\.md$)')"
+if [ -z "$changed" ] || [ "$non_fork" -gt 0 ]; then
+  npm test
+else
+  echo "pre-commit: fork-tooling-only diff → fast validators (skipping upstream install/urls/channels suites)"
+  npm run test:refs && npm run lint && npm run lint:md && npm run format:check && npm run validate:budget
+fi
 
 # Validate hooks actually function (exit 0 + correct stdin contract) so a broken
 # hook can't ship silently — see docs/hooks-registry.md + fork-gaps "Hooks ship unvalidated".
