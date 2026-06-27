@@ -36,6 +36,18 @@
             "statusMessage": "Checking for undeployed merges..."
           }
         ]
+      },
+      {
+        "matcher": "",
+        "name": "bmad-design-handoff-router",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "_in=$(cat 2>/dev/null); printf '%s' \"$_in\" | grep -qiE 'claude\\.ai/design/p/|api\\.anthropic\\.com/v1/design/' || exit 0; printf '%s' \"$_in\" | grep -qiE 'Implement:|claude_design' || exit 0; printf '{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"CLAUDE DESIGN HANDOFF DETECTED: route this through the design-implement workflow. Do NOT call the claude_design MCP and implement directly (that bypasses the fork safety layer: regression-surface preflight, bundle->brief conformance gate, supersede awareness, exhaustive grid, apply ledger). Invoke /bmad:bmm:workflows:design-implement with the embedded claude.ai/design/p/<uuid> share-link; it resolves the Implement: / ?file= target and runs every gate. For a large multi-frame design, run /bmad:bmm:workflows:design-ingest first.\"}}\\n'",
+            "timeout": 5,
+            "statusMessage": "Checking for Claude Design handoff..."
+          }
+        ]
       }
     ],
     "PreToolUse": [
