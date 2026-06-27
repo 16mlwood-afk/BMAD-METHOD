@@ -59,21 +59,29 @@ fi
 # Register hook entries in ~/.claude/settings.json (idempotent; prod-readiness gate ships in DRY-RUN).
 SETTINGS="$HOME/.claude/settings.json"
 if [[ -f "$SETTINGS" ]] && command -v python3 &>/dev/null; then
-  python3 - "$SETTINGS" "$DST_HOOKS" <<'PY' || echo "  ! settings.json hook registration skipped (merge error)"
+  python3 - "$SETTINGS" "$DST_HOOKS" "$SCRIPT_DIR" <<'PY' || echo "  ! settings.json hook registration skipped (merge error)"
 import json, sys
-p, hooks = sys.argv[1], sys.argv[2]
+p, hooks, forkdir = sys.argv[1], sys.argv[2], sys.argv[3]
 d = json.load(open(p)); H = d.setdefault('hooks', {})
-def ensure(event, matcher, script):
+def ensure_cmd(event, matcher, command, needle, timeout=5):
     arr = H.setdefault(event, [])
     for e in arr:
         for h in e.get('hooks', []):
-            if h.get('command','').endswith(script): return 0
-    entry = {"hooks":[{"type":"command","command":f"{hooks}/{script}","timeout":5}]}
+            if needle in h.get('command',''): return 0
+    entry = {"hooks":[{"type":"command","command":command,"timeout":timeout}]}
     if matcher: entry["matcher"] = matcher
     arr.append(entry); return 1
+def ensure(event, matcher, script):
+    return ensure_cmd(event, matcher, f"{hooks}/{script}", script)
 ch = (ensure('SessionStart', None, 'prod-readiness-probe.sh')
       + ensure('PreToolUse', 'Bash', 'prod-readiness-deploy-gate.sh')
-      + ensure('PreToolUse', 'Edit|Write', 'enforcement-expert-nudge.sh'))
+      + ensure('PreToolUse', 'Edit|Write', 'enforcement-expert-nudge.sh')
+      # fork-of-upstream destructive-op guard (self-gates on the onboarding topology stamp)
+      + ensure('PreToolUse', 'Bash', 'bmad-upstream-guard.sh')
+      # onboarding-playbook drift detector — fork-root sibling of check-*-drift.sh, silent unless stale
+      + ensure_cmd('SessionStart', None,
+                   f'bash "{forkdir}/check-onboarding-version.sh" 2>/dev/null || true',
+                   'check-onboarding-version.sh', 10))
 if ch: json.dump(d, open(p,'w'), indent=4); print(f"  ✓ registered {ch} hook(s) in settings.json")
 else: print("  • hooks already registered in settings.json")
 PY

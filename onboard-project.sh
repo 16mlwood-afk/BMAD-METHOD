@@ -14,14 +14,29 @@
 #   4. Create CLAUDE.md from the fork template (so the sync can manage its sections)
 #   5. Register the project in ~/.bmad-targets
 #   6. Run sync-bmad-workflows.sh → custom workflows, skills, hooks, commands, CLAUDE.md sections
+#   7. Detect/record TOPOLOGY (standalone | fork-of-upstream) — for a personal fork of an
+#      external upstream, record the upstream remote + add a CLAUDE.md sync-safety section
+#      (the upstream destructive-op guard is a global hook that self-gates on this stamp)
+#   8. Write the COMPLETION MARKER: an `onboarding:` stamp block in _bmad/bmm/config.yaml
+#      (machine-checkable: playbook_version/onboarded_at/topology/guarantees), a human-facing
+#      ONBOARDING.md, and a `project-onboarding-done` project memory
 #
 # Usage:
-#   onboard-project.sh [<project-dir>] [--name <name>] [--phase greenfield|brownfield|mixed] [--force]
+#   onboard-project.sh [<project-dir>] [--name <name>] [--phase greenfield|brownfield|mixed]
+#                      [--topology standalone|fork-of-upstream] [--upstream <url>] [--force]
+#   onboard-project.sh --restamp [<project-dir>]   # rewrite the marker ONLY (no re-clone/sync) —
+#                                                   # for a repo onboarded before the marker existed,
+#                                                   # or after the fork bumps the playbook version
 #
 #   <project-dir>   defaults to the current directory
 #   --name          defaults to the directory basename
 #   --phase         defaults to greenfield (new build)
+#   --topology      standalone (default) or fork-of-upstream; auto-detected as fork-of-upstream
+#                   when an `upstream` git remote exists or --upstream is given
+#   --upstream      URL of the external upstream this repo forks; implies --topology fork-of-upstream
+#                   and adds an `upstream` remote if absent
 #   --force         re-seed even if _bmad already exists (DESTRUCTIVE to _bmad)
+#   --restamp       rewrite the completion marker only; requires _bmad to already exist
 
 set -euo pipefail
 
@@ -34,14 +49,24 @@ TARGETS_FILE="$HOME/.bmad-targets"
 PROJECT_DIR=""
 PROJECT_NAME=""
 PROJECT_PHASE="greenfield"
+TOPOLOGY=""
+UPSTREAM_URL=""
 FORCE=false
+RESTAMP=false
+
+VERSION_FILE="$SCRIPT_DIR/onboarding-playbook.version"
+PLAYBOOK_VERSION="$( [[ -f "$VERSION_FILE" ]] && grep -oE '[0-9]+' "$VERSION_FILE" | head -1 || echo 1 )"
+PLAYBOOK_VERSION="${PLAYBOOK_VERSION:-1}"
 
 # --- Parse args ---
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --name)  PROJECT_NAME="$2"; shift 2 ;;
-    --phase) PROJECT_PHASE="$2"; shift 2 ;;
-    --force) FORCE=true; shift ;;
+    --name)     PROJECT_NAME="$2"; shift 2 ;;
+    --phase)    PROJECT_PHASE="$2"; shift 2 ;;
+    --topology) TOPOLOGY="$2"; shift 2 ;;
+    --upstream) UPSTREAM_URL="$2"; shift 2 ;;
+    --force)    FORCE=true; shift ;;
+    --restamp)  RESTAMP=true; shift ;;
     -h|--help) grep '^#' "$0" | sed 's/^# \?//'; exit 0 ;;
     -*) echo "Unknown option: $1" >&2; exit 1 ;;
     *)  PROJECT_DIR="$1"; shift ;;
@@ -58,6 +83,157 @@ case "$PROJECT_PHASE" in
   greenfield|brownfield|mixed) ;;
   *) echo "ERROR: --phase must be greenfield|brownfield|mixed (got: $PROJECT_PHASE)" >&2; exit 1 ;;
 esac
+
+# ── Topology + completion-marker helpers (used by both normal flow and --restamp) ──
+
+# Resolve TOPOLOGY (standalone | fork-of-upstream). Must run AFTER git exists (init or restamp):
+# an `upstream` remote, an explicit --upstream URL, or --topology fork-of-upstream all imply a fork.
+resolve_topology() {
+  local existing=""
+  if [[ -d "$PROJECT_DIR/.git" ]]; then
+    existing="$(git -C "$PROJECT_DIR" remote get-url upstream 2>/dev/null || true)"
+  fi
+  if [[ -n "$UPSTREAM_URL" ]]; then
+    TOPOLOGY="fork-of-upstream"
+  elif [[ -z "$TOPOLOGY" && -n "$existing" ]]; then
+    TOPOLOGY="fork-of-upstream"; UPSTREAM_URL="$existing"
+  fi
+  TOPOLOGY="${TOPOLOGY:-standalone}"
+  case "$TOPOLOGY" in
+    standalone|fork-of-upstream) ;;
+    *) echo "ERROR: --topology must be standalone|fork-of-upstream (got: $TOPOLOGY)" >&2; exit 1 ;;
+  esac
+  if [[ "$TOPOLOGY" == "fork-of-upstream" && -n "$UPSTREAM_URL" && -z "$existing" && -d "$PROJECT_DIR/.git" ]]; then
+    git -C "$PROJECT_DIR" remote add upstream "$UPSTREAM_URL" 2>/dev/null \
+      && echo "  ✓ added 'upstream' remote → $UPSTREAM_URL" || true
+  fi
+  if [[ -z "$UPSTREAM_URL" && -n "$existing" ]]; then UPSTREAM_URL="$existing"; fi
+  return 0
+}
+
+write_onboarding_md() {
+  local today="$1" up_display="—"
+  if [[ -n "$UPSTREAM_URL" ]]; then up_display="$UPSTREAM_URL"; fi
+  cat > "$PROJECT_DIR/ONBOARDING.md" <<EOF
+# Onboarding
+
+This repository was onboarded to the **Mason-BMAD fork** by \`onboard-project.sh\`.
+_Generated file — do not hand-edit; re-run \`onboard-project.sh --restamp\` to regenerate._
+
+| Field | Value |
+|---|---|
+| Onboarding playbook version | $PLAYBOOK_VERSION |
+| Onboarded at | $today |
+| Topology | $TOPOLOGY |
+| Upstream remote | $up_display |
+| Project | $PROJECT_NAME |
+
+## What this guarantees
+- Fork-synced custom workflows, skills, hooks, and slash commands (\`sync-bmad-workflows.sh\`).
+- A thin, pointer-based \`CLAUDE.md\` (STD-CLAUDE-001).
+- Worktree + enforcement PreToolUse hooks installed.
+- Global memory doctrine (the \`~/.claude\` memory library).
+
+## Machine-checkable marker
+The canonical stamp lives in \`_bmad/bmm/config.yaml\` under the \`onboarding:\` key. A SessionStart
+hook (\`check-onboarding-version.sh\`) reads it and warns when this repo was onboarded under an older
+playbook than the fork currently ships. Re-stamp after a bump:
+
+    ~/bmad-method-v6/onboard-project.sh --restamp
+EOF
+  echo "  ✓ wrote ONBOARDING.md"
+}
+
+write_upstream_claude_section() {
+  local claude="$PROJECT_DIR/CLAUDE.md"
+  [[ -f "$claude" ]] || return 0
+  if grep -qE '^## Upstream fork' "$claude"; then return 0; fi
+  local up_display="the external upstream"
+  if [[ -n "$UPSTREAM_URL" ]]; then up_display="\`$UPSTREAM_URL\`"; fi
+  cat >> "$claude" <<EOF
+
+## Upstream fork — sync safety
+This repo is a personal fork of $up_display (git remote \`upstream\`).
+- **Pull updates:** \`git fetch upstream && git rebase upstream/<branch>\`.
+- **Never** \`git push upstream\`, force-push to upstream, or \`git reset --hard upstream/*\` — a
+  PreToolUse guard (\`bmad-upstream-guard.sh\`) blocks these. Override only when you truly mean it:
+  prefix the command with \`BMAD_ALLOW_UPSTREAM_PUSH=1\`.
+- **Deliver your work to your own \`origin\`** via PRs — never to upstream.
+EOF
+  echo "  ✓ added 'Upstream fork — sync safety' section to CLAUDE.md"
+}
+
+write_onboarding_memory() {
+  local today="$1"
+  local slug; slug="$(printf '%s' "$PROJECT_DIR" | sed 's#/#-#g')"
+  local memdir="$HOME/.claude/projects/$slug/memory"
+  mkdir -p "$memdir"
+  local up_note=""
+  if [[ "$TOPOLOGY" == "fork-of-upstream" ]]; then up_note=" Upstream: ${UPSTREAM_URL:-(recorded)}."; fi
+  cat > "$memdir/project-onboarding-done.md" <<EOF
+---
+name: project-onboarding-done
+description: This repo was onboarded to the Mason-BMAD fork under onboarding playbook v$PLAYBOOK_VERSION on $today (topology: $TOPOLOGY).
+metadata:
+  type: project
+---
+
+Onboarded to the Mason-BMAD fork via \`onboard-project.sh\` under **playbook v$PLAYBOOK_VERSION** on $today.
+
+- **Topology:** $TOPOLOGY.$up_note
+- **Guarantees:** fork-synced workflows/skills/hooks/commands; thin pointer CLAUDE.md (STD-CLAUDE-001); worktree + enforcement hooks; global memory doctrine.
+- **Canonical stamp:** \`_bmad/bmm/config.yaml\` → \`onboarding:\` block (machine-checkable; the SessionStart \`check-onboarding-version.sh\` hook reads it).
+
+**Why:** lets a cold session tell a fully-onboarded repo from a pre-playbook one, and detect when the fork's onboarding playbook has advanced past this repo's stamp.
+**How to apply:** trust the stamp as source of truth. If the SessionStart detector reports playbook drift, re-stamp via \`onboard-project.sh --restamp\` — don't hand-edit the marker.
+EOF
+  local memidx="$memdir/MEMORY.md"
+  [[ -f "$memidx" ]] || printf '# Memory Index\n\n## Project\n' > "$memidx"
+  if ! grep -q 'project-onboarding-done' "$memidx"; then
+    grep -qE '^## Project' "$memidx" || printf '\n## Project\n' >> "$memidx"
+    printf -- '- [project-onboarding-done](project-onboarding-done.md) — onboarded under the fork playbook; stamp in config.yaml, SessionStart detector reads it\n' >> "$memidx"
+  fi
+  echo "  ✓ wrote project-onboarding-done memory ($memdir)"
+}
+
+# Write the completion marker: stamp config.yaml + ONBOARDING.md + (fork) CLAUDE.md section + memory.
+# Idempotent — the onboarding block is always appended last, so a re-stamp strips it to EOF first.
+write_marker() {
+  local config="$PROJECT_DIR/_bmad/bmm/config.yaml" today
+  today="$(date +%F)"
+  [[ -f "$config" ]] || { echo "ERROR: no $config to stamp." >&2; return 1; }
+  if grep -qE '^onboarding:' "$config"; then
+    sed -i.bak '/^onboarding:/,$d' "$config" && rm -f "$config.bak"
+  fi
+  printf '\n' >> "$config"
+  cat >> "$config" <<EOF
+onboarding:
+  playbook_version: $PLAYBOOK_VERSION
+  onboarded_at: $today
+  topology: $TOPOLOGY
+  upstream_remote: "${UPSTREAM_URL}"
+  guarantees:
+    - fork-synced            # custom workflows/skills/hooks/commands via sync-bmad-workflows.sh
+    - claude-md-std-001      # thin, pointer-based CLAUDE.md
+    - hooks-installed        # worktree + enforcement PreToolUse hooks
+    - memory-doctrine        # global ~/.claude memory library
+EOF
+  echo "  ✓ stamped onboarding marker in config.yaml (playbook v$PLAYBOOK_VERSION, topology=$TOPOLOGY)"
+  write_onboarding_md "$today"
+  if [[ "$TOPOLOGY" == "fork-of-upstream" ]]; then write_upstream_claude_section; fi
+  write_onboarding_memory "$today"
+  return 0
+}
+
+# ── --restamp: rewrite the marker ONLY (no clone/sync) ──
+if $RESTAMP; then
+  [[ -d "$PROJECT_DIR/_bmad" ]] || { echo "ERROR: --restamp needs an already-onboarded repo (no $PROJECT_DIR/_bmad)." >&2; exit 1; }
+  echo "▶ Re-stamping onboarding marker for '$PROJECT_NAME' at $PROJECT_DIR"
+  resolve_topology
+  write_marker
+  echo "✅ marker refreshed (playbook v$PLAYBOOK_VERSION, topology=$TOPOLOGY)."
+  exit 0
+fi
 
 echo "▶ Onboarding '$PROJECT_NAME' at $PROJECT_DIR (phase: $PROJECT_PHASE)"
 
@@ -109,6 +285,10 @@ if [[ ! -d "$PROJECT_DIR/.git" ]]; then
 else
   echo "  • git repo already present"
 fi
+
+# --- 1b. Resolve topology now that a git repo exists ---
+resolve_topology
+echo "  • topology: $TOPOLOGY${UPSTREAM_URL:+ (upstream: $UPSTREAM_URL)}"
 
 # --- 2. Clone reference _bmad base ---
 rm -rf "$PROJECT_DIR/_bmad"
@@ -178,8 +358,13 @@ echo "  → running sync-bmad-workflows.sh --only $PROJECT_DIR ..."
 "$SYNC_SCRIPT" --only "$PROJECT_DIR" >/tmp/onboard-sync.log 2>&1 || { echo "ERROR: sync failed. See /tmp/onboard-sync.log" >&2; exit 1; }
 grep -A14 "$(basename "$PROJECT_DIR")\b" /tmp/onboard-sync.log | head -16 || true
 
+# --- 7. Completion marker (stamp + ONBOARDING.md + memory + fork CLAUDE.md section) ---
+write_marker
+
 echo
-echo "✅ '$PROJECT_NAME' onboarded. Custom workflows, skills, hooks, and commands are wired."
+echo "✅ '$PROJECT_NAME' onboarded (playbook v$PLAYBOOK_VERSION, topology=$TOPOLOGY)."
+echo "   Custom workflows, skills, hooks, and commands are wired; completion marker stamped."
 echo "   Next: fill in CLAUDE.md's stack/structure TODOs and scaffold your app."
-echo "   Memory: already under the global doctrine (~/.claude, see CLAUDE.md's Memory section)."
-echo "           Create MEMORY.md + memory/<slug>.md when you have your first durable project fact."
+echo "   Then run the 'bmad-onboard-tutorial' skill to walk the gates once by doing:"
+echo "         a safe sync dry-run, and a first feature branch + tests + commit."
+echo "   Memory: under the global doctrine (~/.claude); the project-onboarding-done fact is recorded."
