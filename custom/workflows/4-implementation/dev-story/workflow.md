@@ -494,8 +494,9 @@ Activation is complete. If `activation_steps_prepend` or `activation_steps_appen
     <action>Execute the enhanced definition-of-done checklist using the validation framework</action>
     <action>Prepare a concise summary in Dev Agent Record → Completion Notes</action>
 
+    <action>Emit the completion communication per `shared/close-out-contract.md` (STD-CLOSEOUT-001): audience-first for the reviewer/next actor — NOT a process recap of how you implemented it. Process narration ("I did X then Y", step replay) is forbidden by default; explanations are on request only (the support step below). If the user later critiques the SHAPE of this close-out, that is a workflow-PATCH request — patch this step in the fork, do not just rewrite the message or write a memory (contract §4).</action>
     <action>Communicate to {user_name} that story implementation is complete and ready for review</action>
-    <action>Summarize key accomplishments: story ID, story key, title, key changes made, tests added, files modified</action>
+    <action>State the outcome, not the steps: story ID/key/title, current status (now "review"), the material change, and what the reviewer should verify (tests added, files touched as evidence — not a narrated build log)</action>
     <action>Provide the story file path and current status (now "review")</action>
 
     <action>Based on {user_skill_level}, ask if user needs any explanations about:

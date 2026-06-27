@@ -108,6 +108,8 @@ Only when items 1–4 all pass may you proceed to Finalize and commit.
 
 ## Finalize
 
+The `Auto Run Result` is this pass's close-out — emit it per `shared/close-out-contract.md` (STD-CLOSEOUT-001): audience-first for its consumer (the auto-loop driver / the operator reviewing the run) — outcome, status, what changed, residual risk — not a narrated replay of the pass. The structured fields below satisfy that shape; keep them, and do NOT prepend a prose process recap. (Softer case than a human-facing close: the consumer is the loop, the fields are its contract — so this is a guard on framing, not a reshape.)
+
 Prepare `Auto Run Result` details:
 - Summary of implemented change
 - Files changed with one-line descriptions

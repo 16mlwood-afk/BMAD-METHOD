@@ -155,7 +155,7 @@ type: handoff
 
 ## PRESENT TO USER
 
-After writing the handoff file, present a brief summary to the user:
+After writing the handoff file, present a brief summary to the user. Emit it per `shared/close-out-contract.md` (STD-CLOSEOUT-001): audience-first for the next developer — what's filed and what they act on next, NOT a process recap of how you built it (process narration is forbidden by default; trace on request). If the user critiques the SHAPE of this summary, patch this step in the fork (contract §4), don't just rewrite the message or write a memory.
 
 ```
 **Handoff filed:** {file_path}

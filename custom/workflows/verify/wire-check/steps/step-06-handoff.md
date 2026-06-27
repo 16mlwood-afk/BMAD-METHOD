@@ -100,7 +100,7 @@ type: handoff
 
 ## PRESENT TO USER
 
-After writing the handoff file:
+After writing the handoff file. Emit this per `shared/close-out-contract.md` (STD-CLOSEOUT-001): audience-first — what was checked/fixed and what the next developer acts on, NOT a process recap of how you traced it (process narration forbidden by default; trace on request). If the user critiques the SHAPE of this summary, patch this step in the fork (contract §4), not a one-off rewrite or a memory.
 
 ```
 **Wire check + fix complete:** {report_file_path}
