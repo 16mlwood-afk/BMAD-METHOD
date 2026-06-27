@@ -24,7 +24,7 @@ Classify the task into exactly one band, and **state the band + the one-line rea
 
 The change is intended to touch:
 
-1. **Database schema or a migration** — new/renamed/dropped columns or tables, a migration file, a Drizzle/Prisma/SQL DDL change.
+1. **Database schema or a migration** — new/renamed/dropped columns or tables, a migration file, a Drizzle/Prisma/SQL DDL change. *(One recognized exception: the Mode-A gated-migration carve-out below. It does NOT loosen triggers 2–5.)*
 2. **Auth / permissions / access control** — login, session, role/scope checks, middleware that gates access, API-key handling.
 3. **Payments / billing / money** — charge, invoice-total, ledger-writing, or pricing logic.
 4. **Shared infrastructure / platform boot** — worker/queue registration, instrumentation/bootstrap, env/secret wiring, deploy config, anything in the cross-boundary schema registry.
@@ -47,6 +47,23 @@ Multiple subsystems at once (UI + API + data); "how should I" / "best way to" fr
 3. **Do NOT proceed to the execution loop.** **EXIT quick-dev.**
 
 **Override-with-logging.** If the user explicitly says proceed anyway, continue — but log the override (which trigger, the user's confirmation) into your summary so it lands in the PR. Never silently override.
+
+---
+
+## Mode-A gated-migration carve-out — the one recognized exception to HARD trigger 1
+
+A Mode-A run is handed a complete tech-spec. When that spec **already contains the migration plan** the reroute would force you to go produce, HARD trigger 1 firing `not-quick-dev` sends you to `quick-spec` to generate a plan you are already holding — a deterministic mis-fire on a legitimately quick-dev-shaped input. This carve-out names that exact shape so it doesn't require an ad-hoc override every run.
+
+**Reclassify as `contained-feature` (NOT `not-quick-dev`) only when ALL of these hold:**
+
+1. The run is **Mode A** (a tech-spec drove it — never a Mode B free-text prompt; a free-text "add a column" has no plan and stays `not-quick-dev`).
+2. **Schema/migration (trigger 1) is the ONLY HARD trigger that fired.** If auth, payments, shared-infra, or the file/diff threshold *also* fire, the carve-out does NOT apply — reroute.
+3. The spec specifies the migration as **gated: generate-not-apply** — this run writes the migration file but applies **no** DDL to any database; the apply is an explicit, separate, later, gated step — **and sequenced, and carrying a rollback.** If the run would *apply* schema in-band, the carve-out does NOT apply — an applied/unplanned migration is the real hazard trigger 1 exists for, and it stays fenced.
+4. The change otherwise fits `contained-feature` (cohesive, one area, within the file/diff thresholds).
+
+**This is the edge band, not a free pass:** the step-04 §6 regression-surface check is non-negotiable, and **you MUST still satisfy the deterministic backstop honestly.** The step-07 `quick-dev-blast-radius-check` script sees the migration file in the diff and will fire trigger 1 against truth regardless of this prose. Do not silently bypass it — proceed under its existing override path by setting `QUICK_DEV_OVERRIDE` to the carve-out reason, e.g. `QUICK_DEV_OVERRIDE="Mode-A gated-migration carve-out: spec §<n> pre-plans generate-not-apply + sequenced + rollback; no DDL applied this run"`. The gate then still fires-and-records (the reason lands in the run record), rather than being defeated. The carve-out makes this override the **documented default for this shape**, not a thing the agent must remember to reach for — but it never removes the deterministic check or its logging.
+
+State it explicitly, same as any band: *"`contained-feature` via the Mode-A gated-migration carve-out — spec §<n> pre-plans the migration generate-not-apply, sequenced, rollback present; trigger 1 only; backstop override reason recorded."*
 
 ---
 
