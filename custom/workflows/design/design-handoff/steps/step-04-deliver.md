@@ -208,23 +208,44 @@ git pull --ff-only origin main
 
 If `git pull` blocks on untracked files in `_bmad-output/` matching the brief's path, follow the project `CLAUDE.md` recipe — move blocking files to `.claude/orphaned-main-commits/<stamp>/`, then re-pull.
 
-### 10. Surface Delivery Result to User
+### 10. Surface Delivery Result to User — consumer-facing close-out
 
-Emit the final hand-off block:
+**The closing message is itself a handoff.** Write it for the NEXT consumer (`{consumer}` — Claude Design / `design-synthesize`), not as an account of the workflow you just ran. Do NOT narrate workflow history, provenance bookkeeping, or step mechanics — the consumer needs four things: which brief is active, what changed materially, what constraints matter, and what to do next. Lead with the active artifact and the delta; keep it short; ALWAYS append the tight "For {consumer}" block.
+
+Emit this close-out (fill from recorded state — omit a line when its source is empty; never pad):
 
 ```
-✓ Brief delivered to main.
+Done. The {feature_name} brief is delivered and is the active brief on `origin/main`.
 
-  PR:           {pr_number} ({pr_url}) — MERGED
-  Brief on main: {github_repo_url}/blob/main/{output_path_relative_to_repo_root}
-  {If {has_analytics_band} is true, add:}
-  Rationale:    {github_repo_url}/blob/main/{rationale_path_relative_to_repo_root}
-                (why the analytics presentation was chosen — read this, don't hand it to Claude Design)
+Active artifact
+- {output_path_filename}
+{If {change_class} is `material_revision`:}
+- Predecessor ({supersedes}) marked `superseded` with `superseded_by` set — one active brief for `{target_slug}`.
 
-To hand off to {consumer}:
-  "Connect to {github_repo_url} and read {output_path_relative_to_repo_root}
-   on main. [consumer-specific instructions from step-03 §5...]"
+What changed
+{If {change_class} is `material_revision`: one or two plain-language lines on the MATERIAL DELTA from step-03 — what this revision changes vs the predecessor (not the provenance mechanics).}
+{If `original`: one line — new brief for `{route}`.}
+- Page mode: {page_mode}. Composition: {composition_provenance} ({policy-default = the mode's standard composition; recommended-alt = a named alternative, say which in one phrase}).
+- {If {has_analytics_band}: "Analytics rationale emitted beside the brief (why the presentation was chosen — for humans, not for {consumer})." else: "No analytics band, so no rationale artifact."}
+
+{If there are substantive corrections (material_revision): a 1–3 bullet "Substantive correction" block — the real fixes a designer needs to know (e.g. a data-boundary or least-privilege correction). Skip the heading entirely if none.}
+
+Delivery
+- PR {pr_number} ({pr_url}) — MERGED. {If doc-only: "Artifact-only, no deploy." else note deploy status.}
+- Brief on main: {github_repo_url}/blob/main/{output_path_relative_to_repo_root}
+{If {has_analytics_band}:}
+- Rationale: {github_repo_url}/blob/main/{rationale_path_relative_to_repo_root} (read for context; do NOT hand to {consumer})
+
+For {consumer}
+- Connect to {github_repo_url} and use `{output_path_filename}` on main as the SOLE active source brief for `{route}`.
+- Interpret it as a {page_mode} {scope: redesign | new} of `{route}`.
+{If scope is redesign / change_class material_revision:}
+- Do NOT treat the prior implementation or any superseded brief as binding layout precedent — recompose freely.
+- Preserve the brief's required frames (§ Surface Inventory), state semantics, and any data/least-privilege boundaries it names.
+- {Composition guardrail from the brief: e.g. "It is a station, not a dashboard — avoid worklist/owner/analytics chrome." Derive this one line from {page_mode} + {composition_provenance} + the brief's hard constraints; do not invent constraints the brief doesn't carry.}
 ```
+
+**Voice (Rhea):** the prose above the code fence may carry a one-line re-orientation and any genuine implementation risk — but the emitted block stays in this consumer-facing shape. Compress; say each thing once. The goal is that `{consumer}` (or a human routing to it) knows the next step without parsing an internal-process essay.
 
 ### 11. Exit the Worktree
 
