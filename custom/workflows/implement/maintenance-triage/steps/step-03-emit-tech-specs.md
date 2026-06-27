@@ -1,11 +1,11 @@
 ---
 name: 'step-03-emit-tech-specs'
-description: 'For each prioritized cluster, decide its shape (code-shaped vs design-shaped), emit a small triage-spec artifact, and route it — code-shaped to quick-spec/quick-dev, design-shaped to a Claude Design paste prompt or design-review/design-elevation'
+description: 'For each prioritized cluster, decide its shape (code-shaped vs design-shaped), emit a small triage-spec artifact, and route it — code-shaped to quick-spec/quick-dev, design-shaped dispatched to design-router (the design-lane front door)'
 ---
 
 # Step 3: Emit Tech-Specs
 
-**Goal:** Convert prioritized clusters into actionable triage artifacts. Each cluster becomes one short markdown file routed by its **shape**: code-shaped clusters go to quick-spec (for investigation) or quick-dev (when the change is already clear); design-shaped clusters go to a Claude Design paste prompt (when the surface + change are clear) or design-review/design-elevation (when the surface needs design investigation first).
+**Goal:** Convert prioritized clusters into actionable triage artifacts. Each cluster becomes one short markdown file routed by its **shape**: code-shaped clusters go to quick-spec (for investigation) or quick-dev (when the change is already clear); design-shaped clusters are dispatched to design-router (the design-lane single source of truth, which classifies and emits the precise specialist command).
 
 ---
 
@@ -39,13 +39,9 @@ For each cluster in `{prioritized}`, first decide its **shape**, then its downst
 
 When in doubt between these two, route to quick-spec. It's the safer brownfield path — investigation is cheap, fabricated solutions are expensive.
 
-**Design lane → a Claude Design paste prompt, or design-review/design-elevation** (the same concrete-vs-investigate split, one lane over):
+**Design lane → dispatch to `design-router`** (the design-lane single source of truth). Do NOT pick the specific design workflow here. A design-shaped cluster already names a *surface* + a *felt want* — which is exactly `design-router`'s input. It owns design-lane routing: it classifies lane → altitude → depth → target+placement and emits the consumable handoff, covering everything this lane used to choose between by hand (a fresh redesign → `design-handoff`; a refine → `design-artifact-loop`/`design-tuning`; a settled-surface deepening → `design-elevation`; an unclear "feels wrong" → `design-review`; a policy/restyle change → the policy workflows) **plus** the cases triage couldn't route at all (analytics placement → `analytics-placement-triage`; system-wide tone → policy altitude).
 
-- **Concrete → a focused Claude Design paste prompt.** If the surface and the visual/interaction change are clear (e.g. "the orders drawer shows the discrepancy but has no action to resolve it"), emit a paste-ready Claude Design enhancement prompt instead of a code spec. **Build and save it per `{project-root}/_bmad/bmm/workflows/design/shared/claude-design-prompt.md`** (the SoT for its structure, save path, and always-emit-never-invoke rule). This is the design analog of "direct quick-dev" — the signal already names the surface + the change. (If the surface is *settled* and the signal is "it should do more," prefer routing through `design-elevation`, which formalizes this prompt with provenance.)
-
-- **Needs design investigation → design-review or design-elevation.** If the surface "feels wrong" but the fix is unclear, route to **design-review** (a live audit of the surface) for a quality/regression complaint, or **design-elevation** (the "what would make THIS better" pass) when the surface is settled and the signal is "it should do more." This is the design analog of "quick-spec first" — don't fabricate a redesign; investigate first.
-
-When in doubt on a design-shaped cluster, route to design-review — an audit is cheap, a fabricated redesign is expensive.
+Re-deriving a coarser design route map here is the divergence this dispatch removes — **two front doors must not give different answers for the same design want** (the artifact-first `design-handoff` path supersedes the old Claude-Design paste prompt). So triage's job for a design-shaped cluster is only to *name the surface + the want* and route to `design-router`; the precise specialist command — and the investigate-vs-concrete split (design-router's depth axis) — is design-router's to decide, not triage's to pre-empt.
 
 **Data-quality clusters are root-cause work, not data-patch work.** When a cluster is a data-quality defect — bad, missing, or inconsistent *stored* values (null fields, mislabeled records, format drift, double-counted rows) — the spec's primary deliverable is the fix to the *producing* pipeline (extractor, ingest, importer, sync, migration), NOT a production-data amendment. A one-time backfill of the existing bad rows is a secondary, adjunct task within the same spec — name it as such, never as the spec's sole content. A spec that proposes only "correct the data" will recur the moment the producer writes again. If the producing code isn't yet identified, route to **quick-spec** to find it before any backfill is specified.
 
@@ -62,7 +58,7 @@ severity: {s}
 frequency: {f}
 effort: {e}
 shape: code | design
-route: quick-spec | quick-dev | claude-design-prompt | design-review | design-elevation
+route: quick-spec | quick-dev | design-router
 emitted_at: {YYYY-MM-DD}
 source_signals: {signal_ids}
 ---
@@ -90,16 +86,12 @@ because Y" beats stating Y as fact.}
   If route=quick-spec:
     Run `quick-spec` with: "{the problem statement quick-spec investigates}"
 
-  If route=claude-design-prompt:
-    Paste into Claude Design (no code workflow): "{the paste-ready enhancement
-    prompt — connect line, files to read, keep-as-is guard, the change, policy
-    constraints}". Save the prompt body below this section so it is copy-pasteable.
-
-  If route=design-review:
-    Run `design-review` on: "{the surface/route to audit}"
-
-  If route=design-elevation:
-    Run `design-elevation` on: "{the settled surface to deepen}"
+  If route=design-router:
+    Run `design-router` on `{surface}` (or `system-wide` for a policy/tone cluster)
+    with the want: "{the felt want, in the reporter's words}". design-router
+    classifies lane/altitude/depth/target+placement
+    and emits the precise specialist command (design-handoff / design-artifact-loop /
+    design-elevation / design-review / policy workflows / analytics-placement-triage).
 }
 
 ## Rollback note
@@ -120,13 +112,13 @@ Display to user:
 **Emitted {n} triage-spec(s):**
 
 1. {path} → {next-action by route}
-     • quick-spec / quick-dev / design-review / design-elevation → run: /bmad:bmm:workflows:{route} {path}
-     • claude-design-prompt → paste the prompt in {path} into Claude Design (no workflow to run)
+     • quick-spec / quick-dev → run: /bmad:bmm:workflows:{route} {path}
+     • design-router → run: /bmad:bmm:workflows:design-router on {surface} with the want "{felt want}" (design-router grounds on surface+want and will HALT on a bare artifact path — pass the surface and want, not the path)
 2. ...
 
 These are ordered by score. Work the highest first unless something
 external (e.g., user pinged you about a specific one) reorders the list.
-Lead each line with the plain next action ("paste into Claude Design" /
+Lead each line with the plain next action ("run design-router" /
 "run quick-dev") so the queue is actionable at a glance, not just a list of paths.
 
 Below-threshold clusters were logged in step-02 but did NOT get artifacts.
@@ -150,7 +142,8 @@ This workflow ends here. No further steps. The triage-spec artifacts are the han
 
 ## FAILURE MODES
 
-- Routing a design-shaped cluster to quick-spec/quick-dev (forces a code spec for a design problem — run the shape gate first; design-shaped goes to Claude Design / design-review / design-elevation)
+- Routing a design-shaped cluster to quick-spec/quick-dev (forces a code spec for a design problem — run the shape gate first; design-shaped dispatches to design-router)
+- Re-deriving a design route map here (choosing design-review vs design-elevation vs a paste prompt) instead of dispatching to design-router — that recreates the two-divergent-front-doors problem this lane was changed to remove
 - Bundling multiple clusters into one mega-spec (defeats the small-units design)
 - Auto-invoking quick-dev for all clusters under autonomous_mode (intent autonomy violation; user must drive the queue)
 - Writing speculative "Hypothesis" content that goes beyond what the signals support
