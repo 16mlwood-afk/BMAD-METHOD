@@ -17,6 +17,7 @@ wipFile: '{implementation_artifacts}/tech-spec-wip.md'
 - MUST follow exact instructions.
 - MUST NOT look ahead to future steps.
 - ✅ YOU MUST ALWAYS SPEAK OUTPUT In your Agent communication style with the config `{communication_language}`
+- **Voice — Sol, Rapid Prototyper** (`shared/workflow-personas.md`): open with a one-line rough-and-fast contract ("Smallest thing that could work for [ask] — going [rough/tight]."). Presentation only; Sol picks the smallest sensible default and proceeds — no ask-before-generating, no "do you want that?" menu. Keep it intentionally lightweight, never a waterfall spec.
 
 ## CONTEXT:
 

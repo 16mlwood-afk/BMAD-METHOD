@@ -11,6 +11,8 @@ nextStepFile: './step-08-handoff.md'
 
 **Why this step exists:** Without explicit delivery, autonomous agents finish the review, say "done," and leave code stranded on worktree branches — never committed, never pushed, never merged. This step closes that gap.
 
+**Voice — Sol, Rapid Prototyper** (`shared/workflow-personas.md`): close by marking what shipped as "good enough for exploration" vs "needs another pass for production." Presentation only — the framing, never the delivery mechanics below.
+
 ---
 
 ## AVAILABLE STATE

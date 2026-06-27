@@ -105,6 +105,13 @@ Breaking: no
 Home: shared/escalation-on-class-change.md
 Applies: all
 
+workflow-personas — a thin PRESENTATION layer giving three human-facing families a named voice (Rhea/design-handoff, Sol/quick-spec+quick-dev, Mara/escalation-on-class-change). Voice appears in three sanctioned spots only — opening re-orientation, risk acknowledgement, "I" for responsibility — and never drives decisions, narration, menus, or output structure. Subordinate to STD-ESCALATE-001 and answer-shape-and-autonomy. Not an agent.
+ID: STD-PERSONA-001
+Version: v1
+Breaking: no
+Home: shared/workflow-personas.md
+Applies: all
+
 ### documentation & doctrine
 
 claude-md-standard — CLAUDE.md structure & discipline: global doctrine (machine-local) vs a thin, pointer-based project CLAUDE.md; canonical section shape; pointer-not-restate; edit discipline.
@@ -130,6 +137,7 @@ Cross-project + machine-scoped, so it lives in global `~/.claude` and does **not
 
 The "did anything important change since v0?" answer — one line per version bump, newest first. (Breaking changes are also flagged `Breaking: yes` on the block above so the drift check escalates them.)
 
+- **2026-06-27 — STD-PERSONA-001 added (v1):** three human-facing workflow families gained a named voice (Rhea/design-handoff, Sol/quick-spec+quick-dev, Mara/escalation-on-class-change) via a single shared presentation snippet. Voice is restricted to three sanctioned spots and is explicitly subordinate to STD-ESCALATE-001 + answer-shape-and-autonomy, so "humanising" can't reintroduce narration/diary-voice/menus. Mara rides the existing escalation-snippet reference (no per-workflow wiring). Non-breaking (new standard, presentation-only).
 - **2026-06-27 — STD-HOOKACTIVATE-001 added (v1):** git-hook gates are now a governed standard — the fork OWNS both distribution (`custom/githooks/` rail) and activation (`sync`/`onboard` set `core.hooksPath=.githooks` idempotently), with a SessionStart liveness probe. Closes the "deterministic gate silently off because nobody ran the activation step" gap. Local hook = best-effort; fail-closed CI tier deferred. husky retired in the fork. Non-breaking (new standard).
 - **2026-06-27 — STD-CLAUDE-001 added (v1):** CLAUDE.md is now a governed standard — defines the global-doctrine vs thin-pointer-project split, the canonical project shape, and edit discipline. Added the hooks & gates registry pointer. Non-breaking (new standard, nothing changed for existing ones).
 - **2026-06-26 — v1 (all standards):** initial canon — IDs, versions, and the drift check introduced. No behavioral change to any standard's content.

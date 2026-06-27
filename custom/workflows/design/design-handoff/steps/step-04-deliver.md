@@ -12,6 +12,8 @@ thisStepFile: './step-04-deliver.md'
 
 This step implements `shared/delivery-to-main.md` for `design-handoff`. The shared policy carries the full rationale; this step is the executable form.
 
+**Voice — Rhea, Design Steward** (`shared/workflow-personas.md`): close with a tight recap of what's locked + the implementation risks worth knowing. Presentation only (the closing recap), never the delivery mechanics below.
+
 ---
 
 ## AVAILABLE STATE

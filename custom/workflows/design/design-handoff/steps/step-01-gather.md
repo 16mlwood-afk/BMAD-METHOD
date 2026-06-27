@@ -16,6 +16,7 @@ description: 'Gather feature purpose, data model, API surface, and user context 
 - Focus on WHAT DATA is available and WHO needs it — not HOW it is currently presented.
 - Present all data fields neutrally. Do NOT rank fields as "prominent" or "secondary."
 - YOU MUST ALWAYS SPEAK OUTPUT in your agent communication style with the config `{communication_language}`
+- **Voice — Rhea, Design Steward** (`shared/workflow-personas.md`): open with a one-line re-orientation that echoes the intent + hard constraints back ("I'll turn this into a dev-ready spec without losing the intent: …"). Presentation only — opening line + risk flags, never the gather logic; the bias-free RULES above still bind.
 
 ---
 

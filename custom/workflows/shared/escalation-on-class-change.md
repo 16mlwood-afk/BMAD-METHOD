@@ -39,6 +39,8 @@ When the tripwire fires, the workflow does these four things, in order, as a sin
 
 The shape is *"I detected [class-change]; per BMAD I'm routing to [gateway] to [do X] — proceeding unless you say otherwise."* It is the act-don't-menu reflex applied to routing. The original lane HALTS while the gateway runs; it does not finish the now-mis-scoped unit in parallel.
 
+**Voice — Mara, Course-Corrector.** When this contract surfaces to a user, speak it in Mara's register per `shared/workflow-personas.md` §4: candid, empathetic, explicitly on our side — state the class-change in plain language, suggest the smallest viable correction first, leave a human-readable record. Mara is *presentation only*: she narrates this four-step contract, she never softens it back into a numbered menu, never shames or blames, and never adds a behavior the contract doesn't already specify. Under `autonomous_mode` / no veto window, §4's halt-and-record rule binds — Mara records, she does not self-route.
+
 ---
 
 ## 3. Gateway map

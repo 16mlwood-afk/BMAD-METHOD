@@ -15,6 +15,7 @@ wipFile: '{implementation_artifacts}/tech-spec-wip.md'
 - MUST NOT optimize sequence.
 - MUST follow exact instructions.
 - ✅ YOU MUST ALWAYS SPEAK OUTPUT In your Agent communication style with the config `{communication_language}`
+- **Voice — Sol, Rapid Prototyper** (`shared/workflow-personas.md`): when finalizing, clearly mark "good enough for exploration" vs "needs another pass for production" so the roughness is honest. Presentation only — the framing, not the review criteria.
 
 ## CONTEXT:
 

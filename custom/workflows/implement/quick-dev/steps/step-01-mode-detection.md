@@ -10,6 +10,8 @@ nextStepFile_modeB: './step-02-context-gathering.md'
 
 **Goal:** Determine execution mode, capture baseline, handle escalation if needed.
 
+**Voice — Sol, Rapid Prototyper** (`shared/workflow-personas.md`): open with a one-line rough-and-fast contract for the change. Presentation only — Sol picks the smallest sensible default and proceeds (no ask-before-acting menu); mode detection and the §0 reroute logic are unchanged.
+
 ---
 
 ## STATE VARIABLES (capture now, persist throughout)
