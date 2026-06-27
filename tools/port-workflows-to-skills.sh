@@ -6,6 +6,13 @@
 # into an output tree of `bmad-<name>/` skill dirs. GENERATED ARTIFACT — re-runnable; the source of
 # truth stays custom/workflows/ during the dual-layout transition. See custom/MIGRATION-v6.8-skills-plan.md.
 #
+# SOURCE OF RECORD (do not confuse the two channels): this porter reads ONLY `custom/workflows/`.
+# That tree — e.g. `custom/workflows/4-implementation/dev-story/` — IS the fork source of record;
+# edit fork workflows THERE. The separate `src/bmm-skills/.../<skill>/SKILL.md` tree is the PLUGIN
+# MARKETPLACE source (registered in `.claude-plugin/marketplace.json`), a different downstream
+# channel that this porter does NOT read and that does NOT auto-reconcile from custom/. A fork edit
+# made only in `src/bmm-skills/` never reaches the 14 synced projects.
+#
 # Transformations (per the proven pilot):
 #   - workflow.md            -> SKILL.md, frontmatter `name:` -> bmad-<name> (== dir, installer gate)
 #   - steps/*.md             -> flattened to skill root (installed skills keep step files at root)

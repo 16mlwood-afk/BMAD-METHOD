@@ -82,6 +82,13 @@ Artifact workflows write `_bmad-output/`, which the worktree-enforcement hook **
 
 Multiple sessions update `sprint-status.yaml` at once (one flips `2-3` to `review`, another flips `1-4` to `in-progress`). A whole-file rewrite by either clobbers the other's flip. **Edit only the keys you own, in place** — match each line by its key and change just its value, leaving every other line byte-identical. A small read-modify-write scoped to your keys is race-minimal; a full-file regenerate is not. (A line-oriented script that flips only your keys, asserting each was at its expected prior value, is the safe shape.)
 
+### B1a. Multi-line story prose does NOT belong in `sprint-status.yaml`
+
+§B1's "edit one line, leave every other byte-identical" assumes **one value per line**. It breaks down for a per-story **multi-line comment block** (a reopen-note / status-rationale paragraph attached to one story key) — you can't edit a paragraph "byte-identical to every other line", so two sessions touching adjacent stories collide on the block. Two rules:
+
+- **Prefer: keep the board one-line-per-key.** Story-level prose (reopen reasons, review notes, rationale) belongs in the **per-story `.md`** — where §C0 already makes the story file authoritative — not in `sprint-status.yaml`. The board carries `development_status[<key>]: <value>` (+ the §C1 claim *comment*, which is a single trailing line) and nothing multi-line. This keeps every board edit a true §B1 per-key line edit.
+- **If a comment block must stay on the board:** treat it as **owned by exactly one story key and edited as a unit** — read-modify-write the whole block for *your* story only, asserting its prior content before replacing, and never span two stories' blocks in one edit. This is the carve-out to §B1's line rule, scoped to a single owner so it stays race-minimal.
+
 ### B2. Claim your lane before generating
 
 When two sessions generate stories/epics for the same plan, **split the work explicitly first** ("agent A: epics 1–3; agent B: epics 4+") and write to per-item files (`<id>.md`), never a single shared document both append to. State the split in your output so the other session — and the user — can see the boundary. (This is the parallel-coordination half of the cash-recovery friction: the worktree discipline is §A; this is what keeps two story-generators from colliding.)

@@ -71,11 +71,23 @@ esac
 
 Stage the brief, and the rationale too when one was written (`{has_analytics_band}` is `true`) — both belong in the same commit so a brief on `main` always has its rationale beside it.
 
+**Use `git add -f`.** Most projects gitignore `/_bmad-output/` (the `bmad-artifacts-untracked-main-only` posture), so a plain `git add` of a brief is silently rejected as ignored — it stages nothing, the commit reports "no changes", and the push ships an EMPTY branch that looks delivered. The `-f` flag is mandatory for delivery-bound artifacts under a gitignored path. (See `shared/delivery-to-main.md` §3.)
+
 ```bash
-git add {output_path}
+git add -f {output_path}
 # Only when {has_analytics_band} is true:
-git add {rationale_output_path}
+git add -f {rationale_output_path}
 ```
+
+**Assert the stage actually happened** — turn the silent no-op into a loud, self-correcting halt:
+
+```bash
+git diff --cached --name-only | grep -qF "$(basename {output_path})" || {
+  echo "HALT: brief did not stage. The path is gitignored — re-run with: git add -f {output_path}"; exit 1;
+}
+```
+
+Do not proceed to commit until the brief is confirmed staged.
 
 Compose the commit message. Use this template (HEREDOC form to preserve formatting):
 

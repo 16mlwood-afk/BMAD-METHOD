@@ -1,6 +1,6 @@
 ---
 name: delivery-to-main
-contract_version: 1
+contract_version: 2
 description: 'Shared policy for producer workflows that emit artifacts intended to be readable on the repository default branch. Closes the gap between "file written to disk" and "file accessible to external consumers (Claude Design, downstream synthesize, design-implement) via origin/<default-branch>". Referenced by design-handoff (step-04-deliver), design-synthesize, design-artifact-loop, design-tuning.'
 ---
 
@@ -46,7 +46,18 @@ When a producer reaches its "write artifact" step in a worktree session:
 
 1. **Verify the artifact is inside the active worktree** (per `worktree-portability.md` §2). If not, halt — the artifact must land inside the worktree before delivery, otherwise the merge will not include it.
 
-2. **Stage and commit the artifact** to the worktree's branch. Commit message format:
+2. **Stage and commit the artifact** to the worktree's branch.
+
+   **Stage with `git add -f`, then assert it staged.** Most consuming projects gitignore `/_bmad-output/` (the `bmad-artifacts-untracked-main-only` posture), so a plain `git add <artifact>` is silently rejected as ignored — nothing stages, the commit reports "no changes", and the push ships an **empty branch that looks delivered**. The force flag is required precisely because the artifact is delivery-bound but lives under a gitignored path. After staging, verify and halt loudly if it didn't take:
+
+   ```bash
+   git add -f <artifact>           # -f is mandatory: the path is gitignored
+   git diff --cached --name-only | grep -qF "$(basename <artifact>)" || {
+     echo "HALT: artifact not staged — path is gitignored, re-run with: git add -f <artifact>"; exit 1;
+   }
+   ```
+
+   Then commit. Commit message format:
 
    ```
    <type>(<workflow-name>): <one-line description>
