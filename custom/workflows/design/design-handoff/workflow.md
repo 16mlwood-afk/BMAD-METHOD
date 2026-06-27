@@ -83,6 +83,7 @@ This uses **step-file architecture** for focused execution:
 ### State Variables
 
 - `{feature_name}` - Name of the feature being handed off
+- `{injected_placement}` - `band` | `tab` | `sibling-page` | `remove-band` | empty. Set from `--placement` (or an `analytics-placement-triage` handoff). When non-empty, the analytics-home axis of §5b (band-belongs) and §5d (topology) was decided upstream by the single-source brain; those sections honor it and skip re-deriving the analytics-home axis (§5d still runs its per-item `needs-detail-route` question). Empty (default) → fully derive as before. The *consumability contract* (see Input).
 - `{feature_scope}` - "new" (design from scratch) or "redesign" (improve existing)
 - `{feature_purpose}` - What the feature does and why it exists — NOT how it is currently laid out
 - `{must_support_capabilities}` - The jobs the operator must be able to accomplish on this surface beyond the primary goals, captured as outcomes (NOT UI mechanics) in step-01 §4. These are requirements the blank-canvas redesign must satisfy even though the brief withholds the current layout — the anti-bias strip removes the *arrangement*, never the *capability*. Rendered into the brief's §1 (Feature Purpose). Guards the failure where a redesign returns "more basic" than the screen it replaced because a secondary capability (e.g. attach-source-receipt, verify-field-against-source, bypass-staging) was never named and so was silently dropped. Empty when the surface has none beyond the primary goals.
@@ -168,6 +169,7 @@ The user may provide:
 - **A commit hash or branch** — the workflow will diff to understand what changed
 - **A route** — `/outreach`, `/pipeline` — the page to design
 - **A design system directive** — "use Meridian", "use the corporate design system", "external design system"
+- **An injected placement decision** — `--placement <band|tab|sibling-page|remove-band>` (passed directly, or by `analytics-placement-triage`, which decided the analytics *home* upstream using the same §5b band-belongs and §5d topology brains this workflow owns). Sets `{injected_placement}` to that value. When present, the band/topology decision for this surface was **already made by the single-source brain at the placement-triage gate** — so §5b/§5d **honor it and skip re-derivation** (see step-01 §5b/§5d short-circuits). This is the *consumability contract*: it stops the placement verdict from degrading into advisory prose this workflow silently re-decides. Absent (the default) → `{injected_placement}` is empty and the workflow derives band/topology as before — fully backward-compatible.
 - **Nothing** — the workflow will look at the most recent commit(s) on the current branch
 
 If the input is ambiguous, ask ONE clarifying question maximum, then proceed.

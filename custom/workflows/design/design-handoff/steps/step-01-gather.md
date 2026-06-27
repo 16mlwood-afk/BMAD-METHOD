@@ -280,6 +280,8 @@ This check applies to every mode but bites differently per mode. `operational` i
 
 ### 5b. Decide Whether an Analytics Band Belongs
 
+**Injected-placement short-circuit (consumability contract).** If `{injected_placement}` is set (passed via `--placement` or by `analytics-placement-triage`), the band decision for this surface was already made upstream by *this same §5b brain* applied at the placement-triage gate. Honor it: `band` / `tab` / `sibling-page` → a band belongs (`{band_provenance}` = `inherited` if the page already shows an analytics surface, else `recommended-new`); `remove-band` → `{band_provenance}` = `recommended-drop`. Stamp the provenance note `injected-by-triage`, verify only that it does not *flatly contradict* the data (if it does, surface the conflict — do not silently override the upstream call), and SKIP the three-question re-derivation below. When `{injected_placement}` is empty (the default), ignore this short-circuit and derive normally.
+
 This is a **design judgment about the data and the user's job — not a detection of what the legacy page renders.** `design-handoff` exists to start the designer from a blank canvas; inheriting band presence/absence from the current layout is the one place that mandate matters most. A bare legacy table sitting on time-series, multi-segment data where the user's real job is "spot which one slipped" *should* get a band even though the current page has none.
 
 So do NOT decide by inspecting the current render. Decide by answering three questions about the feature itself:
@@ -403,6 +405,8 @@ The skill runs its procedure (frame the bet; model the outcome distribution; siz
 Set `{is_capital_decision}` and the `{decision_*}` fields (all empty when `{is_capital_decision}` is `false`).
 
 ### 5d. Surface Topology Assessment
+
+**Injected-placement short-circuit (consumability contract — analytics-home axis ONLY).** If `{injected_placement}` is set, `analytics-placement-triage` already decided *where the analytics surface lives* — but that is only the **analytics-home** axis of topology, NOT the worklist's own **per-item depth**. So honor the analytics-home and skip re-deriving *it*, but **STILL run question 2 below** (per-item detail depth → `needs-detail-route`), which the injection does not speak to. Resolve `{surface_topology_verdict}`: if question 2 independently finds the items warrant their own detail route, **`needs-detail-route` wins** (and the analytics home rides alongside, recorded `injected-by-triage`: tab / sibling / rides-the-page); otherwise set it from the analytics-home mapping — `tab` → `needs-tab-views`, `sibling-page` → `needs-sibling-route`, `band` / `remove-band` → `single-page-appropriate` — noted `injected-by-triage`. When `{injected_placement}` is empty (the default), ignore this short-circuit and derive all four questions normally.
 
 **The question:** Given everything gathered above, is this feature's scope correctly bounded at a single route — or does the data depth, capability breadth, or user job structure suggest multiple surfaces?
 

@@ -76,7 +76,7 @@ If `archetype: unclear`, return only `user_question` (as far as known) plus the 
 
 Lock one mode per invocation.
 
-- **select** (default) — given a data shape + user question, run the procedure and return the output contract. This is what design-handoff §5c calls.
+- **select** (default) — given a data shape + user question, run the procedure and return the output contract. **Callers:** `design-handoff` step-01 §5c (the producer, at the handoff gate) and `analytics-placement-triage` step-03-shape (the placement-triage gate, which names the shape *before* the analytics home is committed).
 - **critique** — given a proposed or existing surface (its declared archetype, or its rendered form), check the shape against the question. Flag mismatches: a `trend` strip answering a coverage question; an element with no drill; two co-equal archetypes; a KPI-card wall. Return the corrected archetype + the specific reason, in the output contract.
 - **explain** — teach which archetype fits and why, for onboarding or a brief's reviewer. Lead with the user's question, then the archetype, then one concrete example and the most tempting wrong choice. **Callers:** human onboarding (per "When to invoke"), and `design-review-pr` step-03 §3b when a `C-ARCHETYPE-01` finding fires (so the finding teaches the right shape, not just flags the wrong one).
 
@@ -93,6 +93,7 @@ Lock one mode per invocation.
 - **`operational-analytics-band`** — once this skill picks the shape, that skill governs how it sits on an operational page (subordination, visual weight, policy citations). Architect picks; band places.
 - **`design-policy-canonical` / `docs/design-policy.md`** — visual treatment of the rendered shape. Architect never sets color, density, or chrome.
 - **`design-handoff` (step-01 §5c → step-03b)** — the producer caller: selects the archetype here, writes the output contract into the `design-rationale-*` artifact.
+- **`analytics-placement-triage` (step-03-shape)** — the placement-triage caller: selects the archetype while deciding *where* the analytics lives (band | tab | sibling page), so the chosen home carries the shape decision into its `design-handoff` invocation rather than re-deriving it.
 - **`design-review-pr` (C-ARCHETYPE-01)** — the enforcer: verifies the *rendered* surface matches the *declared* archetype; can read the rationale to check the *reasoning* held, not just the pixels.
 
 The band-belongs question — *should this surface exist at all?* — is upstream (page-mode / `design-handoff` §5b). This skill assumes a surface is warranted and answers *what shape*; if no archetype honestly fits the data and question, say so — that is a signal the band may not belong, and it routes back to that upstream decision.
