@@ -55,6 +55,24 @@ Consumers (`design-artifact-loop`, `design-synthesize`) validate the provenance 
 
 ---
 
+## OUTPUT CONTRACT & WORKFLOW-FEEDBACK ROUTING — CRITICAL
+
+This workflow's *outputs* (the brief and the closing hand-off message) have a fixed shape and a fixed remediation path. Both are part of the workflow definition, not a per-run stylistic choice an operator re-negotiates each time.
+
+**1. Default output shape — consumer-facing, never process narration.** The closing message is a hand-off to the NEXT consumer (Claude Design / `design-synthesize`), not a report of what you did. The canonical structure is enumerated once in `step-04-deliver.md` §10 — **Active artifact → What changed → Substantive correction(s)/scope deltas → Delivery status → Next consumer instructions** (the "For {consumer}" interpretation block: which brief is active, revision vs new, how to read composition/page-mode, what NOT to import from the prior implementation). Do not restate that template here; §10 owns it.
+
+**2. Process narration is forbidden by default.** Unless the user *explicitly* asks for the trace, the output MUST NOT contain: "I did X, then Y, then Z"; branch/PR choreography or git mechanics; workflow-history or step recap; a decision diary; provenance bookkeeping. Lead with the active artifact and the material delta. Say each thing once. A genuine implementation risk or a one-line re-orientation is allowed; a process essay is not.
+
+**3. Feedback about output SHAPE is a workflow-patch request — route it to the fork, not to memory.** When the user critiques the *shape* of this workflow's output (e.g. "stop narrating workflow history", "speak in terms of active artifact / material delta / next-consumer instructions", "this should be fixed at the workflow root"), treat it as a defect in the workflow definition — NOT as a conversational preference, NOT as a one-off rewrite of the current message, and NOT as a project-memory entry. The required response is:
+
+   - **Patch the template first.** Edit the relevant step definition in the fork (`~/bmad-method-v6/custom/workflows/design/design-handoff/…`, normally `step-04-deliver.md` §10 for close-out shape, or this section for the contract itself) so the fix propagates to all projects on the next `sync-bmad-workflows.sh`.
+   - **Then regenerate** the in-flight output using the updated contract. Fix the template, then re-emit — never re-emit without patching.
+   - **Memory is a soft preference only.** A `*-completion-note-shape` style memory may exist as a backstop, but it is NEVER the primary remediation for a workflow-shape defect — a memory does not propagate by sync and leaves the root template wrong for every other project. If the only artifact produced is a memory, the defect was not fixed.
+
+This routing is itself part of the contract: a context-free agent reading this workflow must come away knowing that "your output shape is wrong" means "patch this workflow," not "remember my preference."
+
+---
+
 ## ANALYTICS PRESENTATION RATIONALE — companion artifact
 
 When a brief carries an analytics band (`{has_analytics_band}` is `true`), this workflow emits a **second** artifact beside the brief: `design-rationale-{target_slug}-{date}.md`. It documents *how* the analytics presentation was decided — the page-mode signal, the band-belongs answers, the archetype candidates weighed, the shapes rejected, and the explicit time≠trend check. The brief records the winning choices; the rationale records the deliberation behind them.
