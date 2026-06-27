@@ -19,6 +19,18 @@ This doc is **fork-local** (like `global-bmad-workflow.md` / `parallel-work-and-
 
 ## Open
 
+### [RESOLVED] Production deploy state is illegible from inside a session — no in-repo signal of "last-deployed commit vs `origin/main` HEAD" → `docs/deployment.md` (cash-recovery) + the shared `deployment-to-prod.md` contract
+**[Resolved 2026-06-27]** Resolved — deploy-legibility gap (cash-recovery): Production had no visible build identity, so stale Railway deploys could be mistaken for live regressions (as happened with /receive). Fixed by adding authenticated GET /api/status with deployed commit/build metadata and documenting the staleness check in docs/deployment.md (linked from CLAUDE.md): git log --oneline <live-commit>..origin/main → any output means prod is behind and needs railway up. BMAD sync drift in the parent checkout remains a separate upstream issue.
+
+**Noticed:** 2026-06-27 (diagnosing a "/receive looks like a generic dashboard in prod" report that turned out to be false against the code). **Priority: medium** — recurring diagnostic dead-end on every manual-deploy project, and it makes "is prod stale?" — the single most common real cause of "the shipped UI is wrong" — the one hypothesis an agent *cannot* confirm without leaving the box.
+
+**What fought us:** I could verify in minutes that the code on `origin/main` was a faithful, brief-matching build (PR #65, merged 2026-06-22) and that the user's "owner shell / missing frames / dashboard card" premise was false everywhere in the repo. But the most likely real explanation — production serving a *stale pre-redesign deploy* because Railway deploys are manual (`railway up`) and "merging a PR does not ship" — is exactly the thing the wiring gives no legible read on. There's no `git`-visible "deployed SHA" marker, no `last-deployed` tag/ref, nothing to diff `origin/main` against. So a diagnosis that should end "prod is N commits behind, redeploy" instead ends in a question back to the user about what they saw and where.
+
+**Proposed investigation:**
+- After a successful `railway up`, stamp the deployed SHA somewhere `git`-legible from any checkout: a moving `deployed/production` ref pushed to origin, or a committed `.deploy-state` line, or a Railway deploy-metadata read documented in `docs/deployment.md`. Then "is prod stale?" becomes `git log deployed/production..origin/main --oneline`.
+- Add a one-liner to the shared `_bmad/bmm/workflows/shared/deployment-to-prod.md` contract: the deploy step SHOULD record the shipped commit so downstream sessions can answer staleness deterministically (currently the contract ships code but leaves no trace of *what* shipped).
+- Cheaper interim: document in `docs/deployment.md` the exact command to ask Railway for the live deployment's commit, so an agent has a sanctioned non-`git` read instead of guessing.
+
 ### Direct fork edits share ONE working tree + index across sessions, so a parallel session's `git commit` silently sweeps up another session's staged-but-uncommitted files → the fork-authoring isolation model + `parallel-sessions.md` § 'Authoring a shared standard/workflow'
 **Noticed:** 2026-06-27 (authoring STD-PERSONA-002 persona-placement while a parallel session recorded the STD-PERSONA-001 STATUS wave). **Priority: medium** — no data loss this time (content survived), but it produces wrong provenance and is a latent partial-commit / lost-work hazard.
 
