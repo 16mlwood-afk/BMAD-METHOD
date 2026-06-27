@@ -89,6 +89,19 @@ Breaking: no
 Home: shared/detect-stack.md
 Applies: all
 
+### documentation & doctrine
+
+claude-md-standard — CLAUDE.md structure & discipline: global doctrine (machine-local) vs a thin, pointer-based project CLAUDE.md; canonical section shape; pointer-not-restate; edit discipline.
+ID: STD-CLAUDE-001
+Version: v1
+Breaking: no
+Home: shared/claude-md-standard.md
+Applies: all
+
+## Related registries (not versioned standards)
+
+- **Hooks & gates** → `docs/hooks-registry.md` (fork-local): every Claude Code hook — name, event, purpose, source-of-truth path, enforcement level, owner — plus the "hooks only live in the two homes" rule. Governed alongside this canon by the quarterly review.
+
 ## Memory & knowledge — catalogued, NOT version-tracked here
 
 Cross-project + machine-scoped, so it lives in global `~/.claude` and does **not** sync through the fork — no per-project copy to drift, so the check skips it (no `Home: shared/...` block). Home docs are authoritative:
@@ -101,6 +114,7 @@ Cross-project + machine-scoped, so it lives in global `~/.claude` and does **not
 
 The "did anything important change since v0?" answer — one line per version bump, newest first. (Breaking changes are also flagged `Breaking: yes` on the block above so the drift check escalates them.)
 
+- **2026-06-27 — STD-CLAUDE-001 added (v1):** CLAUDE.md is now a governed standard — defines the global-doctrine vs thin-pointer-project split, the canonical project shape, and edit discipline. Added the hooks & gates registry pointer. Non-breaking (new standard, nothing changed for existing ones).
 - **2026-06-26 — v1 (all standards):** initial canon — IDs, versions, and the drift check introduced. No behavioral change to any standard's content.
 
 ## How to author a NEW standard

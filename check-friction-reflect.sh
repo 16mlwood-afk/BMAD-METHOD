@@ -12,16 +12,18 @@
 #
 # Fire-once, loop-safe by two guards: (1) `stop_hook_active` — the harness sets it
 # when a stop is itself the result of a stop-hook continuation, so we never re-block
-# our own continuation; (2) a per-session marker keyed on session_id. Either alone
-# prevents an infinite "can't finish" loop; both = belt-and-suspenders.
+# our own continuation; (2) a per-session marker keyed on session_id.
 #
-# Wired from ~/.claude/settings.json Stop (machine-local — does not sync to the 13
-# projects). Conservative by design: a no-friction session dismisses in one line.
-python3 - <<'PY'
+# NOTE: capture the hook's stdin into a var FIRST, then feed the python program via
+# the heredoc — otherwise `python3 - <<PY` makes the heredoc itself stdin and
+# json.load(sys.stdin) reads the program (not the hook input), so session_id and
+# stop_hook_active never parse and the per-session keying breaks.
+INPUT="$(cat)"
+python3 - "$INPUT" <<'PY'
 import json, sys, os, hashlib
 
 try:
-    data = json.load(sys.stdin)
+    data = json.loads(sys.argv[1]) if sys.argv[1].strip() else {}
 except Exception:
     data = {}
 

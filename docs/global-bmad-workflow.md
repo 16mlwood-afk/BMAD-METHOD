@@ -89,6 +89,19 @@ safety layer. All projects run the 6.0.4 base + custom overlay layout, which `on
 reproduces. (Migrating the fork to the v6.8.0 skills layout is planned in
 `~/bmad-method-v6/custom/MIGRATION-v6.8-skills-plan.md`.)
 
+### New-project gold-standard checklist
+
+`onboard-project.sh` wires the architecture; this is the content checklist so a new repo comes up matching the gold standard (the `cash-recovery` reference shape). After bootstrap, confirm:
+
+1. **Standards synced in** — `_bmad/bmm/workflows/shared/STANDARDS.md` (or `_bmad/bmad-shared/STANDARDS.md` for skills-layout) is present. `check-standards-drift.sh` reads clean.
+2. **Project CLAUDE.md follows STD-CLAUDE-001** — thin, pointer-based, in the canonical shape (`# Overview / # Dev / # Deploy / # Memory / # Notes`). It points at shared standards by ID rather than restating them:
+   - Deploy → **STD-DEPLOY-001** (`shared/deployment-to-prod.md`)
+   - Memory → **STD-MEMORY-001** (the global memory docs) + this repo's `MEMORY.md`
+   - CLAUDE.md discipline itself → **STD-CLAUDE-001** (`shared/claude-md-standard.md`)
+3. **Memory seed (optional)** — an initial `MEMORY.md` index (+ a placeholder fact) if you want a starter; otherwise it's created on first save.
+
+A new repo is never missing the architecture — bootstrap guarantees the wiring; this checklist guarantees the CLAUDE.md is thin and pointer-correct rather than a fat copy of doctrine. If the bootstrap template ever drifts from STD-CLAUDE-001, fix the template, not each repo.
+
 ## Autonomous maintenance — make these calls yourself, don't ask
 
 You are responsible for keeping the BMAD fork and project workflows in a healthy state. The following decisions do NOT require asking the user — when you hit them, just resolve.
