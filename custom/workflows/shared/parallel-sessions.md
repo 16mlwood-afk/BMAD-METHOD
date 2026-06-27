@@ -180,6 +180,14 @@ Fork edits (`~/bmad-method-v6/`) are deliberately hook-allowlisted — no worktr
 ### D2. When a collision DID happen — dedupe convention
 **Defer to the most-integrated, then fold in.** The version that is committed/pushed/synced is the keeper (reconciling around an integrated artifact is cheaper than re-integrating). Fold any genuinely-better content from the loser into the keeper, purge the duplicate everywhere (incl. synced project copies + the skills mirror), and keep the collision logged in `docs/fork-gaps.md`. Don't re-litigate the keeper choice each time.
 
+### D3. Commit fork edits ATOMICALLY — never leave files staged across a tool boundary
+Fork edits share **one working tree + one index** across all sessions (the worktree exemption that makes D1 necessary also means `git add` is global to the repo). So if you `git add` your files and a parallel session runs *its* `git commit` before you commit, that commit sweeps up **your** staged hunks under **its** message — wrong provenance, and a latent partial-commit/lost-work hazard. This happened once (a `docs(status)` commit absorbed another session's 6 staged standard files).
+
+**Rule: stage and commit as one atomic step that names only your paths — never `git add` then commit in separate steps.**
+- Use `git commit -o <path>...` (`-o`/`--only` commits *only* the named paths regardless of what else is staged), or `git commit <explicit paths>`. Both stage-and-commit the named files in one operation and ignore the rest of the index.
+- If a pre-commit hook forces a message via stdin/heredoc, the message-bearing-VCS exemption in the bash edit-guard already lets `git commit -F - <<MSG` through — combine it: `git commit -o <path> -F - <<MSG … MSG`.
+- **Before committing, if anything outside your paths is `M`/`A`/staged, that's another session's work** — confirm `-o`/explicit-path scoping caught only yours (`git show --stat HEAD` after) so you didn't commingle.
+
 ## Costs
 
 - A worktree per src-editing run — cheap, and the project `CLAUDE.md` already mandates it; §A1 just moves it from "the human remembered" into the workflow.
