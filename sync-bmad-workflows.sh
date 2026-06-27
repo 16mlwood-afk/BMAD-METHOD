@@ -1019,7 +1019,9 @@ deliver_skills_layout_project() {
   if [[ -f "$HOOKS_SRC" ]]; then
     mkdir -p "$sdir"
     if [[ -f "$sfile" ]]; then
+      local dropped; dropped=$(jq -rn 'input as $b | input as $t | ([$t.hooks[]?[]?.name]) as $tn | [$b.hooks[]?[]? | (.name // "") | select(startswith("bmad-")) | select(($tn|index(.))|not)] | unique | join(", ")' "$sfile" "$HOOKS_SRC" 2>/dev/null)
       jq -n "$JQ_MERGE" "$sfile" "$HOOKS_SRC" > "$sfile.tmp" && mv "$sfile.tmp" "$sfile" && echo "  OK    hooks (upserted)"
+      [[ -n "$dropped" ]] && echo "  WARN  dropped non-template bmad- hook(s): $dropped — add them to $HOOKS_SRC (the template owns the bmad- hook namespace; hand-added project hooks do not survive sync)"
     else
       cp "$HOOKS_SRC" "$sfile" && echo "  OK    hooks (created)"
     fi
@@ -1443,9 +1445,11 @@ while IFS= read -r target || [[ -n "$target" ]]; do
     if [[ -f "$HOOKS_SRC" ]]; then
       mkdir -p "$settings_dir"
       if [[ -f "$settings_file" ]]; then
+        dropped_hooks=$(jq -rn 'input as $b | input as $t | ([$t.hooks[]?[]?.name]) as $tn | [$b.hooks[]?[]? | (.name // "") | select(startswith("bmad-")) | select(($tn|index(.))|not)] | unique | join(", ")' "$settings_file" "$HOOKS_SRC" 2>/dev/null)
         jq -n "$JQ_MERGE" "$settings_file" "$HOOKS_SRC" > "$settings_file.tmp"
         mv "$settings_file.tmp" "$settings_file"
         echo "  OK    hooks (upserted)"
+        [[ -n "$dropped_hooks" ]] && echo "  WARN  dropped non-template bmad- hook(s): $dropped_hooks — add them to $HOOKS_SRC (the template owns the bmad- hook namespace; hand-added project hooks do not survive sync)"
       else
         cp "$HOOKS_SRC" "$settings_file"
         echo "  OK    hooks (created)"
