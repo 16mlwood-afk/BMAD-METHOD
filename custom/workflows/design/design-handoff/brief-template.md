@@ -43,11 +43,20 @@ mode: {handoff_mode}                     # fresh-design | refine-screen
 page_mode: {page_mode}                   # operational | analytical | detail
 route: {route}                           # primary route this brief targets
 composition_provenance: {composition_provenance}   # policy-default | recommended-alt (decided in §5a; recommended-alt names a job-fit composition in §4a and was veto-surfaced)
+composition: {composition}               # machine-readable composition key the design-implement bundle→implement conformance gate (step-01 §SHARED.1b) diffs against. Default = the page_mode default (operational→worklist | analytical→chart-led | detail→record-view). When composition_provenance is recommended-alt, set the named job-fit composition from §4a as a kebab key (e.g. scanner-terminal, single-item-stream, source-co-present). A NON-default composition (e.g. a clerk scan station) is the signal that the gate must verify the bundle expresses the JOB LOOP (scan→feedback→tally→close), not a centered hero card.
 band_provenance: {band_provenance}       # inherited | recommended-new | recommended-drop | none
 {# analytics_archetype is REQUIRED iff band_provenance ∈ {inherited, recommended-new}; omit the line entirely otherwise. #}
 {if has_analytics_band}
 analytics_archetype: {analytics_archetype}   # trend | distribution | composition | ranking | coverage | flow | waterfall | single-metric | correlation
 {endif}
+{# shell_role is the page-shell & role contract. REQUIRED whenever the app has more than one role/shell (e.g. clerk vs owner); OMIT the whole block for a single-role app where every surface shares one shell. forbidden_chrome is the load-bearing field — design-implement enforces it (step-01 §SHARED.1b refuses; step-02 §1a / step-03 §2d emit the Tier-1 row). #}
+{if has_shell_role}
+shell_role:
+  required_shell: {required_shell}       # the layout / route-group the surface MUST render under (e.g. clerk | owner | authenticated). Verbatim where the design draws it.
+  required_chrome: {required_chrome}     # the chrome this surface MUST carry (e.g. "clerk header — 'Bison Management / Receiving — receive station' + role chip 'Clerk'"). Reproduce verbatim on the rendered frame.
+  forbidden_chrome: {forbidden_chrome}   # chrome that MUST NOT appear on this surface (e.g. owner global nav, financial/approvals views). An ancestor layout injecting any of these OVER this surface is a Tier-1 shell violation — the owner-nav-on-a-clerk-station case.
+{endif}
+frames: {frames_list}                    # machine-readable list of the §7 Surface Inventory contract-key ids (e.g. [receive-station, active-session-workspace, resume-rail, close-reconcile-summary, resolved-unit-expand, matched-shipment-lookup]). The bundle→implement conformance gate diffs the bundle's DRAWN frames against THIS list; the §7 table stays the human-readable detail. Keep the two in sync — identical ids. NEVER empty: at minimum the primary frame.
 {# In refine-screen mode the following four fields are REQUIRED. In fresh-design mode they MUST be omitted entirely. #}
 {if handoff_mode == "refine-screen"}
 screen_review_ref: {review_artifact_path_relative_to_repo_root}

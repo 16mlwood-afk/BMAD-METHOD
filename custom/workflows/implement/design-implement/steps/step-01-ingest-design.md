@@ -419,6 +419,43 @@ Then gate — symmetric with the manifest path, but a direct URL/bundle run has 
 - **`superseded`** → SURFACE it now ("this handoff is superseded by `{superseded_by}`; that newer brief is the current truth") and **HALT before the apply pipeline (steps 2–4) for explicit confirmation** — proceeding would build the surface toward the superseded design, which is intent, not decision autonomy, so autonomous mode does NOT proceed unasked. Halting here (before the grid) also avoids wasting the mapping/grid work. On explicit confirmation — or after the user re-points at `{superseded_by}` — continue. **Never** silently apply a superseded handoff.
 - **`ambiguous`** → warn (two briefs claim `active` for this slug; `brief-revision-policy.md` §2.6) and continue — the design source itself is fine.
 
+### SHARED.1b. Bundle → brief conformance gate (the design proposal is not yet a contract)
+
+**The bundle is a PROPOSAL; the brief is the contract. This gate refuses to implement a proposal that silently under-delivers the contract** — the receive-station failure (a strong "station, not dashboard" brief produced a centered hero card with minimal frame coverage, which `design-implement` then faithfully shipped because nothing compared the two). It runs on EVERY path, AFTER SHARED.1a has resolved the brief via `{target_slug}`, and BEFORE step-02/03/04 — a non-conformant proposal is bounced before any mapping or grid work is spent on it.
+
+**Precondition — a brief must exist to gate against.** Use the `{handoff_supersede_status}` resolved in SHARED.1a:
+
+- **`no_brief`** (no brief matched `{target_slug}`) → there is no captured contract, so conformance **cannot be verified** — the SP-API lesson (a surface whose brief was never saved). Do NOT silently treat absence as a pass: record `{bundle_conformance} = UNVERIFIED (no brief)` and surface it in SHARED.2 ("implementing the proposal as-is; no brief to gate against — capture one via `design-handoff` to enable this gate"). Proceed.
+- **`active` / `superseded` / `ambiguous`** (a brief matched) → read its machine-readable contract fields — `frames` (the §7 contract-key ids), `shell_role` (`required_shell` / `required_chrome` / `forbidden_chrome`), and `composition` (`brief-revision-policy.md` §2 Block B) — and run the three structural checks below. A brief that PRE-DATES these fields (older brief, field absent) is the same degraded case **per dimension**: mark that dimension `UNVERIFIED (brief lacks <field>)`, disclose it, and gate only the dimensions the brief actually carries.
+
+**The three structural checks (structure, not style):**
+
+1. **Frame coverage** — every id in the brief's `frames` list must appear as a DRAWN frame in `{design_frame_inventory}` (a present module / standalone HTML / manifest scaffold row — `drawn: true`). A brief frame the bundle never drew is a proposal that under-delivered the surface inventory, not a thin-but-acceptable build. (This is the brief-side denominator that complements step-03 §2f's impl-side coverage; here it gates the BUNDLE, there it gates the IMPL.)
+2. **Shell / role** — when `shell_role` is present: the bundle's own rendered frame must carry `required_chrome` (verbatim where it draws it) and must NOT render `forbidden_chrome`. A clerk-station bundle that draws the owner global nav — or omits the clerk header — fails here. (The impl-side twin, an ANCESTOR layout injecting `forbidden_chrome` over the surface at runtime, is caught later by step-02 §1a / step-03 §2d against this same `forbidden_chrome`.)
+3. **Composition / job-loop** — when `composition` is a NON-default key (a `recommended-alt` such as `scanner-terminal` / `single-item-stream`, i.e. the brief said "this is NOT the page-mode default — it's a station/stream/verify surface"): the bundle must express the JOB LOOP the composition names (e.g. scan → feedback → tally → close), not a single centered hero card in dead space. This check is a **judgment** read (PROBABILISTIC — there is no exact test for "expresses the loop"); checks 1–2 are structural id/string matches (still model-executed, so structured-probabilistic — the fully-deterministic tier is a per-project CI/manifest validator, which does NOT ship via the fork sync).
+
+**On a miss in check 1 or 2 → HALT. Do NOT proceed to step-02.** Print:
+
+```
+══════════════════════════════════════════════════════════════════
+✗ design-implement halted — the bundle does not conform to its brief.
+
+This is a PROPOSAL that under-delivers the CONTRACT, not a build target.
+Implementing it would ship the design's misread (the receive-station failure).
+
+Brief:   {matched brief filename} (target_slug: {target_slug})
+{for each frame-coverage miss:}  ✗ frame "{id}" — in brief.frames, NOT drawn in the bundle
+{if shell miss:}                 ✗ shell — bundle renders forbidden chrome "{forbidden_chrome}" / omits required "{required_chrome}"
+{if composition concern:}        ⚠ composition — brief says "{composition}" (job loop), bundle reads as a hero/dashboard
+
+Next: revise the design so it covers the brief, then re-run. The bundle is
+"proposal only; needs revision" — re-run design-synthesize (fork path) or
+regenerate in Claude Design against the brief, then re-invoke design-implement.
+══════════════════════════════════════════════════════════════════
+```
+
+A check-3 composition concern with checks 1–2 passing is a **warn**, not a hard halt (it is a judgment call): surface it loudly in SHARED.2 and carry it to step-03 / the §9 report so design-review can adjudicate the station-vs-dashboard verdict on the live surface — but do not silently bless it. Record the outcome as `{bundle_conformance} = pass | UNVERIFIED(reason) | halted(reasons) | warn(composition)` for the SHARED.2 line.
+
 ### SHARED.2. Report ingestion summary
 
 Output a brief summary:
@@ -427,6 +464,7 @@ Output a brief summary:
 Design ingested ({input_kind}):
   source:                 {design_url or design_dir}
   primary file:           {design_file}
+  bundle conformance:     {bundle_conformance}   ← SHARED.1b: pass | UNVERIFIED(reason) | warn(composition). A hard HALT (frame/shell miss) exits BEFORE this summary.
 {if input_kind == "synthesize_bundle":}
   page_mode:              {bundle_manifest.page_mode}
   screens:                {comma-separated bundle_manifest.screens}

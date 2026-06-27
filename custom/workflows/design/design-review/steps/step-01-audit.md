@@ -62,6 +62,18 @@ git rev-list --left-right --count HEAD...origin/main
 
 This gate does NOT block the audit when the user is auditing a known dev-only state (e.g., "review this WIP page on my branch") — drift is the expected condition there. The gate's job is to surface drift, not to refuse to run.
 
+### 1.6. Brief structural-contract check (frame coverage, shell/role, station-vs-dashboard)
+
+The independent live-page net for the bundle→implement seam: even when `design-synthesize` and `design-implement` both passed a non-conformant design through, the live page is audited against the brief's STRUCTURAL contract here, and a structural miss is a **blocking** finding (it gates PR approval), not a nit.
+
+**Resolve the brief.** Match `{target_url}`'s route / slug against the briefs in `{implementation_artifacts}` (same `target_slug` resolution `design-implement` uses). If **no brief** matches, record `brief_contract: none — structural conformance unaudited (UNVERIFIED — no captured contract)` and continue — never infer a contract. If a brief matches, read its Block B `frames`, `shell_role`, and `composition` (`brief-revision-policy.md` §2) and check the LIVE page (same dimension order as the `design-implement` step-01 §SHARED.1b gate):
+
+1. **Frame coverage** — every `frames` id must be reachable / discoverable on the live surface (a present region in default state, or reachable in-session for an in-flow frame). A frame the live page never exposes → **blocking** (designed-but-unbuilt).
+2. **Shell / role** — when `shell_role` is present: the live page must render `required_chrome` and must NOT render `forbidden_chrome` (e.g. the owner global nav on a `(clerk)` surface). Forbidden chrome present → **blocking**; the fix is scoping the ancestor shell to its role, not a component tweak.
+3. **Station vs dashboard** — when `composition` is a non-default key (a `recommended-alt` station/stream/verify, e.g. `scanner-terminal`): the live page must express that **job loop** (e.g. scan → feedback → tally → close) as the dominant structure — NOT a centered hero card in dead space, NOT a generic dashboard/landing surface. "A dashboard where the brief said station" is a **Tier-1 / blocking** violation: cite `Brief §<N> composition: {composition}` and the policy composition rule. This is the exact receive-station failure — its whole point is to be caught here if it slipped the upstream gates.
+
+Record results into the audit's findings with `blocking` severity for any miss; on `no_brief` mark the three dimensions `unaudited` (UNVERIFIED) rather than `pass`. This dimension is what makes "looks fine" insufficient — a page can be visually clean and still be the wrong surface for the job the brief specified.
+
 ### 2. Read the Page
 
 - Call `mcp__claude-in-chrome__read_page` on `{tab_id}`. This returns visible text + DOM structure — both are inputs to the compare step.
