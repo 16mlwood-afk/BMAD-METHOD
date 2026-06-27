@@ -26,17 +26,15 @@ fi
 # hook can't ship silently — see docs/hooks-registry.md + fork-gaps "Hooks ship unvalidated".
 bash ./check-hooks-smoke.sh
 
-# Validate docs links only when docs change
-if command -v rg >/dev/null 2>&1; then
-  if git diff --cached --name-only | rg -q '^docs/'; then
-    npm run docs:validate-links
-    npm run docs:validate-sidebar
-    npm run docs:build
-  fi
-else
-  if git diff --cached --name-only | grep -Eq '^docs/'; then
-    npm run docs:validate-links
-    npm run docs:validate-sidebar
-    npm run docs:build
-  fi
+# Validate docs (links + sidebar) only when docs change.
+# NOTE (fork-gap #94): the full astro site build (npm run docs:build) is intentionally
+# NOT in the commit gate. It is heavyweight + stateful and fails on astro build-cache
+# artifacts (e.g. a stale build/site/pages/404.astro.mjs) INDEPENDENT of the diff — so a
+# markdown-only / docs/fork-gaps.md edit that touches no site logic was blocked, and the
+# only escape (--no-verify) also discarded the cheap content validators that ARE the point
+# of the gate. Links + sidebar are diff-relevant and fast; keep them here. The full SSG
+# build runs at deploy/CI where a clean environment exists.
+if git diff --cached --name-only | grep -Eq '^docs/'; then
+  npm run docs:validate-links
+  npm run docs:validate-sidebar
 fi
