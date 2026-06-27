@@ -6,6 +6,10 @@ npx --no-install lint-staged
 # Validate everything
 npm test
 
+# Validate hooks actually function (exit 0 + correct stdin contract) so a broken
+# hook can't ship silently — see docs/hooks-registry.md + fork-gaps "Hooks ship unvalidated".
+bash ./check-hooks-smoke.sh
+
 # Validate docs links only when docs change
 if command -v rg >/dev/null 2>&1; then
   if git diff --cached --name-only | rg -q '^docs/'; then

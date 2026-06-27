@@ -41,7 +41,9 @@ Hooks are machine-local (they live in `settings.json`, which does NOT sync throu
 2. Write the script in a home above (fork script for synced/global, `~/.claude/hooks/` for machine-local).
 3. Wire it in `~/.claude/settings.json` (or the synced template).
 4. **Add a row to this registry** — name / event / purpose / source / level / owner.
+5. **Add a smoke-test case** to `check-hooks-smoke.sh` — a representative stdin fixture asserting it exits 0 and honours its output contract (empty / valid JSON / plain text for SessionStart). For a stdin-consuming hook (Stop / PreToolUse), add a BEHAVIORAL case that pins the stdin contract (e.g. a fixture that must be silent), so the "hook ignores its stdin and emits valid-but-wrong output" bug class is caught.
 
 ## Governance
 
-Reviewed alongside `STANDARDS.md` by the quarterly Standards Governance Review. The review may optionally verify each registered hook's source-of-truth file exists (a missing script = a broken/removed hook). Catching *unregistered* hooks is future work.
+- **Function is validated, not just existence.** `check-hooks-smoke.sh` runs in the fork's `.husky/pre-commit` — a hook that crashes, emits malformed JSON, or breaks its stdin contract can't be committed. (This exists because a broken hook fails *silently*: the friction-reflect Stop hook once shipped emitting valid-but-wrong output because it ignored stdin — see fork-gaps "Hooks ship unvalidated".)
+- Reviewed alongside `STANDARDS.md` by the quarterly Standards Governance Review (which verifies each in-repo hook's source file exists). Catching *unregistered* hooks is future work.

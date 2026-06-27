@@ -28,7 +28,7 @@ This doc is **fork-local** (like `global-bmad-workflow.md` / `parallel-work-and-
 
 **Proposed investigation:** give the sync a memory of what it last delivered (a per-project manifest) so a file in the manifest but absent from source is a *deletion to propagate*, not local content to protect; or a `--purge-removed` mode; or at minimum a per-project "blocked because of `<file>`" message + a one-command remediation instead of a silent 13-blocked.
 
-### Hooks ship unvalidated — a broken hook misfires silently until caught by luck → `docs/hooks-registry.md` + a hook smoke-test
+### Hooks ship unvalidated — a broken hook misfires silently until caught by luck → `docs/hooks-registry.md` + a hook smoke-test  `[resolved: 2026-06-27 — check-hooks-smoke.sh (exit-0 + stdin-contract assertions, incl. a regression case for the friction-reflect stdin bug), wired into .husky/pre-commit]`
 **Noticed:** 2026-06-27 (bmad-method-v6). **Priority: medium** — a non-functional safety/awareness hook fails *silent*, which is worse than no hook (false confidence).
 
 **What fought us:** `check-friction-reflect.sh` (Stop hook) was shipped earlier this session with a `python3 - <<PY` pattern that makes the heredoc itself become stdin — so `session_id`/`stop_hook_active` never parsed and it would have fired once GLOBALLY instead of once per session. A manual test "passed" only because its marker masked the bug; it was caught later only because a sibling hook (built next) had the same latent flaw.
