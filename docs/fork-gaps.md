@@ -105,3 +105,15 @@ This doc is **fork-local** (like `global-bmad-workflow.md` / `parallel-work-and-
 
 **Proposed investigation:**
 - Consider a scoped pre-push for `custom/`-only diffs (run the budget/ref validators + a lint subset, skip the installer/website/url suites), falling back to the full suite when non-`custom/` paths change. Keep the full suite for upstream-touching commits.
+
+### SessionStart auto-register keys on path, not repo identity → duplicate sync targets for two checkouts of one repo → `src/modules/bmm/_module-installer/assets/hooks.json` (SessionStart auto-register) + `~/.bmad-targets`
+**Noticed:** 2026-06-27 (inbound-flow session). **Priority: medium.**
+
+**What fought us:** session start auto-registered `/Users/masonwood/inbound-flow/_bmad/bmm/workflows` to `~/.bmad-targets`, which already contained `/Users/masonwood/code/inbound-flow/_bmad/bmm/workflows` — two **separate working copies of the same git remote** (`16mlwood-afk/inbound-flow`), sitting at different HEADs (`e7c5c1a` vs `b08a2a6`). Both are now first-class sync targets. This is precisely why the session's standards-drift fired: the freshly-registered checkout had never been synced. A no-arg fan-out sync would write the same workflows into both checkouts, which then drift independently and could overwrite uncommitted work in whichever copy isn't active.
+
+**Why structural:** the auto-register dedupe key is the literal filesystem path, not repo identity. Any project a user clones twice (a `/code/` copy + a top-level copy, a worktree-style second checkout) silently becomes two sync destinations — guaranteed recurring drift warnings and a fan-out that double-writes. The registration step has no notion of "this remote is already a target under a different path," so the targets list accretes near-duplicates that no one prunes.
+
+**Proposed investigation:**
+- Dedupe at registration on **repo identity** (e.g. `git -C <dir> remote get-url origin` normalized), not the path string: if a target with the same origin already exists, skip-and-note rather than append a second line.
+- Or surface a one-line warning at SessionStart when two targets resolve to the same remote, with the prune command — so the user decides which checkout is canonical instead of silently syncing both.
+- Decide the intended model for multiple checkouts of one repo: is a second checkout ever a legitimate independent sync target, or always an accident? If always accidental, the auto-register should refuse it; if sometimes intended, the drift check should treat same-remote targets as a set, not independently.
