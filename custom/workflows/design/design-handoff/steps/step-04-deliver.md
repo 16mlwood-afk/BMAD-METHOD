@@ -73,7 +73,24 @@ esac
 
 Stage the brief, and the rationale too when one was written (`{has_analytics_band}` is `true`) — both belong in the same commit so a brief on `main` always has its rationale beside it.
 
-**Use `git add -f`.** Most projects gitignore `/_bmad-output/` (the `bmad-artifacts-untracked-main-only` posture), so a plain `git add` of a brief is silently rejected as ignored — it stages nothing, the commit reports "no changes", and the push ships an EMPTY branch that looks delivered. The `-f` flag is mandatory for delivery-bound artifacts under a gitignored path. (See `shared/delivery-to-main.md` §3.)
+**Use `git add -f`.** Most projects gitignore `/_bmad-output/` (the `bmad-artifacts-untracked-main-only` posture), so a plain `git add` of a brief is silently rejected as ignored — it stages nothing, the commit reports "no changes", and the push ships an EMPTY branch that looks delivered. The `-f` flag is mandatory for delivery-bound artifacts under a gitignored path. (See `shared/delivery-to-main.md` §3.) Note: because existing briefs are **force-tracked despite the ignore**, a re-run's NEW files stay invisible to plain `git status` / `git add` while the superseded predecessor (already tracked) shows as modified — do not trust plain `git status` to reveal the new artifacts; always `-f`-add them by explicit path.
+
+**Pre-stage wrong-tree guard (run BEFORE `git add`).** Catch the silent split where the brief was written to the MAIN checkout instead of this worktree (step-03 §1 "Bind every read AND every write to THIS tree"). Conservative — fires ONLY when we are inside a linked worktree AND the brief is present in the main checkout but absent here:
+
+```bash
+repo=$(git rev-parse --show-toplevel)
+main_root=$(git worktree list --porcelain | awk '/^worktree /{print $2; exit}')   # main checkout = first entry
+rel="{output_path_relative_to_repo_root}"
+if [ "$repo" != "$main_root" ] && [ ! -e "$repo/$rel" ] && [ -e "$main_root/$rel" ]; then
+  echo "HALT: brief was written to the MAIN checkout ($main_root), not this worktree ($repo)."
+  echo "Fix — copy the new brief + rationale (and any superseded-predecessor flips) into the worktree, then restore main to pristine:"
+  echo "  cp \"$main_root\"/_bmad-output/implementation-artifacts/*{target_slug}*.md \"$repo\"/_bmad-output/implementation-artifacts/"
+  echo "  cd \"$main_root\" && git checkout -- _bmad-output/implementation-artifacts/   # revert the flip edits; rm any new-date files written to main"
+  exit 1
+fi
+```
+
+There is no legitimate "deliver from the wrong tree" case, so the recipe IS the resolution — no override path. This mirrors the post-`git add` stage assertion below; it turns the cryptic `pathspec did not match` into a fix recipe.
 
 ```bash
 git add -f {output_path}

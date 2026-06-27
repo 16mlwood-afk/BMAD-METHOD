@@ -134,6 +134,18 @@
             "statusMessage": "Workflow source guard..."
           }
         ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "name": "bmad-board-contention-note",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "_in=$(cat 2>/dev/null); FILE=$(printf '%s' \"$_in\" | jq -r '.tool_input.file_path // empty' 2>/dev/null); [ -z \"$FILE\" ] && FILE=\"${CLAUDE_TOOL_INPUT_FILE_PATH:-}\"; case \"$FILE\" in *sprint-status.yaml) ;; *) exit 0;; esac; count=$(ps -eo command 2>/dev/null | grep -c \"^claude\"); [ \"$count\" -gt 1 ] || exit 0; MARK=\"$PWD/.claude/.board-contention-warn-last\"; if [ -f \"$MARK\" ]; then last=$(/usr/bin/stat -f %m \"$MARK\" 2>/dev/null || /usr/bin/stat -c %Y \"$MARK\" 2>/dev/null || echo 0); now=$(/bin/date +%s); [ $((now - last)) -lt 900 ] && exit 0; fi; /bin/mkdir -p \"$PWD/.claude\" 2>/dev/null; /usr/bin/touch \"$MARK\" 2>/dev/null; printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"additionalContext\":\"BOARD CONTENDED (%s claude sessions active): sprint-status.yaml is a single shared untracked file with no locking. RE-READ it immediately before this write, and edit PER-KEY (one value per line, parallel-sessions.md B1/B1a) — never a whole-file or multi-line block rewrite, which stale-anchors and silently clobbers another session. Story prose belongs in the per-story .md, not the board.\"}}\\n' \"$count\"",
+            "timeout": 5,
+            "statusMessage": "Board contention note..."
+          }
+        ]
       }
     ],
     "SessionStart": [
