@@ -24,6 +24,23 @@ Owns **only** what is true for this one repo:
 
 **Must NOT restate shared standards.** Where a project follows a shared standard, **point at it by ID/path** — never paste its body. A long generic memory-doctrine block or a copied deploy contract in a project CLAUDE.md is drift; replace it with a pointer (e.g. "Deploy follows **STD-DEPLOY-001** — see `_bmad/bmm/workflows/shared/deployment-to-prod.md`").
 
+## Values vs contracts — the one rule that decides every section
+
+**State the project's VALUES locally; POINT at the shared CONTRACT by path.** This is the operational form of "never restate."
+
+- A **value** is a fact true only of this project — the deploy command, the service root dir, the dev port, the DB host, which env var holds a secret. Lives in the project CLAUDE.md.
+- A **contract** is a shared rule about *how* a class of thing is done — admin-merge grammar, dirty-path filters, the memory discipline, the worktree-before-edit protocol. Lives once at its Home; referenced by path. Copying it in is drift waiting to happen.
+
+| Topic | State locally (value) | Point at (contract) |
+|---|---|---|
+| Deploy | command + root dir + platform values | **STD-DEPLOY-001** (`_bmad/bmad-shared/deployment-to-prod.md`) |
+| Delivery | — | **STD-DELIVERY-001** (`delivery-to-main.md`) |
+| Readiness | this project's state, if relevant | **STD-PRODREADY-001** (`prod-readiness-charter.md`) |
+| Memory | project opt-out / domain facts | **STD-MEMORY-001** (`memory-library-discipline` / `memory-retrieval-policy`, global) |
+| Secrets | which env var holds what | global secrets doctrine (`~/.claude/CLAUDE.md`) |
+| Worktrees / parallel | project-specific hook config | **STD-WORKTREE-001** / **STD-PARALLEL-001** |
+| CLAUDE.md shape itself | — | **STD-CLAUDE-001** (this doc) |
+
 ## Canonical project CLAUDE.md shape
 
 A good project CLAUDE.md is short and pointer-based. Recommended sections:
