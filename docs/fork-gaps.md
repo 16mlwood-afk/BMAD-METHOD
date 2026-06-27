@@ -32,6 +32,16 @@ This doc is **fork-local** (like `global-bmad-workflow.md` / `parallel-work-and-
 - Revisit whether the fork edit-guard allowlist should at least *warn* (not block) when a second session has uncommitted `custom/workflows/shared/` changes — awareness-tier, consistent with the conservative-hook posture.
 - Decide the dedupe convention when it *does* happen (defer-to-most-integrated + fold-in, as recommended this session) so reconciliation isn't re-litigated each time.
 
+**Proposed design (minimal spec — NOT built; build is one coordinated session, hook routes through `enforcement-expert`):**
+
+*Placement:* the procedure does NOT belong in `parallel-sessions.md` — that doc syncs to the 13 and is about project `src/` + sprint-status. Authoring a new shared standard is a **fork-only** act, so the rule lives in the fork-local `docs/global-bmad-workflow.md`, cross-referenced from STANDARDS.md's "author a NEW standard" recipe. Only the hook lives in `~/.claude` (not synced).
+
+- **A — the rule (procedure tier; agent must run it).** Before authoring anything in `custom/workflows/shared/`, a 3-line claim-check: `grep -ri "<topic>" custom/workflows/shared/STANDARDS.md` (already exists?) · `git -C ~/bmad-method-v6 status --porcelain custom/workflows/shared/` + `git log --oneline -10` (in-flight?) · if clear, reserve the ID/Home in the ledger (B) *before writing a line*.
+- **B — the in-flight ledger (minimal shape).** A transient claim line at the top of STANDARDS.md under an `<!-- in-flight -->` block, removed when the real index block is committed: `<!-- in-flight: STD-<AREA>-NNN · <topic> · session=<branch-slug|pid> · at=<iso8601> -->`. Co-located in the file everyone greps; visible in `git status` while uncommitted; racing the claim itself still surfaces the other session's line on re-read (deliberate, not lucky). A separate `.in-flight.yaml` is the cleaner-but-nobody-reads-it alternative — start with the in-file comment.
+- **C — awareness warning (deterministic-awareness tier; NO gate).** A SessionStart hook in `~/.claude` that, when the session is in/near the fork, runs `git -C ~/bmad-method-v6 status --porcelain custom/workflows/shared/` and on any uncommitted `shared/` change (or a stale in-flight claim) injects one line: *"⚠ another session has uncommitted changes under custom/workflows/shared/ (<files>) — check for in-flight standard authoring before adding one."* Warn-only — a duplicate standard is recoverable, so no PreToolUse deny. **Limit:** SessionStart fires once, so mid-session changes won't re-warn — which is exactly why A's at-author-time check exists (belt = hook at start, suspenders = procedure at the dangerous moment).
+
+*Enforcement honesty:* A is probabilistic (procedure), C is deterministic-awareness (injected, can't be missed at start) but deliberately not a gate. No hard gate — same low-stakes-recoverable call as the CLAUDE.md standard's awareness ceiling.
+
 ### Deploy method is under-specified for agents → `deployment-to-prod.md` + project CLAUDE.md deploy notes
 **Noticed:** 2026-06-26 (inbound-flow). **Priority: high** — deploy is the last mile of *every* task, so this friction recurs constantly and every agent pays it.
 
