@@ -19,6 +19,18 @@ This doc is **fork-local** (like `global-bmad-workflow.md` / `parallel-work-and-
 
 ## Open
 
+### Read-only audit workflows need a live "actual side" but the prod DB is unreachable from a local checkout → the `relational-coherence-audit` / `data-quality-audit` / `scrape-coverage-audit` two-evidence model + each project's `docs/deployment.md` DB-access note
+**Noticed:** 2026-06-27 (running `relational-coherence-audit` on cash-recovery's Expected Inbound FNSKU→identity edge). **Priority: medium** — recurring on every "no local DB, prod is Railway-internal" project; it caps a whole family of audit workflows at half their value.
+
+**What fought us:** these audits are explicitly two-evidence — an "expected" side (schema + edge map, fully derivable offline) and an "actual" side (live DB query / rendered surface), and their findings *only* become decision-grade when the actual side runs. For this audit the structural verdict was solid from source (the edge is real, the drawer resolves nothing), but the decision-relevant number the user actually asked for (how many inbound FNSKUs resolve to existing identity vs need a new SP-API source) is a one-line `SELECT` the agent could not run: `DATABASE_URL` host is `postgres.railway.internal` (only resolvable inside Railway's network), there is no public-proxy env var, and the obvious fallback (`railway connect`/`railway run` from the linked checkout) is blocked by the documented home-dir/worktree Railway-link footgun. So a run that should end "ratio is X/Y, scope Phase 1" instead ends with a hand-off SQL block the owner must run themselves — the same "agent can't confirm the one hypothesis that matters" shape as the deploy-legibility gap below.
+
+**Why structural:** the workflows' own fallback (`{server_live}=false`, mark evidence `inferred-static`) is correct but silently degrades every audit on this project class to "structural-only + a query you run yourself." The missing piece is a *sanctioned read-only data path* an agent can use without tripping the deploy/footgun rails.
+
+**Proposed investigation:**
+- Document a read-only prod-DB access recipe in each project's `docs/deployment.md` (and reference it from the audit workflows' "Read-Only Data / Render Access" init): a Railway Postgres proxy / public-URL form an agent may use for `SELECT`-only audit queries, distinct from the internal `DATABASE_URL` and explicitly outside the `railway up` footgun.
+- Consider a tiny project-local read-only query runner (lazy `getDb()` against a public proxy URL) so audits can fill their "actual side" deterministically instead of emitting a hand-off query.
+- Until then, have the audit workflows state the degradation louder in the report header — "actual side NOT run; verdict is structural-only" — so the half-run isn't mistaken for complete.
+
 ### [RESOLVED] Production deploy state is illegible from inside a session — no in-repo signal of "last-deployed commit vs `origin/main` HEAD" → `docs/deployment.md` (cash-recovery) + the shared `deployment-to-prod.md` contract
 **[Resolved 2026-06-27]** Resolved — deploy-legibility gap (cash-recovery): Production had no visible build identity, so stale Railway deploys could be mistaken for live regressions (as happened with /receive). Fixed by adding authenticated GET /api/status with deployed commit/build metadata and documenting the staleness check in docs/deployment.md (linked from CLAUDE.md): git log --oneline <live-commit>..origin/main → any output means prod is behind and needs railway up. BMAD sync drift in the parent checkout remains a separate upstream issue.
 
