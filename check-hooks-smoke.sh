@@ -49,6 +49,8 @@ rm -f "/tmp/claude-fork-reflect-$(printf '%s' "smoke-$$" | python3 -c 'import ha
 # claude-md-lint: non-CLAUDE.md path MUST be silent; CLAUDE.md + signals MUST nudge.
 run check-claude-md-lint.sh   '{"tool_input":{"file_path":"/x/README.md","content":"memory-library-discipline admin-merge"}}' empty "claude-md-lint/non-claude-silent"
 run check-claude-md-lint.sh   '{"tool_input":{"file_path":"/x/CLAUDE.md","content":"memory-library-discipline and admin-merge"}}'  json  "claude-md-lint/restatement-nudge"
+# fork-authoring-collision: a non-shared path must be silent (proves stdin is read).
+run check-fork-authoring-collision.sh '{"tool_input":{"file_path":"/x/README.md"}}' empty "fork-authoring/non-shared-silent"
 
 echo "Hook smoke-test: $PASS passed, $FAIL failed"
 if [ "$FAIL" -ne 0 ]; then printf '  FAIL %s\n' "${FAILED[@]}"; exit 1; fi

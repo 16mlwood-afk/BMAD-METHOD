@@ -30,6 +30,7 @@ Hooks are machine-local (they live in `settings.json`, which does NOT sync throu
 | bmad-auto-sync | PostToolUse(EnterWorktree) | Sync BMAD workflows into a new worktree | inline | enforce | fork maintainer |
 | enforcement-expert-nudge | PreToolUse(Edit\|Write) | Nudge to consult `enforcement-expert` when editing an enforcement surface | `~/.claude/hooks/enforcement-expert-nudge.sh` | warn (nudge) | `enforcement-expert` |
 | check-claude-md-lint | PreToolUse(Edit\|Write) | Nudge to use a pointer when a CLAUDE.md edit restates a shared standard | `~/bmad-method-v6/check-claude-md-lint.sh` | warn (nudge) | STD-CLAUDE-001 |
+| check-fork-authoring-collision | PreToolUse(Edit\|Write) | Nudge when authoring in `custom/workflows/shared/` while ANOTHER session has uncommitted changes there (per-session ledger avoids self-flagging) | `~/bmad-method-v6/check-fork-authoring-collision.sh` | warn (nudge) | `parallel-sessions` |
 | prod-readiness-deploy-gate | PreToolUse(Bash) | Gate deploy-class commands on a prod-readiness contract | `~/.claude/hooks/prod-readiness-deploy-gate.sh` | enforce (gate) | `prod-readiness-charter` |
 | friction-reflect | Stop | Fire-once end-of-session prompt to log structural friction | `~/bmad-method-v6/check-friction-reflect.sh` | warn (nudge) | `workflow-friction-and-process-issues` |
 

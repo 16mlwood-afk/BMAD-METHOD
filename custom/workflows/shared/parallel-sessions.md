@@ -161,6 +161,18 @@ Dead signals (the zombie shape from incident 2): worktree branch gone AND PID no
 
 **Conservatism rule:** if liveness is genuinely ambiguous (e.g. `session=unknown`, no worktree, but `at` is 10 minutes old) prefer to **skip to the next story** rather than reclaim — refusing costs you one story; stealing a live claim corrupts a peer's run. Only reclaim on a clear dead signal.
 
+## §D — Authoring a shared standard/workflow in the fork
+
+Fork edits (`~/bmad-method-v6/`) are deliberately hook-allowlisted — no worktree is required — which is convenient but removes the *only* collision protection. Two cold sessions pointed at the same gap can both author the same new standard into `custom/workflows/shared/`, duplicate the ID space, and collide. This happened once (one session wrote `claude-md-charter.md`/`STD-CLAUDEMD-001`, another `claude-md-standard.md`/`STD-CLAUDE-001`), caught only by a lucky re-read.
+
+### D1. Before authoring a NEW shared standard/workflow — claim it
+1. **Check for an in-flight twin.** `grep` `STANDARDS.md` for the topic/ID, scan recent commits (`git log --oneline -10`), and check **uncommitted shared/ work**: `git -C ~/bmad-method-v6 status --porcelain -- custom/workflows/shared custom/skills-native/_shared`. A foreign untracked file there is another session mid-authoring.
+2. **Claim up front.** Decide the ID (`STD-<AREA>-NNN`) and Home filename, and add the STANDARDS.md index block *first* (or a one-line "being authored" note) before writing the Home doc — so a second session greps and sees it.
+3. The **`check-fork-authoring-collision`** hook (PreToolUse) surfaces this automatically: it nudges when you edit a shared/ file while another session has uncommitted shared/ work you haven't touched (a per-session ledger avoids flagging your own multi-file edit). Awareness only — it never blocks.
+
+### D2. When a collision DID happen — dedupe convention
+**Defer to the most-integrated, then fold in.** The version that is committed/pushed/synced is the keeper (reconciling around an integrated artifact is cheaper than re-integrating). Fold any genuinely-better content from the loser into the keeper, purge the duplicate everywhere (incl. synced project copies + the skills mirror), and keep the collision logged in `docs/fork-gaps.md`. Don't re-litigate the keeper choice each time.
+
 ## Costs
 
 - A worktree per src-editing run — cheap, and the project `CLAUDE.md` already mandates it; §A1 just moves it from "the human remembered" into the workflow.
