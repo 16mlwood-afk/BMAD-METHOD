@@ -181,3 +181,5 @@ grep -A14 "$(basename "$PROJECT_DIR")\b" /tmp/onboard-sync.log | head -16 || tru
 echo
 echo "✅ '$PROJECT_NAME' onboarded. Custom workflows, skills, hooks, and commands are wired."
 echo "   Next: fill in CLAUDE.md's stack/structure TODOs and scaffold your app."
+echo "   Memory: already under the global doctrine (~/.claude, see CLAUDE.md's Memory section)."
+echo "           Create MEMORY.md + memory/<slug>.md when you have your first durable project fact."

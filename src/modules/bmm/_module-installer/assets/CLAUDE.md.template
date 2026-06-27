@@ -152,3 +152,8 @@
 - Read files you need, then start coding. Don't over-research.
 - If type-checking reveals only pre-existing errors unrelated to your changes, note them and move on.
 - **Don't ask permission for obvious next steps.** If tests pass and the work is done, push the branch and create the PR. If the user says "y" or "go ahead", that means execute — don't ask again.
+
+### Memory
+<!-- bmad:memory -->
+- This project follows the **global memory doctrine** (machine-level, under `~/.claude`), which loads every session — this repo is under it before it has a single saved fact. The rulebook is `memory-library-discipline` (write) + `memory-retrieval-policy` (read) + `memory-hygiene` (procedure); the synced `STANDARDS.md` (in your `_bmad` shared standards) catalogs them under its Memory section.
+- **Create persistent memory only when a durable fact appears.** When it does: write `memory/<slug>.md` (frontmatter `name`/`description`/`metadata.type`, then body — Why/How-to-apply for feedback/project) FIRST, then add its line to `MEMORY.md` (the auto-loaded index), grouped under its shelf. One file per fact; durable items only; current instructions always beat stored memory; log any deletion/edit in `memory-changelog.md` first. Full lifecycle (start → change → debug) is in `memory-library-discipline`.
