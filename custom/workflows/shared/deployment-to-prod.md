@@ -1,7 +1,7 @@
 ---
 name: deployment-to-prod
-contract_version: 1
-description: 'Universal post-merge deployment contract for BMAD-managed projects. Defines when admin-merge on code PRs is acceptable, what dirty paths block a deploy, how dependency state preconditions are auto-healed, and the exit-code grammar that the bmad-deploy.sh executable uses to signal outcomes. Each project encodes its specifics in `_bmad/bmm/config.yaml` → `deploy:`.'
+contract_version: 2
+description: 'Universal post-merge deployment contract for BMAD-managed projects. Defines the deploy-method modes + fallback ladder an agent resolves before shipping (§1A), when admin-merge on code PRs is acceptable, what dirty paths block a deploy, how dependency state preconditions are auto-healed, and the exit-code grammar that the bmad-deploy.sh executable uses to signal outcomes. Each project encodes its specifics in `_bmad/bmm/config.yaml` → `deploy:`.'
 ---
 
 # Deployment-to-Prod Contract
@@ -28,6 +28,38 @@ This contract does NOT cover:
 - The PR-creation step (CLAUDE.md "ALWAYS Deliver Your Work" still owns commit → push → PR).
 - The post-deploy verification step beyond the script's own exit code (smoke tests, sentry checks, etc. — project-level concern).
 - Blue/green, canary, or staged-rollout deploys. Those projects opt out and run their own choreography.
+
+---
+
+## 1A. Resolve the deploy METHOD first — modes & fallback ladder
+
+Before any deploy action, resolve **how this project ships** from `deploy.method`. **Do not guess a platform CLI** (`railway up`, `wrangler deploy`) — guessing is exactly what put production *ahead of* `main` with a stranded, unmerged commit (inbound-flow, 2026-06-26: the project auto-deploys on push, yet the agent reached for `railway up`). The deploy MODE decides whether there is even a deploy command to run.
+
+### The three modes (`deploy.method`)
+
+| `deploy.method` | What "deploy" means | Agent action after merge | NEVER |
+|---|---|---|---|
+| `push_auto` | The platform auto-deploys on push to the default branch. **Merge IS the deploy.** | Confirm the merge pushed and the platform build fired (platform/build dashboard, or the project's status endpoint). Nothing else. | Run a platform CLI deploy — it ships *local* state and diverges prod from `main`. |
+| `contract_script` | Run the §3 choreography. | `./scripts/bmad-deploy.sh` from an `origin/<default-branch>`-tip checkout (§3a-stale). | Hand-run the platform CLI in place of the script. |
+| `manual_cli` | A platform CLI from a **verified** main-tip checkout (e.g. cash-recovery's `railway up`). | Per §4 posture (owner-gated by default; agent-owned iff `deploy.autonomous: true`), from a fresh `origin/<default-branch>` checkout, after verifying the deploy target (§4 autonomous guard). | `railway up` from a worktree / unlinked / home dir — it can resolve to a *different* prod app. |
+
+If `deploy.method` is **unset**, infer conservatively: `bmad_contract` active → `contract_script`; `bmad_contract: skip` with no documented method → **HALT and state** (*"deploy method undeclared — set `deploy.method` or follow the project's deployment doc"*), never default to a CLI. Setting `deploy.method` explicitly removes the inference.
+
+### The fallback ladder — when the primary method is blocked
+
+The ladder is **method-bounded**: a blocked primary never falls back to a method that diverges prod from `main`.
+
+1. **Primary** = the `deploy.method` action above.
+2. **If the primary is unavailable** (auto-deploy webhook didn't fire / script errors / CLI broken): use only the project's *documented* manual trigger **for that same mode** — e.g. a `push_auto` project whose webhook is down is re-triggered via the platform's redeploy, **not** an ad-hoc local `railway up`.
+3. **No rung ships un-merged local state.** Production is always downstream of `origin/<default-branch>`, never ahead of it.
+
+### Auth-failure branch — the durable target is `origin/<default-branch>`, always
+
+If GitHub auth breaks mid-deliver (push / PR / merge fails), the commit has **not** reached its durable target. Do **not** substitute a side-channel deploy (`railway up` / `wrangler deploy`) of local state for the missing merge:
+
+- A side-channel deploy makes prod ahead of `main`; the next push-based deploy — or anyone's main-tip deploy — **silently reverts your fix**, and prod now diverges from the source of truth.
+- Instead: **fix auth and land the commit on `origin/<default-branch>` first** (re-mint the token / `gh auth login` — surface to the owner if it needs an interactive login), then deploy by the resolved method.
+- Order is non-negotiable: **merge to the durable target → then deploy.** Never deploy to cover a merge you couldn't land.
 
 ---
 
@@ -138,6 +170,11 @@ deploy:
   # Opt-out switch. When true, bmad-deploy.sh exits 99 and the contract does not apply.
   bmad_contract: skip            # optional; default: contract applies
 
+  # Deploy METHOD (§1A) — how this project ships. Agent-read doctrine; the script does
+  # not require it (push_auto / manual_cli are skip-mode for the script — the AGENT acts).
+  method: push_auto              # push_auto | contract_script | manual_cli
+                                 # unset → inferred per §1A; set explicitly to avoid the inference.
+
   # Platform identifier — informational, used by the script for error messages.
   platform: cloudflare_pages     # vercel | railway | fly | aws_amplify | custom
 
@@ -226,7 +263,7 @@ Project CLAUDE.md collapses the deploy-related sections into one pointer block:
 ```markdown
 ### Deployment
 Deploys follow the BMAD deploy-to-prod contract. See `_bmad/bmm/workflows/shared/deployment-to-prod.md`.
-- Run `./scripts/bmad-deploy.sh` from the project root.
+- **Resolve `deploy.method` first (§1A)** — `push_auto` (merge IS the deploy; run no CLI), `contract_script` (`./scripts/bmad-deploy.sh` from the project root), or `manual_cli` (platform CLI from a verified `origin/<default-branch>` checkout). Never guess a CLI; production is never ahead of `main`.
 - Configuration in `_bmad/bmm/config.yaml` → `deploy:`.
 - Project-specific exceptions go above this section as named overrides.
 ```
@@ -238,3 +275,5 @@ Deploys follow the BMAD deploy-to-prod contract. See `_bmad/bmm/workflows/shared
 Changes to this document propagate to every targeted project on the next `sync-bmad-workflows.sh` run. Same for `scripts/bmad-deploy.sh`. The per-project `_bmad/bmm/config.yaml` is project-owned and not synced — it accumulates per-project values over time.
 
 Breaking changes (e.g., renaming a config field, removing an exit code) require a migration note appended to this document and a one-line entry in each project's CLAUDE.md memory changelog at sync time. The sync script's `--check` mode surfaces config blocks that would fail validation against the current contract version.
+
+**v2 (2026-06-27) — additive, backward-compatible; no config migration required.** Adds §1A (deploy-method modes + fallback ladder + auth-failure branch) and the optional `deploy.method` field. Existing v1 configs without `method` stay valid — the agent infers the mode per §1A (`bmad_contract` active → `contract_script`; `skip` with no documented method → halt-and-state, never a guessed CLI). The change is **doc/doctrine only**: `bmad-deploy.sh` is unchanged (`push_auto` / `manual_cli` remain skip-mode for the script; the AGENT owns those paths). Recommended (not required): each project sets `deploy.method` explicitly so the mode is legible from config rather than inferred. This closes the "deploy method under-specified for agents" fork-gap — production going *ahead of* `main` via a guessed `railway up` on a push-auto project.
