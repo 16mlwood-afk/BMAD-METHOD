@@ -77,7 +77,22 @@ PROJECT_DIR="${PROJECT_DIR:-$PWD}"
 PROJECT_DIR="$(cd "$PROJECT_DIR" 2>/dev/null && pwd || echo "$PROJECT_DIR")"
 mkdir -p "$PROJECT_DIR"
 PROJECT_DIR="$(cd "$PROJECT_DIR" && pwd)"
-PROJECT_NAME="${PROJECT_NAME:-$(basename "$PROJECT_DIR")}"
+
+# Resolve the CANONICAL repo root for IDENTITY (project name + memory slug). If PROJECT_DIR is a
+# git worktree (…/.claude/worktrees/<branch>/), this resolves to the MAIN checkout — so restamping
+# from a worktree (the common case, since the tracked marker files need a PR) uses the project's
+# real identity, not the worktree's basename/path. The in-repo writes still target PROJECT_DIR
+# (the worktree) so they can be committed; only name + slug follow CANON_ROOT. Falls back to
+# PROJECT_DIR when not in a git repo yet (a brand-new onboard, which is canonical anyway).
+CANON_ROOT="$PROJECT_DIR"
+if [[ -e "$PROJECT_DIR/.git" ]]; then
+  _gcd="$(git -C "$PROJECT_DIR" rev-parse --git-common-dir 2>/dev/null || true)"
+  if [[ -n "$_gcd" ]]; then
+    case "$_gcd" in /*) ;; *) _gcd="$PROJECT_DIR/$_gcd" ;; esac
+    CANON_ROOT="$(cd "$(dirname "$_gcd")" 2>/dev/null && pwd || echo "$PROJECT_DIR")"
+  fi
+fi
+PROJECT_NAME="${PROJECT_NAME:-$(basename "$CANON_ROOT")}"
 
 case "$PROJECT_PHASE" in
   greenfield|brownfield|mixed) ;;
@@ -165,7 +180,8 @@ EOF
 
 write_onboarding_memory() {
   local today="$1"
-  local slug; slug="$(printf '%s' "$PROJECT_DIR" | sed 's#/#-#g')"
+  # Memory slug follows the CANONICAL repo root, never a worktree path (see CANON_ROOT above).
+  local slug; slug="$(printf '%s' "$CANON_ROOT" | sed 's#/#-#g')"
   local memdir="$HOME/.claude/projects/$slug/memory"
   mkdir -p "$memdir"
   local up_note=""
