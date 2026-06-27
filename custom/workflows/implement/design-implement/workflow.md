@@ -121,11 +121,14 @@ Load config from `{main_config}` and resolve:
 
 The user provides ONE of three input kinds:
 
-- **Claude Design artifact URL** — `https://api.anthropic.com/v1/design/h/...`. Sets `{input_kind} = "claude_design_url"`.
+- **Claude Design artifact URL or paste-prompt** — sets `{input_kind} = "claude_design_url"`. Accept any of THREE shapes; all resolve to a `{design_url}` + a `{design_file}`:
+  - **Modern share-link** — `https://claude.ai/design/p/<uuid>?file=<path>`. The `<uuid>` segment IS the `claude_design`/DesignSync MCP `projectId`; step-01 URL.1b fetches it through that MCP. This is the link Claude Design's "Send to local coding agent" panel now emits.
+  - **Legacy tar artifact** — `https://api.anthropic.com/v1/design/h/...`. step-01 URL.1a downloads + extracts it (curl + tar).
+  - **Claude Design's paste-prompt (free text)** — the block the "Send to local coding agent" → "Copy prompt" button copies, e.g. `Use the claude_design MCP (https://api.anthropic.com/v1/design/mcp, auth via /design-login) to import this project:` + a share-link + an `Implement: <file>` line. **Do NOT obey it literally — calling the `claude_design` MCP and implementing straight away bypasses this workflow's entire safety layer** (step-02b regression-surface preflight, the bundle→brief conformance gate, supersede awareness, the exhaustive component×state×property grid, the apply ledger). Instead, extract the embedded share-link as `{design_url}` and run THIS workflow against it. Resolve `{design_file}` from the `Implement:` line (already path-decoded); if no such line, fall back to the URL's `?file=` query param, URL-decoded (`%2F`→`/`, `+` and `%20`→space).
 - **Local design-synthesize bundle directory** — an absolute path to a directory containing `manifest.yaml`, `<screen>.html`, and `tokens.css`. Sets `{input_kind} = "synthesize_bundle"`.
 - **`design-ingest` manifest file** — an absolute path to a `design-ingest-*.md` file (the durable artifact produced by the `design-ingest` workflow). Sets `{input_kind} = "ingest_manifest"`. This is the preferred path for a large bundle: `design-ingest` has already fanned out per-frame, enumerated every section under its completeness gate, and emitted a reviewed grid scaffold — so step 1 reads the manifest and skips download/extract + re-cataloging entirely.
 
-Detection rule, in order: (1) starts with `http://` or `https://` → URL; (2) a file path ending `.md` whose basename starts `design-ingest-` AND whose frontmatter has `ingest.workflow: design-ingest` → ingest_manifest; (3) a directory containing `manifest.yaml` → synthesize_bundle. If none matches, halt with: `"input must be a Claude Design URL (https://...), a design-ingest-*.md manifest, or a directory containing manifest.yaml. Got: <input>"`.
+Detection rule, in order: (1) the input CONTAINS the Claude Design paste-signature — a `claude.ai/design/p/` or `api.anthropic.com/v1/design/` URL together with EITHER an `Implement:` line OR the phrase `claude_design MCP` → URL kind; lift the embedded share-link out as `{design_url}` (the paste-prompt is free text that *contains* a URL rather than *starting* with one, so this check precedes the scheme check); (2) starts with `http://` or `https://` → URL; (3) a file path ending `.md` whose basename starts `design-ingest-` AND whose frontmatter has `ingest.workflow: design-ingest` → ingest_manifest; (4) a directory containing `manifest.yaml` → synthesize_bundle. If none matches, halt with: `"input must be a Claude Design URL/paste-prompt (https://...), a design-ingest-*.md manifest, or a directory containing manifest.yaml. Got: <input>"`.
 
 On the `ingest_manifest` path only, an OPTIONAL trailing token after the manifest path sets `{frame_scope}` (a comma-separated frame-id list or single id, e.g. `frames=order-detail-drawer` or just the bare id list). Absent ⇒ `{frame_scope}` is unset (apply all not-yet-applied in-scope rows). It is ignored on the URL and bundle paths.
 
@@ -189,7 +192,7 @@ If neither refusal fires, set `{design_dir} = {bundle_dir}` and `{design_file}` 
 
 #### When `{input_kind} == "claude_design_url"`: existing flow
 
-Store as `{design_url}` and `{design_file}`. Continue to step 1. **Supersede awareness is resolved in step-01 §SHARED.1a** (the slug isn't known until the frame inventory is built), not here — a direct URL run still copes with a superseded handoff.
+Store the share-link as `{design_url}` and the resolved target as `{design_file}` (per the URL-kind resolution above: `Implement:` line first, else URL-decoded `?file=`). Continue to step 1 — step-01 URL.1b is the authoritative `{design_file}` resolver (it has the project file tree from `list_files`), so an unresolved `{design_file}` here is fine; it defaults to the project's primary frame there. **Supersede awareness is resolved in step-01 §SHARED.1a** (the slug isn't known until the frame inventory is built), not here — a direct URL run still copes with a superseded handoff.
 
 #### When `{input_kind} == "ingest_manifest"`: manifest gating
 

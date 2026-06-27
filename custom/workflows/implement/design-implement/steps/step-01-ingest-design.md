@@ -74,10 +74,11 @@ Store the directory containing the HTML files as `{design_dir}`.
 
 This URL is a design-system project read through the **DesignSync** (`claude_design`) MCP, NOT a tar — mirror the project's files to a local `{design_dir}` so the rest of URL PATH reads them exactly as it would an extracted bundle:
 
-1. `get_project` on the project UUID; verify `type: PROJECT_TYPE_DESIGN_SYSTEM`. (If auth is missing, run `/design-login` first, per the command surface.)
+0. **Resolve `{design_file}` BEFORE fetching — and URL-decode it.** The `<uuid>` in `claude.ai/design/p/<uuid>` is the DesignSync `projectId`. The target file comes from one of two places, in this order: (a) the `Implement: <file>` line if the input was Claude Design's paste-prompt — it is **already path-decoded** (e.g. `orders-spend/Spend Analysis.html`), use it verbatim; (b) otherwise the URL's `?file=<path>` query param, which is **percent/`+`-encoded** and MUST be decoded — `%2F`→`/`, `+`→space, `%20`→space (e.g. `?file=orders-spend%2FSpend+Analysis.html` → `orders-spend/Spend Analysis.html`). The decoded value is the project-relative key `get_file` and the `list_files` tree match against; an undecoded `%2F`/`+` key will miss every file. If neither source is present, leave `{design_file}` unset and default it at step 4.
+1. `get_project` with `projectId = <uuid>`; verify `type: PROJECT_TYPE_DESIGN_SYSTEM`. (If auth is missing, run `/design-login` first, per the command surface.)
 2. `list_files` to enumerate the project tree (HTML/JSX frames, `tokens/*.css`, `readme.md`, data/app modules).
-3. `mkdir -p /tmp/design-bundle` → `{design_dir}`. For the target frame named by the URL's `?file=<path>`, its `<script src>` module dependencies, the `tokens/*.css` files, and `readme.md`, call `get_file <path>` and write each to `{design_dir}/<path>` **preserving the project-relative path** (so URL.2's README read, URL.3's target-file read, URL.3a's `<script src>`/sibling-`.html` enumeration, and URL.4's token-file reads all resolve against `{design_dir}` unchanged).
-4. The `?file=...` path is `{design_file}`. If absent, default to the project's primary HTML frame per `readme.md`.
+3. `mkdir -p /tmp/design-bundle` → `{design_dir}`. For the target frame (the decoded `{design_file}` from step 0), its `<script src>` module dependencies, the `tokens/*.css` files, and `readme.md`, call `get_file <path>` (the decoded path) and write each to `{design_dir}/<path>` **preserving the project-relative path** (so URL.2's README read, URL.3's target-file read, URL.3a's `<script src>`/sibling-`.html` enumeration, and URL.4's token-file reads all resolve against `{design_dir}` unchanged).
+4. `{design_file}` is the decoded path from step 0. If it was unset, default to the project's primary HTML frame per `readme.md`.
 
 The fetch mechanism is the ONLY difference — URL.2 (README) through URL.6 are mechanism-agnostic and run identically once `{design_dir}` holds the files.
 

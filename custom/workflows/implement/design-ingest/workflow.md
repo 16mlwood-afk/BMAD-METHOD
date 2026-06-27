@@ -84,10 +84,10 @@ Load config from `{main_config}` and resolve `user_name`, `communication_languag
 
 Same two input kinds as `design-implement`:
 
-- **Claude Design artifact URL** — `https://api.anthropic.com/v1/design/h/...` → `{input_kind} = "claude_design_url"`, store `{design_url}` and the `open_file` target.
+- **Claude Design artifact URL or paste-prompt** — `{input_kind} = "claude_design_url"`; store `{design_url}` and the `open_file` target. Same three shapes as `design-implement` Input Resolution: the modern `https://claude.ai/design/p/<uuid>?file=<path>` share-link (claude_design/DesignSync MCP), the legacy `https://api.anthropic.com/v1/design/h/...` tar, OR Claude Design's free-text paste-prompt (`Use the claude_design MCP … to import this project:` + a share-link + an `Implement: <file>` line). **Do not call the MCP and implement directly — that bypasses the design-implement safety layer this manifest feeds.** Lift the embedded share-link out as `{design_url}`; resolve the `open_file` target from the `Implement:` line (decoded), else the URL-decoded `?file=` param. Fetch itself is delegated to `design-implement` step-01 URL.1 (URL.1a tar / URL.1b MCP).
 - **Local design-synthesize bundle directory** — an absolute path to a directory containing `manifest.yaml` → `{input_kind} = "synthesize_bundle"`, parse `{bundle_dir}` + `{bundle_manifest}`.
 
-Detection: starts with `http(s)://` → URL; else a filesystem directory containing `manifest.yaml` → bundle; else halt with `"input must be a Claude Design URL (https://...) or a directory containing manifest.yaml. Got: <input>"`.
+Detection: (1) the input CONTAINS the Claude Design paste-signature (a `claude.ai/design/p/` or `api.anthropic.com/v1/design/` URL + an `Implement:` line OR the phrase `claude_design MCP`) → URL, lifting the embedded share-link as `{design_url}`; (2) starts with `http(s)://` → URL; (3) else a filesystem directory containing `manifest.yaml` → bundle; else halt with `"input must be a Claude Design URL/paste-prompt (https://...) or a directory containing manifest.yaml. Got: <input>"`.
 
 For `synthesize_bundle`, the same refusal gates apply as `design-implement` (`synthesis.dev_no_render`, `visual_review.needs_human_review`) — a bundle the synthesizer doesn't trust never becomes an ingest manifest. Halt with the equivalent diagnostic if either fires.
 
