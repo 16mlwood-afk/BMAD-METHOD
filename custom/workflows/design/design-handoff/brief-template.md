@@ -96,6 +96,41 @@ This brief was generated from the codebase after implementation. It intentionall
 
 ---
 
+## Design Contract for Claude — compile and obey
+
+> This is the machine-readable spine. §§1–8 below are the *why* (rich context); this block is the *what you must produce and preserve*. If a design contradicts any field here it is wrong — revise before you consider it done.
+>
+> These constraints are enforced downstream by `design-review-pr` (a hard gate) and the `design-implement` bundle→implement conformance gate — not by good intentions.
+
+```
+  page_mode:   {page_mode}                 # operational | analytical | detail
+  composition: {composition}               # {if composition_provenance == "recommended-alt"}job-fit composition — NOT the page_mode default{else}page_mode default composition{endif}
+  shell:       {if has_shell_role}{required_shell} — render under this shell; the forbidden chrome in §5 MUST NOT appear over this surface{else}single shell — every surface shares one app shell{endif}
+  route:       {route}
+  frames:      {frames_list}               # every id is a REQUIRED rendered frame (§7)
+  mutations:   {mutation_posture}          # none (read-only) | the server actions this surface MUST keep
+  money:       {money_posture}             # none | the money figures this surface carries (basis-complete per policy §15)
+  width:       1280px desktop
+```
+
+**MUST PRESERVE — the object (changing any of these fails review):**
+- Every id in `frames` is a rendered frame. An un-drawn frame is inferred downstream and ships thin.
+{if has_shell_role}- Render under the `{required_shell}` shell; the chrome named in `forbidden_chrome` (§5) MUST NOT appear over this surface.
+{endif}{if linked_records_inventory is non-empty}- §2a expand-in-context (§13): acting on a linked reference opens the foreign record's OWN fields in a drawer *over* this surface — never inert duplicated text, never a navigate-away, never a loud button/CTA/pill/chip. "Open full {sibling} →" is a quiet secondary action only.
+{endif}- The §5 hard-failure list holds — a design tripping any §5 item is rejected — and status stays inside the §4 colour system (the product accent is interaction-only, never a status).
+{for inv in {contract_must_preserve}}- {inv}
+{endfor}
+
+**FREE TO CHANGE — the design freedom (yours):**
+- Information architecture, layout, grouping, and visual hierarchy.
+- How summaries, roll-ups, durations, and derived figures are computed and presented.
+- Table vs grouped presentation; column order; sort defaults beyond any required default order.
+- Drawer field grouping and the record-header composition.
+{for free in {contract_free_to_change}}- {free}
+{endfor}
+
+---
+
 ## 1. Feature Purpose
 
 **What this feature does:** {feature_purpose — the problem it solves, NOT what the page looks like}
