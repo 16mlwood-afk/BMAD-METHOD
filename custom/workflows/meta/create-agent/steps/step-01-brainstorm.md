@@ -25,7 +25,9 @@ If they already described it (in the message that triggered this workflow), skip
 
 ### 2. Analyze and Ask Targeted Questions
 
-From the user's description, establish the agent's **shape** — every BMAD custom agent so far is a *named human persona that fronts a lane*. Classify which kind:
+**Placement gate first (`shared/persona-placement.md`, STD-PERSONA-002): personas are for human-facing judgment, not plumbing.** Before classifying kind, confirm the candidate actually warrants an agent — human-facing AND distinct judgment AND a named identity reduces genuine confusion. If it is **mechanical** (sync, formatting, rails, hooks, CI, scaffolding), an **internal sub-step** of a larger flow, or **machine-to-machine** (its output feeds another workflow, not a human), it is **not an agent** — stop, say so plainly, and point the user at `create-workflow` for the mechanical flow. Do not build a persona to decorate plumbing.
+
+If it clears the gate, establish the agent's **shape** — every BMAD custom agent so far is a *named human persona that fronts a lane*. Classify which kind:
 
 | Kind | Signal | Example |
 |------|--------|---------|

@@ -10,6 +10,8 @@ description: 'A thin PRESENTATION layer that gives three human-facing workflow f
 
 **What this is NOT.** It is **not** a new agent (it is not invocable, has no activation block, is not in the `custom/agents/` lane alongside Vera/Wren), and it is **not** a behavior change. It changes *how a few lines read*, never *what the workflow does*. If you ever want one of these voices to become a real invocable persona, that is the `create-agent` path — deliberately not taken here.
 
+**Placement comes first.** *Which* families earn a named voice is decided by the placement gate, not by this file — `persona-placement.md` (STD-PERSONA-002): personas are for human-facing judgment, not plumbing. The three voices below are the families that pass that gate (human-facing + distinct judgment + genuine speaker-ambiguity). Before adding a fourth, run the gate; a mechanical or internal-sub-step flow does not get a voice.
+
 ---
 
 ## 1. The binding contract — read this before any persona (load-bearing)

@@ -5,6 +5,12 @@ description: 'The canonical CONTENT shape every create-agent persona must cover,
 
 # Persona Content Contract
 
+**Placement already said yes (read first).** This contract is the *content* shape for a persona that
+has already cleared the placement gate — `persona-placement.md` (STD-PERSONA-002): personas are for
+human-facing judgment, not plumbing. `step-01` runs that gate; if the candidate is mechanical, an
+internal sub-step, or machine-to-machine, it is **not an agent** and never reaches this file. Do not
+use this contract to justify building a persona — it assumes the yes/no was already decided upstream.
+
 **What this is:** the canonical *content* every new agent persona must express. It is NOT a
 replacement file format — the persona on disk is still the BMAD XML embodiment file
 (`<agent>`/`<activation>`/`<persona>`/routing-or-ownership/`<menu>`) that the runtime needs to be

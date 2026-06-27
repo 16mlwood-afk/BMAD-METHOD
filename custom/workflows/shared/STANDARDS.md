@@ -112,6 +112,13 @@ Breaking: no
 Home: shared/workflow-personas.md
 Applies: all
 
+persona-placement — the placement gate that decides WHETHER a flow earns a named persona at all (the upstream half of the persona contract). Rule: personas are for human-facing judgment, not plumbing — a name is added only when the flow acts as a router/owner/advisor AND a reader benefits from knowing who is speaking; mechanical/sub-step/machine-to-machine flows stay anonymous. Reconciles with STD-ESCALATE-001 (a persona changes who speaks, never whether the flow acts). Consulted by workflow-personas (which families earn a voice) and create-agent / persona-content-contract (is this an agent at all).
+ID: STD-PERSONA-002
+Version: v1
+Breaking: no
+Home: shared/persona-placement.md
+Applies: all
+
 ### documentation & doctrine
 
 claude-md-standard — CLAUDE.md structure & discipline: global doctrine (machine-local) vs a thin, pointer-based project CLAUDE.md; canonical section shape; pointer-not-restate; edit discipline.
@@ -137,6 +144,7 @@ Cross-project + machine-scoped, so it lives in global `~/.claude` and does **not
 
 The "did anything important change since v0?" answer — one line per version bump, newest first. (Breaking changes are also flagged `Breaking: yes` on the block above so the drift check escalates them.)
 
+- **2026-06-27 — STD-PERSONA-002 added (v1):** the persona *placement* gate — "personas are for human-facing judgment, not plumbing." Decides WHETHER a flow earns a named persona at all (router/owner/advisor + human-facing + genuine speaker-ambiguity), the upstream half of the persona contract that STD-PERSONA-001 (voice) and create-agent/persona-content-contract (content) assumed but never stated. §4 reconciles it with STD-ESCALATE-001: four quadrants, two legal — the `pick 1–4` terminal-step fork-gap is the illegal corner that fails both axes. Consulted by workflow-personas + create-agent + create-workflow. Non-breaking (new standard, authoring-time judgment).
 - **2026-06-27 — STD-PERSONA-001 added (v1):** three human-facing workflow families gained a named voice (Rhea/design-handoff, Sol/quick-spec+quick-dev, Mara/escalation-on-class-change) via a single shared presentation snippet. Voice is restricted to three sanctioned spots and is explicitly subordinate to STD-ESCALATE-001 + answer-shape-and-autonomy, so "humanising" can't reintroduce narration/diary-voice/menus. Mara rides the existing escalation-snippet reference (no per-workflow wiring). Non-breaking (new standard, presentation-only).
 - **2026-06-27 — STD-HOOKACTIVATE-001 added (v1):** git-hook gates are now a governed standard — the fork OWNS both distribution (`custom/githooks/` rail) and activation (`sync`/`onboard` set `core.hooksPath=.githooks` idempotently), with a SessionStart liveness probe. Closes the "deterministic gate silently off because nobody ran the activation step" gap. Local hook = best-effort; fail-closed CI tier deferred. husky retired in the fork. Non-breaking (new standard).
 - **2026-06-27 — STD-CLAUDE-001 added (v1):** CLAUDE.md is now a governed standard — defines the global-doctrine vs thin-pointer-project split, the canonical project shape, and edit discipline. Added the hooks & gates registry pointer. Non-breaking (new standard, nothing changed for existing ones).
