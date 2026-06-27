@@ -118,9 +118,17 @@ You **cannot** derive both (1) and (2) when the user input is:
 
 **A short input is not automatically ungroundable.** "Fix the typo in the header" is short but groundable — a verb, a target. The test is groundability, not length.
 
+### Groundable for a DIFFERENT workflow (reroute, don't dead-end)
+
+Before the generic HALT below, check whether the input is ungroundable *for quick-dev* only because it's the input shape of a **sibling workflow**. The most common case is a **completed-work handoff** handed to the wrong front door: the input contains a `handoff-*.md` path, or its text leads with "Handoff filed:" / "Handoff:". That is groundable — the user wants follow-up on finished work — just not as a *change request*. Reroute instead of emitting the tech-spec nudge:
+
+> "This looks like a completed-work handoff, not a change request — quick-dev builds a change from a verb + target, it doesn't triage finished work. The right door is `dispatch-followups`: `/bmad:bmm:workflows:dispatch-followups <handoff-path>`."
+
+Then **EXIT Quick Dev.** This is awareness/reroute only — it names the right door, it does NOT auto-run dispatch-followups (that would be the same intent-fabrication the gate exists to prevent). The anti-fabrication invariant is untouched: quick-dev still refuses to invent a build task. (Generalizes to any strict-grounding workflow handed a sibling's artifact — match the artifact shape, name the owning workflow, exit.)
+
 ### HALT response
 
-When ungroundable:
+When ungroundable **and not rerouted above**:
 
 1. State plainly: "I can't tell what you want me to change. Quick-dev needs a verb (what to do) and a target (where in the code)."
 2. Show what you parsed: the literal input you received.

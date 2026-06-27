@@ -38,7 +38,16 @@ Workflow.md's Input Resolution has already populated `{input_kind}`, `{design_ur
 
 ## URL PATH (`{input_kind} == "claude_design_url"`)
 
-### URL.1. Download the Design Bundle
+### URL.1. Acquire the Design Bundle — two URL sub-kinds
+
+A `{design_url}` is one of **two** sub-kinds, ingested differently. Detect by URL shape, then take the matching branch. Both converge on the same exit state: a local `{design_dir}` populated with the design files (HTML/JSX + `tokens/*.css` + `readme.md`), so URL.2 onward is unchanged.
+
+- **`…api.anthropic.com/.../h/<id>`** (legacy tar artifact) → **URL.1a (curl + tar)**.
+- **`claude.ai/design/p/<uuid>`** (a Claude Design *project* served through the **DesignSync** / `claude_design` MCP — the modern share-link the `/bmad:bmm:workflows:design-implement` command surface emits) → **URL.1b (MCP fetch)**. A `curl` of this URL returns HTML/a redirect, not a tar — never run the tar branch on it.
+
+If the shape is ambiguous, attempt URL.1a; if `file` reports HTML/non-tar (not gzip, not tar), fall through to URL.1b rather than proceeding with an empty bundle.
+
+#### URL.1a. Legacy tar artifact (`…/h/<id>`)
 
 Claude Design artifact URLs return a gzip-compressed tar archive. Download and extract:
 
@@ -60,6 +69,17 @@ find /tmp/design-bundle -name "*.html" -type f | head -10
 ```
 
 Store the directory containing the HTML files as `{design_dir}`.
+
+#### URL.1b. DesignSync project (`claude.ai/design/p/<uuid>`)
+
+This URL is a design-system project read through the **DesignSync** (`claude_design`) MCP, NOT a tar — mirror the project's files to a local `{design_dir}` so the rest of URL PATH reads them exactly as it would an extracted bundle:
+
+1. `get_project` on the project UUID; verify `type: PROJECT_TYPE_DESIGN_SYSTEM`. (If auth is missing, run `/design-login` first, per the command surface.)
+2. `list_files` to enumerate the project tree (HTML/JSX frames, `tokens/*.css`, `readme.md`, data/app modules).
+3. `mkdir -p /tmp/design-bundle` → `{design_dir}`. For the target frame named by the URL's `?file=<path>`, its `<script src>` module dependencies, the `tokens/*.css` files, and `readme.md`, call `get_file <path>` and write each to `{design_dir}/<path>` **preserving the project-relative path** (so URL.2's README read, URL.3's target-file read, URL.3a's `<script src>`/sibling-`.html` enumeration, and URL.4's token-file reads all resolve against `{design_dir}` unchanged).
+4. The `?file=...` path is `{design_file}`. If absent, default to the project's primary HTML frame per `readme.md`.
+
+The fetch mechanism is the ONLY difference — URL.2 (README) through URL.6 are mechanism-agnostic and run identically once `{design_dir}` holds the files.
 
 ### URL.2. Read the README
 
