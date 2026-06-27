@@ -56,7 +56,10 @@ Every walked edge becomes one row — **including `compliant` and `out-of-scope-
 ```markdown
 ## Relational Coherence Audit — {surface set}
 
-**Surfaces:** {N routes}  |  **Edges:** {M expected} ({fk}/{declared})  |  **Evidence:** {live | partial-static}  |  **Edge map:** {present | ABSENT (P1)}
+{if not server_live, emit this banner as the FIRST line — loud, unmissable:}
+> ⚠ **ACTUAL SIDE NOT RUN — STRUCTURAL-ONLY AUDIT.** The live surface/DB was unreachable ({reason — e.g. `DATABASE_URL` is an internal `*.railway.internal` host and no `docs/deployment.md` read-only proxy was found}). Every edge verdict below is derived from schema + source, **NOT confirmed against a live render**, and any *count* the request asked for is **NOT a verdict here** — it ships as a hand-off query to run once a read-only actual-side path exists. Re-run this audit then for decision-grade findings.
+
+**Surfaces:** {N routes}  |  **Edges:** {M expected} ({fk}/{declared})  |  **Evidence:** {live | partial-static (structural-only)}  |  **Edge map:** {present | ABSENT (P1)}
 
 | # | Edge ({from} → {to}) | Src | Displayed | Verdict | Class | Route |
 |---|----------------------|-----|-----------|---------|-------|-------|

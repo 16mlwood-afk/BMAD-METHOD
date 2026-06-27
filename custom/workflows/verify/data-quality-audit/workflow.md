@@ -79,9 +79,9 @@ This workflow is **read-only** — it produces a diagnostic report and routes fi
 
 ### Read-Only Data Access
 
-The audit reads live production values. Resolve the project's **read-only** DB/data access from its `CLAUDE.md` (connection env var, public proxy, the documented `psql`/script incantation) — do not hardcode credentials and do not assume a connection string. Store the resolved access as `{db_access}` and confirm it is read-only before any query.
+The audit reads live production values. Resolve the project's **read-only** DB/data access from its `CLAUDE.md` AND its `docs/deployment.md` **read-only DB-access note** (connection env var, public proxy, the documented `psql`/script incantation) — a public read-only proxy / `DATABASE_PUBLIC_URL`-style connection, **distinct from the internal `DATABASE_URL` (often a `*.railway.internal` host that only resolves inside the platform) and explicitly OUTSIDE the `railway up` / deploy footgun**. Do not hardcode credentials and do not assume a connection string. Store the resolved access as `{db_access}` and confirm it is read-only before any query.
 
-If the project documents that the app cannot be run or queried locally, the audit still proceeds against the production read replica/proxy per its `CLAUDE.md` — that is the entire toolkit. Store `{server_live}` only to note whether live values were captured vs static analysis fallback.
+If the project documents that the app cannot be run or queried locally, the audit still proceeds against the production read replica/proxy per its `CLAUDE.md` / `docs/deployment.md` — that is the entire toolkit. Store `{server_live}` to note whether live values were captured vs static-analysis fallback. **When no reachable read-only path is documented, set `{server_live} = false` and emit the loud structural-only banner in step-04 (the decision-grade count the user asked for is NOT a verdict in a structural-only run — it ships as a hand-off query, never as a confirmed number).**
 
 ---
 

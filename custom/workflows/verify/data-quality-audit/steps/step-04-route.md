@@ -37,7 +37,10 @@ Every classified finding becomes one row — **including benign ones** (disposit
 ```markdown
 ## Data Quality Audit — {dimension}
 
-**Scanned:** {N} values, {server_live ? "live" : "static"} | **Normalizer:** {normalizer}
+{if not server_live, emit this banner as the FIRST line — loud, unmissable:}
+> ⚠ **ACTUAL SIDE NOT RUN — STRUCTURAL-ONLY AUDIT.** Live production values were unreachable ({reason — e.g. `DATABASE_URL` is an internal `*.railway.internal` host and no `docs/deployment.md` read-only proxy was found}). Findings below are derived from schema + the normalizer + source, **NOT confirmed against live data**, and any *count/ratio* the request asked for is **NOT a verdict here** — it ships as a hand-off query to run once a read-only actual-side path exists. Re-run then for decision-grade numbers.
+
+**Scanned:** {N} values, {server_live ? "live" : "static (actual side NOT run)"} | **Normalizer:** {normalizer}
 
 | # | Finding | Shape | Verdict | Severity | Route | Disposition |
 |---|---------|-------|---------|----------|-------|-------------|
