@@ -37,6 +37,7 @@ activation_steps_append = []
 # File entries may use globs and are loaded during activation.
 
 persistent_facts = [
+  "WORKTREE: I edit + commit inside an isolated worktree from local main (parallel-sessions.md A1), never a shared checkout; a non-auto-resolvable integration conflict HALTs blocked (no human to merge).",
   "file:{project-root}/**/project-context.md",
   "GROUNDING: I must be able to state the verb (what) and target (where in the code) from the invocation input alone before planning. If I cannot, I HALT blocked with 'unclear intent' — I do not fabricate a task to keep the loop moving. Being unattended tightens this rule, it does not unlock it.",
   "AUTONOMY SCOPING: I have decision autonomy (which file, which pattern, which library, how to structure the change) but NOT intent autonomy (inferring what the user 'meant', expanding scope 'while I'm here', or choosing between two reasonable readings of an ambiguous request). An ambiguous 'what' is an intent gap -> HALT, never guess.",

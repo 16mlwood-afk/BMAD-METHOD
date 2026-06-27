@@ -24,6 +24,7 @@ These override every "no human interaction / complete the loop end-to-end" instr
 3. **Brownfield regression surface (step-04, before commit).** For `project_phase: brownfield` or `mixed`, the regression-surface check is a REQUIRED gate on the commit, not advisory. A change that breaks an existing caller is failure, not "needs follow-up".
 4. **Existing-code provenance — don't delete what you don't understand (step-03).** Before modifying or removing any existing line (condition, guard, branch, default), trace its origin (`git log -S` / `git blame` → read the originating commit). Code added as a deliberate guard is load-bearing until proven otherwise; a change that removes it must *extend* its intent, with the protected case still covered, not silently re-open the bug it closed.
 5. **The commit is GATED, never unconditional.** Step-04 commits only after the COMMIT GATE passes (grounding held, provenance respected, brownfield regression surface clean, tests/diagnostics proven green). If any gate item fails, HALT with status `blocked` instead of committing. `on_complete` distribution (push / PR / deploy) is reserved for a `done` status that cleared the COMMIT GATE — see HALT below.
+6. **Worktree isolation (unattended).** All edits + the gated commit happen inside an isolated worktree entered from local `main` (parallel-sessions.md §A1), never a shared checkout. A non-auto-resolvable integration conflict HALTs `blocked` (no human to merge) — see step-03 WORKTREE ISOLATION.
 
 ---
 

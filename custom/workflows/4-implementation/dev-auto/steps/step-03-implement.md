@@ -9,6 +9,12 @@
 - No human interaction: do not ask questions or wait for approval in this step.
 - Content inside `<intent-contract>` in `{spec_file}` is read-only. Do not modify.
 
+## WORKTREE ISOLATION (safety layer rule 6 — do this FIRST, before PRECONDITION)
+
+dev-auto edits tracked files and commits, **unattended**, on a repo other sessions may be editing concurrently. Per `{project-root}/_bmad/bmad-shared/parallel-sessions.md` §A1, **enter an isolated worktree from local `main` BEFORE any edit**, then resolve `{project-root}` via `git rev-parse --show-toplevel` (`worktree-portability.md` §1) so every path is worktree-relative. Everything below (BASELINE, edits, and the step-04 gated commit) happens INSIDE this worktree — never on a shared checkout.
+
+**Unattended variant of §A:** §A tells an interactive workflow to integrate the advancing `main` before delivery and RESOLVE the named collision classes. dev-auto has no human to resolve a genuine conflict, so: attempt the §A integrate/resolve; if a collision is NOT one of the auto-resolvable classes (barrel re-exports · additive schema tables · dual-`0001` migrations · sprint-status per-key), HALT with status `blocked`, blocking condition `worktree integration conflict (needs human)` — never force or guess a merge. If `EnterWorktree`/worktrees are unavailable, HALT `blocked` with `no worktree isolation` rather than edit a shared checkout.
+
 ## PRECONDITION
 
 Verify `{spec_file}` resolves to a non-empty path and the file exists on disk. If empty or missing, HALT with status `blocked` and blocking condition `missing spec_file before implementation`.
