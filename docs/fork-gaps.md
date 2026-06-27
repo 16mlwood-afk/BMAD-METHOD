@@ -19,6 +19,19 @@ This doc is **fork-local** (like `global-bmad-workflow.md` / `parallel-work-and-
 
 ## Open
 
+### Deterministic enforcement gates (hooks + their wiring) have no fork-managed distribution/activation path and rot silently per-repo → `sync-bmad-workflows.sh` portable-script rail + `onboard-project.sh` hook provisioning + a project-side hook-activation contract
+**Noticed:** 2026-06-27 (inbound-flow, quick-dev blast-radius gate rollout). **Priority: high** — the fork keeps adding deterministic gates (use-server check, nav/drift validators, the new blast-radius backstop) precisely because prose isn't enforcement; but the gates only fire if a per-repo hook is *activated*, and that activation has no fork-owned distribution — so the enforcement layer the fork is investing in can be globally OFF in a repo and nobody knows.
+
+**What fought us:** wiring the warn-only blast-radius backstop into inbound-flow's pre-push, I found inbound-flow had **no git hooks firing at all**. Two competing systems, neither active: `.githooks/pre-push` (the documented tsc/vitest/use-server/nav/drift gate) activates only by manually running `.githooks/install.sh` — which nobody had run, so `.git/hooks/` was empty; and `inventory-manager/.husky/` relied on `prepare: husky` which left `core.hooksPath` unset. The repo's own CLAUDE.md describes a pre-push gate that simply wasn't running. I fixed *inbound-flow* (PR #2446: consolidate on `.githooks/`, auto-activate via `prepare`, retire husky) — but that fix is hand-applied to one repo.
+
+**Why structural:** this is the exact anti-pattern the `enforcement-expert` skill names — *"authoring the doc and calling it enforced; the hook didn't ship (separate distribution track)."* Workflow PROSE rides `sync-bmad-workflows.sh` and a SCRIPT rides the `custom/scripts/` portable rail (both fork-owned, automatic). But a hook's *wiring* — what makes `.git/hooks/pre-push` actually call the script — is per-repo, varies by setup (`.githooks/` here, husky elsewhere, `core.hooksPath` unset on this checkout), and is owned by nothing in the fork. So every deterministic gate the fork ships is only as good as a manual, silently-rotting per-repo activation step. The other 12 sync targets very likely have the same dead-or-divergent hook state, unaudited. A deterministic tier that isn't reliably activated is, in practice, back to probabilistic.
+
+**Proposed investigation:**
+- Give the fork an **activation contract** the sync/onboarding owns: e.g. `sync-bmad-workflows.sh` (or `onboard-project.sh`) ensures each target has a canonical, idempotent hook-activation (a tracked `.githooks/` + `core.hooksPath=.githooks`, or a `prepare`-run installer) so a synced gate script is actually wired — not left to a manual `install.sh`.
+- Add a **hook-liveness audit**: a SessionStart/`check-*` probe (sibling of `check-*-drift.sh`) that detects "this repo has a `.githooks/`/gate script but no active hook" and warns — the dead-hook state is currently invisible until someone goes looking.
+- Decide the canonical per-repo hook mechanism (`.githooks/` + `core.hooksPath` is the worktree-safe, auto-updating choice that PR #2446 landed for inbound-flow) and propagate it as the standard, retiring the husky/`.githooks` split that caused the mutual-exclusion deadlock.
+- Sweep the other 12 targets for the same dead/divergent hook state during the next fan-out (the inbound-flow fix is the reference implementation).
+
 ### Project memories written during a worktree session land under a worktree-cwd slug, not the canonical project → the project-memory write path (memory doctrine / whatever resolves `~/.claude/projects/<slug>/`)
 **Noticed:** 2026-06-27 (onboarding v2 rollout — spotted ~366 stray dirs). **Priority: medium** — the memories are real (insights, project facts) but stranded at a slug no normal main-checkout session loads, so they silently don't surface; and they accumulate without bound.
 
