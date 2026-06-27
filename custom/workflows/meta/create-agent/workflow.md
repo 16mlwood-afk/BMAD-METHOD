@@ -32,7 +32,7 @@ This uses **step-file architecture**:
 
 - Step 1 is the only interactive step — a short brainstorm to define the agent's identity and lane
 - Steps 2-4 are fully autonomous — no user input, no menus, no halting
-- State persists via variables: `{agent_name}`, `{agent_slug}`, `{agent_title}`, `{agent_icon}`, `{agent_role}`, `{agent_description}`, `{agent_lane}`, `{agent_routes}`, `{agent_persona}`, `{agent_file}`, `{wrapper_file}`, `{bmad_root}`, `{project_root}`
+- State persists via variables: `{agent_name}`, `{agent_slug}`, `{agent_title}`, `{agent_icon}`, `{agent_role}`, `{agent_description}`, `{agent_lane}`, `{agent_routes}`, `{agent_escalation}` (optional, contract §4), `{agent_style_example}` (optional, contract §6), `{agent_persona}`, `{agent_file}`, `{wrapper_file}`, `{bmad_root}`, `{project_root}`
 
 ### Step Processing Rules
 
@@ -48,6 +48,7 @@ This uses **step-file architecture**:
 - **Steps 2-4**: fully autonomous, no exceptions
 - **The persona in the lane is not the whole deliverable** — the agent must end up *invokable*. The sync generates the wrapper, so step-04 runs the sync and verifies the slash command resolves in the current project. A persona sitting in `custom/agents/` that was never synced is an incomplete run.
 - **ALWAYS** follow the established persona XML format from sibling agents (`design-pm`/Devon, `data-integrity-lead`/Vera) — same `<activation>` / `<persona>` / routing / `<menu>` shape. Do NOT invent a new agent format.
+- **ALWAYS** cover the **persona content contract** (`custom/workflows/meta/create-agent/persona-content-contract.md`) — the 8 persona sections mapped onto that XML, plus the human-tone behavior floor (acknowledge → clarify → close-loops). It is a SOFT gate, enforced by how step-03 *scaffolds* the file: real content where inferable, an obvious `TODO(persona)` marker only where genuinely un-inferable. The build stays fully autonomous and the agent is invokable on finish — the contract never adds an interactive halt.
 - **The persona lives in the fork's `custom/agents/` lane, exactly like `create-workflow` writes to `custom/workflows/`.** This workflow writes the persona to `{bmad_root}/custom/agents/{agent_slug}.md`; the sync (`sync_agents_for_project`) mirrors it into every project's `_bmad/bmm/agents/` AND generates the `.claude/commands/bmad/bmm/agents/` wrapper. Do NOT write the persona straight into a project's `_bmad/` — that path is upstream-mirrored with `rsync --delete` and the agent would be wipe-exposed and undistributed.
 
 ---

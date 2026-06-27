@@ -45,6 +45,13 @@ Do NOT ask:
 - "What should the XML look like?" (you decide)
 - "Should it have a fallback-map?" (you decide — yes, if it routes)
 
+**Opportunistic capture (do NOT add questions for these — keep it tight).** The persona content
+contract (`../persona-content-contract.md`) has two TODO-prone sections — §4 escalation target and
+§6 style examples. If the user *volunteers* an escalation target ("when stuck, hand off to X") or a
+"a good reply sounds like…" example, capture it into `{agent_escalation}` / `{agent_style_example}`.
+Do NOT interrogate for them — step-03 scaffolds the human-tone floor for free and leaves an obvious
+TODO marker for anything genuinely un-inferable. The build never blocks on these.
+
 ### 3. Confirm Understanding
 
 Present a concise summary (not a menu, not a checklist — a paragraph):
@@ -76,6 +83,8 @@ Extract and store:
 - `{agent_routes}` — the named workflows the agent routes to or owns (may be partial — step 2 resolves them). Empty for a pure advisor.
 - `{agent_voice}` — one-line personality + a signature principle if the user gave one.
 - `{agent_cast}` — existing cast it joins (Devon/Rowan/Jules) or `standalone`.
+- `{agent_escalation}` — (optional, contract §4) escalation target the user volunteered, or empty → step-03 TODOs it for owner/advisor.
+- `{agent_style_example}` — (optional, contract §6) a "good reply sounds like…" snippet the user volunteered, or empty → step-03 TODOs it.
 - `{agent_file}` — `{bmad_root}/custom/agents/{agent_slug}.md` (the fork lane — the one file this workflow authors; the sync mirrors it to every project's `_bmad/bmm/agents/` and generates the wrapper)
 
 ### 5. Proceed to Investigation
