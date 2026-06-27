@@ -29,8 +29,9 @@ Each entry: the **question** it answers · the **form** that answers it fastest 
 ### `trend` — movement over time
 - **Question:** How is X moving over time? Which series changed, and when?
 - **Form:** Small-multiple sparklines or a single compact line/column strip. Shared Y-axis for absolute comparison; per-series Y-axis when only the *pattern* matters (state which, and why).
+- **Two-magnitude sub-case (actuals vs forecast):** when the series carries ONE primary *realised* magnitude (committed / actual / spent) and a SUBORDINATE *projected* magnitude (provisional / forecast / pipeline / budget), these are **not two comparable series** — render the primary as a solid line/area and the subordinate as a **ghosted/dashed reference band**, visually distinct but never co-equal. **Never stack the two** (a committed+provisional stack is the naive-chart failure) and never draw them as two equal lines. Rounded axis ticks carry the scale; the exact per-point figure lives in the drill, **not** as a per-bar label. Optional baseline/average reference. (committed-vs-provisional, plan-vs-realised, budget-vs-spend, actual-vs-forecast are all this one shape.)
 - **Drill:** A point/panel opens that period × segment in the worklist.
-- **Avoid:** One multi-series line chart that hides individual movement; stacked columns that bury small series.
+- **Avoid:** One multi-series line chart that hides individual movement; **stacked columns — full stop, including a committed+provisional stack** (no "unless it's the composition" carve-out applies to a trend); per-bar value labels standing in for an axis; the two-magnitude case collapsed to a single series (it cannot keep the two magnitudes distinct) or inflated to two co-equal lines.
 
 ### `distribution` — spread and outliers
 - **Question:** How are values spread? Where do they cluster, and what's in the tail?

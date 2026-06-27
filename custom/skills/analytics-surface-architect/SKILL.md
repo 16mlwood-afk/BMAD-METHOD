@@ -46,7 +46,7 @@ Run these in order. Do not skip to naming an archetype.
 4. **Weigh candidates — the road not taken is mandatory.** List every archetype you genuinely considered with a verdict (`chosen | secondary | rejected`) and a one-line reason. **If the data carries a time dimension, you MUST explicitly rule on `trend`** — record why it won or lost. Defaulting to `trend` because dates exist is the single failure this skill exists to prevent.
 5. **Pick one dominant archetype.** A second may co-occur as a *subordinate* pass, but it never doubles the surface's footprint. More than one co-equal archetype means the surface is doing two jobs — split it.
 6. **Map every element to a drill target.** For each thing the surface will show (a gap mark, a bar, a value, a stage), state where interaction goes. An element with no drill target is ornamental — remove it.
-7. **Time-in-data check.** If time is present, write one line stating why this is or isn't a `trend` job. This line is the proof the default was resisted.
+7. **Time-in-data check.** If time is present, write one line stating why this is or isn't a `trend` job. This line is the proof the default was resisted. **And when it IS a `trend` job, rule on the two-magnitude sub-case:** if the series pairs a *realised* magnitude (committed/actual/spent) with a *subordinate projection* (provisional/forecast/pipeline/budget), set `trend_subcase: two-magnitude(actuals-vs-forecast)` so the brief carries a solid primary + ghosted/dashed subordinate band — never a stack, never two co-equal lines (see the `trend` sub-case in `shared/analytics-archetypes.md`). Otherwise `single-magnitude`.
 
 ## Output contract
 
@@ -65,6 +65,7 @@ candidates:                                            # ≥ chosen + the most t
 winner_reason:    "<why the winner won — names the data dimension AND the user question>"
 secondary:        <archetype|none>
 time_present_check: "<why this is/ isn't a trend job>"  | null   # required iff time in data
+trend_subcase:    <single-magnitude | two-magnitude(actuals-vs-forecast)>  | null   # required iff archetype=trend
 drill_map:
   - { element: "<gap mark | bar | value | stage>", drill_target: "<where interaction goes>" }
 prohibited:       [ "<page-specific shape ban, e.g. 'no pie', 'no multi-series line'>" ]
