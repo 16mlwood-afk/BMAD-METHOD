@@ -40,6 +40,8 @@ Keep ~12 entries here; when it grows past that, move the oldest (newest-first or
 
 Mark each as ✅ shipped, 🟡 partial, 🔴 not started.
 
+> **Status-integrity rule (fork-gap #7 — checked, not asserted).** A feature is ✅ only if a COMMIT implements it — cite it inline as `built: <commit>`. "Designed", "machinery complete", "ready", or "scaffolded" without a commit is 🟡/🔴 + `built: NO (designed only)`, never ✅. Phrase capability/migration status as *"built: <commit|NO>"*, never a bare "complete". Before writing ✅ or "complete", confirm the code path actually exists. This prevents the two failures this gap was logged for: a STATUS "machinery complete" that overstated an unbuilt delivery path, and stale "X is unsupported/orphaned" narrative that nearly drove a *destructive* revert because the code had already moved past it.
+
 - [ ] Brief provenance contract (11-field frontmatter, 6 intake checks)
 - [ ] design-handoff predecessor + supersession logic
 - [ ] design-artifact-loop, design-synthesize, design-tuning intake checks
