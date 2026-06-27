@@ -232,6 +232,7 @@ onboarding:
     - fork-synced            # custom workflows/skills/hooks/commands via sync-bmad-workflows.sh
     - claude-md-std-001      # thin, pointer-based CLAUDE.md
     - hooks-installed        # worktree + enforcement PreToolUse hooks
+    - git-hooks-activated    # .githooks/ + core.hooksPath wired by sync (STD-HOOKACTIVATE-001)
     - memory-doctrine        # global ~/.claude memory library
 EOF
   echo "  ✓ stamped onboarding marker in config.yaml (playbook v$PLAYBOOK_VERSION, topology=$TOPOLOGY)"

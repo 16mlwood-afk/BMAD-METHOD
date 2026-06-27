@@ -1,0 +1,29 @@
+#!/usr/bin/env sh
+# .githooks/pre-commit — fork-distributed gate dispatcher (STD-HOOKACTIVATE-001).
+# Same contract as pre-push (see that file's header): thin dispatcher that runs
+# the repo's registered pre-commit gates from .githooks/gates.conf; absent gates
+# are skipped. Most deterministic gates run at pre-push — this exists for symmetry
+# and for any commit-time gate a repo registers.
+set -eu
+
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+CONF="$ROOT/.githooks/gates.conf"
+[ -f "$CONF" ] || exit 0
+
+status=0
+while IFS= read -r line || [ -n "$line" ]; do
+  case "$line" in '' | \#*) continue ;; esac
+  event=$(printf '%s' "$line" | awk '{print $1}')
+  [ "$event" = "pre-commit" ] || continue
+  cmd=$(printf '%s' "$line" | sed 's/^[^[:space:]]*[[:space:]]*//')
+  [ -n "$cmd" ] || continue
+  script="$ROOT/$cmd"
+  [ -f "$script" ] || continue
+  printf 'pre-commit gate: %s\n' "$cmd" >&2
+  if ! sh "$script" </dev/null; then
+    printf 'pre-commit BLOCKED by %s. Override (logged): git commit --no-verify\n' "$cmd" >&2
+    status=1
+  fi
+done < "$CONF"
+
+exit "$status"

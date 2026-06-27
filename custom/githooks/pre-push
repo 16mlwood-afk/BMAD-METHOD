@@ -1,0 +1,34 @@
+#!/usr/bin/env sh
+# .githooks/pre-push — fork-distributed gate dispatcher (STD-HOOKACTIVATE-001).
+#
+# THIN BY DESIGN. The gate LOGIC lives in ./scripts/* (distributed via the fork
+# scripts rail). This entrypoint only wires git → those gates, reading the list
+# from .githooks/gates.conf. A gate script not present in this repo is skipped,
+# so the conf can name the full fleet set without breaking a repo that lacks one.
+#
+# Enforcement class: best-effort GATE (deterministic only when activated via
+# core.hooksPath=.githooks; bypassable with `git push --no-verify`, which git
+# logs). The fail-CLOSED guarantee is the CI tier (deferred) — NOT this hook.
+set -eu
+
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+CONF="$ROOT/.githooks/gates.conf"
+[ -f "$CONF" ] || exit 0
+
+status=0
+while IFS= read -r line || [ -n "$line" ]; do
+  case "$line" in '' | \#*) continue ;; esac
+  event=$(printf '%s' "$line" | awk '{print $1}')
+  [ "$event" = "pre-push" ] || continue
+  cmd=$(printf '%s' "$line" | sed 's/^[^[:space:]]*[[:space:]]*//')
+  [ -n "$cmd" ] || continue
+  script="$ROOT/$cmd"
+  [ -f "$script" ] || continue   # gate absent in this repo → no-op
+  printf 'pre-push gate: %s\n' "$cmd" >&2
+  if ! sh "$script" </dev/null; then
+    printf 'pre-push BLOCKED by %s. Override (logged): git push --no-verify\n' "$cmd" >&2
+    status=1
+  fi
+done < "$CONF"
+
+exit "$status"

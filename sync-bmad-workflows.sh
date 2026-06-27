@@ -5,6 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SOURCE="$SCRIPT_DIR/custom/workflows"
 SKILLS_SOURCE="$SCRIPT_DIR/custom/skills"
 SCRIPTS_SOURCE="$SCRIPT_DIR/custom/scripts"
+GITHOOKS_SOURCE="$SCRIPT_DIR/custom/githooks"
 AGENTS_SOURCE="$SCRIPT_DIR/custom/agents"
 HOOKS_SRC="$SCRIPT_DIR/src/modules/bmm/_module-installer/assets/hooks.json"
 WORKTREE_INCLUDE_SRC="$SCRIPT_DIR/src/modules/bmm/_module-installer/assets/worktreeinclude.template"
@@ -325,6 +326,61 @@ sync_scripts_for_project() {
       count=$((count + 1))
     fi
   done
+
+  echo "$count"
+}
+
+# Sync canonical git-hook entrypoints from custom/githooks/ to a project's
+# ./.githooks/. Per-file copy (non-destructive), exec-preserving — same shape as
+# sync_scripts_for_project so a project's own .githooks entries are untouched.
+# STD-HOOKACTIVATE-001. Args: $1 = project root, $2 = mode. Count via stdout.
+sync_githooks_for_project() {
+  local project_root="$1" mode="$2"
+  local count=0
+
+  [[ ! -d "$GITHOOKS_SOURCE" ]] && { echo "0"; return; }
+
+  local gh_target="$project_root/.githooks"
+  for gh_file in "$GITHOOKS_SOURCE"/*; do
+    [[ ! -f "$gh_file" ]] && continue
+    local gh_name gh_dst
+    gh_name="$(basename "$gh_file")"
+    gh_dst="$gh_target/$gh_name"
+
+    if [[ ! -f "$gh_dst" ]] || ! cmp -s "$gh_file" "$gh_dst"; then
+      if [[ "$mode" == "sync" ]]; then
+        mkdir -p "$gh_target"
+        cp -p "$gh_file" "$gh_dst"
+        chmod +x "$gh_dst"
+      fi
+      count=$((count + 1))
+    fi
+  done
+
+  echo "$count"
+}
+
+# Ensure a project's git is wired to its tracked .githooks/ so synced gates
+# actually fire (the activation half of STD-HOOKACTIVATE-001 — distribution is
+# sync_githooks_for_project above). check: 1 when a .githooks/ exists but
+# core.hooksPath != .githooks; sync: set it idempotently + re-exec the entrypoints.
+# Worktrees inherit this (core.hooksPath lives in the shared common git config),
+# so the worktree sync path deliberately does NOT call this. Args: $1 root, $2 mode.
+activate_hooks_for_project() {
+  local project_root="$1" mode="$2"
+  local count=0
+
+  [[ ! -d "$project_root/.githooks" ]] && { echo "0"; return; }
+
+  local current
+  current="$(git -C "$project_root" config --get core.hooksPath 2>/dev/null || true)"
+  if [[ "$current" != ".githooks" ]]; then
+    if [[ "$mode" == "sync" ]]; then
+      git -C "$project_root" config core.hooksPath .githooks 2>/dev/null || true
+      chmod +x "$project_root/.githooks"/* 2>/dev/null || true
+    fi
+    count=1
+  fi
 
   echo "$count"
 }
@@ -926,6 +982,8 @@ deliver_skills_layout_project() {
   local cs; cs=$(sync_skills_for_project "$proot" "sync"); [[ "$cs" -gt 0 ]] && echo "  OK    custom skills ($cs)"
   sync_scripts_for_project "$proot" "sync" >/dev/null 2>&1 || true
   sync_agents_for_project "$proot" "sync" >/dev/null 2>&1 || true
+  sync_githooks_for_project "$proot" "sync" >/dev/null 2>&1 || true
+  activate_hooks_for_project "$proot" "sync" >/dev/null 2>&1 || true
   # 3b. Colon-command aliases (/bmad:bmm:workflows:<name>) for every delivered skill.
   local ca; ca=$(sync_skill_command_aliases_for_project "$proot"); [[ "$ca" -gt 0 ]] && echo "  OK    colon-command aliases ($ca change(s): written/reaped)"
   # 4. Hooks
@@ -1269,6 +1327,24 @@ while IFS= read -r target || [[ -n "$target" ]]; do
       echo "  ↳  agents ($agents_drift agent(s) missing/outdated)"
     fi
 
+    # Check git-hook entrypoints sync + activation (STD-HOOKACTIVATE-001)
+    githooks_drift=$(sync_githooks_for_project "$project_root" "check")
+    if [[ "$githooks_drift" -gt 0 ]]; then
+      if ! $dirty; then
+        echo "STALE $project"
+        dirty=true
+      fi
+      echo "  ↳  githooks ($githooks_drift entrypoint(s) missing/outdated)"
+    fi
+    hooks_activation_drift=$(activate_hooks_for_project "$project_root" "check")
+    if [[ "$hooks_activation_drift" -gt 0 ]]; then
+      if ! $dirty; then
+        echo "STALE $project"
+        dirty=true
+      fi
+      echo "  ↳  git-hook activation (core.hooksPath not set to .githooks)"
+    fi
+
     if project_in_skills_transition "$project_root"; then
       echo "  ↳  skills-native transition ON — sync delivers $(ls -d "$SKILLS_NATIVE"/bmad-*/ 2>/dev/null | wc -l | xargs) ported skill(s) + bmad-shared alongside overlay"
     fi
@@ -1388,6 +1464,17 @@ while IFS= read -r target || [[ -n "$target" ]]; do
     agents_synced=$(sync_agents_for_project "$project_root" "sync")
     if [[ "$agents_synced" -gt 0 ]]; then
       echo "  OK    agents ($agents_synced agent(s) synced)"
+    fi
+
+    # Sync canonical git-hook entrypoints from custom/githooks/ + activate them
+    # (STD-HOOKACTIVATE-001) so distributed gates are reliably WIRED, not silently off.
+    githooks_synced=$(sync_githooks_for_project "$project_root" "sync")
+    if [[ "$githooks_synced" -gt 0 ]]; then
+      echo "  OK    githooks ($githooks_synced entrypoint(s) synced)"
+    fi
+    hooks_activated=$(activate_hooks_for_project "$project_root" "sync")
+    if [[ "$hooks_activated" -gt 0 ]]; then
+      echo "  OK    git-hook activation (core.hooksPath=.githooks)"
     fi
 
     # Reap stale worktrees (merged on origin/main + clean working tree).

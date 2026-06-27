@@ -1,4 +1,8 @@
 #!/usr/bin/env sh
+# Fork pre-commit — migrated from .husky/pre-commit to .githooks/ as the canonical,
+# worktree-safe hook mechanism (STD-HOOKACTIVATE-001; husky retired here so the fork
+# dogfoods the same core.hooksPath=.githooks activation it distributes to projects).
+# This is the FORK's own bespoke hook — NOT the generic dispatcher in custom/githooks/.
 
 # Auto-fix changed files and stage them
 npx --no-install lint-staged
@@ -10,7 +14,7 @@ npx --no-install lint-staged
 # touches an upstream/product path falls back to the full suite. See fork-gaps "Full upstream test
 # suite on every fork push".
 changed="$(git diff --cached --name-only)"
-non_fork="$(printf '%s\n' "$changed" | grep -cvE '^(custom/|docs/|\.husky/|STATUS\.md$|STATUS-archive\.md$|onboarding-playbook\.version$|install-global-assets\.sh$|onboard-project\.sh$|check-[a-z-]*\.sh$|standards-drift-report\.sh$|.*\.md$)')"
+non_fork="$(printf '%s\n' "$changed" | grep -cvE '^(custom/|docs/|\.githooks/|\.husky/|STATUS\.md$|STATUS-archive\.md$|onboarding-playbook\.version$|install-global-assets\.sh$|onboard-project\.sh$|check-[a-z-]*\.sh$|standards-drift-report\.sh$|.*\.md$)')"
 if [ -z "$changed" ] || [ "$non_fork" -gt 0 ]; then
   npm test
 else
@@ -26,13 +30,13 @@ bash ./check-hooks-smoke.sh
 if command -v rg >/dev/null 2>&1; then
   if git diff --cached --name-only | rg -q '^docs/'; then
     npm run docs:validate-links
-		npm run docs:validate-sidebar
-		npm run docs:build
+    npm run docs:validate-sidebar
+    npm run docs:build
   fi
 else
   if git diff --cached --name-only | grep -Eq '^docs/'; then
     npm run docs:validate-links
-		npm run docs:validate-sidebar
-		npm run docs:build
+    npm run docs:validate-sidebar
+    npm run docs:build
   fi
 fi

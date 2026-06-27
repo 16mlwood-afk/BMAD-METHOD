@@ -39,6 +39,7 @@ run check-fork-gaps.sh        ''  ok "fork-gaps/sessionstart"
 run check-standards-drift.sh  ''  ok "standards-drift/sessionstart"
 run check-claude-md-drift.sh  ''  ok "claude-md-drift/sessionstart"
 run check-upstream-drift.sh   ''  ok "upstream-drift/sessionstart"
+run check-hook-activation.sh  ''  ok "hook-activation/sessionstart"
 
 # --- behavioral contract: the hook must actually READ its stdin ---
 # friction-reflect: stop_hook_active=true MUST be silent (the heredoc-stdin bug

@@ -81,7 +81,12 @@ ch = (ensure('SessionStart', None, 'prod-readiness-probe.sh')
       # onboarding-playbook drift detector — fork-root sibling of check-*-drift.sh, silent unless stale
       + ensure_cmd('SessionStart', None,
                    f'bash "{forkdir}/check-onboarding-version.sh" 2>/dev/null || true',
-                   'check-onboarding-version.sh', 10))
+                   'check-onboarding-version.sh', 10)
+      # git-hook activation liveness (STD-HOOKACTIVATE-001) — warns when a repo ships
+      # a .githooks/ gate but core.hooksPath isn't wired, so the gate is silently off
+      + ensure_cmd('SessionStart', None,
+                   f'bash "{forkdir}/check-hook-activation.sh" 2>/dev/null || true',
+                   'check-hook-activation.sh', 5))
 if ch: json.dump(d, open(p,'w'), indent=4); print(f"  ✓ registered {ch} hook(s) in settings.json")
 else: print("  • hooks already registered in settings.json")
 PY

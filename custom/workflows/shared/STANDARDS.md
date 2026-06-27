@@ -89,6 +89,13 @@ Breaking: no
 Home: shared/detect-stack.md
 Applies: all
 
+hook-activation — git-hook gates must be DISTRIBUTED and ACTIVATED by the fork: sync-bmad-workflows.sh + onboard-project.sh set core.hooksPath=.githooks (tracked dispatchers reading .githooks/gates.conf) idempotently, so a synced gate is reliably wired, not silently off. A SessionStart liveness probe warns on un-activated/conflicted repos. Local hook = best-effort gate (bypassable via --no-verify); the fail-closed CI tier is deferred. husky retired in favor of .githooks (worktree-safe).
+ID: STD-HOOKACTIVATE-001
+Version: v1
+Breaking: no
+Home: shared/hook-activation-standard.md
+Applies: all
+
 ### workflow behavior & routing
 
 escalation-on-class-change — when work changes class mid-flow (scope outgrew the unit / missing keystone / planning-not-execution / wrong lane), state it, name the BMAD-default gateway, propose it, and proceed unless vetoed — never a numbered menu, never silent wrong-lane continuation. Implemented by dev-story; conformed-to by correct-course / design-router / maintenance-triage / design-elevation / quick-dev.
@@ -123,6 +130,7 @@ Cross-project + machine-scoped, so it lives in global `~/.claude` and does **not
 
 The "did anything important change since v0?" answer — one line per version bump, newest first. (Breaking changes are also flagged `Breaking: yes` on the block above so the drift check escalates them.)
 
+- **2026-06-27 — STD-HOOKACTIVATE-001 added (v1):** git-hook gates are now a governed standard — the fork OWNS both distribution (`custom/githooks/` rail) and activation (`sync`/`onboard` set `core.hooksPath=.githooks` idempotently), with a SessionStart liveness probe. Closes the "deterministic gate silently off because nobody ran the activation step" gap. Local hook = best-effort; fail-closed CI tier deferred. husky retired in the fork. Non-breaking (new standard).
 - **2026-06-27 — STD-CLAUDE-001 added (v1):** CLAUDE.md is now a governed standard — defines the global-doctrine vs thin-pointer-project split, the canonical project shape, and edit discipline. Added the hooks & gates registry pointer. Non-breaking (new standard, nothing changed for existing ones).
 - **2026-06-26 — v1 (all standards):** initial canon — IDs, versions, and the drift check introduced. No behavioral change to any standard's content.
 
