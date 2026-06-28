@@ -65,6 +65,22 @@ Set `{feature_scope}`:
 - **"new"** — component file was created (not modified) in recent commits
 - **"redesign"** — component exists and user wants it redesigned
 
+#### 2-pre. Prerequisite gate — is the target's basis built or settled? (grounding; overrides autonomous_mode)
+
+design-handoff produces a brief from a basis that **already exists**: a `redesign` extracts `{data_shape}` + `{user_context}` from an implementation; a `new` (from-scratch) brief designs against a **settled spec / data-model + intent**. It must NOT *decide* an unbuilt feature's architecture — a brief invented over an open question silently fabricates the very decision (credential type, role split, field set) an upstream PRD/architecture step owns. (design-router's intake grounds that the target can be *named*; this grounds that its *basis exists* — a distinct check.)
+
+Before §3 capture, confirm the target resolves to ONE of: **an existing implementation** (a matching route/component on disk → `redesign`) OR **a settled spec** (a PRD/architecture artifact fixing the data-model + intent → `new`).
+
+**HALT-and-reroute (fires even under `autonomous_mode`)** when **neither** holds — deterministic signal: `feature_scope=new` AND no matching route/component on disk for the target AND the feature is named in the PRD Open-Questions / unmet-FR list (or has no PRD coverage). Do NOT enter capture; emit and halt (a grounding reroute, not a failure — like the §2a redirect, the flag does not license fabricating the missing model):
+
+> design-handoff — target not grounded (no implementation AND no settled spec).
+>
+> "{target}" has no implementation on disk and its data-model/intent is an open upstream decision (cite the PRD Open-Question / unmet FR if known). A brief here would invent that decision (credential / field / role model), which the PRD/architecture step owns — not a design brief.
+>
+> Route: `bmad-prd` (settle the requirement) → `bmad-architecture` (settle data-model/intent), then return for `new` — or `bmad-ux` / `design-artifact-loop` (design-from-brief) once a spec exists.
+
+When the target IS grounded (an implementation exists, or a settled spec does), proceed.
+
 #### 2a. Lookup-drawer target redirect — route, never bounce (destination vs relationship)
 
 A §13 expand-in-context **lookup drawer** (the small drawer that opens *over* a surface when you act on a foreign reference — a `catalog-lookup` over an order, a `warehouse-lookup`, a `supply-source-lookup`) is **owned by the relation, not by a page** (Deliverable-Completeness Principle; brief-template §2a). It is drawn as a **frame in its parent surface's §7 Surface Inventory**, never as its own brief — a separate brief for it would be a duplicate of an already-owned frame and trip the brief-revision-policy multiple-active-brief invariant. So **`design-handoff` does not accept a lookup drawer as a standalone target** — but it must **route**, not reject opaquely (the user targeted it because the drawer is shipping thin; bouncing them with no path is the friction this gate kills).

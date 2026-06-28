@@ -26,6 +26,12 @@ From the input, resolve `{request_surface}`:
 
 Capture `{felt_want}` — the user's want **in their words**, not a pre-classified verb. Examples: "redesign it", "tighten it", "add analytics", "it feels wrong but I don't know why", "make it more corporate", "what would make this better". If the input gives no want, HALT and ask. Do NOT guess the want — the want drives the depth axis in step-02, and a guessed want routes to the wrong specialist.
 
+### 2.5 Prerequisite check — is the target's basis built or settled? (overrides autonomous_mode)
+
+Naming a surface + want (above) is necessary but not sufficient: a target the user can *name* may not yet *exist* or be *decided*. Before routing to any build/handoff specialist, confirm `{request_surface}` resolves to EITHER an existing implementation (a matching route/component on disk) OR a settled spec (a PRD/architecture artifact fixing its data-model + intent).
+
+If **neither** — no matching route/component on disk AND the feature is an open PRD Open-Question / unmet FR (or has no PRD coverage) — HALT and reroute; do NOT classify it as a design task: *"{request_surface} has no implementation and its data-model/intent is an open upstream decision — run `bmad-prd` → `bmad-architecture` to settle it, then return to the design lane."* (`system-wide` policy changes are exempt — no per-surface basis to ground.) Fires even under `autonomous_mode`; routing a fabrication is an intent violation.
+
 ### 3. Confirm and proceed
 
 Confirm in one short line:

@@ -102,3 +102,20 @@ Workflows that predate this policy may resolve `{project-root}` via a config fie
 ## 6. Why not just fix the worktree-enforcement hook
 
 Projects can install `PreToolUse(Edit|Write)` hooks that block absolute-path writes outside the active worktree. Those hooks are belt-and-suspenders — they catch the failure mode but don't prevent the workflow from trying. The workflow-side resolution rule prevents the attempt in the first place AND degrades cleanly when invoked from the main checkout (no worktree to refer to → `git rev-parse --show-toplevel` returns the main checkout's root → workflow writes to main, exactly as expected). The hook and the policy compose: the policy makes the right thing happen by default, the hook catches violations from workflows that haven't been migrated.
+
+---
+
+## 7. Fallback: obtaining a worktree from a cwd-pinned session
+
+A project may mandate "always work in a worktree," but the `EnterWorktree` tool can refuse when the session's cwd is **pinned to the repo root** (it errors both on create — "cannot create a worktree from a subagent with a cwd override" — and on enter-by-path — "switching is only available to sessions whose working directory is inside a worktree"). The tool's own escape hatch is gated on already being in a worktree, which a repo-root session cannot break. The sanctioned manual fallback:
+
+```bash
+# 1. Create the worktree by hand from the remote tip
+git worktree add -b <type>/<desc> .claude/worktrees/<desc> origin/main
+# 2. Edit every file via its ABSOLUTE worktree path — Write/Edit accept absolute paths,
+#    and the `/.claude/worktrees/` segment makes the PreToolUse edit-guard treat it as in-worktree.
+# 3. Drive git against the worktree dir
+git -C .claude/worktrees/<desc> add -A && git -C .claude/worktrees/<desc> commit -m "…"
+```
+
+This satisfies both the worktree mandate and the edit-guard (which keys on the path string, not the process cwd). Clean up with `git worktree remove` after the PR merges. (Recorded in `docs/fork-gaps.md` — the "ALWAYS EnterWorktree" cwd-pinned gap.)
