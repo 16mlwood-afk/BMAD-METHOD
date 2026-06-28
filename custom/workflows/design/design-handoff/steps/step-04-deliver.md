@@ -92,6 +92,60 @@ fi
 
 There is no legitimate "deliver from the wrong tree" case, so the recipe IS the resolution — no override path. This mirrors the post-`git add` stage assertion below; it turns the cryptic `pathspec did not match` into a fix recipe.
 
+**Pre-stage brief-contract assertion (run BEFORE `git add`).** A deterministic internal-consistency gate on the just-written brief. The step-03 §3 self-review already has a "§7 Surface Inventory / structural-contract `frames`" checkbox, but that is **probabilistic** — the model self-attests — and the only hard gate today fires *downstream* (`design-synthesize` Gate 1f / `design-implement` §2f), so it never bites if those consumers don't run. This assertion mechanically verifies the **Block B `frames` contract** — the machine-readable frame list `design-implement` step-01 §SHARED.1b diffs the bundle against — is present, non-empty, unique, and mirrored in the §7 body, at the producer, regardless of self-attestation or any downstream run. **Scope (honest cede):** this checks *internal consistency* of the artifact only. It does NOT verify completeness-against-the-schema (whether every drawer that SHOULD exist was captured) — that needs the gather context and stays with step-01 §5f derivation + the step-03 §3 self-review + the downstream gates (see RULES).
+
+```bash
+brief="{output_path}"
+# Extract the Block B `frames:` list (inline `[a, b]` or block `- a`) from the YAML frontmatter, one id per line.
+frames=$(awk '
+  NR==1 && $0=="---"{infm=1; next}
+  infm && $0=="---"{exit}
+  infm && /^frames:/{
+    if ($0 ~ /\[/){ s=$0; sub(/^[^[]*\[/,"",s); sub(/\].*/,"",s); gsub(/,/," ",s); print s; next }
+    blk=1; next }
+  infm && blk && /^[[:space:]]*-[[:space:]]/{ s=$0; sub(/^[[:space:]]*-[[:space:]]*/,"",s); print s; next }
+  infm && blk && /^[^[:space:]]/{ blk=0 }
+' "$brief" | tr -d "\"'," | tr -s " " "\n" | sed '/^$/d')
+
+n=$(printf '%s\n' "$frames" | sed '/^$/d' | wc -l | tr -d ' ')
+if [ "$n" -eq 0 ]; then
+  echo "HALT: brief frontmatter has no non-empty 'frames:' list (brief-revision-policy.md §2 invariant 1a)."
+  echo "  Every brief declares >=1 frame (the primary surface). Without it the brief ships UNVERIFIED and design-implement's §SHARED.1b gate cannot bite."
+  echo "  Fix: emit 'frames:' in Block B mirroring the §7 Surface Inventory rows (step-03 §2 structural-contract fields), then re-run delivery."
+  exit 1
+fi
+dupes=$(printf '%s\n' "$frames" | sort | uniq -d)
+if [ -n "$dupes" ]; then
+  echo "HALT: duplicate frame id(s) in 'frames:': $dupes"
+  echo "  Frame names must be unique — they key brief -> rendered frame -> design-implement grid row at every hop."
+  exit 1
+fi
+# Body = brief minus frontmatter. Every declared frame id must appear in it (frames mirrors the §7 rows, never a divergent list).
+# while-read + case (NOT `for f in $frames`): zsh does not word-split unquoted vars, so a for-loop would iterate once over the whole blob and silently miss everything. This form is correct in both bash and zsh.
+body=$(awk 'NR==1 && $0=="---"{infm=1;next} infm && $0=="---"{infm=0;next} !infm{print}' "$brief")
+missing=""
+while IFS= read -r f; do
+  [ -z "$f" ] && continue
+  case "$body" in *"$f"*) : ;; *) missing="$missing $f" ;; esac
+done <<EOF
+$frames
+EOF
+if [ -n "$missing" ]; then
+  echo "HALT: frame id(s) declared in 'frames:' but absent from the brief body / §7 Surface Inventory:$missing"
+  echo "  Block B 'frames' must mirror the §7 rows exactly (identical ids). A frame in frontmatter that §7 never draws is the inconsistency design-implement §2f would later flag — cheaper here."
+  exit 1
+fi
+# A §2a Linked Records section implies §7 lookup-drawer frames — linked records cannot have zero frames.
+if printf '%s' "$body" | grep -qiE '^#+.*linked records'; then
+  printf '%s' "$body" | grep -qiE 'surface inventory' || {
+    echo "HALT: brief has a Linked Records (§2a) section but no §7 Surface Inventory."
+    echo "  Each linked record requires one expand-in-context lookup-drawer frame (Deliverable-Completeness Principle). Add §7 + the matching 'frames:' rows."
+    exit 1; }
+fi
+```
+
+There is no legitimate "deliver a frames-inconsistent brief" case, so each recipe above IS the resolution — no override path (matching the wrong-tree guard). A brief that legitimately has a single frame still passes (n=1, the primary surface).
+
 ```bash
 git add -f {output_path}
 # Only when {has_analytics_band} is true:
@@ -287,6 +341,8 @@ ExitWorktree action: "remove" discard_changes: true
 ## RULES
 
 - Step-04 only runs when `{delivery_mode}` = `auto`. Skip-mode emits the warning and exits at step 1.
+- **The §3 pre-stage brief-contract assertion is deterministic and has no override.** It verifies only the artifact's *internal* `frames`↔§7 consistency (present / non-empty / unique / mirrored) — the Block B contract `design-implement` diffs against. It deliberately does NOT verify completeness-against-the-schema (every drawer that should exist); that dimension needs the gather context and is owned by step-01 §5f + the step-03 §3 self-review + the downstream `design-synthesize`/`design-implement` gates. Ceding it here, rather than faking a check the artifact can't support, is the design — an internal-consistency gate that bites is worth more than a completeness check that lies.
+- **Fully-deterministic upgrade (not yet shipped):** the §3 assertion is a tier-3 in-flow gate — deterministic *logic*, but it only runs if the agent executes step-04. The tier-6 version is a **project pre-commit hook** on `design-brief-*.md` running the same checks, fully outside the agent. That ships on the hooks/onboarding distribution track (NOT workflow sync), so it must be added per-project and rolled out **warn-only first** before gating. Tracked as a follow-up; until then this in-flow assertion is the producer-side guard.
 - Never push directly to `main`. Always via PR.
 - `--admin` merge is allowed only for doc-only artifacts with structurally-unavailable CI. Document the override in the PR thread or session log.
 - The merged-URL surfaced in step 10 MUST be the URL the consumer will actually read. If the operator chose `--no-deliver`, the warning says so — do not pretend the file is on main.
@@ -301,3 +357,4 @@ ExitWorktree action: "remove" discard_changes: true
 - **Used `--admin` for a non-doc-only PR.** Bypasses real CI signal. The escape exists for structurally-broken-CI + doc-only — not for "I want to skip review."
 - **Forgot to fast-forward main.** Local main checkout is behind origin/main. Subsequent local-session reads of `{implementation_artifacts}` don't see the brief until pull. Always run step 9.
 - **Reused a worktree-* branch name in the PR.** Reader of the PR list sees a meaningless identifier. Always rename per step 4.
+- **Shipped a brief with an empty or §7-inconsistent `frames:` contract.** The brief reaches `main` `UNVERIFIED`, so `design-implement`'s structural diff has nothing to bite on and a dropped drawer renders un-spec'd. The §3 pre-stage assertion catches the internal-consistency half (empty / duplicate / not-mirrored-in-§7) before commit; the completeness half (a drawer that should exist but was never derived) is caught earlier by step-01 §5f + step-03 §3, not here.
