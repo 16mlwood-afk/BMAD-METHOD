@@ -60,6 +60,12 @@ Given a defect brief with order IDs:
 - Closing the bound Chrome drops the session; the replacement must reconnect (often a
   Chrome restart) before `tabs_context_mcp` works again.
 
+### Example usage
+- See `inbound-flow:docs/producer-defects/producer-defect-bison-ops-2026-06-28.md` →
+  "Site verification (Claude in Chrome)" for a concrete validation pattern: 10 orders
+  inspected on the live site, settled "Grand Total" compared to the canonical
+  `grand_total`, results recorded as the permanent proof in the defect brief.
+
 > **Originating case (source-of-truth doctrine).** A producer emitted `grand_total` via
 > `max()` of divergent box-rows and over-stated spend; only live-site inspection caught it.
 > Cross-border import/VAT estimates settle DOWNWARD, so the settled (lower) total is the
