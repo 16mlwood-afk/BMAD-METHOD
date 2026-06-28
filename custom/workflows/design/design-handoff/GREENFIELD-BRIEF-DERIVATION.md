@@ -1,11 +1,15 @@
 <!--
-  DRAFT working note — greenfield brief-derivation recipe.
-  Status: v0.1, unproven. Authored 2026-06-16 to support the first greenfield
-  project run. NOT yet a codified workflow mode and NOT yet synced to the 13
-  targets — deliberately. Run it by hand once, let the first run reveal the
-  real shape, THEN codify as design-handoff step-01 greenfield branch (see
-  "Codification target" at the bottom). House style: mirrors design-handoff/
-  steps/step-01-gather.md, which this substitutes the INPUT SOURCES of.
+  CODIFIED companion note — greenfield brief-derivation recipe.
+  Status: CODIFIED 2026-06-28 into design-handoff step-01 as the `project_phase:
+  greenfield` branch (workflow.md config-load + state var; step-01 §1c source
+  binding; §2-pre greenfield grounding clause; step-02 greenfield skip; step-03
+  spec_derived provenance). Two proving hand-runs (raw-records) preceded it; the
+  source-mirror archetype guard (step-01b §5a / step-01c §5f) was validated by
+  the 2nd. The first run's gap-fixes are folded into §1c (policy-as-spec map,
+  §2 type/nullable degrade-to-n/a, capability floor + human-stub list, residue
+  §4). This file is now the EXPLANATORY companion to that codified branch (the
+  spine, the source-substitution rationale, the provenance honesty note) — the
+  operative path is the workflow; keep §7 (below) in lockstep with step-01c §5f.
 -->
 
 # Greenfield Brief Derivation (design-handoff, executed from specs)
@@ -164,6 +168,12 @@ The end-state is a **`project_phase` branch on `design-handoff` step-01**
 `0dd2e1ca`): when greenfield, gather from PRD + architecture + UX per the map
 above and skip step-02; when brownfield, the existing code-reading path. Every
 downstream step (03 generate-brief, 04 deliver) and the whole brief shape stay
-identical. Do NOT build that branch until this manual run reveals what the map
-above gets wrong — same "ship v0.1, iterate after first run" ethos the lane was
-built on.
+identical.
+
+**DONE (2026-06-28).** This branch is now built: `{is_greenfield}` (from
+`project_phase`) drives step-01 §1c (source-substitution map + the three gap
+rules + the §2-pre greenfield grounding clause), step-02 self-skips on
+`{skip_step_02}`, and step-03 stamps `spec_derived` provenance. The two
+raw-records proving runs are what "revealed what the map got wrong" before
+codifying — exactly the "ship v0.1, iterate after first run" ethos this note
+called for.

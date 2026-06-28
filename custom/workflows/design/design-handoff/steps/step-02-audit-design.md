@@ -9,6 +9,12 @@ description: 'Audit existing design system: tokens, patterns, reference pages'
 
 ---
 
+## GREENFIELD SKIP — check first
+
+**If `{skip_step_02}` is true (set in step-01 §1c when `{is_greenfield}`), SKIP this entire step** and proceed to step-03. There is nothing built to audit — a greenfield project has no other pages and no in-app design language; the visual direction comes entirely from `docs/design-policy.md` (residue + named overlay per §1c gap rule 3), already loaded as `{brand_identity}` in step-01 §1b. Do NOT attempt to read CSS/token files or "other pages" (there are none). `{design_tokens}`/`{existing_patterns}`/`{reference_pages}` are sourced from the policy; `{hard_failures}` from the policy's hard-failure list.
+
+---
+
 ## RULES
 
 - Read CSS/token files to extract the actual values — don't guess

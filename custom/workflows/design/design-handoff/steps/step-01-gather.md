@@ -52,6 +52,32 @@ ls {planning_artifacts}/brand-identity.md 2>/dev/null
 - Set `{design_system}` = "existing" (may be overridden to "external" by user input)
 - Set `{policy_version}` = `0` (sentinel meaning "no policy in effect at brief time"; downstream consumers treat this as "no drift check possible — surface to user").
 
+### 1c. Project-phase source binding (greenfield)
+
+Read `{project_phase}` (loaded from config). **If `{is_greenfield}` is false (brownfield/mixed — the default), SKIP this whole section** and gather from code as written in §2–§4 below.
+
+**If `{is_greenfield}` is true**, there is no built code to read. The brief shape is unchanged — only where the raw materials come from changes (this codifies `GREENFIELD-BRIEF-DERIVATION.md`). Bind sources and rules for the rest of step-01:
+
+**Source-substitution map — every "read from code/DB/grep" instruction in §2–§4 resolves to its greenfield source per this table** (read those sections *through* this binding; do not also try to read non-existent code):
+
+| §2–§4 instruction (brownfield) | Greenfield source |
+|---|---|
+| §3 DB schema (Drizzle/Prisma/…) | `create-architecture` data model (entities + fields), OR a schema doc the policy names (e.g. `docs/report-formats.md`) |
+| §3 capability grep of current surface | PRD FRs + epics/stories (there is no surface to grep — the mutation-derivation audit reduces to the ingest audit) |
+| §3a `relational-edges.yaml` / FK walk | architecture entity relationships; `relational-edges.yaml` may be absent on a fresh project — derive edges from the architecture |
+| §4 feature purpose from code | PRD feature statement + FRs |
+| §6 user context from code | PRD personas + `create-ux-design` flows |
+| §7 surface inventory | the `create-ux-design` page inventory (maps ~1:1 onto §5f frames) |
+
+**Gap rules (do NOT fabricate what the spec sources don't contain):**
+
+1. **§2 type/nullability degrade — never invent.** A schema doc (e.g. `report-formats.md`) yields column **names + notes only**; it has no SQL types and only implicit nullability. Set `Type`/`Nullable` to `n/a` rather than guessing. Use a column dictionary (e.g. `docs/data-sources-reference.md`) for types **only if it exists**.
+2. **§3 capabilities are floor-only.** With no surface to grep, derive only the capabilities the PRD FRs + ingest audit name. Collect everything a capable operator would plausibly need but no spec fixes (export, scoped search, column-visibility, sticky header, raw-vs-derived split, …) into a `{capabilities_need_human}` stub list and surface it as Open Questions — do NOT ship a thin capability set silently.
+3. **§4 residue/inheriting policy.** When `docs/design-policy.md` is residue-only or inherits a family overlay (defers concrete tokens to a future `brand-identity.md`), §4/§5 quote the policy **residue + the named overlay** — NOT a 9-section brand-identity copy (there is none).
+4. **No-guessed-edges still holds (§3a).** Derive linked records from architecture relationships; if an edge isn't in the architecture, route "declare it" — never invent it in the brief. (The §5a `source-mirror` archetype already suppresses §13 expand-in-context for a faithful-mirror surface — §5f draws the single frame.)
+
+**Then:** set `{skip_step_02} = true` (nothing built to audit — step-02 is skipped) and proceed. Step-03 stamps this brief `revision_mode: spec_derived`, `last_modified_by: human`, `last_modified_date == source_run_date` (`brief-revision-policy.md` §4); predecessor lookup / `change_class` are unchanged (zero active matches → `original`, one → `material_revision`).
+
 ### 2. Identify the Feature
 
 Determine `{feature_name}` and `{feature_scope}` from user input or recent git history:
@@ -80,6 +106,8 @@ Before §3 capture, confirm the target resolves to ONE of: **an existing impleme
 > Route: `bmad-prd` (settle the requirement) → `bmad-architecture` (settle data-model/intent), then return for `new` — or `bmad-ux` / `design-artifact-loop` (design-from-brief) once a spec exists.
 
 When the target IS grounded (an implementation exists, or a settled spec does), proceed.
+
+**Greenfield (`{is_greenfield}`) — on-disk absence is EXPECTED, not an ungrounding.** A greenfield project has no implementation by definition, so "no matching route/component on disk" must NOT trigger the HALT on its own. The greenfield grounding basis is a **settled spec** (a `create-architecture` data-model + a PRD/UX intent) **OR a design-policy surface declaration** (the surface named as an archetype in `docs/design-policy.md` §3, with its data sourced from a schema doc per §1c). HALT-and-reroute only when **none** of those exist — i.e. the surface is neither in the architecture/PRD/UX nor declared in the policy, so its data-model/intent is genuinely an open upstream decision. (Same reroute target: settle it in `bmad-architecture` / `bmad-prd` first.) The §1c source binding presumes this gate passed on a spec/policy basis.
 
 #### 2a. Lookup-drawer target redirect — route, never bounce (destination vs relationship)
 
@@ -132,7 +160,7 @@ Then **halt this run** (no brief produced). This is a routing redirect, not a fa
 
 Follow these steps in order. The goal is to capture domain entities from the source of truth (DB schema), not from the page server's UI-shaped response.
 
-1. **Open the DB schema** at the project's source of truth. Common locations: `src/lib/server/db/schema.ts` (Drizzle), `prisma/schema.prisma` (Prisma), `app/models/` (Rails), `models.py` (Django), `migrations/*.sql` (raw SQL), or equivalent. Find the tables this feature reads from.
+1. **Open the DB schema** at the project's source of truth. Common locations: `src/lib/server/db/schema.ts` (Drizzle), `prisma/schema.prisma` (Prisma), `app/models/` (Rails), `models.py` (Django), `migrations/*.sql` (raw SQL), or equivalent. Find the tables this feature reads from. **Greenfield (`{is_greenfield}`):** there is no schema file — read the `create-architecture` data-model (or the schema doc the policy names, e.g. `docs/report-formats.md`) per §1c, and apply the §1c gap rule 1 (Type/Nullable degrade to `n/a`, never invent).
 2. **For each entity**, list its columns: name, type, nullability. These are the primitive fields.
 3. **Stop. Do NOT open the page-shaped server response file to get the data shape.** Examples: `+page.server.ts` (SvelteKit), `getServerSideProps` or route `loader` (Next.js), controller action (Rails), view function (Django/Flask), GraphQL resolver, etc. These denormalize, group, pre-compute, and add rendering hints — all of which bias the designer. If you need to know which entities the feature uses, check the file's imports or queries, but do NOT copy its return type.
 4. **Flatten any nested structures.** If the schema has a foreign key (e.g., `supplier_country` on an invoice), that's a flat field on the row — not a grouping dimension. Record it as a field.
