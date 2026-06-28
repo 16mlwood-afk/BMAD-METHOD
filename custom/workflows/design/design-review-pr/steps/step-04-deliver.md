@@ -132,6 +132,25 @@ The PR-time partner to `design-handoff`'s `finance-domain-pass`. Runs ONLY for r
 - **Finance-shaped route with no §2b** (noted in coverage at step-01 §7): report "finance semantics not specified — not verifiable" + flag the possible handoff defect (`finance-domain-pass` may not have run). Never report it as passing.
 - **Not a finance route** (not in `{brief_finance_map}`): do nothing — the norm.
 
+### 1b-5. Evaluate C-FIXTURE-01 (fixture-backed production surface disclosure)
+
+The PR-time guard for "fixture-backed surfaces are a governed state" (project `docs/design-policy.md` fixture-disclosure assertion + an optional `scripts/check-fixture-disclosure` gate). A production route rendering fabricated/mock data with no live read path must disclose it — an always-visible "not live data" affordance in page chrome plus a machine-readable fixture marker. Runs over `{fixture_backed_routes}` (built in step-02 §7). No fixture-backed route in scope → skip silently (the norm).
+
+- **Hard finding (P1) — deterministic, ONLY where the project declares the contract.** Fires when `project_has_contract` is true (the project ships a `check-fixture-disclosure` script OR a design-policy fixture-disclosure assertion) AND the route is fixture-backed with `disclosure_present: false` — or the project's own `check-fixture-disclosure` exited non-zero for it. Never fire a hard finding where the project has NO declared contract (a project that has not adopted the policy cannot "violate" it — that is a human-judgment prompt below, not a P1; firing P1 there is the indiscriminate-gate failure):
+
+  > Undisclosed fixture-backed surface on `{route}` — it renders the fixture module `{fixture_module}` with no live read path and no visible "not live data" disclosure, against the project's fixture-disclosure assertion (`docs/design-policy.md` / `scripts/check-fixture-disclosure`). Add the project's fixture banner + machine-readable marker, or wire the route to a live read-model. A fabricated surface that looks live is the failure.
+
+- **Human-judgment prompt — the un-grep-able part, ALWAYS when a fixture-backed route exists.** Two things a regex cannot decide — disclosure-adequacy where the project has no declared contract, and the realistic-PII escalation:
+
+  ```
+  **[manual] C-FIXTURE-01** — Fixture-backed surface must be disclosed, and must not impersonate real records.
+  - Route: {route}  ·  Fixture module: {fixture_module}  ·  Marker: {declared|heuristic}  ·  Project contract: {present|absent}
+  - Disclosure: does the surface carry an unmistakable, always-visible "not live data" signal in page chrome (not a tooltip, not only a code comment)? {If contract absent: the project has no fixture-disclosure policy — is a live-looking fixture surface intended here, or should disclosure + a policy assertion be added?}
+  - Realistic-PII escalation (FAIL unless waived): read {fixture_module}. Does it contain REALISTIC customer-like content — free-text comments, personal names, contactable identifiers (email/phone/address), order-linked PII — that could be mistaken for a real person's data? Fabricated PII MUST be obviously synthetic. If realistic → this FAILS: make it obviously synthetic or remove it, unless an explicit logged waiver (`// fixture-disclosure-ok: <reason>` or a PR note) justifies it.
+  ```
+
+- **No fixture-backed route** (`{fixture_backed_routes}` empty): do nothing — the norm. Never invent a fixture finding on a live or honest-empty surface.
+
 ### 1c. Evaluate C-IDENTFMT-01 (canonical-identifier formatting)
 
 For each route in `{affected_routes}`:
@@ -193,6 +212,7 @@ Always emit a coverage section:
 - analytic depth (C-RIGOR-01): {checked {Q} route(s) against a captured brief §4d rigor spec — {hard naked-number findings} + manual prompt(s) / no §4d specs in scope}. {List any affected routes that present decision figures but have no brief §4d — depth NOT specified (possible handoff defect).} Data gaps named in a spec are enrichment requirements, not defects.
 - decision quality (C-DECISION-01): {checked {D} capital-decision route(s) against a captured brief §4e spec — {hard unmodelled/unsized findings} + manual prompt(s) / no §4e specs in scope (the norm — most routes commit nothing)}. A `single-scenario` verdict is honest, not a defect; a fabricated outcome distribution is the failure.
 - finance semantics (C-FINANCE-01): {checked {F} finance-shaped route(s) against a captured brief §2b contract — {hard mechanical findings: parentheses-negative / mixed-currency / blended qty-value} + manual prompt(s) / no §2b in scope}. {List any finance-shaped routes with no brief §2b — semantics NOT specified (possible handoff defect).} Unresolved assumptions named in §2b are open questions, not defects.
+- fixture disclosure (C-FIXTURE-01): {checked {X} fixture-backed route(s) — {Y} deterministic disclosure finding(s) (project contract present / check-fixture-disclosure script run) + manual prompt(s) for disclosure-adequacy + realistic-PII / no fixture-backed routes in scope}. The realistic-PII escalation is a human-judgment call, never asserted from grep; a hard P1 fires only where the project declares the disclosure contract.
 - Rules with no diff context: {list of rule IDs that had nothing to check this PR}.
 ```
 

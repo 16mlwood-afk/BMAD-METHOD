@@ -102,6 +102,24 @@ Run against `{diff_files}` only:
 
 Suppress matches inside `*.test.*`, `*.fixture.*`, `mocks/**`. If `{diff_files}` touches no stylesheet/style context, record F-FOUNDTOKEN-01 as "no diff context" for step-04 coverage.
 
+### 7. Standing check: C-FIXTURE-01 — fixture-backed production surface (source arm, detection)
+
+The source-side detection arm for "fixture-backed surfaces are a governed state" (a project that has adopted a fixture-disclosure assertion in `docs/design-policy.md`). A production route that renders a fixture/mock data module with **no live read path** and **no visible "not live data" disclosure** ships fabricated data that looks live — the gap this check closes. Detection is source-driven (a route's data source is a code fact); the realistic-PII escalation is semantic and is seeded into the step-04 human prompt.
+
+**Prefer the project's own deterministic gate.** If the project ships a fixture-disclosure gate — a `scripts/check-fixture-disclosure*` file OR a `check-fixture-disclosure` entry in `package.json` `scripts` — RUN it (`npm run check-fixture-disclosure`) and trust its verdict: it walks the full route import graph, which a diff-scoped grep cannot. Each route it reports as a violation becomes a candidate carried to step-04 §1b-5 as a **deterministic P1**. Do NOT re-implement its graph walk in regex.
+
+**Heuristic fallback** (project has no such script). Detection is diff-scoped (it catches the PR that *introduces or modifies* a fixture surface — the standing state is the project script's job). When a changed **route file** is in `{diff_files}` (App Router `**/app/**/page.{ts,tsx,js,jsx}` / `route.*`; SvelteKit `**/+page.{svelte,ts}`; or the project's route convention) OR a changed module self-declares a fixture, classify it:
+
+| Signal | Pattern (PCRE2) | Meaning |
+|---|---|---|
+| Self-declared fixture module | `\bDATA_STATE\s*[:=]\s*["']fixture["']` in a module the route imports | the project HAS adopted the marker — authoritative fixture flag |
+| Heuristic fixture module | the route imports a `*data*` / `*fixture*` / `*mock*` / `*sample*` module that exports a hardcoded record array (`export\s+const\s+\w+\s*[:=]\s*\[`) AND the route graph shows no live read (`*reader*`, `getDb`, `drizzle`, `prisma`, `createClient`, `fetch\(`, a server query) | likely fixture-backed, marker not declared |
+| Disclosure present | the route's tree references a fixture/sample disclosure affordance (`FixtureBanner`, `SampleData`, `not live`, `@data-state\s+fixture`) | the disclosure half is wired |
+
+Classify each fixture-backed route as `{ route, fixture_module, marker: declared|heuristic, disclosure_present: bool, project_has_contract: bool }`, where `project_has_contract` = (a `check-fixture-disclosure` script exists) OR (`docs/design-policy.md` carries a fixture-disclosure / `data_state` assertion). Add to `{fixture_backed_routes}` for step-04 §1b-5.
+
+This arm is **detection + advisory only** — it never emits a P0/P1 itself (a diff-scoped grep cannot prove the full import graph or judge content). The deterministic P1 comes from the project's own script (when present) or from step-04 §1b-5; the realistic-PII judgment is always a step-04 human prompt. Suppress matches inside `*.test.*`, `*.stories.*`, `*.fixture.*` and Storybook entries (a fixture consumed by a STORY, not a production route, is fine). If `{diff_files}` touches no route or fixture module, record C-FIXTURE-01 source-arm as "no diff context" for step-04 coverage.
+
 ---
 
 ## OUTPUT
