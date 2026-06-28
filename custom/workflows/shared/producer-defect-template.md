@@ -80,12 +80,31 @@ the producer's fix.>
 
 The lookup the `external:*` branch resolves `producer_id` against. A producer not listed here cannot be routed `external:*` until it is added (add it, don't guess an owner). Project-specific entries may extend this in the consuming project; these are the shared, known cross-repo producers.
 
-| producer_id | repo / service | role on the boundary | owner / how to file |
-|---|---|---|---|
-| `bison-ops` | bison-ops Chrome extension (separate repo) | SENDER → inventory-manager order webhook | <extension repo owner · issue tracker> |
-| `accounting-app` | accounting app (separate service) | SENDER → inventory-manager accounting webhook/pull | <accounting service owner · issue tracker> |
+| producer_id | repo / service | role on the boundary | delivery_channel | report_location | owner / how_to_file |
+|---|---|---|---|---|---|
+| `bison-ops` | bison-ops Chrome extension (separate repo) | SENDER → inventory-manager order webhook | `pull-from-receiver` | `inbound-flow:docs/producer-defects/` | <extension repo owner · pull cadence> |
+| `accounting-app` | accounting app (separate service) | SENDER → inventory-manager accounting webhook/pull | `pull-from-receiver` | `<receiver>:docs/producer-defects/` | <accounting service owner · pull cadence> |
 
-> Owner/tracker cells are placeholders to fill per environment — the registry's job is to make "where does this get filed" a lookup, not a per-defect decision. An unfilled owner is itself a gap to close, not a reason to drop the finding.
+> Owner/cadence cells are placeholders to fill per environment — the registry's job is to make "where does this get filed and who reads it" a lookup, not a per-defect decision. An unfilled owner is itself a gap to close, not a reason to drop the finding. `delivery_channel` is one of the four in §Delivery seam; `report_location` is the committed path the producer pulls from.
+
+---
+
+## Delivery seam — getting the report to a producer in another repo
+
+The report is filed in the **receiver's** tree (the consuming project's committed `docs/producer-defects/`). The producer lives in **another repo/team**, so "filed" and "delivered" are two different things. This section names the delivery channels and the default.
+
+**Why pull, not push, is the default.** The receiver cannot reliably *push* across a repo boundary without write access to a repo it does not own — that is a cross-team auth grant and an ownership decision, not a mechanical default. Pulling inverts the burden: the producer reads its reports from a stable, documented location using *its own* access. So unless a team has deliberately wired push, the seam is a **pull contract**.
+
+**`delivery_channel` — the four options (registry field):**
+
+- **`pull-from-receiver`** (DEFAULT) — the receiver commits the report to `report_location` (its own `docs/producer-defects/`); the producer team/terminal pulls from that path on its cadence. No receiver→producer auth, no automation. This is the whole seam for most boundaries: a documented location + a named owner + a cadence.
+- **`pr-into-producer`** — the receiver opens a PR/issue **in the producer's repo** carrying the report. Delivers actively, but requires a token with write/issue access to that repo (an explicit cross-team grant) and couples the receiver to the producer's repo shape. Any automation here is an enforcement mechanism → design it through the `enforcement-expert` gate (deterministic vs probabilistic) before building.
+- **`tracker`** — the report is filed to a shared incident board / issue tracker with an SLA. Good for accountability once volume justifies it; depends on tracker infra + integration auth.
+- **`manual`** — a human hand-carries the committed path/link to the producer. The `pull-from-receiver` contract without the producer auto-pulling; fine as a starting point.
+
+**Escalation, not exclusivity.** Start at `pull-from-receiver`. Escalate to `pr-into-producer` or `tracker` only when pull proves too passive (the producer demonstrably isn't reading) — and only with the auth/ownership decision made explicitly. Downgrading is always safe; upgrading carries a cross-team cost.
+
+**What's the USER's call (not mechanical):** who owns each producer and their pull cadence (fills the registry), and whether to ever grant push access / stand up a tracker. The fork supplies the contract and the registry shape; the cross-team process is the owner's to set.
 
 ---
 
