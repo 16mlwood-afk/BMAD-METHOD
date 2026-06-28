@@ -78,6 +78,10 @@ ch = (ensure('SessionStart', None, 'prod-readiness-probe.sh')
       + ensure('PreToolUse', 'Edit|Write', 'enforcement-expert-nudge.sh')
       # fork-of-upstream destructive-op guard (self-gates on the onboarding topology stamp)
       + ensure('PreToolUse', 'Bash', 'bmad-upstream-guard.sh')
+      # sprint-apply executor gate (correct-course) — freezes a pending proposal's
+      # files_to_change set until an APPROVE token clears it; ships in DRY-RUN (no .mode file)
+      + ensure('PreToolUse', 'Edit|Write|Bash', 'sprint-apply-gate.sh')
+      + ensure('UserPromptSubmit', None, 'sprint-apply-approve.sh')
       # onboarding-playbook drift detector — fork-root sibling of check-*-drift.sh, silent unless stale
       + ensure_cmd('SessionStart', None,
                    f'bash "{forkdir}/check-onboarding-version.sh" 2>/dev/null || true',
