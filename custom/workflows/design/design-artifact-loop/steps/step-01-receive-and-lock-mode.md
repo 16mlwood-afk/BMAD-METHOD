@@ -72,12 +72,13 @@ See: {project-root}/_bmad/bmm/workflows/design/shared/brief-revision-policy.md
 
 **Check 2 — invariants.** Run invariants 2–8 from `brief-revision-policy.md` §2 against the parsed frontmatter:
 
-- `revision_mode == "workflow_generated"` ⇒ `change_class ∈ {"original", "material_revision"}`
+- `revision_mode ∈ {"workflow_generated", "spec_derived"}` ⇒ `change_class ∈ {"original", "material_revision"}`
 - `revision_mode == "manual_minor_revision"` ⇒ `change_class == "clarification"`
 - `change_class == "original"` ⇒ `supersedes` is empty
 - `change_class == "material_revision"` ⇒ `supersedes` names an existing file in `{implementation_artifacts}`
 - `brief_status == "superseded"` ⇒ `superseded_by` is non-empty
 - `revision_mode == "workflow_generated"` ⇒ `last_modified_by == "workflow"` AND `last_modified_date == source_run_date`
+- `revision_mode == "spec_derived"` ⇒ `last_modified_by == "human"` AND `last_modified_date == source_run_date` (greenfield spec-derived original; see `brief-revision-policy.md` §2 invariant 8 + §4)
 
 On any failure, halt with a diagnostic naming the specific invariant and the conflicting fields. Do NOT attempt to "fix" the file — surface to the user.
 
