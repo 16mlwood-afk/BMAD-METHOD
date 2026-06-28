@@ -104,6 +104,7 @@ title: 'Handoff: {brief description of what was implemented}'
 created: '{date}'
 source_pr: '{pr_url}'
 type: handoff
+completion_disposition: '{pr_merged | pr_open | owner_gated_residue | advisory}'  # STD-COMPLETION-001 — pr_* carries the PR; owner_gated_residue names each blocker below; advisory only if the owner scoped this run to analysis
 ---
 
 # Handoff: {brief description}
@@ -156,6 +157,8 @@ type: handoff
 ## PRESENT TO USER
 
 After writing the handoff file, present a brief summary to the user. Emit it per `shared/close-out-contract.md` (STD-CLOSEOUT-001): audience-first for the next developer — what's filed and what they act on next, NOT a process recap of how you built it (process narration is forbidden by default; trace on request). If the user critiques the SHAPE of this summary, patch this step in the fork (contract §4), don't just rewrite the message or write a memory.
+
+**Declare the completion disposition.** Emit a `completion_disposition` per `shared/completion-contract.md` (STD-COMPLETION-001) — both in the handoff-file frontmatter (above) and as a one-line tail on the summary: `pr_merged` / `pr_open` with the PR, `owner_gated_residue` with each remaining blocker NAMED and why it is owner-gated (e.g. "needs a credential provisioned", "destructive migration — owner-gated"), or `advisory` with a why if the owner scoped this run to analysis only. Ending the handoff with only observations and no disposition is the invalid commentator exit (contract §3) — quick-dev is a completion workflow, so a clean run is `pr_merged`, not a list of things you noticed.
 
 ```
 **Handoff filed:** {file_path}

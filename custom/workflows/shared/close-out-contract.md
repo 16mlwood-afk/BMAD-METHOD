@@ -34,7 +34,7 @@ Does NOT apply to:
 1. **Active artifact / result** — what now exists or is true that didn't before (the file, the merged change, the verdict).
 2. **What changed** — the material delta, in plain language. Not the steps that produced it.
 3. **Substantive corrections / scope deltas** — the real fixes or scope changes the next actor must know (e.g. a data-boundary or least-privilege correction). Skip the heading entirely if none.
-4. **Status** — delivery / verification state (PR merged, tests green, deploy pending), stated faithfully — a skipped or failed step is named, not softened.
+4. **Status** — delivery / verification state (PR merged, tests green, deploy pending), stated faithfully — a skipped or failed step is named, not softened. **For a completion-oriented workflow** (one whose job is to deliver code or a consumable artifact), this element carries a structured `completion_disposition` per `shared/completion-contract.md` (STD-COMPLETION-001): `pr_merged` / `pr_open` with the PR, `owner_gated_residue` with each remaining blocker named, or `advisory` with a why. Diagnosis with no disposition is an invalid exit (the commentator failure). Advisory-only flows (audits, reviews, routers, triage) declare `advisory` once and are exempt from a PR disposition.
 5. **Next-actor instructions** — what the consumer does next. When the next actor is an external design consumer, include the short interpretation block: which artifact is active, revision vs new, how to read composition / page-mode, what NOT to import from the prior implementation.
 
 `design-handoff`'s `step-04-deliver.md` §10 is the canonical design-lane instantiation of this shape; other deliver steps mirror it in their own domain terms.

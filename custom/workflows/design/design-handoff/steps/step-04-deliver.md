@@ -303,6 +303,7 @@ What changed
 
 Delivery
 - PR {pr_number} ({pr_url}) — MERGED. {If doc-only: "Artifact-only, no deploy." else note deploy status.}
+- Completion: {completion_disposition — `pr_merged` once the brief PR is merged; `pr_open` with the reason if delivery skipped/blocked; `owner_gated_residue` naming any blocker} (STD-COMPLETION-001)
 - Brief on main: {github_repo_url}/blob/main/{output_path_relative_to_repo_root}
 {If {has_analytics_band}:}
 - Rationale: {github_repo_url}/blob/main/{rationale_path_relative_to_repo_root} (read for context; do NOT hand to {consumer})
@@ -323,6 +324,8 @@ Outstanding (design backlog) — for the owner, not {consumer}
 ```
 
 **Voice (Rhea):** the prose above the code fence may carry a one-line re-orientation and any genuine implementation risk — but the emitted block stays in this consumer-facing shape. Compress; say each thing once. The goal is that `{consumer}` (or a human routing to it) knows the next step without parsing an internal-process essay.
+
+**Completion disposition (STD-COMPLETION-001).** design-handoff is a completion workflow — its deliverable is the brief. The `Completion:` line in the Delivery block above IS its `completion_disposition` per `shared/completion-contract.md`: `pr_merged` when the brief PR merged, `pr_open` (with the reason) if `--no-deliver`/skip or a blocked merge left it undelivered, `owner_gated_residue` if something the owner must resolve remains. Ending step-04 with the brief written but no disposition declared is the invalid commentator exit (contract §3).
 
 **Outstanding-backlog tail (register-optional, design-lane triage).** Never stop at only the surface just delivered. After the consumer-facing block, append the short owner-facing **Outstanding (design backlog)** triage above, in priority order: (1) designed-but-not-built, (2) built-but-unbriefed (reconcile — "do NOT greenfield" on surface-identity drift), (3) unowned concept gaps in briefs/PRD but not in routes. **Register-optional:** if a surface register exists (`docs/surface-register.*` — e.g. cash-recovery's `npm run surface-register`), triage from it; if none exists (most projects), derive an approximate list from existing `design-brief-*.md` + built routes — never reference a register file a project lacks. This is owner-facing, distinct from the `For {consumer}` block (STD-CLOSEOUT-001 §2 next-actor section). PROBABILISTIC guidance only — no hard gate (a Stop-hook backlog scan would be the indiscriminate-detector anti-pattern); the lever for drift is §4 of the contract. Keep it to the three bullets; omit an empty bucket.
 

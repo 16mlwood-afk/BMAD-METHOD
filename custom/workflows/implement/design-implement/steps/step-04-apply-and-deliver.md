@@ -222,6 +222,7 @@ Implementation strategy (step-02b): {implementation_strategy}
   Uplift surface vs production: none — handoff added no capability the live page lacked (a true restyle).
 Deltas: applied {A}/{delta_count} · deferred {D} · dropped {X}
 PR: {pr_url}
+Completion: {completion_disposition} (STD-COMPLETION-001) — {if run_completion_mode == "complete": `pr_merged`} {if run_completion_mode == "checkpointed": `pr_merged` for the delivered slice; remaining frames are agent-resumable via the command above (a budget checkpoint, NOT owner_gated_residue); name owner_gated_residue only for blockers the owner alone can clear (a credential, a prod mutation)}
 Deploy: handled by ./scripts/bmad-deploy.sh — run after merge per the BMAD contract
 
 Comparison grid: {artifact_path}

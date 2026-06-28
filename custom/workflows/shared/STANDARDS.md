@@ -126,6 +126,13 @@ Breaking: no
 Home: shared/close-out-contract.md
 Applies: all
 
+completion-contract — the DISPOSITION a completion-oriented workflow declares at its terminal step: the "finisher, not commentator" contract. A completion workflow (carries scoped work to a deliverable) MUST emit a `completion_disposition` — `pr_merged` / `pr_open` (with the PR), `owner_gated_residue` (with each remaining blocker NAMED + why it is owner-gated), or `advisory` (with a one-line why; for audit/review/triage flows or an owner-scoped analysis run). Diagnosis with no disposition is an INVALID exit — the commentator failure this closes. Third sibling of the close-out family: STD-DELIVERY-001 owns the MECHANICS, STD-CLOSEOUT-001 owns the MESSAGE shape, this owns WHETHER it was driven to done + what remains. References (does not duplicate) the upstream `finisher-drive-to-completion` / `answer-shape-and-autonomy` / `lead-dont-ask` doctrine — it makes that behaviour declarable at a workflow boundary. PROBABILISTIC at runtime (completion is a judgment, not file-checkable; the convergence lever is the close-out feedback-patch rule). Template coverage is checkable and ships WARN-ONLY first: `check:completion` (`tools/check-completion-disposition.js`, exit 0, NOT in the gate) warns when a STD-CLOSEOUT-001 adopter doesn't also reference this; promotion to a hard `npm test`/pre-commit gate is Phase 2, after the warn output is proven quiet. The on-disk handoff-artifact check is a separate per-project track.
+ID: STD-COMPLETION-001
+Version: v1
+Breaking: no
+Home: shared/completion-contract.md
+Applies: all
+
 ### documentation & doctrine
 
 claude-md-standard — CLAUDE.md structure & discipline: global doctrine (machine-local) vs a thin, pointer-based project CLAUDE.md; canonical section shape; pointer-not-restate; edit discipline.
