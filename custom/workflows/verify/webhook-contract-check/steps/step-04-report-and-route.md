@@ -127,6 +127,8 @@ If `autonomous_mode` is on and the owning side is the same project this workflow
 
 Every finding ends with an explicit disposition: **routed-to-sender**, **routed-to-receiver**, **acknowledged-no-action** (intentional, or not relevant to the consumer), or **needs-product-decision** (unclear whether the consumer needs the field). No finding drops out of the routing pass silently. State the count: `findings == dispositions`.
 
+**When the owning side is an EXTERNAL repo you don't control** — the sender is another team's scraper extension or upstream service (resolve against the registry in `shared/producer-defect-template.md`) — a `quick-spec` slip is unactionable: there's no in-repo code to spec. Disposition that finding **routed-to-sender (`external:<producer_id>`)** and emit the producer-defect report per `shared/producer-defect-template.md` instead — it carries the violated charter clause, the evidence, and the proposed contract change to file upstream. The receiver-side hardening (fail-loud leniency/rejection per charter Receiver §3) stays an in-repo `quick-spec`. Report and harden are both required — neither substitutes for the other.
+
 ---
 
 ## WORKED EXAMPLE (sender-strict / receiver-lenient catch)

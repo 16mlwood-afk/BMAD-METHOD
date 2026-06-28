@@ -41,6 +41,13 @@ A genuinely-absent field is benign *only because the live page confirmed it.* Th
 
 For **present-but-dropped**, prefer `maintenance-triage` when several fields dropped together — usually one root cause, a locale or a page-layout change — and `quick-spec` for a single field. When in doubt, route to the producer fix rather than guess benign.
 
+### Extractor lane — internal vs external (cross-repo)
+
+A scraper's extractor frequently lives in **another repo** — a browser extension (e.g. bison-ops), a standalone scraper service — not in the consuming project. So for **present-but-dropped** and **fetch-failure** verdicts, set `producer_fix_lane`:
+
+- **`internal`** — the extractor/parse path is in THIS repo → `quick-spec` → `quick-dev` as above.
+- **`external:<producer_id>`** — the extractor is another repo/team (resolve `<producer_id>` against the registry in `shared/producer-defect-template.md`). **HARD never-drop branch**: do NOT route to in-repo `quick-spec`; you MUST emit (create-or-update) the producer-defect report per `shared/producer-defect-template.md`, judged against `shared/webhook-contract-charter.md`. A consumer-side boundary-harden (reject/flag stub-or-dropped values instead of ingesting them) is a **separate** in-repo `quick-spec`, never a substitute. Still stop at the routing boundary — the consumer cannot edit the extension's repo.
+
 ## EMIT THE DISPOSITION TABLE
 
 Every contract field becomes one row, **including the fully-covered and benign ones** (disposition `accepted`, with the reason). This is the silent-partial-implementation guard: a reader can see at a glance that nothing was quietly skipped. Lead each row with the plain disposition the operator acts on; the verdict class and severity ride along as the audit trail.

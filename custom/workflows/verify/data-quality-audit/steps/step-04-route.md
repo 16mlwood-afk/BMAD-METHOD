@@ -30,6 +30,13 @@ description: 'Emit a per-finding disposition table and route each finding to its
 
 For **render gaps**, prefer the design lane when the fix is a layout/IA question ("how should the marketplace be surfaced") and `wire-check` when it's a mechanically-missing field on a working wire. When in doubt, design-review (audit) over guessing.
 
+### Producer-fix lane — internal vs external (cross-repo)
+
+When a finding routes to the **producer-fix lane**, also classify WHERE the producing code lives and set `producer_fix_lane`:
+
+- **`internal`** — the extractor / importer / sync / normalizer is in THIS repo → `quick-spec` → `quick-dev` as above.
+- **`external:<producer_id>`** — the root producer is another repo/service/team (a scraper extension, an upstream app; resolve `<producer_id>` against the registry in `shared/producer-defect-template.md`). This is a **HARD never-drop branch**: do NOT route to in-repo `quick-spec`, and you MUST emit (create-or-update) the producer-defect report per `shared/producer-defect-template.md`, judged against `shared/webhook-contract-charter.md` (a producer defect IS a charter violation). The consumer may ALSO need an in-repo boundary-harden follow-up (fail loud at the boundary, not a silent coalesce) — that is a **separate** `quick-spec`, never a substitute for the report (both, never one). Routing still stops at the boundary: the consumer cannot edit the producer's repo, and silently coalescing the bad value in-consumer is the charter's silent-fallback violation rebranded, not a fix.
+
 ## EMIT THE DISPOSITION TABLE
 
 Every classified finding becomes one row — **including benign ones** (disposition: `accepted`, with the reason). This is the silent-partial-implementation guard: a reader can tell, without asking, that nothing was quietly skipped.
