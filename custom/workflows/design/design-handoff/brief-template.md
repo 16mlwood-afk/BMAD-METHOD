@@ -42,6 +42,7 @@ last_modified_date: {date}
 mode: {handoff_mode}                     # fresh-design | refine-screen
 page_mode: {page_mode}                   # operational | analytical | detail
 route: {route}                           # primary route this brief targets
+surface_part: {surface_part}             # sub-surface within route — a tab/section/panel inside the page (kebab, e.g. raw-records); "" when this brief IS the route's whole primary surface. With route (normalised) + mode it forms the surface identity that keys the active-uniqueness invariant (brief-revision-policy.md §2.6). §13 lookup drawers are NOT surfaces — never give them a surface_part.
 composition_provenance: {composition_provenance}   # policy-default | recommended-alt (decided in §5a; recommended-alt names a job-fit composition in §4a and was veto-surfaced)
 composition: {composition}               # machine-readable composition key the design-implement bundle→implement conformance gate (step-01 §SHARED.1b) diffs against. Default = the page_mode default (operational→worklist | analytical→chart-led | detail→record-view). When composition_provenance is recommended-alt, set the named job-fit composition from §4a as a kebab key (e.g. scanner-terminal, single-item-stream, source-co-present). A NON-default composition (e.g. a clerk scan station) is the signal that the gate must verify the bundle expresses the JOB LOOP (scan→feedback→tally→close), not a centered hero card.
 band_provenance: {band_provenance}       # inherited | recommended-new | recommended-drop | none

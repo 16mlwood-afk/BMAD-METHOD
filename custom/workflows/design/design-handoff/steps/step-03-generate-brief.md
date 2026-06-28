@@ -55,7 +55,13 @@ If `{handoff_mode}` = `"refine-screen"`, use the slug `refine-{feature-slug}` in
 {output_path} = {implementation_artifacts}/design-brief-refine-{feature-slug}-{date}.md
 ```
 
-Capture `{output_filename}` = basename of `{output_path}` (used in §1a and the frontmatter below). Capture `{target_slug}` = the kebab-case slug component of the filename — i.e., `{feature-slug}` for fresh-design or `refine-{feature-slug}` for refine-screen. This becomes the active-uniqueness key consumers use; the predecessor lookup in §1a globs against this exact slug.
+Capture `{output_filename}` = basename of `{output_path}` (used in §1a and the frontmatter below). Capture `{target_slug}` = the kebab-case slug component of the filename — i.e., `{feature-slug}` for fresh-design or `refine-{feature-slug}` for refine-screen. `{target_slug}` names the FILE; it is **no longer the active-uniqueness key** (see §1a — uniqueness is now keyed on **surface identity**, route-normalised, because two differently-named slugs can target one surface — the slug-EXACT collision class in `docs/fork-gaps.md`).
+
+Also capture this brief's **surface identity** = `({normalised_route}, {surface_part})`, evaluated within `{handoff_mode}`:
+- `{normalised_route}` = `{route}` lower-cased with any trailing `/` stripped (dynamic segments like `[id]` left verbatim).
+- `{surface_part}` = the kebab name of the sub-surface within that route **when the handoff target is a tab / section / panel that lives inside a page** (e.g. a `raw-records` tab on the ingestion-run view → `route` = the parent page's route, `surface_part: raw-records`). Empty (`""`) when the target IS the route's whole primary surface. (A §13 expand-in-context lookup drawer is NOT a surface — it stays a frame in its parent's §7 per `step-01-gather` §2a; never give it a `surface_part`.)
+
+Two briefs are the **same surface** iff they share `{normalised_route}` AND `{surface_part}` AND `{handoff_mode}` — fresh-design and refine-screen briefs on one route are deliberately distinct (the `refine-` slug rule above keeps them apart).
 
 **Worktree refusal.** Before writing, verify `{output_path}` is a descendant of `{project-root}`. If not, halt with the diagnostic in `shared/worktree-portability.md` §4 — this catches the case where a stale absolute path leaked into state from an earlier session and would have caused the brief to land in the main checkout instead of the worktree.
 
@@ -63,19 +69,24 @@ Capture `{output_filename}` = basename of `{output_path}` (used in §1a and the 
 
 ### 1a. Resolve Predecessor & Decide change_class
 
-Per `shared/brief-revision-policy.md` §4, `design-handoff` must decide each new brief's `change_class` by checking for an existing **active** brief on the same surface. The `target_slug` for this lookup is the same kebab-case identifier used to name the file (in refine-screen mode, that includes the `refine-` prefix — refine-screen briefs supersede earlier refine-screen briefs on the same feature, not fresh-design briefs).
+Per `shared/brief-revision-policy.md` §4, `design-handoff` must decide each new brief's `change_class` by checking for an existing **active** brief on the **same surface** — keyed on the surface identity captured in §1 (`normalise(route)` + `surface_part`, within `mode`), **not** on the filename slug, because two differently-named slugs can target one surface (the slug-EXACT collision logged in `docs/fork-gaps.md`).
+
+Scan **every** brief, not just same-slug files:
 
 ```bash
-ls -t {implementation_artifacts}/design-brief-{target_slug}-*.md 2>/dev/null
+ls -t {implementation_artifacts}/design-brief-*.md 2>/dev/null
 ```
 
-For each candidate file returned by the glob, parse its frontmatter and keep only those where `brief_status: active`. Then branch on the count:
+For each candidate, parse its frontmatter and keep only those where `brief_status: active`. Compute each kept brief's surface identity (`normalise(route)`, `surface_part` — absent ⇒ `""`) and `mode`, and keep only those whose identity **matches THIS brief's surface identity within the same `mode`** (same `normalised_route` AND same `surface_part` AND same `mode`). Branch on the count of same-surface actives:
 
 | Count | Resolution |
 |---|---|
 | 0 | `{change_class}` = `"original"`; `{supersedes_filename}` = `""`; `{predecessor_path}` = none. |
-| 1 | `{change_class}` = `"material_revision"`; `{supersedes_filename}` = basename of the predecessor; `{predecessor_path}` = absolute path. (Re-running `design-handoff` on a surface IS material by definition — minor edits don't go through this workflow.) |
+| 1, **same** `target_slug` | `{change_class}` = `"material_revision"`; `{supersedes_filename}` = basename of the predecessor; `{predecessor_path}` = absolute path. (Re-running `design-handoff` on a surface IS material by definition — minor edits don't go through this workflow.) |
+| 1, **different** `target_slug` | **HALT.** A different-slug `active` brief already targets this surface — the slug-EXACT collision class (`docs/fork-gaps.md`). Surface its path and tell the user to reconcile **deliberately**: either supersede the existing brief (set its `brief_status: superseded` + `superseded_by`) and re-run, or align the two slugs. Do NOT auto-supersede across slugs — you cannot assume two independently-named briefs carry the same intent. |
 | 2+ | **HALT.** The active-uniqueness invariant (`brief-revision-policy.md` §2.6) is already broken. Surface the list of conflicting paths and tell the user to fix the predecessor chain (set `brief_status: superseded` and `superseded_by` on the older briefs) before generating a new brief. Do NOT proceed and do NOT auto-pick a predecessor — the existing inconsistency must be resolved deliberately. |
+
+The old exact-slug glob (`design-brief-{target_slug}-*.md`) is intentionally widened to all briefs: the predecessor is now recognised by **surface**, so a re-run that happens to compute a different slug still finds — and HALTs on — the prior active brief instead of silently forking a second one.
 
 Capture `{source_run_date}` = `{date}` (the workflow's `date` variable; same value used in `last_modified_date`).
 

@@ -95,14 +95,14 @@ If you really need to consume this older brief (e.g. for audit), restate the han
 
 Skipped only when `--allow-superseded` was passed AND the user named this specific file (per the escape-hatch rule above).
 
-**Check 4 — active uniqueness.** Resolve `{this_target_slug}` from this brief's frontmatter `target_slug:` field; if absent, derive it from the filename (strip the `design-brief-` prefix and the trailing `-{date}.md`). Glob `{implementation_artifacts}/design-brief-{this_target_slug}-*.md`, parse each match's frontmatter, and count those with `brief_status: active`. If more than one match, halt:
+**Check 4 — active uniqueness (per surface).** Compute THIS brief's surface identity — `normalise(route)` (its `route:` field, lower-cased, trailing `/` stripped, dynamic segments verbatim) + `surface_part:` (absent ⇒ `""`), within its `mode:`. Scan ALL `{implementation_artifacts}/design-brief-*.md`, parse each one's frontmatter, and count those with `brief_status: active` whose surface identity matches. Uniqueness is keyed on the **surface, not the filename slug** — two differently-named slugs targeting one surface is a violation (the slug-EXACT collision class). If more than one match (including this brief), halt:
 
 ```
-Active-uniqueness invariant violated for target_slug "<slug>":
-  - <path 1>
-  - <path 2>
+Active-uniqueness invariant violated for surface "<normalised_route>[#<surface_part>]" (mode <mode>):
+  - <path 1>  (target_slug: <slug 1>)
+  - <path 2>  (target_slug: <slug 2>)
   - ...
-Exactly one active brief per target_slug is permitted. Fix the predecessor chain
+Exactly one active brief per surface is permitted. Fix the predecessor chain
 (set brief_status: superseded and superseded_by on the older briefs) and retry.
 See: {project-root}/_bmad/bmm/workflows/design/shared/brief-revision-policy.md §2.6
 ```
