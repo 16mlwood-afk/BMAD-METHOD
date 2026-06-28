@@ -57,9 +57,9 @@ If `{handoff_mode}` = `"refine-screen"`, use the slug `refine-{feature-slug}` in
 
 Capture `{output_filename}` = basename of `{output_path}` (used in §1a and the frontmatter below). Capture `{target_slug}` = the kebab-case slug component of the filename — i.e., `{feature-slug}` for fresh-design or `refine-{feature-slug}` for refine-screen. `{target_slug}` names the FILE; it is **no longer the active-uniqueness key** (see §1a — uniqueness is now keyed on **surface identity**, route-normalised, because two differently-named slugs can target one surface — the slug-EXACT collision class in `docs/fork-gaps.md`).
 
-Also capture this brief's **surface identity** = `({normalised_route}, {surface_part})`, evaluated within `{handoff_mode}`:
+Also resolve this brief's **surface identity** = `({normalised_route}, {surface_part})`, evaluated within `{handoff_mode}`:
 - `{normalised_route}` = `{route}` lower-cased with any trailing `/` stripped (dynamic segments like `[id]` left verbatim).
-- `{surface_part}` = the kebab name of the sub-surface within that route **when the handoff target is a tab / section / panel that lives inside a page** (e.g. a `raw-records` tab on the ingestion-run view → `route` = the parent page's route, `surface_part: raw-records`). Empty (`""`) when the target IS the route's whole primary surface. (A §13 expand-in-context lookup drawer is NOT a surface — it stays a frame in its parent's §7 per `step-01-gather` §2a; never give it a `surface_part`.)
+- `{surface_part}` = the value already decided by `step-01c-topology.md` §5d-i (the topology-time sub-surface decision): the kebab name of the tab/section/panel when the handoff target is a sub-surface inside a page (e.g. a `raw-records` tab on the ingestion-run view → `route` = the parent page's route, `surface_part: raw-records`), else `""`. **Do not re-infer it here** — topology owns this decision; consume the variable. (A §13 expand-in-context lookup drawer is NOT a surface — it was redirected to its parent brief in `step-01-gather` §2a and carries no `surface_part`.)
 
 Two briefs are the **same surface** iff they share `{normalised_route}` AND `{surface_part}` AND `{handoff_mode}` — fresh-design and refine-screen briefs on one route are deliberately distinct (the `refine-` slug rule above keeps them apart).
 

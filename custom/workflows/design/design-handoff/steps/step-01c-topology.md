@@ -53,6 +53,18 @@ In autonomous mode, proceed with the primary brief and surface the topology in �
 
 Set `{surface_topology_verdict}` and `{surface_topology_notes}`.
 
+#### 5d-i. Surface part — is THIS brief targeting a sub-surface?
+
+Now fix the brief's position *within* its route. `{surface_part}` is part of the **surface identity** (`normalise(route)` + `surface_part`, within `mode`) that `step-03-generate-brief.md` §1a and `brief-revision-policy.md` invariant 6 use to detect a same-surface predecessor — so it must be decided here, at topology time, not re-inferred at brief-gen time.
+
+- If the handoff **target is a tab / section / panel that lives inside a page** — `{route}` is a parent page and the target is one named slice of it (e.g. a `raw-records` tab on the ingestion-run view) — set `{surface_part}` = the kebab name of that slice (e.g. `raw-records`).
+- Otherwise — the target IS the route's whole primary surface — set `{surface_part}` = `""`.
+- A §13 expand-in-context **lookup drawer is NOT a surface**; it was already redirected to its parent brief in `step-01-gather` §2a. Never set `{surface_part}` for one.
+
+A `needs-tab-views` topology verdict does **not** by itself make `{surface_part}` non-empty: that verdict means the *primary* brief recommends sibling tab briefs, but this brief still targets the primary surface (`{surface_part}: ""`). `{surface_part}` is non-empty only when the handoff was pointed AT a sub-surface from the start.
+
+Set `{surface_part}`.
+
 ### 5e. Analytics Surface Hierarchy — rank multiple co-resident surfaces
 
 **Gate:** run this section ONLY when the route (after §5d topology) carries **two or more distinct analytics surfaces** — a "surface" being a dataset + question pair that earns its own §5c archetype (a price-over-time chart, a seller-share composition, and a buy-box-ownership ranking are three surfaces, not one band). Zero or one surface → skip; §5b/§5c already handle the singular case. **This gate fires regardless of `{page_mode}`, including `detail`:** an analytics-rich single-entity page (a product research / monitoring view whose record carries time-series and competitive aggregates) is exactly the case §5b's "a single record has no aggregate dimension" misses.
@@ -154,6 +166,7 @@ Confirm populated:
 - `{surface_topology_verdict}` ✓ (one of: `single-page-appropriate` | `needs-detail-route` | `needs-tab-views` | `needs-sibling-route`)
 - `{analytics_hierarchy}` ✓ (each surface tagged hero | supporting | drill — §5e; empty when the page has 0–1 analytics surface) — plus `{hierarchy_rationale}` and `{analytics_surface_inventory}`; `{hierarchy_unresolved}` set only when no single hero emerged (→ routed to §5d topology)
 - `{surface_topology_notes}` ✓ (recommended topology in 2-4 sentences; empty string when verdict is `single-page-appropriate`)
+- `{surface_part}` ✓ (§5d-i — the kebab name of the sub-surface within `{route}` when the handoff target is a tab/section/panel inside a page; `""` when the target is the route's whole primary surface; never set for a §13 lookup drawer. Part of the surface identity step-03 §1a / `brief-revision-policy.md` invariant 6 use for predecessor detection.)
 - `{linked_records_inventory}` ✓ (§3a — one entry per on-screen value that IS a record another surface owns: foreign reference · owning surface+route · expand-in-context target (§7 drawer over the current surface, NOT navigate-away; "Open full {sibling} →" secondary inside it) · inline lookups read through the relation; empty **only** for a true leaf surface that references no foreign record. Renders into brief §2a and is enforced at review by `design-review-pr` §13/§12.)
 - `{spawned_surfaces}` ✓ (§5f — one **required deliverable frame** per surface this page spawns: the primary surface, the drilled detail drawer (per the §5a composition), and one lookup drawer per `{linked_records_inventory}` entry; each with `frame_name · trigger · render_as · must_contain · figures (§4d) · lookups (depth-1 §2a)`; richness floor applied — no bare identity stubs; depth-1 lookups. Renders into brief **§7 Surface Inventory** and is cross-checked by `design-implement` step-03 §2f. Empty only for a true leaf surface with no drawer and no linked records.)
 - `{list_rendering_verdict}` ✓ (§5g — `single-render | paginate | virtualize | load-more` for a list-bearing operational/analytical surface; NOT `single-render` ⇒ the mechanism is a REQUIRED §7 deliverable + a `{must_support_capabilities}` entry, enforced by `design-implement` step-03's List-rendering row; empty only for a non-list `detail` surface) — plus `{list_rendering_rationale}` (the volume/growth read, or the hard ceiling that justifies `single-render`)
