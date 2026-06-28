@@ -19,7 +19,7 @@ This doc is **fork-local** (like `global-bmad-workflow.md` / `parallel-work-and-
 
 ## Open
 
-## Gap: the Edit/Write PostToolUse formatter diverges from the repo's own Prettier — injects unrelated churn into every edited file (2026-06-28, inbound-flow, import-fee-recovery arc)
+## Gap: the Edit/Write PostToolUse formatter diverges from the repo's own Prettier — injects unrelated churn into every edited file (2026-06-28, inbound-flow, import-fee-recovery arc)  `[RESOLVED: 2026-06-28 — root cause was npx FETCHING a non-pinned prettier when a fresh worktree's node_modules wasn't resolved yet. Fix at source: hooks.json bmad-auto-format now runs npx --no-install prettier (uses the repo's pinned prettier or no-ops — never a divergent fetch); canonical format still enforced at pre-commit lint-staged. Applied live to inbound-flow's settings.local.json; OTHER projects pick it up on next hooks re-install.]`
 
 **Noticed:** 2026-06-28 (inbound-flow — the multi-PR import-fee-recovery + Held-guard arc). **Priority: medium** — recurred on ~every TS/TSX/MD/JSON file edited across the whole session (`order.repository.ts`, the producer-defect doc's tables, the bison-ops manifest's `oauth2.scopes`, …), each time forcing a manual strip-and-restore before commit. **Root-cause class: a formatter on the Edit/Write PostToolUse path whose style/version diverges from the project's committed Prettier.**
 
@@ -29,7 +29,7 @@ This doc is **fork-local** (like `global-bmad-workflow.md` / `parallel-work-and-
 
 **Proposed investigation (route via enforcement-expert / settings; not fork-synced — it's a settings/hook config):** make the PostToolUse formatter invoke the *project's own* Prettier (resolve repo prettier + config) instead of a divergent default, OR drop the PostToolUse formatter on repos that already run `prettier --write` in pre-commit lint-staged (the canonical pass). Target: the global/project PostToolUse hook in `settings(.local).json`. Cheap signal: `prettier --check` passing on HEAD but failing immediately after a tool-Edit ⇒ the formatter is diverging.
 
-## Gap: the Bash edit-guard is SESSION-scoped, so it blocks legitimate edit-equivalents made inside a DIFFERENT repo's worktree (2026-06-28, inbound-flow → bison-ops)  `[related: the gap-#111 / cwd-pinned bash edit-guard thread]`
+## Gap: the Bash edit-guard is SESSION-scoped, so it blocks legitimate edit-equivalents made inside a DIFFERENT repo's worktree (2026-06-28, inbound-flow → bison-ops)  `[related: the gap-#111 / cwd-pinned bash edit-guard thread]`  `[RESOLVED: 2026-06-28 — the guard checked the SESSION $PWD before the command's own cd ran, so a "cd /…/<repo>/.claude/worktrees/… && sed -i …" was judged against the default cwd. Fix at source: hooks.json Bash edit-equivalent guard now carves out case "$cmd" in */.claude/worktrees/*) exit 0 — any edit-equivalent whose command references a worktree path (any repo) is treated as in-worktree, mirroring the existing /tmp & ~/.claude command carve-outs. Genuine out-of-worktree edits still hit the deny. Applied live to inbound-flow's settings.local.json; other projects pick it up on next hooks re-install.]`
 
 **Noticed:** 2026-06-28 (an inbound-flow session doing a cross-repo bison-ops version bump inside a hand-created bison-ops `git worktree`). **Priority: low–medium.** **Root-cause class: the bash edit-guard keys on whether the *current project session* is in a worktree, with no concept of a cross-repo worktree the session is actually operating in.**
 
