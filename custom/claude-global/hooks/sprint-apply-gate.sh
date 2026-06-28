@@ -6,8 +6,10 @@
 #     clears it (sprint-apply-approve.sh). Blocking governed by ~/.claude/sprint-apply-gate.mode
 #     (dry-run DEFAULT → logs WOULD-BLOCK, allows; enforce → denies).
 #   • AUTOPILOT lane (opt-in): a proposal whose ENTIRE files_to_change set is DETERMINISTICALLY
-#     classified low-risk (single repo, every path under <root>/_bmad-output/, count ≤
-#     AUTOPILOT_MAX_FILES, no governance/shared-infra/doctrine path) auto-applies WITHOUT a token
+#     classified low-risk — single repo, count ≤ AUTOPILOT_MAX_FILES, no governance/doctrine path,
+#     and every path is a SPRINT-EXECUTION artifact: under <root>/_bmad-output/implementation-artifacts/
+#     OR a file named epics.md. (planning-artifacts — PRD/architecture/specs — are owner-gate: they
+#     define what the product IS, not routine backlog bookkeeping.) Such a proposal auto-applies WITHOUT a token
 #     — but only after a deterministic pre-edit SNAPSHOT makes the (otherwise untracked, data-loss
 #     class) tracker files recoverable. Governed by ~/.claude/sprint-apply-autopilot.mode:
 #       off  (DEFAULT) → no classification; pure owner-gate (byte-identical to v1).
@@ -91,11 +93,16 @@ try:
     j = json.load(open(pend)); files = j.get("files_to_change", [])
     if not files or len(files) > mx:
         print("owner_gate_required"); raise SystemExit
-    safe_root = os.path.join(root, "_bmad-output") + os.sep
+    out_root = os.path.join(root, "_bmad-output") + os.sep
+    impl = os.path.join(root, "_bmad-output", "implementation-artifacts") + os.sep
     GOV = ["/bmad-method-v6/", "/custom/", "/.claude/", "/docs/", "claude.md", "policy", "doctrine"]
     for f in files:
         ap = os.path.abspath(os.path.join(root, f)); low = ap.lower()
-        if not ap.startswith(safe_root):        # outside the safe tracker lane (incl. cross-repo) → gate
+        if not ap.startswith(out_root):         # outside _bmad-output (incl. cross-repo) → gate
+            print("owner_gate_required"); raise SystemExit
+        # SAFE lane = sprint-execution artifacts only: implementation-artifacts/** + epics.md explicitly.
+        # planning-artifacts (PRD/architecture/specs) is product-definition → owner-gate.
+        if not (ap.startswith(impl) or os.path.basename(ap) == "epics.md"):
             print("owner_gate_required"); raise SystemExit
         if any(s in low for s in GOV):          # governance / shared-infra / doctrine path → gate
             print("owner_gate_required"); raise SystemExit
