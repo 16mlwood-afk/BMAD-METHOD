@@ -70,6 +70,8 @@ Re-run design-handoff to regenerate it under the current contract, or back-fill 
 See: {project-root}/_bmad/bmm/workflows/design/shared/brief-revision-policy.md
 ```
 
+**Check 1b — field values in-enum.** BEFORE Check 2, halt if any closed-enum field is outside its allowed set (§2 field-semantics) — Check 2's invariants are conditionals keyed on valid enum values, so an out-of-enum value slips through unvalidated otherwise. Enforce: `brief_status ∈ {active, superseded}`; `revision_mode ∈ {workflow_generated, manual_minor_revision, spec_derived}`; `change_class ∈ {original, clarification, material_revision}`; `last_modified_by ∈ {workflow, human}`; `mode ∈ {fresh-design, refine-screen}`; `page_mode ∈ {operational, analytical, detail}`; `composition_provenance ∈ {policy-default, recommended-alt}`; `band_provenance ∈ {inherited, recommended-new, recommended-drop, none}`; `analytics_archetype` (when present) ∈ the nine archetypes. `composition` is OPEN vocab — validate only non-empty kebab, never a closed set. Halt naming the field, its value, and the allowed set (see `brief-revision-policy.md` §5 Check 1b diagnostic).
+
 **Check 2 — invariants.** Run invariants 2–8 from `brief-revision-policy.md` §2 against the parsed frontmatter:
 
 - `revision_mode ∈ {"workflow_generated", "spec_derived"}` ⇒ `change_class ∈ {"original", "material_revision"}`

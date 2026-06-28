@@ -234,6 +234,34 @@ Re-run design-handoff to regenerate it under the current contract.
 See: {project-root}/_bmad/bmm/workflows/design/shared/brief-revision-policy.md §2
 ```
 
+### Check 1b — field values in-enum
+Halt if any closed-enum field carries a value outside its allowed set (§2 field-semantics tables). This runs BEFORE Check 2 because the invariants in Check 2 are conditionals keyed on valid enum values — an out-of-enum value (e.g. a hand-authored brief stamped `revision_mode: hand_authored`, `change_class: new_surface`) fires none of them and would otherwise slip through unvalidated. Closed enums:
+
+- `brief_status ∈ {active, superseded}`
+- `revision_mode ∈ {workflow_generated, manual_minor_revision, spec_derived}`
+- `change_class ∈ {original, clarification, material_revision}`
+- `last_modified_by ∈ {workflow, human}`
+- `mode ∈ {fresh-design, refine-screen}`
+- `page_mode ∈ {operational, analytical, detail}`
+- `composition_provenance ∈ {policy-default, recommended-alt}`
+- `band_provenance ∈ {inherited, recommended-new, recommended-drop, none}`
+- `analytics_archetype ∈ {trend, distribution, composition, ranking, coverage, flow, waterfall, single-metric, correlation}` (only when present)
+
+`composition` is **deliberately NOT enum-validated** — it is an open vocabulary (the page-mode defaults plus any named `recommended-alt` such as `scanner-terminal` / `source-mirror` / …); consumers branch on "non-default key", not a closed allowlist. Validate only that it is a non-empty kebab string.
+
+Halt diagnostic:
+
+```
+Brief field value(s) outside the allowed enum:
+  <field>: "<value>" — allowed: <set>
+Brief: <path>
+
+This brief carries a value the contract does not define. It was likely hand-authored
+against an invented vocabulary. Re-stamp it to a contract value (see the §2 field-semantics
+tables) before it can be consumed — out-of-enum values are rejected, not silently tolerated.
+See: {project-root}/_bmad/bmm/workflows/design/shared/brief-revision-policy.md §2
+```
+
 ### Check 2 — invariants
 Run §2 invariants 2 through 8 against the parsed frontmatter. If any invariant fails, halt with a diagnostic naming the specific invariant and the conflicting fields. Do not attempt to "fix" the file — surface to the user.
 
