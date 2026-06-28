@@ -95,6 +95,25 @@ A page is never one frame. It spawns secondary surfaces the operator reaches at 
 
 Set `{spawned_surfaces}` — frame #1 always present; the detail-drawer frame present per the §5a composition; one frame per linked record. Empty only for a true leaf surface (no drawer, no linked records). This renders into brief **§7 (Surface Inventory)** as the required deliverable list, and is cross-checked at build time by `design-implement` step-03 §2f (a brief-promised frame absent from the rendered bundle = "not drawn → route back", never a silent pass).
 
+### 5g. List-rendering — pagination / virtualization is a DERIVED requirement, not flavour text
+
+The gather already captures **Data volume** (§1 — "Typical data volume", e.g. "1,400+ records/quarter") and §5d uses it to decide *page splits*. But volume is never **derived into a list-rendering requirement** — so an operational/analytical worklist whose row count grows unbounded ships as a single un-paginated render, every time. Volume captured as flavour text is the gap; the fix is to derive a verdict and make it a **deliverable**, the same way §5b derives the band and §5f derives the frames. (Contract-dimension-gap, derive-to-requirement flavour: the input axis exists, the requirement never gets formed.)
+
+**Gate:** run this section when the surface's PRIMARY composition is a **list / worklist / table** (`{page_mode}` ∈ {`operational`, `analytical`} with a row-bearing primary surface; skip for `detail` and for a surface with no primary list). Decide from the **job + the captured Data volume**, NOT the legacy render:
+
+1. **Bounded & small** — a handful of rows with a hard ceiling (e.g. "always ≤ the day's open sessions") → `single-render`. No pagination machinery; rendering all rows is correct.
+2. **Grows, scan-and-act worklist** — the operator processes many, ordered by urgency/recency; counts in the hundreds–thousands or **unbounded over time** → `paginate` (page controls + a visible count). The operational default.
+3. **Large, dense, continuous scroll** — thousands of rows the operator scrolls rather than pages → `virtualize` (windowed rows; the table stays performant).
+4. **Append-only / open-ended feed** — the operator pulls "more" of a stream → `load-more`.
+
+Set `{list_rendering_verdict}` ∈ `single-render | paginate | virtualize | load-more`. When it is **NOT `single-render`**, the chosen mechanism is a **REQUIRED §7 deliverable** on the primary list frame (the frame's `must_contain` names it — e.g. "paginated worklist: page controls + total count") **AND** a `{must_support_capabilities}` entry (e.g. "page the worklist — the list grows past one screen") — so it is drawn by the design and enforced by `design-implement` (its step-03 **List-rendering** row, the §2d page-shell analog, fails a build that omits a required mechanism). A growing list shipped as a single render is the silent miss this derivation closes.
+
+**Capture the reasoning.** `{list_rendering_rationale}` — the volume + growth read that selected the verdict (e.g. "removal orders accumulate every ingestion run → unbounded → paginate"). For `single-render`, record the **hard ceiling** that justifies it, so "I'll just render all the rows" is a *decision*, not a silent default.
+
+In autonomous mode, derive the verdict and surface it in the brief; a list-bearing surface NEVER defaults silently to `single-render` — that default IS the gap. If volume genuinely can't be read, ask the one volume question (do not guess `single-render`).
+
+Set `{list_rendering_verdict}` and `{list_rendering_rationale}` (both empty only for a non-list surface — `detail`, or a surface with no primary list).
+
 ### 6. Identify User Context
 
 Set `{user_context}`:
@@ -135,6 +154,7 @@ Confirm populated:
 - `{surface_topology_notes}` ✓ (recommended topology in 2-4 sentences; empty string when verdict is `single-page-appropriate`)
 - `{linked_records_inventory}` ✓ (§3a — one entry per on-screen value that IS a record another surface owns: foreign reference · owning surface+route · expand-in-context target (§7 drawer over the current surface, NOT navigate-away; "Open full {sibling} →" secondary inside it) · inline lookups read through the relation; empty **only** for a true leaf surface that references no foreign record. Renders into brief §2a and is enforced at review by `design-review-pr` §13/§12.)
 - `{spawned_surfaces}` ✓ (§5f — one **required deliverable frame** per surface this page spawns: the primary surface, the drilled detail drawer (per the §5a composition), and one lookup drawer per `{linked_records_inventory}` entry; each with `frame_name · trigger · render_as · must_contain · figures (§4d) · lookups (depth-1 §2a)`; richness floor applied — no bare identity stubs; depth-1 lookups. Renders into brief **§7 Surface Inventory** and is cross-checked by `design-implement` step-03 §2f. Empty only for a true leaf surface with no drawer and no linked records.)
+- `{list_rendering_verdict}` ✓ (§5g — `single-render | paginate | virtualize | load-more` for a list-bearing operational/analytical surface; NOT `single-render` ⇒ the mechanism is a REQUIRED §7 deliverable + a `{must_support_capabilities}` entry, enforced by `design-implement` step-03's List-rendering row; empty only for a non-list `detail` surface) — plus `{list_rendering_rationale}` (the volume/growth read, or the hard ceiling that justifies `single-render`)
 - `{user_context}` ✓
 - `{brand_identity}` ✓ (may be empty)
 - `{design_system}` ✓ ("branded", "existing", or "external")

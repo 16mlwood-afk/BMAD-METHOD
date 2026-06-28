@@ -110,6 +110,7 @@ This brief was generated from the codebase after implementation. It intentionall
   frames:      {frames_list}               # every id is a REQUIRED rendered frame (§7)
   mutations:   {mutation_posture}          # none (read-only) | the server actions this surface MUST keep
   money:       {money_posture}             # none | the money figures this surface carries (basis-complete per policy §15)
+  list_rendering: {list_rendering_verdict} # single-render | paginate | virtualize | load-more (§5g). NOT single-render ⇒ the mechanism is REQUIRED on the primary list frame (design-implement step-03 List-rendering row enforces it)
   width:       1280px desktop
 ```
 
@@ -147,6 +148,8 @@ This brief was generated from the codebase after implementation. It intentionall
 {Render this subsection ONLY when `{dropped_capabilities}` is non-empty (a redesign that consciously sheds or relocates a capability the current surface had). One bullet per entry: the capability (outcome phrasing) · why (`relocated` to which sibling surface / `obsolete` / `out-of-scope-by-design`). This makes every drop an explicit, on-the-record decision the designer and the user can see — the design need NOT build these, but they are documented, not silently absent. Omit the subsection entirely when `{dropped_capabilities}` is empty.}
 
 **Typical data volume:** {counts in domain terms}
+
+**List rendering (§5g):** {if list_rendering_verdict and list_rendering_verdict != "single-render"}**{list_rendering_verdict}** is REQUIRED on the primary list frame — {list_rendering_rationale}. The design MUST include it (page controls + count / windowed rows / load-more); a single un-paginated render of a growing list is a gap, not a simplification.{else}{if list_rendering_verdict == "single-render"}single-render — {list_rendering_rationale} (a hard ceiling justifies rendering all rows).{else}n/a — not a list surface.{endif}{endif}
 
 ---
 

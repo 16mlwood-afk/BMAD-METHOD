@@ -168,6 +168,9 @@ For the full AI fingerprint taxonomy and detection criteria for each category, s
 ### Hybrid Pages
 {How pages serving both needs should balance them — e.g., "Default to operational view. Analytics available via tab or toggle. Don't mix operational controls with analytical displays — they have different cognitive modes."}
 
+### List Rendering — pagination / virtualization (standing rule)
+Any operational or analytical surface whose primary list / worklist grows past one screen — counts in the hundreds+, or **unbounded over time** (an accumulating queue, an ingest-fed worklist) — MUST **paginate** (page controls + a visible total count) or **virtualize** (windowed rows), never render every row in a single pass. A single-render list is allowed ONLY with a hard, stated row ceiling (e.g. "≤ the day's open sessions"). This is the policy half of the design-handoff **§5g** list-rendering derivation: the handoff makes the chosen mechanism a required deliverable on the primary list frame, and `design-review-pr` enforces this rule at PR time — so a growing list never ships un-paginated.
+
 ---
 
 ## 10. Changelog

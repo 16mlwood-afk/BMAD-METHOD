@@ -41,6 +41,7 @@ Light/dark is a **project choice** (accounting-tools is light-first off-white; i
 ## §B. Layout principles
 
 - Operational pages are **table-first** and full-width within the content container. The table is the page. Filters, summaries, and actions exist to support it.
+- **A worklist that grows must paginate or virtualize.** Any operational/analytical list whose row count grows past one screen — hundreds+, or **unbounded over time** (an accumulating queue, an ingest-fed worklist) — **paginates** (page controls + a visible total count) or **virtualizes** (windowed rows); it never renders all rows in a single pass. Single-render is allowed ONLY with a hard, stated row ceiling (e.g. "≤ the day's open sessions"). design-handoff **§5g** derives the mechanism from the surface's data volume and makes it a required deliverable on the primary list frame; `design-review-pr` enforces this at PR time — so a growing list never ships un-paginated.
 - Filters live in a **persistent top bar** (chips/pills) immediately above the table.
 - Status is shown via small pill badges integrated into table rows — never as colored card fills, hero strips, or banner panels.
 - Page chrome is minimal: title, optional one-line description, inline actions. No hero padding, no centered marketing layouts.

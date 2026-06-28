@@ -150,6 +150,21 @@ Rules:
 - **Surface a house-convention divergence, don't auto-spread it.** If step-02 §1a noted that sibling pages share the impl's cap, say so in the Delta cell (`divergence: design wants full-width, but catalog/supply-sources/… also cap at 1280 — confirm scope`). The apply (step-04) fixes THIS page to the design; widening every sibling is a separate, deliberate decision, not a silent sweep.
 - **The Design column is authoritative ONLY from the policy.** Use the `{design_layout_constraints}` entry marked `authoritative: true` (the `docs/design-policy.md` rule) as the binding Design value. If only `README-generated` / `bundle-wrapper` entries exist (no policy found), still emit the row but mark the Delta `needs human confirmation` rather than a hard Tier-1 — the bundle and its generated README are not authoritative on their own (see §2e).
 
+### 2d-list. List-rendering row — emit one when the brief requires pagination / virtualization
+
+The component sweep is blind to whether a growing list actually paginates: it compares row pixels, not whether the table renders **all N rows** or pages them. So a brief that requires `paginate` / `virtualize` / `load-more` (`{brief}.list_rendering`, set by design-handoff §5g from the captured Data volume) can ship as a single un-paginated render with an **all-green component grid** — the page-shell blind spot one level down, at the list level. This is the impl-side enforcement of the §5g derivation: the gather makes pagination a *requirement*, this makes a build that omits it *fail*.
+
+When `{brief}.list_rendering` is **not** `single-render` (skip when `single-render`, empty, or `no_brief`), emit ONE List-rendering row for the primary list frame:
+
+| Component | State | Property | Design (brief) | Implementation | Delta |
+|---|---|---|---|---|---|
+| Primary list | default | row-rendering mechanism | `{brief.list_rendering}` (e.g. `paginate` — the §5g requirement on the primary list frame) | the impl's actual list rendering (page controls + a count / windowed-virtualized rows / a load-more affordance — or **none: all rows rendered**) | e.g. `required paginate vs renders all rows → Tier-1` or `✓` |
+
+Rules:
+- **A required list-rendering mechanism that is ABSENT is Tier-1 structural** — a growing worklist that renders every row is exactly the gap §5g exists to close; it is the headline, not a nit. The fix is a list-rendering change on the primary surface, owned by no single cataloged component (like the page shell).
+- **The brief is authoritative.** `list_rendering` comes from design-handoff §5g (volume-derived), NOT from inspecting the bundle. On a `no_brief` / raw-URL run with no `list_rendering`, skip the row and mark `UNVERIFIED(list-rendering)` in the §9 report rather than invent a threshold — the requirement is the brief's to set (same posture as the §2e policy cede).
+- `single-render` (or a non-list `detail` surface) ⇒ no row.
+
 ### 2d-bis. Frame-composition row — emit one per DRILLED frame (detail / create / lookup drawer), the drawer analog of the page shell
 
 §2d catches the **page** container's composition; this catches a **drilled frame's** composition. The component sweep (§2) compares each section's *inner* pixels and §2f-bis certifies each design section *exists* — but neither compares **how the frame is composed as a whole**: the order its sections appear in, how they are grouped under named headings, and the frame's own chrome (its header and footer). That is exactly the axis a user reads as "the drawer looks completely different" — the same data, renamed/regrouped/reordered. It is structurally invisible to §2 (no single component owns the arrangement) and to §2f-bis (a section can be present, deep, and pixel-matched while sitting in the wrong group, in the wrong order, under a renamed heading). This is the page-shell blind spot (PR #2017) one level deeper, inside the drawer — and the real inbound-flow supply-order miss: the design's **Cost & sourcing** / standalone **Lifecycle** / **Related records** groups ship as the impl's **Economics** / a status row folded into the header / a combined **Routing & source** group, plus a black-vs-blue footer button — every inner component "matching" while the drawer's composition is wrong.
