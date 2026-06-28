@@ -39,6 +39,8 @@ Does NOT apply to:
 
 `design-handoff`'s `step-04-deliver.md` §10 is the canonical design-lane instantiation of this shape; other deliver steps mirror it in their own domain terms.
 
+A workflow MAY append a domain-specific **owner-facing addendum** after the next-actor block when it carries forward-looking signal the owner needs (not a process recap). The sanctioned design-lane example: design-handoff §10 and design-router both append an **Outstanding (design backlog)** triage — top candidates in priority order (designed-not-built → built-no-brief reconcile → unowned concept gaps), register-optional (read `docs/surface-register.*` if present, else derive from briefs + built routes). It is owner-facing (distinct from the consumer block), forward-looking (not narration, so §3 does not forbid it), and PROBABILISTIC (no gate).
+
 ---
 
 ## 3. Process narration is forbidden by default

@@ -61,9 +61,22 @@ Then surface any **deferred axis** touched (a request that needed a finer classi
 
 Do not run `{handoff_command}` yourself. This workflow ends at the recommendation.
 
+### 3b. Surface the design backlog (register-optional triage)
+
+Before concluding, never stop at only the routed request — append a short owner-facing **Outstanding (design backlog)** triage so the route lands in context of what else is open. Inspect the surface register if present: if `docs/surface-register.*` exists (e.g. cash-recovery's `npm run surface-register`), derive candidates from it; if none exists (most projects), derive an approximate list from existing `design-brief-*.md` + built routes — never reference a register file a project lacks. Surface the top candidates in priority order, omitting an empty bucket:
+
+```
+Outstanding (design backlog)
+- Designed-not-built: {brief exists, no route yet — cleanest build-next}
+- Built-no-brief (reconcile): {shipped route, no brief — "reconcile provenance, do NOT greenfield" on surface-identity drift}
+- Unowned concept gaps: {in briefs/PRD but no route — needs PRD/FR ownership triage}
+```
+
+PROBABILISTIC guidance only — no hard gate (a Stop-hook backlog scan would be the indiscriminate-detector anti-pattern). This is the design-lane triage close-out (STD-CLOSEOUT-001 §2 next-actor section, owner-facing); the design-handoff `step-04 §10` tail is its sibling instantiation.
+
 ### 4. Done
 
-No further steps. The routing artifact + the surfaced route are the handoff.
+No further steps. The routing artifact + the surfaced route + the backlog triage are the handoff.
 
 ---
 

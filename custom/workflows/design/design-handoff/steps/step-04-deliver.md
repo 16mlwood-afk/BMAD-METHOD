@@ -260,9 +260,17 @@ For {consumer}
 - Do NOT treat the prior implementation or any superseded brief as binding layout precedent — recompose freely.
 - Preserve the brief's required frames (§ Surface Inventory), state semantics, and any data/least-privilege boundaries it names.
 - {Composition guardrail from the brief: e.g. "It is a station, not a dashboard — avoid worklist/owner/analytics chrome." Derive this one line from {page_mode} + {composition_provenance} + the brief's hard constraints; do not invent constraints the brief doesn't carry.}
+
+Outstanding (design backlog) — for the owner, not {consumer}
+{Include this tail unless nothing is genuinely outstanding. Inspect the surface register if present: if `docs/surface-register.*` exists, derive the candidates from it; else derive an approximate list from existing `design-brief-*.md` + built routes. Omit a bullet whose bucket is empty.}
+- Designed-not-built: {brief exists, no route yet — the cleanest build-next candidates}
+- Built-no-brief (reconcile): {shipped route with no brief — flag "reconcile provenance, do NOT greenfield" when it looks like surface-identity drift}
+- Unowned concept gaps: {present in briefs/PRD but no route — needs PRD/FR ownership triage}
 ```
 
 **Voice (Rhea):** the prose above the code fence may carry a one-line re-orientation and any genuine implementation risk — but the emitted block stays in this consumer-facing shape. Compress; say each thing once. The goal is that `{consumer}` (or a human routing to it) knows the next step without parsing an internal-process essay.
+
+**Outstanding-backlog tail (register-optional, design-lane triage).** Never stop at only the surface just delivered. After the consumer-facing block, append the short owner-facing **Outstanding (design backlog)** triage above, in priority order: (1) designed-but-not-built, (2) built-but-unbriefed (reconcile — "do NOT greenfield" on surface-identity drift), (3) unowned concept gaps in briefs/PRD but not in routes. **Register-optional:** if a surface register exists (`docs/surface-register.*` — e.g. cash-recovery's `npm run surface-register`), triage from it; if none exists (most projects), derive an approximate list from existing `design-brief-*.md` + built routes — never reference a register file a project lacks. This is owner-facing, distinct from the `For {consumer}` block (STD-CLOSEOUT-001 §2 next-actor section). PROBABILISTIC guidance only — no hard gate (a Stop-hook backlog scan would be the indiscriminate-detector anti-pattern); the lever for drift is §4 of the contract. Keep it to the three bullets; omit an empty bucket.
 
 ### 11. Exit the Worktree
 
