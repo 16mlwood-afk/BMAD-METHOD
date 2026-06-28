@@ -1,7 +1,7 @@
 ---
 name: deployment-to-prod
-contract_version: 2
-description: 'Universal post-merge deployment contract for BMAD-managed projects. Defines the deploy-method modes + fallback ladder an agent resolves before shipping (§1A), when admin-merge on code PRs is acceptable, what dirty paths block a deploy, how dependency state preconditions are auto-healed, and the exit-code grammar that the bmad-deploy.sh executable uses to signal outcomes. Each project encodes its specifics in `_bmad/bmm/config.yaml` → `deploy:`.'
+contract_version: 3
+description: 'Universal post-merge deployment contract for BMAD-managed projects. Defines the deploy-method modes + fallback ladder an agent resolves before shipping (§1A), the cross-service-payload round-trip "done" clause (§1B), when admin-merge on code PRs is acceptable, what dirty paths block a deploy, how dependency state preconditions are auto-healed, and the exit-code grammar that the bmad-deploy.sh executable uses to signal outcomes. Each project encodes its specifics in `_bmad/bmm/config.yaml` → `deploy:`.'
 ---
 
 # Deployment-to-Prod Contract
@@ -60,6 +60,21 @@ If GitHub auth breaks mid-deliver (push / PR / merge fails), the commit has **no
 - A side-channel deploy makes prod ahead of `main`; the next push-based deploy — or anyone's main-tip deploy — **silently reverts your fix**, and prod now diverges from the source of truth.
 - Instead: **fix auth and land the commit on `origin/<default-branch>` first** (re-mint the token / `gh auth login` — surface to the owner if it needs an interactive login), then deploy by the resolved method.
 - Order is non-negotiable: **merge to the durable target → then deploy.** Never deploy to cover a merge you couldn't land.
+
+---
+
+## 1B. Cross-service payload changes — "done" includes one verified round-trip
+
+**Why this exists.** §1 scopes general post-deploy verification OUT (smoke tests, sentry checks — project-level concern). This is the one narrow, named exception: a change that crosses a SERVICE boundary via a webhook/event payload. For that class, "deployed on both sides" is NOT "done" — both the sender's and the receiver's unit suites can be green while no real payload ever crossed the boundary correctly (bison-ops `Held` incident, 2026-06-28: sender emitted `pipelineStatus:"Held"`, receiver mapped it to `internalStatus`, both sides deployed, no fresh webhook ever sent; the owner caught it).
+
+**The class.** A change is a *cross-service payload change* when, within one feature, the diff touches a payload BUILDER on the sender repo AND the receiver repo's INGEST of the same field/value. (One side alone changing a shared payload field still qualifies — the unverified side is exactly the rollout-unsafe shape.)
+
+**The added "done" clause.** For a cross-service payload change, the work is not done at deploy-on-both-sides; it is done when, in addition, ONE representative payload has been observed crossing sender→receiver and landing correctly — via `webhook-contract-check` step-05 (a live round-trip, or a synthetic replay of the real field shapes against the receiver's ingest). A handoff or PR that calls the change "verified" without a recorded round-trip is wrong; the disposition is **UNVERIFIED — round-trip owed** until step-05 runs.
+
+**Enforcement (honest ceiling).** Harm here is RECOVERABLE (a mis-emitted value can be re-sent once the receiver tolerates it) and a true live round-trip needs prod-like data the sender repo's CI can't reach — so this is GUIDANCE-grade, not a hard CI gate ("fail CI unless you talk to prod" is un-automatable and over-strong, the indiscriminate-gate anti-pattern). Realistic enforcement is two tiers:
+
+- **Probabilistic halt (ships via this sync):** `webhook-contract-check` step-05 computes the `verified` disposition from evidence and refuses it on `inferred` — real for honesty (you can't hand-wave "verified"), but it only fires if an agent runs the workflow.
+- **Deterministic awareness trigger (separate track — NOT shipped by this doc):** a conservative, warn-only signal on the sender repo's payload-builder paths injecting "cross-service payload change → receiver round-trip owed before done." It rides the hook-activation rail (`STD-HOOKACTIVATE-001`), not this contract's sync — authoring this clause does NOT ship the hook. Named here so the invocation gap is on the record, not silently assumed closed.
 
 ---
 
@@ -277,3 +292,5 @@ Changes to this document propagate to every targeted project on the next `sync-b
 Breaking changes (e.g., renaming a config field, removing an exit code) require a migration note appended to this document and a one-line entry in each project's CLAUDE.md memory changelog at sync time. The sync script's `--check` mode surfaces config blocks that would fail validation against the current contract version.
 
 **v2 (2026-06-27) — additive, backward-compatible; no config migration required.** Adds §1A (deploy-method modes + fallback ladder + auth-failure branch) and the optional `deploy.method` field. Existing v1 configs without `method` stay valid — the agent infers the mode per §1A (`bmad_contract` active → `contract_script`; `skip` with no documented method → halt-and-state, never a guessed CLI). The change is **doc/doctrine only**: `bmad-deploy.sh` is unchanged (`push_auto` / `manual_cli` remain skip-mode for the script; the AGENT owns those paths). Recommended (not required): each project sets `deploy.method` explicitly so the mode is legible from config rather than inferred. This closes the "deploy method under-specified for agents" fork-gap — production going *ahead of* `main` via a guessed `railway up` on a push-auto project.
+
+**v3 (2026-06-28) — additive, backward-compatible; no config migration required.** Adds §1B (cross-service payload changes — "done" includes one round-trip verified via `webhook-contract-check` step-05). Doc/doctrine only: `bmad-deploy.sh` is unchanged, no config field added, existing configs stay valid. Closes the "cross-service payload fixes have no mandatory end-to-end round-trip gate" fork-gap on its probabilistic tier (the in-workflow halt + this done-clause); the deterministic sender-side awareness trigger is a separate hook-activation-rail follow-up, named in §1B and the fork-gap, not shipped here.

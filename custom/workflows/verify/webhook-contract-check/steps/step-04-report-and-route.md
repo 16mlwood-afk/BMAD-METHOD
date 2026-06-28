@@ -36,7 +36,7 @@ title: 'Webhook Contract Check: {sender} → {receiver}'
 created: '{date}'
 sender: '{emission site}'
 receiver: '{validation site}'
-payload_evidence: '{live | inferred}'
+payload_evidence: '{live | synthetic-replay | inferred}'
 type: webhook-contract-check
 ---
 
@@ -45,7 +45,7 @@ type: webhook-contract-check
 **Sender:** {emission site — file:function or service+endpoint}
 **Receiver:** {validation site — handler+validator or service+route}
 **Receiver unknown-field posture:** {reject | ignore | coerce}
-**Payload evidence:** {live — captured payload | inferred — no payload observed}
+**Payload evidence:** {live — captured payload | synthetic-replay — representative payload replayed to receiver ingest | inferred — no payload observed}
 **Fields in contract:** {total_count}
 
 ## Summary
@@ -156,6 +156,15 @@ Every finding ends with an explicit disposition: **routed-to-sender**, **routed-
 > The workflow doesn't edit the sender to stop emitting, and it doesn't reach into the receiver repo to add leniency itself. It reports the unsafe ordering and routes the fix to the receiver with the deploy-order constraint stated. That's exactly the catch sender-strict / receiver-lenient is meant to produce before anything ships.
 
 ---
+
+## NEXT — round-trip if this is a payload-change
+
+Classify the run before presenting:
+
+- **Payload-change run** — the diff being verified touches a payload BUILDER on the sender AND the receiver's INGEST of the same field/value. The contract report above is necessary but NOT sufficient: a static check cannot certify a real payload crosses the boundary correctly (the bison-ops `Held` incident — both suites green, nothing round-tripped). **Proceed to `step-05-round-trip-verify.md`**; it requires one observed round-trip (live or synthetic-replay) and computes the `verified` disposition from that evidence. Do NOT present this run as verified until step-05 runs — step-05 owns PRESENT for this class.
+- **Steady-state contract audit** — no change to what the sender emits or the receiver ingests. This report is terminal; present below.
+
+Read fully and follow `{project-root}/_bmad/bmm/workflows/verify/webhook-contract-check/steps/step-05-round-trip-verify.md` when the run is a payload-change.
 
 ## PRESENT TO USER
 
