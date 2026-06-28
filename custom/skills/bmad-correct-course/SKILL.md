@@ -245,9 +245,11 @@ proposal_id: {date}-{short-slug}-v1   # stable id; the approval token references
 files_to_change:                       # EXACT tracker paths the executor may write — nothing else
   - <e.g. {implementation_artifacts}/sprint-status.yaml>
   - <e.g. {implementation_artifacts}/stories/2.10.md>
+risk_class: autopilot_safe | owner_gate_required   # OPTIONAL hint, advisory only
 ```
 
 - `proposal_id` MUST be unique and is what the user echoes in `APPROVE: APPLY_SPRINT_PROPOSAL::<proposal_id>`.
+- `risk_class` is an OPTIONAL advisory hint. **The sprint-apply gate DERIVES the real class deterministically from `files_to_change` (single repo + all under `_bmad-output/` + bounded count + no governance/doctrine/shared-infra path) and ignores a wrong or missing label — it fails closed to owner-gate.** Declare `autopilot_safe` only for a genuinely bounded, single-project tracker edit; never for anything touching policy/doctrine, shared BMAD infra, or multiple repos. A hint that disagrees with the gate's derivation is surfaced in the gate log (planner-vs-gate mismatch), which is itself a useful signal — so set it honestly, but know it grants nothing on its own.
 - `files_to_change` MUST list every tracker file the executor will modify and NO others. An omitted file cannot
   be applied without re-approval; an extra file widens the blast radius — keep it minimal and exact.
 
