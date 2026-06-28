@@ -70,7 +70,28 @@ the producer's fix.>
 ## 6. Contact / owner
 <From the §Producer registry: who owns the producer repo, how this is filed
 (issue tracker URL / channel), and the consumer-side owner tracking it.>
+
+## 7. Site verification  (REQUIRED for finance-critical defects)
+<For any defect that changes the interpretation of scraped MONEY values (order
+totals, fees, taxes, refunds), the producer's new rule MUST be validated against
+the live external site as the source of truth — NOT internal expectation
+("max vs min") — on a 3–10 order sample, before status moves off `open`.
+Tool: Claude in Chrome (see `tool-registry.md` → "Claude in Chrome"). One row per
+order; mark unverifiable orders `n/a` with the reason (e.g. marketplace not
+logged in). For non-finance defects, write `n/a — not a finance-value defect`.>
+
+| order | site total (source of truth) | producer emitted | match? | note / evidence ref |
+|---|---|---|---|---|
+| <id> | <amount> | <amount> | yes/no | <DOM/screenshot ref, or `n/a — <reason>`> |
 ```
+
+> **§7 is the proof-marker, not just documentation.** A finance defect must not be
+> marked resolved on internal reasoning alone — `max()` shipped precisely because no
+> one checked the site. The honest enforcement (per the `enforcement-expert` gate) is
+> a DETERMINISTIC check in the receiver repo (CI / pre-commit on `docs/producer-defects/`)
+> that blocks a finance defect from leaving `open` until §7 is populated with ≥3 orders
+> each carrying a match verdict. That gate ships on the receiver's CI track, NOT via this
+> synced template — authoring §7 here is the awareness tier; it does not deploy the gate.
 
 **Consumer-side harden is a separate lane.** A producer defect often has a twin in-repo follow-up: the receiver should *fail loud at the boundary* instead of silently coalescing the bad value (charter Receiver §3). That follow-up is real `quick-spec`/`quick-dev` work in THIS repo and is filed as such — it does NOT substitute for the producer report, and the producer report does NOT substitute for it. Both, never one.
 
