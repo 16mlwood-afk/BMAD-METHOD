@@ -36,6 +36,7 @@ boundary: <sender → receiver pair, e.g. bison-ops → inventory-manager/orders
 detected_by: <audit slug + run date, e.g. data-quality-audit · grand_total · 2026-06-28>
 charter_clauses: [<e.g. "Sender §4 never-weaken-silently", "Receiver §3 fail-loud">]
 severity: <P1 | P2 | P3>
+finance_value: <true | false>            # true = changes interpretation of scraped MONEY (totals/fees/tax/refunds) → §7 gate applies
 status: open                              # open | acknowledged | fixed-upstream | wontfix
 first_seen: <YYYY-MM-DD>
 last_seen: <YYYY-MM-DD>
@@ -101,6 +102,15 @@ blank. Start using it even before any bot wiring exists.>
 > that blocks a finance defect from leaving `open` until §7 is populated with ≥3 orders
 > each carrying a match verdict. That gate ships on the receiver's CI track, NOT via this
 > synced template — authoring §7 here is the awareness tier; it does not deploy the gate.
+>
+> **Built (first instance):** inbound-flow ships this gate as
+> `scripts/check-producer-defect-verification.ts`, wired into `.githooks/pre-push` +
+> a PR CI workflow. It keys off the `finance_value: true` frontmatter field above
+> (conservative — only explicitly-marked finance defects are gate-eligible; `open`/
+> `wontfix` never fire), and a `verification_override: "<reason/PR#>"` frontmatter line
+> is the logged escape hatch (passes the gate, surfaced loudly + in the committed diff).
+> A defect that *looks* finance-value but has no `finance_value` field gets a soft warn
+> to classify it. Other receiver repos replicate the same script + field convention.
 
 **Consumer-side harden is a separate lane.** A producer defect often has a twin in-repo follow-up: the receiver should *fail loud at the boundary* instead of silently coalescing the bad value (charter Receiver §3). That follow-up is real `quick-spec`/`quick-dev` work in THIS repo and is filed as such — it does NOT substitute for the producer report, and the producer report does NOT substitute for it. Both, never one.
 
