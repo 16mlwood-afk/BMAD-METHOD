@@ -83,6 +83,15 @@ logged in). For non-finance defects, write `n/a — not a finance-value defect`.
 | order | site total (source of truth) | producer emitted | match? | note / evidence ref |
 |---|---|---|---|---|
 | <id> | <amount> | <amount> | yes/no | <DOM/screenshot ref, or `n/a — <reason>`> |
+
+## 8. Linked issues
+<Cross-repo discovery without automation — link the tracker tickets on BOTH sides,
+so a session living mostly in one repo can find this report from its own tracker
+and click through for the full context:
+- Producer repo: <issue/PR URL(s) in the producing repo, e.g. bison-ops>
+- Receiver repo: <issue/PR URL(s) in this repo>
+Write `none yet` rather than omitting — an unlinked report is a visible gap, not a
+blank. Start using it even before any bot wiring exists.>
 ```
 
 > **§7 is the proof-marker, not just documentation.** A finance defect must not be
@@ -126,6 +135,23 @@ The report is filed in the **receiver's** tree (the consuming project's committe
 **Escalation, not exclusivity.** Start at `pull-from-receiver`. Escalate to `pr-into-producer` or `tracker` only when pull proves too passive (the producer demonstrably isn't reading) — and only with the auth/ownership decision made explicitly. Downgrading is always safe; upgrading carries a cross-team cost.
 
 **What's the USER's call (not mechanical):** who owns each producer and their pull cadence (fills the registry), and whether to ever grant push access / stand up a tracker. The fork supplies the contract and the registry shape; the cross-team process is the owner's to set.
+
+---
+
+## Ownership per layer (fork vs project)
+
+Where a new rule or doc belongs, so another directory knows where to go:
+
+- **The fork owns** the shared, cross-project contracts: the tool registry, THIS
+  producer-defect template + registry + delivery seam, the `webhook-contract-charter`,
+  and workflow/policy rules. A new tool or a cross-project rule → propose it in the
+  fork (`~/bmad-method-v6/custom/workflows/shared/`); it syncs to every project.
+- **Each project owns** its domain specifics: the concrete defect briefs
+  (`docs/producer-defects/`), domain runbooks and financial invariants
+  (`docs/financial-invariants/`), and the IMPLEMENTATION of the per-project
+  instances this template only describes as guidelines — the deterministic harvest
+  hook, the fail-loud receiver behaviour, the §7 site-verification CI gate. A new
+  domain invariant → write a project doc, don't put it in the fork.
 
 ---
 
