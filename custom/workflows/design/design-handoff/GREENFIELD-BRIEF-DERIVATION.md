@@ -124,6 +124,10 @@ body's §7 Surface Inventory table**, and **Gate 1f halts if any §7 frame would
 go undrawn.** So §7 is not optional prose — it is the render contract.
 
 Derive it via the §5f spawned-surface inventory:
+
+**Faithful-mirror short-circuit (check FIRST — mirrors the codified `step-01c` §5f guard).** If §5a set `composition: source-mirror` (a `raw-records` faithful source mirror, `{suppress_expand_in_context} = true`): §7 = **frame #1 only** (the primary mirror table). Emit **no** detail drawer and **no** lookup drawers — the §2a/§3a identifiers render as verbatim source columns (scan/trace anchors), not §13 expand-in-context drawers. Skip the three bullets below. (This is the guard that stopped the raw-records over-production; the codified `step-01b §5a` + `step-01c §5f` enforce it, and this recipe note must stay in lockstep so a hand-runner following only this markdown does not re-introduce the drawers.)
+
+Otherwise (every non-mirror surface):
 - **Frame #1** — the primary surface (from the UX page inventory; `render_as`
   = the §5a composition).
 - **The drilled detail drawer** — per the §5a composition, if the surface drills.
