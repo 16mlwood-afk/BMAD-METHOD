@@ -83,7 +83,7 @@ Load config from `{project-root}/_bmad/bmm/config.yaml` and resolve:
 - `user_name`, `communication_language`
 - `implementation_artifacts`
 - `project_knowledge` (the project's `docs/` — where the design policy lives)
-- `relational_coherence_home` = `{project_knowledge}/relational-coherence` — the **dedicated, maintained home** for this audit's two long-lived files: the declared edge map (`relational-edges.yaml`, hand-maintained source of truth) and the dated reports (`reports/`). Both are git-tracked project knowledge, not transient artifacts. (See "Declared Edge Map" below.)
+- `relational_coherence_home` = `{project_knowledge}/relational-coherence` — the maintained, git-tracked home for the **read-only input** this audit consumes: the declared edge map (`relational-edges.yaml`, hand-maintained source of truth). The audit's own dated report is written to `{implementation_artifacts}` (read-only run; see "Declared edge map (read-only input)" below) — NOT here.
 - `autonomous_mode`, `autonomous_rules`
 - `date` as system-generated current datetime
 
@@ -128,20 +128,18 @@ This last-resort halt fires regardless of `autonomous_mode`; the §1a offer (int
 
 The "actual" side needs each surface rendered with real data to decide *displayed?* and *linked?*. Resolve the project's render path from its `CLAUDE.md` — the local isolated stack where one exists, or the read-only production proxy for source/DOM inspection — without hardcoding credentials. **Also check the project's `docs/deployment.md` for a read-only DB-access note** — a public read-only proxy / `DATABASE_PUBLIC_URL`-style connection an agent may `SELECT` against for the actual-side counts, **distinct from the internal `DATABASE_URL` (often a `*.railway.internal` host that only resolves inside the platform) and explicitly OUTSIDE the `railway up` / deploy footgun**. Use it only for read-only audit queries. Where a project forbids running the app AND documents no reachable read-only path, fall back to **static source scan** (the same machinery `design-review-pr` step-02 uses) and record `{server_live} = false`. Store the resolved access as `{db_access}`. **When `{server_live} = false`, the actual side did not run — step-04's report MUST open with the loud structural-only banner: a decision-grade count the user asked for is NOT a verdict in a structural-only run, it ships as a hand-off query.**
 
-### Declared Edge Map — and its maintained home
+### Declared edge map (read-only input) — and where the report goes
 
-This audit produces and consumes two long-lived files. They get a **dedicated home** at `{relational_coherence_home}` (`docs/relational-coherence/`) so the thing you *maintain* (the edge map) and the thing you *accumulate* (the reports) live together, version-controlled, and never rot loose in `implementation-artifacts`:
+This audit **reads** one long-lived file and **writes** one report — and the split is load-bearing, because the audit is read-only and enters no worktree (see "No Worktree" above):
 
 ```
-docs/relational-coherence/
-  README.md                 # what this home is + the maintenance discipline
-  relational-edges.yaml     # THE maintained edge + co-view map — hand-edited source of truth
-  reports/
-    relational-coherence-audit-{scope-slug}-{date}.md   # dated audit history
+docs/relational-coherence/          # the maintained home — READ-ONLY to this audit
+  README.md                         # what this home is + the maintenance discipline
+  relational-edges.yaml             # THE maintained edge + co-view map — hand-edited source of truth
 ```
 
-- **`relational-edges.yaml`** is the hand-maintained source of truth for the derived/correlated relationships the schema can't express (the SellerSmart warehouse push, link-table joins) **and** the same-record `co_views:`. It is **maintained**, not generated: when a new shared record or sibling view ships, the operator extends this file (the audit routes "declare it," never conjures it). If it's absent, step-02 proceeds with FK-only edges and raises a P1 "no declared edge map" finding, because an FK-only audit silently misses exactly the decision-relevant relationships. The template and field schema live beside this workflow at `relational-edges.template.yaml`.
-- **`reports/`** holds the dated audit reports — a maintained history beside the map version they were generated against, so a reader can see "as of this edge map, here is what cohered and what was torn." `docs/` is deploy-irrelevant under the BMAD deploy contract, so storing reports here never triggers a deploy.
+- **`relational-edges.yaml` — read-only input.** The hand-maintained source of truth for the derived/correlated relationships the schema can't express (the SellerSmart warehouse push, link-table joins) **and** the same-record `co_views:`. It is **maintained by the operator**, never written by this audit — the audit only consumes it (and routes "declare it" when an edge is missing, never conjures it). If it's absent, step-02 proceeds with FK-only edges and raises a P1 "no declared edge map" finding, because an FK-only audit silently misses exactly the decision-relevant relationships. Template + field schema: `relational-edges.template.yaml` beside this workflow.
+- **The audit report → `{implementation_artifacts}`, NOT a git-tracked `docs/` path.** Like every other read-only audit in this family (`webhook-contract-check`, `data-quality-audit`, `scrape-coverage-audit`), the dated report is written to `{implementation_artifacts}/`. This is not a style choice: a no-worktree run **cannot** write a git-tracked file, because the parallel-session edit-guard hook hard-blocks Edit/Write outside a worktree — so a `docs/relational-coherence/reports/` write would be **refused mid-run**. (`docs/` being deploy-irrelevant under the deploy contract is a *different* mechanism and does NOT exempt it from the edit-guard — conflating the two is what created this contradiction.) If you want a durable history committed beside the edge map, **promote** a chosen report into `docs/relational-coherence/reports/` as a deliberate committed step under normal worktree → PR delivery — that is an operator action, not part of this read-only audit.
 
 **Legacy location:** earlier runs read the flat `{project_knowledge}/relational-edges.yaml`. Step-02 still falls back to it if the home is empty, and routes "move it into `relational-coherence/`." New work uses the home.
 
@@ -150,7 +148,7 @@ docs/relational-coherence/
 ### Paths
 
 - `installed_path` = `{project-root}/_bmad/bmm/workflows/verify/relational-coherence-audit`
-- `relational_coherence_home` = `{project_knowledge}/relational-coherence` — maintained edge map + `reports/` (see "Declared Edge Map — and its maintained home")
+- `relational_coherence_home` = `{project_knowledge}/relational-coherence` — maintained edge map (read-only input; report goes to `{implementation_artifacts}`, see "Declared edge map (read-only input)")
 
 ### Baseline Commit
 

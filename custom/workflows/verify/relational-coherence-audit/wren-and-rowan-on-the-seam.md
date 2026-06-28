@@ -37,7 +37,7 @@ description: A conversation between Wren (Relational Coherence Lead) and Rowan (
 
 **Wren:** That's the seam working the way it should. I hold the graph; you carry the linkage forward into the brief. Neither of us re-derives the other's half.
 
-**Rowan:** One check on my side, though — I don't take your seed on faith. I'm linkage-aware now: before I write any handoff, I read `docs/relational-coherence/relational-edges.yaml` and the latest report in `reports/` myself, for the surface I'm briefing. If your finding and the map agree, §2a writes itself. If the map says there's a *second* foreign record on this surface you didn't flag because it was out of scope for the set you audited, I still owe it a §2a row — a surface is never handed off silent on §13. The map is the contract; your report is the live read against it. I use both.
+**Rowan:** One check on my side, though — I don't take your seed on faith. I'm linkage-aware now: before I write any handoff, I read `docs/relational-coherence/relational-edges.yaml` (the maintained map) and Wren's latest audit report from `_bmad-output/implementation-artifacts/` myself, for the surface I'm briefing. If your finding and the map agree, §2a writes itself. If the map says there's a *second* foreign record on this surface you didn't flag because it was out of scope for the set you audited, I still owe it a §2a row — a surface is never handed off silent on §13. The map is the contract; your report is the live read against it. I use both.
 
 **Wren:** Correct, and I'd push it further — if you find a relationship on the surface that *isn't* in the map at all, don't invent the edge in your brief. Route it back: "declare a co-view / declare a derived edge," and I'll extend the map and re-run. A brief that conjures an undeclared relationship is the same sin as an audit that conjures one.
 
@@ -59,7 +59,7 @@ description: A conversation between Wren (Relational Coherence Lead) and Rowan (
 
 **Rowan:** Then send me the two design routes as material revisions with the §2a seeds attached, and flag the co-view one as spanning both surfaces. I'll run `design-handoff` from there. Jules picks up implementation after my bundle — but that's a different seam.
 
-**Wren:** Sent. The graph report's in `docs/relational-coherence/reports/`, dated, beside the edge-map version it was walked against — so when your redesign ships and someone re-audits, they can see this exact tear and confirm it closed. That's the maintained history doing its job. I'm out — the verdict and the routes were the value, and I don't sew.
+**Wren:** Sent. The graph report's in `_bmad-output/implementation-artifacts/`, dated and tagged with the edge-map version it was walked against — a read-only run can't write a git-tracked `docs/` path, so it ships as an artifact. Promote it beside the edge map if you want it kept as maintained history; either way, when your redesign ships and someone re-audits, they can see this exact tear and confirm it closed. I'm out — the verdict and the routes were the value, and I don't sew.
 
 **Rowan:** And I don't audit. Clean seam. Thanks, Wren.
 

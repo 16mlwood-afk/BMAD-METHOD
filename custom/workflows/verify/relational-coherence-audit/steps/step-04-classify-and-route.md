@@ -91,7 +91,7 @@ Every walked edge becomes one row — **including `compliant` and `out-of-scope-
 1. {highest-severity torn edge or co-view seam + its route}
 ```
 
-Write the report to `{relational_coherence_home}/reports/relational-coherence-audit-{scope-slug}-{date}.md` — the dated audit history lives **beside the edge map it was generated against**, in the project's maintained relational-coherence home (see `workflow.md` → "Declared Edge Map"), not loose in `implementation-artifacts`. Create the `reports/` subdirectory if it does not yet exist. The report is git-tracked, deploy-irrelevant project knowledge — a maintained record, not a transient artifact.
+Write the report to `{implementation_artifacts}/relational-coherence-audit-{scope-slug}-{date}.md` — the same read-only-audit output convention as `webhook-contract-check`. Do NOT write it into a git-tracked `docs/` path: this is a no-worktree run, and the parallel-session edit-guard hook hard-blocks Edit/Write outside a worktree, so a `docs/relational-coherence/reports/` write would be **refused mid-run**. (To retain a report beside the edge map, promote it into `docs/relational-coherence/reports/` afterward as a deliberate committed step under worktree → PR delivery — not part of this audit. See `workflow.md` → "Declared edge map (read-only input) — and where the report goes".)
 
 ## HAND-OFF
 
