@@ -182,6 +182,17 @@ Every column and field must earn its place:
 - **Is the field's data density appropriate?** A column that shows the same value for 95% of rows is wasting space. Consider: should it be a filter instead of a column? A badge only when exceptional?
 - **Would this be better as a detail-view field?** Not every data point needs a table column. Dense tables with 10+ columns often mean some fields belong in a drill-down view.
 
+### 14. Workstation Mode for Operational / Bench Surfaces (desktop web)
+
+Clerk-facing operational flows (receiving, grading, scanning, reconciliation) operated in a desktop browser are **workstations, not phone canvases**. When a flow is mobile-friendly in principle but is being used on a shared bench terminal / desktop browser with a scanner, treat desktop web as a first-class workstation mode — not a cropped mobile mockup:
+
+- **No faux-mobile.** A narrow, centered single-column card with large dead gutters in a desktop browser window is a layout failure — not "responsive." Don't simulate a phone-sized canvas inside desktop chrome, and don't use a floating mobile card as the primary desktop presentation.
+- **Use the width intentionally.** The primary work area is anchored and large enough for arm's-length readability; supporting context (open sessions, expected contents, parcel/session state, lookup results) sits in a rail, panel, or drawer — not hidden behind unnecessary narrowing. Whitespace supports focus, not emptiness — large unused gutters that shrink the functional UI are a failure.
+- **Scanner-first.** The active scan target is unmistakable and visually primary; the layout supports a scan → feedback → next-scan loop without forcing the operator to hunt inside a small card.
+- **Show system knowledge — don't make the operator work blind.** If tracking resolves a shipment/session, surface it prominently; if expected-contents / matched-shipment lookup exists, render it. Desktop width should reduce operator memory burden, not be left blank.
+- **Preferred compositions:** wide main workspace + secondary rail · main workspace + contextual drawer · main scan panel + expected-vs-actual reconciliation panel · full-width operational table with an anchored scanner control. Prefer these over a narrow centered stack.
+- **Audit test / required output.** When reviewing or proposing a clerk flow in desktop web, explicitly state: (a) whether the layout reads as a workstation or a faux-mobile frame, (b) where width is being wasted, (c) how the composition should change to better support scanning, reconciliation, and glanceable operation. A cropped / overly-centered / whitespace-heavy / phone-pasted-into-desktop result is a design miss even when the raw capabilities are all present. Responsive may collapse gracefully on narrow screens, but desktop web must render a desktop composition.
+
 ---
 
 ## Anti-Patterns (Claude-Specific)
