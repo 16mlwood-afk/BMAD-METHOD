@@ -52,7 +52,7 @@
     "validate:close-out": "node tools/validate-close-out-contract.js",
     "validate:refs": "node tools/validate-file-refs.js --strict",
     "validate:skills": "node tools/validate-skills.js --strict",
-    "validate:status-budget": "node tools/validate-status-budget.js"
+    "validate:status-budget": "node tools/validate-status-budget.js --strict"
   },
   "lint-staged": {
     "*.{js,cjs,mjs}": [
