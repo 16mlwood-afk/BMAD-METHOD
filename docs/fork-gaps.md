@@ -537,7 +537,9 @@ This doc is **fork-local** (like `global-bmad-workflow.md` / `parallel-work-and-
 
 ---
 
-## design-implement ships a surface with no discoverability affordance — every built surface is an unlinked island (2026-06-29, owner-escalated)
+## design-implement ships a surface with no discoverability affordance — every built surface is an unlinked island (2026-06-29, owner-escalated) — ✅ ACTIONED (`05e69392`)
+
+**Resolution (`05e69392`, 2026-06-29):** fixes (1) and (2) shipped. `design-implement` step-04 §9 now carries a mandatory **"Entry point / discoverability"** disclosure (grep the impl for a reachable affordance, else flag UNLINKED ISLAND); `design-handoff` §7 "Rules for the inventory" carries an **entry_point** rule so the producer names the ingress and implement verifies it. Both encode sub-surface ≠ nav-peer (fix 3). Canonical edit in `custom/workflows/`; the gitignored skills-native twin regenerates on sync. Pushed `myfork/custom`; sync to 14 owed. **Residual (deferred):** the deterministic CI tier — a project pre-commit/CI that fails when a new route (`src/app/**/page.tsx`) has no inbound `<Link>`/router push — is the enforcement-expert escalation of the PROBABILISTIC §9 check; it rides the hooks-distribution track, not sync.
 
 **Target:** `custom/workflows/bmad-design-implement/step-04-apply-and-deliver.md` (delivery) — and, upstream, `custom/workflows/bmad-design-handoff/` §7 Surface Inventory.
 
@@ -549,3 +551,16 @@ This doc is **fork-local** (like `global-bmad-workflow.md` / `parallel-work-and-
 - (1) `design-implement` step-04: add a **discoverability check** to the delivery gate — does the built surface have at least one reachable affordance (global-nav entry / link from a named parent surface / row-drill from a worklist)? If none, **flag it in the §9 report** ("surface mounted at `<route>` but not linked from anywhere — add an entry point") rather than reporting clean. Cheap, deterministic-ish, closes the island.
 - (2) `design-handoff` §7: extend the Surface Inventory contract with an **`entry_point` field per surface** (how the operator reaches it: nav peer | sub-surface-link-from `<route>` | row-drill-from `<worklist>`), so the placement decision is made at handoff time and `design-implement` has a target to wire + verify — not discovered at the end.
 - (3) Decide the shape deliberately: a sub-surface (drawer/detail) should NOT become a global-nav peer; its entry point is a link/drill from its parent. Encode that "sub-surface ≠ nav peer" rule so the fix doesn't over-correct into nav-bloat.
+
+---
+
+## 2026-06-29 — Secret-detection PostToolUse hook: false positive on memory index prose, no allowlist/redirect
+
+**Target file:** the global PostToolUse(Edit) secret-scan hook (machine-level `~/.claude/settings*.json` hooks chain — the one that emits "Potential credential/secret detected in memory file … store in ~/.secrets instead").
+
+**Friction (structural, not a one-off):** Saving two clerk-flow design policies to memory, the hook fired on a `MEMORY.md` *index* line whose only trigger was the words "creds/credential" appearing in plain doctrine description text — no secret, no key, no connection string. The scanner pattern-matches the *vocabulary of security* as if it were a *secret value*, and memory files (whose whole job is to describe security-adjacent doctrine: "creds in Railway", "PIN-as-bcrypt", "Basic Auth") are exactly the corpus most likely to use that vocabulary benignly. There is **nowhere to redirect**: no allowlist for known-safe doctrine prose, no "this is a description not a value" suppression, no per-path carve-out for the `*/memory/*.md` tree. Every future memory edit touching auth/creds/secrets vocabulary will re-fire it. Cost this session was ~0 (the false positive was recognized), but a scanner that cries wolf on its own doctrine corpus trains the operator to ignore it — the dangerous failure mode for a secret scanner.
+
+**Candidate fixes:**
+- (1) Tighten the detector from *vocabulary* to *value shape*: fire on entropy/format signatures (live key prefixes `sk-`/`AKIA`/`ghp_`, `postgres://user:pass@`, long base64/hex runs), not on the english words "credential/secret/creds/password" in running text. This alone kills the memory-prose class of false positive.
+- (2) Add a path-scoped carve-out: under `*/memory/*.md` and `*/MEMORY.md`, require a value-shape match (not a keyword match) before flagging — memory is doctrine-about-secrets, not secrets.
+- (3) Give it somewhere to redirect: an inline acknowledgement token the hook honors (e.g. a trailing `<!-- safe: doctrine-prose -->`), so a known-safe line can be exempted deterministically instead of the operator silently learning to ignore the warning.
