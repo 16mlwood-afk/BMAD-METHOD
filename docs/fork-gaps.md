@@ -519,3 +519,18 @@ This doc is **fork-local** (like `global-bmad-workflow.md` / `parallel-work-and-
 - (1) Cheapest: make the orchestrator **PASS the design source to the sub-agent** (inline or written to a scratch file the agent reads), rather than the agent fetching it — a one-line shift in the step-02/03 delegation instructions ("give the agent the frame's source; never expect it to call the MCP"). Aligns with the design-ingest pattern (resolved values travel in the artifact).
 - (2) Strengthen the `design-ingest` manifest's grid scaffold to carry **value-exact** per-property rows (not just resolved-token references), so a manifest-driven `design-implement` sub-agent diff is self-contained and never needs the live source.
 - (3) Document the limitation in `design-implement` step-02/step-03 explicitly: a delegated comparison agent on a `claude_design_url` run cannot reach the MCP — either ingest first (manifest path) or run the diff in the session that holds the source.
+
+---
+
+## design-implement done-check is unreachable on a prod-only, auth-walled surface (2026-06-29)
+
+**Target:** `custom/workflows/bmad-design-implement/step-04-apply-and-deliver.md` (the "honest done-check" / §5b verification) — and the workflow.md Critical Rule asserting "the honest done-check ... is your rendered surface placed beside the design render."
+
+**Friction:** `design-implement` mandates a live render-compare as the real done-check (the green grid is explicitly "necessary, not sufficient"). On cash-recovery that step has **no legible path**: the project is prod-only (CLAUDE.md forbids a local dev server against prod DB), the deployed surface sits behind fail-closed Basic Auth, and the `BASIC_AUTH_USER/PASSWORD` creds the project's own `/api/status` staleness recipe depends on were **not loaded in-session**. Net: the workflow's strongest verification gate is structurally unreachable, with no specified fallback for "runnable bundle HTML exists, but the *built* surface can't be rendered or auth'd from the session." Fell back to verbatim-port fidelity + green build + token parity + Railway deploy-success — defensible, but not the render-compare the workflow asks for.
+
+**Why it recurs:** every `design-implement` run on a prod-only / auth-walled project (this one and the sibling internal tools) hits the same wall — the done-check assumes a reachable surface.
+
+**Candidate fixes:**
+- (1) step-04 §5b: add an explicit **fallback ladder** for when a live render is unreachable — render the *bundle* HTML beside the design image (always present on a URL run) as the primary visual check, and state plainly that the *built* surface was verified by port-fidelity + build + token parity, not a live render.
+- (2) Name the precondition at intake (step-01): if the target is prod-only + auth-walled, declare up front that the done-check runs against the bundle render, so the limitation is surfaced early, not at delivery.
+- (3) Project-side (cash-recovery CLAUDE.md): document that the `/api/status` verify recipe needs `BASIC_AUTH_*` in `~/.secrets`; absent them, the deploy-verify step silently degrades to "trust Railway SUCCESS" with no app-level confirmation.
