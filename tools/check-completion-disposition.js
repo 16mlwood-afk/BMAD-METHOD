@@ -18,14 +18,23 @@
  *     adopter) that ALSO delivers code/an artifact should reference STD-COMPLETION-001.
  *     This detector reports those gaps.
  *
- * WHY WARN-ONLY: this is Phase 1. The detector ALWAYS exits 0 and is deliberately
+ * WHY WARN-ONLY: this is Phase 1. The detector exits 0 by default and is deliberately
  * NOT in the pre-commit gate or `npm test`. The point of the soak is to observe its
  * precision — which "gaps" are real (a completion deliver-step missing the disposition)
  * vs. expected (an advisory audit/router/review close-out that legitimately has no PR).
- * Promotion to a hard gate (exit 1, added to `npm test`/pre-commit) is Phase 2, only
- * after the warn output is proven quiet — the warn-then-gate composition pattern.
  *
- * Run: `npm run check:completion`  (or `node tools/check-completion-disposition.js`)
+ * PHASE-2 PROMOTION (pre-staged, NOT yet armed): pass `--strict` to make a likely gap
+ * exit 1 (the escape hatch is unchanged — a delivering close-out adopts the contract by
+ * referencing STD-COMPLETION-001, including `advisory` for a genuine no-deliver case).
+ * `--strict` exists so the flip is a one-line change and so soak can observe what a gate
+ * WOULD block (`npm run check:completion -- --strict`) without arming it. To ARM the gate
+ * in Phase 2: add `check:completion -- --strict` to the `test` script / pre-commit — only
+ * after the default (warn) output has been proven quiet across an elapsed soak window of
+ * real completion-workflow runs and corpus edits, per the warn-then-gate pattern. Today
+ * the static scan is quiet (0 likely gaps); that is the PRECONDITION, not the soak itself.
+ *
+ * Run: `npm run check:completion`            (warn-only, exit 0)
+ *      `npm run check:completion -- --strict`  (Phase-2 preview: exit 1 on a likely gap)
  */
 'use strict';
 
@@ -34,6 +43,10 @@ const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..');
 const WF_DIR = path.join(ROOT, 'custom', 'workflows');
+
+// Phase-2 promotion flag (pre-staged, NOT armed in the gate). With --strict a likely
+// gap exits 1; without it the detector is warn-only (exit 0). See the header.
+const STRICT = process.argv.includes('--strict');
 
 // Adopts the terminal-message shape (so it has a close-out worth dispositioning).
 const CLOSEOUT_REF = /close-out-contract\.md|STD-CLOSEOUT-001/;
@@ -117,8 +130,17 @@ if (likelyGaps.length === 0) {
 }
 
 console.log(
-  `\n  NOTE: warn-only by design (contract §5). Runtime "did it actually finish?" is PROBABILISTIC and not checked here.` +
-    ` Promotion to a hard gate is Phase 2, after this output is proven quiet.\n`,
+  `\n  NOTE: ${STRICT ? '--strict (Phase-2 preview)' : 'warn-only by design (contract §5)'}.` +
+    ` Runtime "did it actually finish?" is PROBABILISTIC and not checked here.` +
+    ` Arming the gate (adding --strict to the test/pre-commit) is Phase 2, after an elapsed soak proves this quiet.\n`,
 );
 
-process.exit(0); // ALWAYS 0 — Phase 1 never blocks
+// Default (warn-only) ALWAYS exits 0. --strict (Phase-2 preview / future gate) exits 1
+// on a likely gap so the flip is a one-line change — it is NOT wired into the gate yet.
+if (STRICT && likelyGaps.length > 0) {
+  console.error(
+    `check:completion --strict: ${likelyGaps.length} delivering close-out(s) missing a completion_disposition (would BLOCK once armed).`,
+  );
+  process.exit(1);
+}
+process.exit(0);
