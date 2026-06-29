@@ -195,6 +195,10 @@ No code is written by this workflow. UI implementation goes through the design p
 - Clear next-step prompt pointing to design-handoff workflow
 - Final summary presented with all deliverable paths
 
+## TERMINAL — Behavior Update Digest (STD-DIGEST-001)
+
+Audit-lane terminal: alongside the diagnostic handoff artifact, emit the **Behavior Update Digest** per `shared/behavior-update-digest.md` — the handoff IS the `handoff_delta`, any unsurfaced-data finding is a `story_candidate`, plus `doctrine_delta` / `owner_gated` / `completion_disposition` (STD-COMPLETION-001 `advisory`). The diagnostic-not-implementation boundary above is unchanged — the digest never builds UI or auto-runs design-handoff.
+
 ## FAILURE MODES
 
 - Building a UI component directly (this workflow is diagnostic, not implementation)

@@ -97,6 +97,10 @@ Either way, the routed lane owns the actual change, in its own worktree under it
 - Report written to `{implementation_artifacts}`
 - No fixes applied by this workflow; the scraper and the data are untouched
 
+## TERMINAL — Behavior Update Digest (STD-DIGEST-001)
+
+Audit-lane terminal: emit the **Behavior Update Digest** per `shared/behavior-update-digest.md` — fold the per-field routes into `story_candidate` / `handoff_delta` (the extractor-fix specs), record any `doctrine_delta`, name `owner_gated`, and declare the `completion_disposition` (STD-COMPLETION-001 `advisory`). The detect-and-route boundary above is unchanged — the digest standardizes the close-out, it never adds a fix or invokes a routed lane.
+
 ## FAILURE MODES
 
 - Dropping fully-covered or benign fields from the table, so the reader can't tell what was skipped

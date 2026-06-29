@@ -243,6 +243,10 @@ Before finishing, verify:
 - Report written to implementation artifacts
 - Summary presented directly to the user
 
+## The auto-execute engine for STD-DIGEST-001
+
+dispatch-followups IS the auto-execute stage of the Behavior Update Digest (`shared/behavior-update-digest.md`, STD-DIGEST-001 §3): it reads the upstream handoff/digest, runs the critical follow-ups, and presents the optional ones. When an audit emitted a digest, honor its `owner_gated` field — never auto-execute an owner-gated stage — and reflect each digest delta's outcome in the summary. The existing caps below (≤3 auto-executions, worktree isolation, optional-needs-consent) are what bound the digest's "auto-execute the safe stages" clause.
+
 ## FAILURE MODES
 
 - Generating copy-paste prompts for critical/recommended workflows instead of executing them

@@ -142,6 +142,10 @@ This workflow ends here. No further steps. The triage-spec artifacts are the han
 - User sees a ranked list of paths to act on
 - No downstream workflows auto-invoked
 
+## TERMINAL — Behavior Update Digest (STD-DIGEST-001)
+
+maintenance-triage is the audit-lane front door: the triage-specs it emits ARE the `story_candidate` field. Wrap them in the **Behavior Update Digest** per `shared/behavior-update-digest.md` — add `doctrine_delta` (any rule the observations changed), `handoff_delta` (design-shaped clusters dispatched to design-router), `owner_gated`, and the `completion_disposition` (STD-COMPLETION-001 `advisory`). The no-auto-invoke and shape-gate boundaries above are unchanged.
+
 ## FAILURE MODES
 
 - Routing a design-shaped cluster to quick-spec/quick-dev (forces a code spec for a design problem — run the shape gate first; design-shaped dispatches to design-router)

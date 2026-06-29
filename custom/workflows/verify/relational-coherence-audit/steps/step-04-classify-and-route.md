@@ -110,6 +110,10 @@ In both cases the routed lane owns the change, in its own worktree, under its ow
 - A routed design-handoff is marked material-revision (supersedes, not duplicates)
 - No fixes applied; no code or data written
 
+## TERMINAL — Behavior Update Digest (STD-DIGEST-001)
+
+Audit-lane terminal: emit the **Behavior Update Digest** per `shared/behavior-update-digest.md` — the per-edge routes become `story_candidate` / `handoff_delta` (a missing-required-link is a material-revision `handoff_delta`; an unresolved lookup is a mechanical `story_candidate`), plus any `doctrine_delta`, `owner_gated`, and the `completion_disposition` (STD-COMPLETION-001 `advisory`). The detect-and-route boundary above is unchanged — the digest never spawns a duplicate brief or invokes a routed lane.
+
 ## FAILURE MODES
 
 - Dropping compliant or out-of-scope edges from the table (reader can't tell the graph was fully covered)
