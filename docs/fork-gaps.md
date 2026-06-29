@@ -444,7 +444,7 @@ This doc is **fork-local** (like `global-bmad-workflow.md` / `parallel-work-and-
 
 ---
 
-## Gap: project "ALWAYS EnterWorktree" mandate is unsatisfiable from a cwd-pinned session (2026-06-27, cash-recovery, quick-dev security)  `[partial: 2026-06-28 — fix (a) SHIPPED: worktree-portability.md §7 "Fallback: obtaining a worktree from a cwd-pinned session" documents the sanctioned manual path (git worktree add → edit by absolute worktree path → git -C), both layouts, synced. STILL OPEN: (b) a clause in each project's "ALWAYS EnterWorktree" CLAUDE.md rule pointing at the fallback (per-project, not fork-synced); (c) widen the bash edit-guard fork allowlist to expand `~` and match redirect targets under /Users/*/bmad-method-v6/ — the recurring gap-#111/#366 thread (hit again this session: `cat >> ~/...fork...` blocked). (c) is a hook change on the shared rail — owner-gated, deferred to avoid touching the hook template mid-parallel-session.]`
+## Gap: project "ALWAYS EnterWorktree" mandate is unsatisfiable from a cwd-pinned session (2026-06-27, cash-recovery, quick-dev security)  `[partial: 2026-06-28 — fix (a) SHIPPED: worktree-portability.md §7 "Fallback: obtaining a worktree from a cwd-pinned session" documents the sanctioned manual path (git worktree add → edit by absolute worktree path → git -C), both layouts, synced. STILL OPEN: (b) a clause in each project's "ALWAYS EnterWorktree" CLAUDE.md rule pointing at the fallback (per-project, not fork-synced); (c) widen the bash edit-guard fork allowlist to expand `~` and match redirect targets under /Users/*/bmad-method-v6/ — the recurring gap-#111/#366 thread (hit again this session: `cat >> ~/...fork...` blocked). (c) is a hook change on the shared rail — owner-gated, deferred to avoid touching the hook template mid-parallel-session. RE-CONFIRMED 2026-06-29: (c) hit AGAIN — a `/tmp/$T` redirect in a fork dispatcher test was blocked because the guard matches the redirect TOKEN in the command string, not the expanded path (`$T` ≠ literal `/tmp/`); worked around by moving the test into a Write'd script file. STILL HELD: (c) is a PreToolUse harness-hook change on the shared rail and 6+ sessions were active this wave — forcing it mid-session risks disrupting their edits; it wants a low-contention window. (b) per-project "ALWAYS EnterWorktree" CLAUDE.md clauses across 13 repos remain low-value and deferred.]`
 
 **Noticed:** 2026-06-27 (cash-recovery `/bmad:bmm:workflows:quick-dev` security-hardening session). **Priority: low–medium.** **Root-cause class: worktree tooling vs a project worktree-mandate when the session cwd is pinned; plus a recurrence of the gap-#111 bash edit-guard false-positive on an allowlisted fork path.**
 
@@ -476,7 +476,7 @@ This doc is **fork-local** (like `global-bmad-workflow.md` / `parallel-work-and-
 
 ---
 
-## Gap: STATUS.md `## Now` block has re-accreted stacked "Latest wave:" bullets, re-inflating the skill's hot path (2026-06-28, inbound-flow, mason-bmad-workflow-expert)
+## Gap: STATUS.md `## Now` block has re-accreted stacked "Latest wave:" bullets, re-inflating the skill's hot path (2026-06-28, inbound-flow, mason-bmad-workflow-expert)  `[RESOLVED 2026-06-29 — the one-time re-split (option 1) is done. validate-status-budget.js now reports "## Now compact, no stray blocks above it" (0 stray **Last updated**/**Prior** blocks, 6 wave bullets ≤ threshold). Combined with the option-(3) lint shipped 2026-06-28, the hot path the skill re-reads is back to a cheap read. The lint can flip to --strict now that the content is clean. Option (2) SKILL.md wording is a ~/.claude/skills edit (not fork-tracked).]`
 
 **Noticed:** 2026-06-28 (inbound-flow "what would make design-handoff better" review session). **Priority: low–medium.** **Root-cause class: context-budget-overflow on the fork's own state file — the `## Now` block is carrying Changelog-shaped content, so the document the skill re-reads on EVERY invocation has regrown past a cheap read.**
 
@@ -493,7 +493,7 @@ This doc is **fork-local** (like `global-bmad-workflow.md` / `parallel-work-and-
 
 ---
 
-## Gap: githooks `gates.conf` is create-only on existing projects, so a NEW fork gate's registration never retrofits the fleet (2026-06-28, bmad-method-v6, sync-bmad-workflows.sh)
+## Gap: githooks `gates.conf` is create-only on existing projects, so a NEW fork gate's registration never retrofits the fleet (2026-06-28, bmad-method-v6, sync-bmad-workflows.sh)  `[RESOLVED 2026-06-29 — option (2) gates.d/ drop-in shipped (the structural fix, removes the recurring class). Both dispatchers (custom/githooks/pre-{commit,push}) now read PROJECT-owned .githooks/gates.conf (create-only, unchanged) AND FORK-owned .githooks/gates.d/*.conf (always distributed). The design-brief gate moved from gates.conf → gates.d/design-brief-completeness.conf, so it now retrofits the whole fleet through sync alone. sync_githooks_for_project distributes gates.d/*.conf (the top-level loop skipped the subdir; added a dedicated handler). Dispatchers dedup by command so a project whose create-only gates.conf still carries the old line never double-runs. Verified: sh -n on both dispatchers + bash -n on sync; functional test (gate in both → runs once; only gates.d → runs; no gates.d dir → clean 0). Distributed via porter + sync.]`
 
 **Noticed:** 2026-06-28 (shipping the design-handoff brief-completeness pre-commit gate). **Priority: medium.** **Root-cause class: worktree-sync-drift — the distribution mechanism ships the gate SCRIPT but not its REGISTRATION, so an authored gate is inert on the existing fleet (the "authored the doc and called it enforced" enforcement anti-pattern).**
 
@@ -507,7 +507,7 @@ This doc is **fork-local** (like `global-bmad-workflow.md` / `parallel-work-and-
 
 ---
 
-## Gap: design-implement's sub-agent delegation can't reach a session-only design source (DesignSync MCP invisible to sub-agents) (2026-06-29, cash-recovery, design-implement)
+## Gap: design-implement's sub-agent delegation can't reach a session-only design source (DesignSync MCP invisible to sub-agents) (2026-06-29, cash-recovery, design-implement)  `[RESOLVED 2026-06-29 — options (1)+(3) shipped. step-01-ingest §URL.1b now carries a "Sub-agent delegation caveat": the DesignSync/claude_design MCP is session-bound and absent from sub-agent contexts, so a delegated comparison agent must be PASSED the resolved source (the mirrored {design_dir} files or an ingest_manifest with value-exact rows) and must never be told to fetch via the MCP — else ingest first (manifest path) or run the diff in the source-holding session. Pure workflow-text, additive. Distributed via porter + sync.]`
 
 **Noticed:** 2026-06-29 (design-implement resume on the clerk-grading-workspace manifest — verifying the station + photo-drawer frames against the *current* bundle). **Priority: medium.** **Root-cause class: contract-dimension-gap at the delegation seam — the workflow's context-fix (delegate a read-heavy diff to a sub-agent) assumes the sub-agent can fetch the design source, but a Claude-Design source lives behind the `claude_design`/DesignSync MCP, which is session-authenticated and absent from sub-agent contexts.**
 
@@ -522,7 +522,7 @@ This doc is **fork-local** (like `global-bmad-workflow.md` / `parallel-work-and-
 
 ---
 
-## design-implement done-check is unreachable on a prod-only, auth-walled surface (2026-06-29)
+## design-implement done-check is unreachable on a prod-only, auth-walled surface (2026-06-29)  `[RESOLVED 2026-06-29 — options (1)+(2) shipped. step-04 §5b now carries a "Fallback ladder when the BUILT surface cannot be rendered": (1) render the BUNDLE HTML beside the design image as the PRIMARY fallback (always present on a URL/synthesize run — catches copy/chrome/layout drift even when the built app can't boot), stating in §9 that the built surface was verified by transcription + green build + token parity, not a live render; (2) the built-surface render-compare is then OWED-and-routed. Names the prod-only/auth-walled precondition inline. Pure workflow-text, additive. Distributed via porter + sync.]`
 
 **Target:** `custom/workflows/bmad-design-implement/step-04-apply-and-deliver.md` (the "honest done-check" / §5b verification) — and the workflow.md Critical Rule asserting "the honest done-check ... is your rendered surface placed beside the design render."
 

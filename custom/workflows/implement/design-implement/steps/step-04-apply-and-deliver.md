@@ -120,7 +120,12 @@ The apply ledger above dispositions every *grid* row — but the grid has no row
 
 **2. Render-compare (the done-gate).** Render the built surface and place it **beside the design render** — the bundle is runnable HTML; a synthesize bundle ships a screenshot; a handoff run has the design image. Step through it top to bottom: header, every group, every figure, the footer. Any visible difference (missing header, changed label, paraphrased copy, off spacing) is a delta — resolve it, or log it per pass 1. **This, not the green grid, is the gate on "done."** (The bundle README's "don't render/screenshot" governs *reading values during ingest*, not verification — render to verify.)
 
-If the impl genuinely cannot be rendered in this run (no buildable/bootable surface available), the render-compare is **owed, not skipped**: say so explicitly and route it (`verify` skill, or design-review live Chrome) in the §9 report, exactly as the content-lane and behavior cedes do. Declaring "done" off the grid alone — no render-compare, no owed-disclosure — is non-conformant. It is the precise false-green this section exists to stop: the supply-order cost drawer shipped with a generic header, a relabeled footer, and paraphrased copy while every CSS cell matched.
+**Fallback ladder when the BUILT surface cannot be rendered in this run** (a recurring case — a prod-only repo with no local dev server, an auth-walled deploy whose creds aren't in-session, or no bootable surface; gap "done-check unreachable on prod-only auth-walled"):
+
+1. **Render the BUNDLE beside the design image (primary fallback, not a skip).** On a `claude_design_url` or `synthesize_bundle` run the *bundle* HTML is always present and runnable — render IT beside the design render and step through it top-to-bottom exactly as above. The bundle is the design made concrete, so this still catches copy / chrome / layout / spacing drift even when the built app can't be booted. Then state plainly in §9 that the *built* surface was verified by the transcription pass + green build + token parity (NOT a live render), and that the bundle render stood in for the built-surface compare.
+2. **The built-surface render-compare is then OWED, not skipped** — route it (`verify` skill, or design-review live Chrome once the surface is reachable/auth'd) in the §9 report, exactly as the content-lane and behavior cedes do.
+
+Declaring "done" off the grid alone — no render-compare, no bundle-render fallback, no owed-disclosure — is non-conformant. It is the precise false-green this section exists to stop: the supply-order cost drawer shipped with a generic header, a relabeled footer, and paraphrased copy while every CSS cell matched.
 
 ### 6. Commit and Push
 

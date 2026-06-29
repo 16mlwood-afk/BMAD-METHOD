@@ -382,6 +382,24 @@ sync_githooks_for_project() {
     fi
   done
 
+  # Fork-owned gate drop-ins (gap 496). gates.d/*.conf are FORK-managed (projects
+  # customize gates.conf, never gates.d) → always distribute, so a new fork gate
+  # retrofits the fleet without a per-repo gates.conf edit. The loop above iterates
+  # files only and skips the gates.d/ SUBDIR, so it is handled here.
+  if [[ -d "$GITHOOKS_SOURCE/gates.d" ]]; then
+    for gd_file in "$GITHOOKS_SOURCE"/gates.d/*.conf; do
+      [[ ! -f "$gd_file" ]] && continue
+      local gd_dst="$gh_target/gates.d/$(basename "$gd_file")"
+      if [[ ! -f "$gd_dst" ]] || ! cmp -s "$gd_file" "$gd_dst"; then
+        if [[ "$mode" == "sync" ]]; then
+          mkdir -p "$gh_target/gates.d"
+          cp -p "$gd_file" "$gd_dst"
+        fi
+        count=$((count + 1))
+      fi
+    done
+  fi
+
   echo "$count"
 }
 
