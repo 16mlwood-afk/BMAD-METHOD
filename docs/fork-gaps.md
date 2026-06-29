@@ -534,3 +534,18 @@ This doc is **fork-local** (like `global-bmad-workflow.md` / `parallel-work-and-
 - (1) step-04 §5b: add an explicit **fallback ladder** for when a live render is unreachable — render the *bundle* HTML beside the design image (always present on a URL run) as the primary visual check, and state plainly that the *built* surface was verified by port-fidelity + build + token parity, not a live render.
 - (2) Name the precondition at intake (step-01): if the target is prod-only + auth-walled, declare up front that the done-check runs against the bundle render, so the limitation is surfaced early, not at delivery.
 - (3) Project-side (cash-recovery CLAUDE.md): document that the `/api/status` verify recipe needs `BASIC_AUTH_*` in `~/.secrets`; absent them, the deploy-verify step silently degrades to "trust Railway SUCCESS" with no app-level confirmation.
+
+---
+
+## design-implement ships a surface with no discoverability affordance — every built surface is an unlinked island (2026-06-29, owner-escalated)
+
+**Target:** `custom/workflows/bmad-design-implement/step-04-apply-and-deliver.md` (delivery) — and, upstream, `custom/workflows/bmad-design-handoff/` §7 Surface Inventory.
+
+**Friction (owner raised this directly):** `design-handoff` → `design-implement` builds a surface and mounts its route, but **nothing in the pipeline ensures the surface is reachable from the rest of the app** — no nav entry, no link from the parent/sibling surface, no row-drill wired. The §7 Surface Inventory enumerates the *frames within* a surface but never the *entry point to* the surface. Result: the §L Recovery Cross-Check (`/recovery/cross-check`, cash-recovery PR #194) shipped reachable only by typing the URL; the owner discovered it was invisible (#195 added the link by hand). This is systemic, not one-off — every `design-implement` run on a new route produces an island until a human notices.
+
+**Why it's structural:** the workflow's done-check is pixel-conformance of the frames; "can a user get here at all" is not a dimension it checks. It's the entry-point analog of the `contract-dimension-gap` class (a whole axis missing from the contract) — here the missing axis is *ingress*, not a CSS property.
+
+**Candidate fixes:**
+- (1) `design-implement` step-04: add a **discoverability check** to the delivery gate — does the built surface have at least one reachable affordance (global-nav entry / link from a named parent surface / row-drill from a worklist)? If none, **flag it in the §9 report** ("surface mounted at `<route>` but not linked from anywhere — add an entry point") rather than reporting clean. Cheap, deterministic-ish, closes the island.
+- (2) `design-handoff` §7: extend the Surface Inventory contract with an **`entry_point` field per surface** (how the operator reaches it: nav peer | sub-surface-link-from `<route>` | row-drill-from `<worklist>`), so the placement decision is made at handoff time and `design-implement` has a target to wire + verify — not discovered at the end.
+- (3) Decide the shape deliberately: a sub-surface (drawer/detail) should NOT become a global-nav peer; its entry point is a link/drill from its parent. Encode that "sub-surface ≠ nav peer" rule so the fix doesn't over-correct into nav-bloat.
