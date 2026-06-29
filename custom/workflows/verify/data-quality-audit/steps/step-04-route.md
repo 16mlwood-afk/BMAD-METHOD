@@ -75,6 +75,8 @@ Write the report to `{implementation_artifacts}/data-quality-audit-{dimension}-{
 
 In both cases the routed lane owns the actual change (in its own worktree, under its own rules). This workflow has delivered its value — the verdict and the route — and stops.
 
+**Behavior Update Digest (STD-DIGEST-001).** This route step is an audit-lane terminal: beyond the per-finding route table, emit the **Behavior Update Digest** per `shared/behavior-update-digest.md` — fold the routes into `story_candidate` / `handoff_delta`, record any `doctrine_delta` (e.g. a new normalizer rule), name the `owner_gated` items, and declare the `completion_disposition` (STD-COMPLETION-001 `advisory`). The existing detect-and-route boundary above is unchanged — the digest standardizes the close-out shape, it does not add fixes or invoke the routed lanes.
+
 ---
 
 ## SUCCESS METRICS

@@ -286,6 +286,12 @@ Do not cite a peer page as the rule violated; peer pages may inform peer-steals 
 
 ---
 
+## TERMINAL — Behavior Update Digest (STD-DIGEST-001)
+
+design-review is an audit-lane workflow: its output is a *finding*, so it must not stop at the written artifact. After delivering the review, emit the **Behavior Update Digest** and auto-execute the safe stages per `shared/behavior-update-digest.md` (STD-DIGEST-001): `doctrine_delta` (record any rule change via memory/policy) · `handoff_delta` (the review already routes to `design-handoff` refine-screen — name it) · `story_candidate` (draft the scoped unit + acceptance criteria from the top findings) · `owner_gated` · `completion_disposition` (STD-COMPLETION-001 `advisory`, enumerating the four deltas' real state). Recording doctrine, drafting a story, and re-issuing a brief are **registration/routing, not implementation** — the "Don't implement" rule below still holds. Findings with no digest is an invalid exit.
+
+---
+
 ## RULES (enforced every time)
 
 - Cite real class names and real file paths — no "the heading feels heavy", say `text-2xl font-bold` at `foo.tsx:128`.
