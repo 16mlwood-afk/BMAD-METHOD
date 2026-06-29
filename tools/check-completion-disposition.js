@@ -1,7 +1,7 @@
 /**
- * check-completion-disposition.js  —  WARN-ONLY (Phase 1)
+ * check-completion-disposition.js  —  default WARN-ONLY · --strict ARMED in the gate
  *
- * Soak detector for STD-COMPLETION-001 (custom/workflows/shared/completion-contract.md).
+ * Coverage check for STD-COMPLETION-001 (custom/workflows/shared/completion-contract.md).
  *
  * The contract says a COMPLETION-oriented workflow's terminal step must declare a
  * `completion_disposition` (pr_merged / pr_open / owner_gated_residue / advisory) —
@@ -18,23 +18,23 @@
  *     adopter) that ALSO delivers code/an artifact should reference STD-COMPLETION-001.
  *     This detector reports those gaps.
  *
- * WHY WARN-ONLY: this is Phase 1. The detector exits 0 by default and is deliberately
- * NOT in the pre-commit gate or `npm test`. The point of the soak is to observe its
- * precision — which "gaps" are real (a completion deliver-step missing the disposition)
- * vs. expected (an advisory audit/router/review close-out that legitimately has no PR).
+ * TWO MODES:
+ *   - default (no flag): WARN-ONLY, exit 0 always — soak-style visibility of coverage.
+ *   - `--strict`: a likely gap exits 1. This is ARMED in the gate — `check:completion --
+ *     --strict` runs in `npm test` AND the `.githooks/pre-commit` fast-path (alongside
+ *     `validate:close-out`), so a delivering close-out missing the disposition BLOCKS the
+ *     commit. The escape hatch: the file adopts the contract by referencing
+ *     STD-COMPLETION-001 (incl. `advisory` for a genuine no-deliver case).
  *
- * PHASE-2 PROMOTION (pre-staged, NOT yet armed): pass `--strict` to make a likely gap
- * exit 1 (the escape hatch is unchanged — a delivering close-out adopts the contract by
- * referencing STD-COMPLETION-001, including `advisory` for a genuine no-deliver case).
- * `--strict` exists so the flip is a one-line change and so soak can observe what a gate
- * WOULD block (`npm run check:completion -- --strict`) without arming it. To ARM the gate
- * in Phase 2: add `check:completion -- --strict` to the `test` script / pre-commit — only
- * after the default (warn) output has been proven quiet across an elapsed soak window of
- * real completion-workflow runs and corpus edits, per the warn-then-gate pattern. Today
- * the static scan is quiet (0 likely gaps); that is the PRECONDITION, not the soak itself.
+ * ARMING PROVENANCE (honest): armed at owner direction AHEAD of the warn-then-gate soak
+ * default — the static scan was quiet (0 likely gaps) at arming, the PRECONDITION, but not
+ * an elapsed real-run soak. Front-run risk: the advisory-vs-delivery heuristic's precision
+ * against workflows authored later is unproven, so a future delivering-but-advisory
+ * close-out could false-block until its author adds the one-line `advisory` reference.
+ * Reversible: drop `&& npm run check:completion -- --strict` from `test` + the pre-commit.
  *
- * Run: `npm run check:completion`            (warn-only, exit 0)
- *      `npm run check:completion -- --strict`  (Phase-2 preview: exit 1 on a likely gap)
+ * Run: `npm run check:completion`             (warn-only, exit 0)
+ *      `npm run check:completion -- --strict`  (gate mode: exit 1 on a likely gap)
  */
 'use strict';
 
@@ -106,7 +106,7 @@ for (const file of files) {
 
 // --- report (warn-only) ------------------------------------------------------
 console.log(
-  `\ncheck:completion (WARN-ONLY, Phase 1 — never blocks): ` +
+  `\ncheck:completion (${STRICT ? 'STRICT — gate mode, exit 1 on a likely gap' : 'WARN-ONLY — exit 0'}): ` +
     `${files.length} workflow files · ${adopters} close-out adopters · ${withDisposition} declare a completion_disposition.`,
 );
 
@@ -130,9 +130,8 @@ if (likelyGaps.length === 0) {
 }
 
 console.log(
-  `\n  NOTE: ${STRICT ? '--strict (Phase-2 preview)' : 'warn-only by design (contract §5)'}.` +
-    ` Runtime "did it actually finish?" is PROBABILISTIC and not checked here.` +
-    ` Arming the gate (adding --strict to the test/pre-commit) is Phase 2, after an elapsed soak proves this quiet.\n`,
+  `\n  NOTE: ${STRICT ? '--strict is ARMED in npm test + pre-commit (a gap blocks the commit)' : 'warn-only mode (exit 0); the gate runs as --strict'}.` +
+    ` Runtime "did it actually finish?" stays PROBABILISTIC and is not checked here (contract §5).\n`,
 );
 
 // Default (warn-only) ALWAYS exits 0. --strict (Phase-2 preview / future gate) exits 1
