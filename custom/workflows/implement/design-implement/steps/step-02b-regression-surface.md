@@ -106,6 +106,38 @@ Rules for the uplift report:
 - **A DEEPENED capability is a build task, not a treatment row.** Carry each into `{uplift_capabilities}` so step-03 §2h tags its net-new sub-structure `capability-build` (not collapsed to "MISSING component → restyle"), and step-04 constructs it. The treatment of the *shared* shell still flows through the grid normally; the *new sub-structure* does not.
 - **Autonomous mode BUILDS the uplift — it does not skip it.** Adding capability the design specifies is the decision-autonomy lane (implement what was handed off), unlike dropping a capability (intent, out of scope). In autonomous mode, default to `additive`, build every ADDED/DEEPENED item, and disclose (`autonomous: built {N} net-new/deepened capabilities per the handoff`). Never default an uplift to `restyle-only`.
 
+### 4c. Fixture-to-prod permission checkpoint (authorization, not disclosure)
+
+Independent of the drop/uplift axes — this catches the OTHER silent default. design-implement faithfully transcribes whatever the handoff specifies; when the surface being built has **no live read path**, the unflagged default is to wire it to a fixture/mock module and ship it, so mock data reaches a production route as an unremarked side-effect of "just implementing the design." Whether shipping a fixture-backed surface to prod is acceptable is **authorization** — the owner's call — NOT something faithful transcription gets to decide.
+
+**Fires when BOTH hold:**
+
+1. The surface being applied is — or will be — **fixture-backed**: its data render reaches a module the project marks as mock (commonly a module exporting `DATA_STATE = "fixture"`, or the project's documented mock-data marker) with **no live read-model / DB path**. For a *redesign*, step-02 already mapped this (`{impl_page}`'s data source); for a *new surface*, it is the build decision you are about to make because no live reader exists yet (the brief's data / API-surface section usually flags this — "read model partial / not served today / OPEN QUESTION").
+2. The **target is a production route** — a real shipped app route, not a storybook / preview / sandbox / disabled route.
+
+**If it does NOT fire** (a live read path exists, or the target is not a prod route): record one line — "Fixture-to-prod: n/a — {live read path | non-prod target}." Proceed.
+
+**If it fires → HALT advisory BEFORE the apply pipeline. Do NOT proceed to the grid/apply until the owner confirms.** Be advisory, not interrogative — state the situation + your recommendation, ready to execute on confirm:
+
+```
+Fixture-to-prod checkpoint — this surface would ship to a PRODUCTION route ({route}) backed by MOCK data, not a live read model.
+  Data source: {the fixture/mock module} — no live read path today ({why: reader unwired / Epic N / OPEN QUESTION}).
+Shipping a disclosed fixture to prod is a conscious authorization, not a default of implementing the design.
+
+Recommended: {if a live reader exists → wire it (then this surface is NOT fixture-backed); ELSE ship disclosed-fixture
+ONLY IF the project's disclosure floor is honored — the mock module self-declares (the DATA_STATE / mock marker), the
+surface renders the always-visible fixture banner, and (where the project enforces it) the disclosure CI gate is green —
+AND it is not the default landing of its route}.
+I'll {proceed with the disclosed fixture | wire the live reader | hold} on your go.
+```
+
+Rules:
+
+- **This is the AWARENESS / authorization tier — PROBABILISTIC (a halt the agent must honor), NOT a deterministic block.** The deterministic companion is the project's DISCLOSURE floor (the mock-data marker + the always-visible fixture banner, enforced by the project's fixture-disclosure CI gate where one exists): that guarantees a shipped fixture is *labelled*. §4c guarantees the *decision to ship one* is *conscious*. **Disclosure ≠ authorization — both are required**; do not treat a green disclosure gate as permission to ship unasked.
+- **Autonomous mode does NOT auto-proceed past this** — same posture as the synthesize-bundle refusals (`dev_no_render` / `needs_human_review`) and the §4 drop halt. Shipping mock data to a prod route is intent/authorization, outside decision autonomy. Disclose and hold.
+- **Generalize — do not hardcode any one project.** The trigger is the project's mock-data convention (`DATA_STATE = "fixture"` is the common marker) + a production route; the disclosure floor's exact mechanism (banner component, marker comment, CI gate) belongs to the consuming project — name it where known, never assume it is identical across the 13.
+- **Forced-and-honest is fine; silent is not.** A disclosed fixture shipped after explicit confirmation, behind the disclosure floor and off the default landing, is a legitimate "designed-on-fixtures, awaits its wiring epic" surface. The prohibited move is wiring mock data into a prod route as an unremarked default and declaring the run done.
+
 ### 5. Record the approved plan
 
 - `{implementation_strategy}` ∈ `restyle-only | additive | partial | replacement` — resolved from BOTH axes: `restyle-only` ONLY when DROPPED **and** `{uplift_capabilities}` are empty; `additive` whenever the uplift is non-empty (new structure built, dropped capabilities retained); `partial` / `replacement` as the §4 drop-disposition resolved. A non-empty uplift can never resolve below `additive`.
@@ -132,6 +164,7 @@ Read fully and follow: `{project-root}/_bmad/bmm/workflows/implement/design-impl
 - If the dropped set is non-empty, the run **halted** with the regression report + strategy menu and recorded `{implementation_strategy}` + `{capability_dispositions}` — it did NOT proceed to the grid on an unconfirmed replacement.
 - If the uplift set is non-empty, the run **named it** (ADDED / DEEPENED), set strategy to at least `additive`, and carried `{uplift_capabilities}` to step-03/04 as build tasks — it did NOT flatten the uplift into "treatment alignment."
 - Kept capabilities are marked protected for step-03/04; dropped capabilities are routed to the step-04 §9 orphaned-action confirmation; uplift capabilities are routed to step-03 §2h / step-04 as `capability-build`.
+- The **fixture-to-prod permission checkpoint (§4c)** ran: when the surface would ship to a production route backed by a mock module (`DATA_STATE = "fixture"` / the project's mock marker) with no live read path, the run **halted** for explicit owner authorization and did NOT auto-proceed (autonomous mode included) — disclosure (the fixture banner + the project's CI gate) is not treated as permission; otherwise it recorded `Fixture-to-prod: n/a`.
 
 ## FAILURE MODES
 
