@@ -197,6 +197,10 @@ Contract intact and rollout-safe — nothing to route.
 - No code edited across the boundary by this workflow
 - Report written before any routing slip (honest record first)
 
+## TERMINAL — Behavior Update Digest (STD-DIGEST-001)
+
+Audit-lane terminal: emit the **Behavior Update Digest** per `shared/behavior-update-digest.md` — the per-side routes become `story_candidate` / `handoff_delta` (each `quick-spec` with its deploy-ordering constraint as an acceptance criterion), record any `doctrine_delta`, name `owner_gated`, and declare the `completion_disposition` (STD-COMPLETION-001 `advisory`). The never-auto-edit-across-the-boundary rule above is unchanged — the digest standardizes the close-out, it never edits either side or invokes the routed lane.
+
 ## FAILURE MODES
 
 - Auto-editing the sender or receiver instead of routing — the boundary-crossing edit this workflow exists to prevent

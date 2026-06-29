@@ -122,7 +122,7 @@ The lookup the `external:*` branch resolves `producer_id` against. A producer no
 
 | producer_id | repo / service | role on the boundary | delivery_channel | report_location | owner / how_to_file |
 |---|---|---|---|---|---|
-| `bison-ops` | bison-ops Chrome extension (separate repo) | SENDER → inventory-manager order webhook | `pull-from-receiver` | `inbound-flow:docs/producer-defects/` | bison.management (sales@bison.management) · pull weekly |
+| `bison-ops` | bison-ops Chrome extension (separate repo) | SENDER → inventory-manager order webhook | `pull-from-receiver` | `inbound-flow:docs/producer-defects/` | bison.management (<sales@bison.management>) · pull weekly |
 | `accounting-app` | accounting app (separate service) | SENDER → inventory-manager accounting webhook/pull | `pull-from-receiver` | `<receiver>:docs/producer-defects/` | <accounting service owner · pull cadence> |
 
 > Owner/cadence cells are placeholders to fill per environment — the registry's job is to make "where does this get filed and who reads it" a lookup, not a per-defect decision. An unfilled owner is itself a gap to close, not a reason to drop the finding. `delivery_channel` is one of the four in §Delivery seam; `report_location` is the committed path the producer pulls from.
