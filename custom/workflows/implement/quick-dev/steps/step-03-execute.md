@@ -50,6 +50,11 @@ Do this **before** opening a worktree — no point isolating work you're about t
 
 Skip ONLY if the user explicitly said "you're the only session, skip the worktree," or this run writes nothing under `src/` (an `_bmad-output`-only change — that dir is hook-allowlisted and needs no worktree). When in doubt, open one: a worktree of one is free; a collision is not.
 
+**WIP register — enrich your claim + check for overlap (`shared/parallel-sessions.md` §E).** Entering the worktree auto-wrote a bare claim into `<main-repo>/.claude/wip-register.yaml` (the EnterWorktree hook). Two cheap follow-ups, right after the worktree opens:
+
+- **Enrich it** with this run's feature in one line so other sessions see WHAT you're building, not just a branch name: `WT=$(git rev-parse --show-toplevel); bash "$HOME/bmad-method-v6/wip-register.sh" enrich "${WT%/.claude/worktrees/*}" "$WT" "<one-line feature description>"`.
+- **Read the register first:** if another LIVE claim plausibly covers the same feature/area (judge by description, not branch name — names differ), surface it to the user before building, rather than duplicating work that gets thrown away. This is the check that prevents the two-independent-implementations incident §E exists for.
+
 ---
 
 ## PRE-FLIGHT: PRODUCTION DATA REALITY CHECK

@@ -19,6 +19,15 @@ This doc is **fork-local** (like `global-bmad-workflow.md` / `parallel-work-and-
 
 ## Open
 
+## 2026-06-30 — ad-hoc quick-flow feature work (tech-spec-driven quick-spec/quick-dev) claims NOTHING, so parallel sessions build the same feature twice  `[RESOLVED: 2026-06-30 — added cross-session WIP register (parallel-sessions.md §E): wip-register.sh (claim/clear/enrich) + check-wip-register.sh (SessionStart awareness surfacer) + wip-claim-on-worktree.sh (PostToolUse EnterWorktree deterministic claim write), registered via install-global-assets.sh; quick-spec step-01 + quick-dev step-03 read-and-enrich. AWARENESS tier only — no gate (same-feature isn't deterministically detectable). Gates ran: tool-discovery (confirmed §C covers sprint stories only) + enforcement-expert (claim hangs off worktree-create, not a skippable step).]`
+**Target file:** `custom/workflows/shared/parallel-sessions.md` (§C claims sprint stories only; tech-spec-driven quick-dev is explicitly §A-only and claims nothing) + the global hooks track (`install-global-assets.sh` / `settings.json` SessionStart + PostToolUse).
+
+**Friction (inbound-flow, 2026-06-30 — listing failure-reason surface):** two sessions independently built the *same* feature (a listing-queue failure-reason surface + numeric-code mapping); one full implementation was discovered redundant at merge time against already-merged PRs #2484/#2485 and abandoned. Root: §C gives an atomic claim ledger for SPRINT STORIES, but a `quick-dev` run driven straight from a tech-spec (and its `quick-spec`) is §A-only — it edits `src/` but records no claim anywhere a peer can see, because there's no sprint-status key to attach a token to. So in-flight ad-hoc feature work is invisible across sessions until the branches collide at merge.
+
+**Why structural:** every project runs tech-spec-driven quick-flow outside the sprint tracker; with no shared in-progress signal for that lane, duplicate builds are a standing hazard, not a one-off. The claim infra existed (§C token + §C4 dead-claim detection) but only fired for the story lane.
+
+**Fix shipped:** the §E awareness register above. Belt-and-suspenders per enforcement-expert: DETERMINISTIC claim WRITE on EnterWorktree (the only reliable "feature work starting" signal) + DETERMINISTIC SessionStart DELIVERY of awareness; deliberately NO hard gate. **Priority: was medium — resolved same day.**
+
 ## 2026-06-30 — BMAD auto-sync-on-EnterWorktree dirties every new worktree, so clean ExitWorktree teardown forces a `discard_changes` that conflates throwaway sync churn with real committed work
 **Target file:** the PostToolUse `EnterWorktree` BMAD auto-sync hook (project `settings(.local).json` / the fork hook that emits `BMAD auto-sync (PostToolUse EnterWorktree): OK … Worktree synced`) + `custom/workflows/shared/worktree-portability.md` (where worktree lifecycle vs BMAD-managed state should be reconciled).
 

@@ -87,6 +87,7 @@ b) **Check for existing context docs:**
 - Check `{implementation_artifacts}` and `{planning_artifacts}`for planning documents (PRD, architecture, epics, research)
 - Check for `**/project-context.md` - if it exists, skim for patterns and conventions
 - Check for any existing stories or specs related to user's request
+- **Check the WIP register** (`<main-repo>/.claude/wip-register.yaml`, if present) for a LIVE claim by another session covering this same feature/area (`shared/parallel-sessions.md` §E). If one plausibly overlaps (judge by description, not branch name), surface it to the user before authoring a spec for work already in flight — this is the spec-time half of the no-duplicate-builds check.
 
 c) **If user mentioned specific code/features, do a quick scan:**
 

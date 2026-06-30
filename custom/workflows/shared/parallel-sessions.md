@@ -188,6 +188,26 @@ Fork edits share **one working tree + one index** across all sessions (the workt
 - If a pre-commit hook forces a message via stdin/heredoc, the message-bearing-VCS exemption in the bash edit-guard already lets `git commit -F - <<MSG` through — combine it: `git commit -o <path> -F - <<MSG … MSG`.
 - **Before committing, if anything outside your paths is `M`/`A`/staged, that's another session's work** — confirm `-o`/explicit-path scoping caught only yours (`git show --stat HEAD` after) so you didn't commingle.
 
+## §E — Ad-hoc quick-flow claim (quick-spec / quick-dev from a tech-spec, NOT a sprint story)
+
+§C makes a session claim a **sprint story** before working it. But a `quick-dev` run driven straight from a tech-spec (and the `quick-spec` that authored it) is explicitly §A-only — it touches `src/` but claims *nothing*, because there is no sprint-status key to attach a token to. That is a real blind spot: two sessions can pick the same tech-spec-shaped feature and build it twice, and one build is thrown away (the incident that motivated this section — two independent implementations of the same listing failure-reason surface).
+
+§E closes it with an **awareness register**, not a gate. "Same feature" is not deterministically detectable (two sessions name their branches differently), so this surfaces in-flight work and lets a human/agent judge overlap — it never blocks (a hard block here would be the indiscriminate-gate anti-pattern).
+
+### E1. The register — shared, auto-written
+- Ledger: **`<main-repo>/.claude/wip-register.yaml`** — anchored at the MAIN checkout (resolved via `git rev-parse --git-common-dir`) so a claim written from any worktree is visible to every other session. NOT per-worktree `_bmad-output` (gitignored + not shared → the exact blindness this fixes). Safe from sync (`rsync --delete` only touches `.claude/{skills,commands,worktrees}`).
+- **Written deterministically by the `EnterWorktree` PostToolUse hook** (`wip-claim-on-worktree.sh` → `wip-register.sh claim`): worktree creation is the only reliable "feature work starting" signal, so the claim does not depend on a workflow step the agent might skip. One flow-map line per worktree path: `branch / worktree / session / baseline / started / description`.
+- **Dead claims self-collect:** a claim whose worktree directory no longer exists is pruned on the next write and filtered at read time — so `ExitWorktree`/removal needs no extra hook.
+
+### E2. Surfaced at SessionStart (awareness, tier 4)
+The `check-wip-register.sh` SessionStart hook prints any LIVE foreign claim (worktree still on disk; your own is hidden) into the arriving session's context: branch + description + age. **This is DETERMINISTIC delivery of AWARENESS, not a gate** — acting on it is the model's choice. Enforcement honesty: there is no deterministic "same feature" test, so there is deliberately no PreToolUse block.
+
+### E3. What quick-spec / quick-dev do (the probabilistic enrich + check layer)
+- **quick-spec step-01 / quick-dev step-03**, after entering the worktree: (a) `wip-register.sh enrich <main_root> <worktree> "<one-line feature description>"` so the bare auto-claim gains human intent; (b) **read `.claude/wip-register.yaml` first** — if another live claim plausibly covers the same feature/area, surface it to the user before building, rather than duplicating it blind. This is the check that turns the SessionStart awareness into a decision.
+
+### E4. Distribution (do not confuse the two tracks)
+The **hooks** (`wip-register.sh`, `check-wip-register.sh`, `wip-claim-on-worktree.sh` + their `settings.json` entries) ship on the **global hooks track** (`install-global-assets.sh`), machine-local — they do NOT sync to the projects. The **prose** in this file + the quick-spec/quick-dev step edits ship on the **workflow-sync track** to the 13 projects. Both must land for the behavior to be whole.
+
 ## Costs
 
 - A worktree per src-editing run — cheap, and the project `CLAUDE.md` already mandates it; §A1 just moves it from "the human remembered" into the workflow.

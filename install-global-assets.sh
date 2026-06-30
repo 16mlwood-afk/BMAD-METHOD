@@ -90,7 +90,17 @@ ch = (ensure('SessionStart', None, 'prod-readiness-probe.sh')
       # a .githooks/ gate but core.hooksPath isn't wired, so the gate is silently off
       + ensure_cmd('SessionStart', None,
                    f'bash "{forkdir}/check-hook-activation.sh" 2>/dev/null || true',
-                   'check-hook-activation.sh', 5))
+                   'check-hook-activation.sh', 5)
+      # cross-session WIP register (parallel-sessions.md §E): surface in-flight
+      # feature work by OTHER sessions at start (AWARENESS, tier 4 — never blocks)
+      + ensure_cmd('SessionStart', None,
+                   f'bash "{forkdir}/check-wip-register.sh" 2>/dev/null || true',
+                   'check-wip-register.sh', 5)
+      # …and write the claim deterministically when a worktree is created (the
+      # only reliable "feature work starting" signal — not a skippable step)
+      + ensure_cmd('PostToolUse', 'EnterWorktree',
+                   f'bash "{forkdir}/wip-claim-on-worktree.sh" 2>/dev/null || true',
+                   'wip-claim-on-worktree.sh', 5))
 if ch: json.dump(d, open(p,'w'), indent=4); print(f"  ✓ registered {ch} hook(s) in settings.json")
 else: print("  • hooks already registered in settings.json")
 PY
