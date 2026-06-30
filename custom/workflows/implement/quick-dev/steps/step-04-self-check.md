@@ -102,12 +102,13 @@ If you backfilled but did not touch the producing code, state explicitly why the
 For each function, component, or schema field you modified:
 
 - [ ] **Callers identified.** Listed every caller/dependent that consumed the old behavior (grep for the symbol; trace imports).
+- [ ] **Registry / exhaustiveness sync (only when ADDING a member to a source-of-truth set).** If this change adds a value to an enum / const / union / report-type list / status vocabulary that hand-maintained registries elsewhere mirror, you grepped for the new member's **VALUE string** (e.g. the literal `GET_LEDGER_*`), not only its symbol — stringly-typed mirrors (a catalog like `raw-records/data.ts`, a settings panel, an export-column list) couple by bare string and are invisible to a symbol-only caller trace. Every such mirror either got its new entry or is recorded as deliberately N/A.
 - [ ] **No callers broken.** Type-checked or compiled — no errors introduced. If the project has tests for the affected files, they pass. If not, the absence of tests is itself noted.
 - [ ] **Behavior contract documented.** If the change is non-trivial, a one-sentence "before → after" of the contract is recorded (in the tech-spec for Mode A; in your summary for Mode B).
 - [ ] **Rollback path known.** You can state in one sentence how to revert this change if production breaks.
 - [ ] **Provenance of changed/removed lines checked.** For any existing line you modified or deleted, you traced its originating commit (`git log -S` / `git blame`) and confirmed the change *extends*, not regresses, whatever it deliberately protected (step-03 existing-code provenance pre-flight). If it undid a deliberate guard, the protected case is still covered by a passing test.
 
-If you can't tick all five boxes, the change is not done — return to step-03 and address the gap. Do NOT proceed to adversarial review until the regression surface is clean.
+If you can't tick all six boxes, the change is not done — return to step-03 and address the gap. Do NOT proceed to adversarial review until the regression surface is clean. (The registry/exhaustiveness box is N/A — auto-ticked — for a change that adds no new member to a mirrored source-of-truth set.)
 
 ```
 **Regression Surface Report (brownfield/mixed):**

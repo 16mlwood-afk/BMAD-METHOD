@@ -111,6 +111,8 @@ Grep + import-trace every symbol the implementation will touch (functions, types
 
 An empty list is acceptable ONLY when verified (e.g., new private function with no callers yet). Document the verification: "Grep confirmed: no callers of this symbol elsewhere in the repo."
 
+**Registry / exhaustiveness sync (when the change ADDS a member to a source-of-truth set).** If the implementation adds a value to an enum / const / union / report-type list / status vocabulary, name the hand-maintained registries that mirror that set (a `raw-records/data.ts`-style catalog, a settings panel, an export-column list) and whether the new member needs an entry. These mirrors often couple by **bare string**, so a symbol-only grep misses them — also grep the new member's literal VALUE. List each mirror as needs-entry or N/A.
+
 **Rollback Plan**
 
 One paragraph. Cover:

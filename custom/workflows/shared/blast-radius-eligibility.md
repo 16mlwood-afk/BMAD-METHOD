@@ -34,6 +34,8 @@ The change is intended to touch:
 
 Multiple subsystems at once (UI + API + data); "how should I" / "best way to" framing; multi-day framing; a tech-spec (Mode A) that enumerates many affected callers across areas.
 
+> **Recognized blind spot — stringly-typed registries.** This classification (and the §6 regression-surface trace it feeds) reasons about *symbol* dependencies. A change that ADDS a member to a source-of-truth set (report types, feature flags, status vocabularies, columns) can silently drift a hand-maintained registry that mirrors that set by **bare string** — e.g. a `raw-records/data.ts` catalog whose `reportType` is a plain string, not an import of the enum. A symbol grep finds nothing, so it does not raise scope here. This is NOT a `not-quick-dev` trigger; it is a completeness check the §6 regression surface must run by VALUE (grep the literal), not by symbol. Named so a stringly-typed mirror is not mistaken for "no blast radius."
+
 ---
 
 ## ON `not-quick-dev` — reroute (this OVERRIDES `autonomous_mode`)
