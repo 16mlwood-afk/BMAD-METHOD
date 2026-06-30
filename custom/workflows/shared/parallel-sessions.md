@@ -52,6 +52,8 @@ Implement, then run the project's full gate (typecheck / lint / test / build) in
 
 `main` has very likely moved since A1. Before delivering, bring it into your branch (`git merge main` from the worktree, or rebase). Resolve conflicts per A4, then **re-run the full gate** — the integrated tree is new code that neither session tested together.
 
+> **The same "`main` moves under you" hazard applies to the DEPLOY lane, not just the merge.** A `manual_cli` deploy (`railway up`) ships the working tree at invocation time while a parallel session can fast-forward local `main` mid-deploy — so a verify step that re-reads live `HEAD` mis-reads a just-shipped deploy as stale. A deploy is therefore a single-driver critical section through verification, and the verify must compare prod against the **SHA captured at deploy time**, never a re-read of `HEAD`. Owned in `shared/deployment-to-prod.md` §3f — the deploy-lane sibling of the "worktrees isolate code, not state" hazard (the shared `main` pointer + the single prod target are the shared state here).
+
 ### A4. Resolve-don't-halt: the named collision classes
 
 These are mechanical and deterministic. **Resolve them; do not halt.** Halt ONLY on a genuine *semantic* conflict (two sessions changed the same logic). The classes, in order of frequency:

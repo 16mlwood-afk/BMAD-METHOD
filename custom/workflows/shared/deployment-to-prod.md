@@ -152,6 +152,16 @@ The script runs `deploy.deploy_command`. On non-zero exit, the script exits with
 
 The script captures the deploy command's stdout. If `deploy.success_pattern` is set (a regex), the script asserts the pattern matches stdout. If absent, the script accepts any zero-exit deploy command as success.
 
+### 3f. Single-driver deploy + captured-SHA verification (`manual_cli` / shared checkout)
+
+`manual_cli` deploys (`railway up` and the like) ship the **working tree at invocation time**, and the local `main` pointer in a shared checkout can fast-forward under you the moment a parallel session merges. So "is prod current?" must NOT be answered by re-reading live `HEAD` after the deploy — a parallel merge advances `HEAD` and makes a just-shipped deploy look stale (and a *stale* deploy look current). Pin the commit-of-record at deploy time instead:
+
+- **Capture before deploy.** Record `DEPLOYED_SHA=$(git rev-parse HEAD)` immediately before the deploy command. That SHA — not a later `HEAD` read — is the commit this deploy shipped.
+- **Verify against the captured SHA.** Assert prod is running `DEPLOYED_SHA` (curl a build-stamp endpoint / read `railway logs` for the matching deploy), never against a re-read of live `HEAD`.
+- **Single-driver critical section.** A `manual_cli` deploy owns a critical section from "decide to ship" through "verified live." CLAUDE.md's shared-action hold ("don't deploy when another session has an imminent merge") guards the PRE-deploy window; this extends it through verification — while you hold the deploy, treat a parallel merge-to-`main` as a collision to coordinate, not race.
+
+(`push_auto` modes are immune: the platform deploys each pushed commit, so there is no working-tree-vs-moved-`HEAD` gap. `contract_script` deploys from a fresh `origin/<default-branch>` checkout per §3a-stale, which already pins the tree.)
+
 ---
 
 ## 4. Skip path
