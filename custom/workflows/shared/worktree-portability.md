@@ -119,3 +119,11 @@ git -C .claude/worktrees/<desc> add -A && git -C .claude/worktrees/<desc> commit
 ```
 
 This satisfies both the worktree mandate and the edit-guard (which keys on the path string, not the process cwd). Clean up with `git worktree remove` after the PR merges. (Recorded in `docs/fork-gaps.md` — the "ALWAYS EnterWorktree" cwd-pinned gap.)
+
+## 8. Per-worktree `_bmad/` refresh is OPT-IN (default off)
+
+A new worktree inherits **`main`'s `_bmad/`** — there is no automatic per-worktree refresh from the fork. This is deliberate. In old-layout projects `_bmad/bmm/workflows/` is **tracked**, so freshening it inside a worktree leaves it dirty, and with a tracked path you cannot have all three of: per-worktree freshness, a friction-free `ExitWorktree` teardown (dirty `_bmad/` makes the teardown demand `discard_changes`, conflating throwaway churn with real work), and a working §A3 `git merge main` integrate step (hiding the churn via `git update-index --skip-worktree` makes the merge abort — "local changes would be overwritten"). The default resolves the trilemma toward **merge + teardown safety**.
+
+- **Default:** worktrees run with `main`'s `_bmad/`. The cure for staleness is to **sync `main`** (the SessionStart drift banner flags when it's behind), not to refresh every worktree.
+- **Escape hatch:** when a per-worktree refresh is genuinely needed, set `BMAD_WORKTREE_SYNC=1` before the worktree's `EnterWorktree` (or run `BMAD_WORKTREE_SYNC=1 sync-bmad-workflows.sh --worktree <path>`), accepting the local `_bmad/` churn consciously.
+- **Why this default:** routed through `enforcement-expert` — a deterministic mechanism change (don't write the churn) beats a prose "remember not to tear down before merge." The per-worktree sync is a convenience, not a safety primitive; A3 discipline (commit → push → PR → merge before teardown) + a synced `main` are the real safety. (`docs/fork-gaps.md` 2026-06-30.)

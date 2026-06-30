@@ -813,10 +813,28 @@ fi
 # --- WORKTREE MODE ---
 # Minimal sync into a single worktree. Skips hooks, slash-commands, and CLAUDE.md
 # because those are git-tracked and propagate via the worktree's normal checkout.
-# Writes the custom workflow dirs (SYNC_DIRS) and portable skills, which are
-# NOT tracked in project repos and would otherwise be missing in worktrees
-# branched from origin.
+# Writes the custom workflow dirs (SYNC_DIRS) and portable skills.
+#
+# OPT-IN, DEFAULT OFF (set BMAD_WORKTREE_SYNC=1 to enable). In OLD-LAYOUT projects
+# the SYNC_DIRS land under a TRACKED `_bmad/bmm/workflows/`, so writing them here
+# dirties every new worktree (~88 files vs the branch's fork-lagging _bmad/). That
+# churn (a) makes the harness ExitWorktree teardown demand `discard_changes` —
+# conflating throwaway sync churn with real, possibly-unmerged work, training the
+# reflex that eventually discards real work — and (b) cannot be hidden via
+# `git update-index --skip-worktree` without BREAKING the §A3 `git merge main`
+# integrate step (empirically: the merge aborts, "local changes would be
+# overwritten"). With `_bmad/` tracked, per-worktree freshness + friction-free
+# teardown + a working integrate are mutually exclusive — so the chosen default is
+# freshness-off: a worktree inherits MAIN's `_bmad/`, and the cure for staleness is
+# to sync MAIN (the SessionStart drift banner flags it), not every worktree. The
+# per-worktree refresh stays available behind the flag for the rare case it's
+# genuinely needed. (fork-gaps.md 2026-06-30; routed via enforcement-expert — a
+# deterministic mechanism change beats a prose "don't tear down before merge".)
 if [[ -n "$WORKTREE_TARGET" ]]; then
+  if [[ "${BMAD_WORKTREE_SYNC:-}" != "1" ]]; then
+    echo "OK    Worktree _bmad/ refresh skipped (opt-in: BMAD_WORKTREE_SYNC=1). Worktree inherits main's _bmad/."
+    exit 0
+  fi
   WORKTREE_TARGET="${WORKTREE_TARGET%/}"
   # Accept either a project root or a _bmad/bmm/workflows path
   wt_project_root="${WORKTREE_TARGET%/_bmad/bmm/workflows}"
