@@ -123,10 +123,11 @@ If you can't tick all six boxes, the change is not done — return to step-03 an
 
 If `{execution_mode}` is "tech-spec":
 
-1. Load `{tech_spec_path}`
-2. Mark all tasks as `[x]` complete
-3. Update status to "Implementation Complete"
-4. Save changes
+1. Load `{tech_spec_path}` and re-read its frontmatter.
+2. **Spec-of-record guard (HALT-if-swapped).** Assert the frontmatter `slug` (or `title`) still matches `{tech_spec_slug}` captured at load in step-01. If it differs, the shared `_bmad-output/` spec path was overwritten by a parallel session mid-run — do NOT stamp status onto a stranger's spec. HALT: *"spec-of-record was replaced at `{tech_spec_path}` — your implementation is intact (committed in the worktree), but the artifact lineage is lost; re-resolve the spec before stamping."* (The shared-`_bmad-output`-filename collision class, `docs/fork-gaps.md`.)
+3. Mark all tasks as `[x]` complete.
+4. Update status to "Implementation Complete".
+5. Save changes.
 
 ---
 

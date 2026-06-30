@@ -21,6 +21,7 @@ These variables MUST be set in this step and available to all subsequent steps:
 - `{baseline_commit}` - Git HEAD at workflow start (or "NO_GIT" if not a git repo)
 - `{execution_mode}` - "tech-spec" or "direct"
 - `{tech_spec_path}` - Path to tech-spec file (if Mode A)
+- `{tech_spec_slug}` - The loaded spec's `slug` (or `title`), captured at load so step-04 can detect a mid-run swap of the shared spec path (Mode A)
 
 ---
 
@@ -87,6 +88,7 @@ Analyze the user's input to determine mode:
 - Load the spec, extract tasks/context/AC
 - Set `{execution_mode}` = "tech-spec"
 - Set `{tech_spec_path}` = provided path
+- **Pin the spec-of-record.** From the loaded spec's frontmatter, capture `{tech_spec_slug}` (the `slug` field; fall back to `title` if `slug` is absent). `_bmad-output/` is shared and untracked, and quick-spec's default working path (`tech-spec-wip.md`) is generic — a parallel design→dev session can overwrite the file at this path mid-run (the shared-`_bmad-output`-filename collision class, `docs/fork-gaps.md`). Capturing the identity now lets step-04 detect a swap before it stamps status onto a stranger's spec.
 - **NEXT:** Read fully and follow: `{project-root}/_bmad/bmm/workflows/implement/quick-dev/steps/step-03-execute.md`
 
 **Mode B: Direct Instructions**

@@ -210,6 +210,9 @@ The `check-wip-register.sh` SessionStart hook prints any LIVE foreign claim (wor
 ### E4. Distribution (do not confuse the two tracks)
 The **hooks** (`wip-register.sh`, `check-wip-register.sh`, `wip-claim-on-worktree.sh` + their `settings.json` entries) ship on the **global hooks track** (`install-global-assets.sh`), machine-local — they do NOT sync to the projects. The **prose** in this file + the quick-spec/quick-dev step edits ship on the **workflow-sync track** to the 13 projects. Both must land for the behavior to be whole.
 
+### E5. The shared spec working-file (`tech-spec-wip.md`) — content-pin, not just claim awareness
+§E's register catches *feature-level* duplication. A distinct hazard sits one level down: `quick-spec` authors into a **generic** working path (`_bmad-output/implementation-artifacts/tech-spec-wip.md`) and only renames it to `tech-spec-{slug}.md` at finish — so two concurrent quick-spec runs, or a `quick-dev` Mode-A run pointed at the wip path, share one file and last-writer-wins (the spec-of-record can be swapped under a running session). `_bmad-output/` is shared and untracked, so worktrees don't isolate it. The mitigation is **content-pinning, not a lock**: `quick-dev` Mode-A captures the spec's `slug`/`title` at load (step-01) and HALTS at step-04 before stamping status if the frontmatter no longer matches — otherwise it would stamp a stranger's spec. The fixed wip path is load-bearing for quick-spec's resume-by-fixed-path detection (step-01 §0 looks the file up before the slug exists), so per-slug-from-the-start is a deliberate non-fix; the content-pin makes a swap fail loud instead of silently corrupting the lineage.
+
 ## Costs
 
 - A worktree per src-editing run — cheap, and the project `CLAUDE.md` already mandates it; §A1 just moves it from "the human remembered" into the workflow.
