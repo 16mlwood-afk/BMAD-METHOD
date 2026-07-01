@@ -86,7 +86,7 @@ function escapeTableCell(str) {
 const INSTALL_ONLY_PATHS = ['_config/', 'custom/', 'bmad-shared/'];
 
 // Files that are generated at install time and don't exist in the source tree
-const INSTALL_GENERATED_FILES = ['config.yaml', 'config.user.yaml'];
+const INSTALL_GENERATED_FILES = ['config.yaml', 'config.user.yaml', '.sprint-apply-pending.json'];
 
 // Variables that indicate a path is not statically resolvable
 const UNRESOLVABLE_VARS = [
