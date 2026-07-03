@@ -133,6 +133,8 @@ quick-dev {finalFile}
 \`\`\`
 
 This ensures the dev agent has clean context focused solely on implementation.
+
+Note for worktree-first projects: `_bmad-output/` is often gitignored, so this spec lives ONLY in the main checkout — a fresh worktree won't contain it. quick-dev step-01 Mode A knows this and falls back to the main checkout (copying the spec in); if you hand this path to anything else, resolve it against the main checkout, not the worktree.
 ```
 
 b) **HALT and wait for user selection.**

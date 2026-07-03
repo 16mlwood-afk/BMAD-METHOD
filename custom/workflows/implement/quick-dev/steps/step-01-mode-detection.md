@@ -88,6 +88,17 @@ Analyze the user's input to determine mode:
 - Load the spec, extract tasks/context/AC
 - Set `{execution_mode}` = "tech-spec"
 - Set `{tech_spec_path}` = provided path
+- **Worktree resolution fallback (spec 404 in a worktree ≠ no spec).** `_bmad-output/` is commonly gitignored, so a spec quick-spec wrote in the MAIN checkout exists only as an untracked file there — a fresh worktree branched from origin/main will NOT contain it. If `{tech_spec_path}` does not exist and the cwd is under `.claude/worktrees/`, resolve against the main checkout before concluding anything:
+
+  ```bash
+  main_root="$(dirname "$(git rev-parse --git-common-dir)")"
+  if [ -f "$main_root/{tech_spec_path}" ]; then
+    mkdir -p "$(dirname "{tech_spec_path}")"
+    cp "$main_root/{tech_spec_path}" "{tech_spec_path}"
+  fi
+  ```
+
+  COPY (never just read in place) so the spec travels with the worktree: step-04 stamps completion status onto it and the delivery PR should carry the completed spec. Only if the spec exists in NEITHER location is the path genuinely wrong — do NOT silently reclassify a 404'd Mode A input as Mode B direct-instructions; the spec's settled decisions are the whole point of Mode A. Halt and say where you looked.
 - **Pin the spec-of-record.** From the loaded spec's frontmatter, capture `{tech_spec_slug}` (the `slug` field; fall back to `title` if `slug` is absent). `_bmad-output/` is shared and untracked, and quick-spec's default working path (`tech-spec-wip.md`) is generic — a parallel design→dev session can overwrite the file at this path mid-run (the shared-`_bmad-output`-filename collision class, `docs/fork-gaps.md`). Capturing the identity now lets step-04 detect a swap before it stamps status onto a stranger's spec.
 - **NEXT:** Read fully and follow: `{project-root}/_bmad/bmm/workflows/implement/quick-dev/steps/step-03-execute.md`
 
