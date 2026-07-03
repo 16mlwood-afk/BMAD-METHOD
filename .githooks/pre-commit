@@ -14,7 +14,7 @@ npx --no-install lint-staged
 # touches an upstream/product path falls back to the full suite. See fork-gaps "Full upstream test
 # suite on every fork push".
 changed="$(git diff --cached --name-only)"
-non_fork="$(printf '%s\n' "$changed" | grep -cvE '^(custom/|docs/|\.githooks/|\.husky/|STATUS\.md$|STATUS-archive\.md$|onboarding-playbook\.version$|install-global-assets\.sh$|onboard-project\.sh$|check-[a-z-]*\.sh$|standards-drift-report\.sh$|.*\.md$)')"
+non_fork="$(printf '%s\n' "$changed" | grep -cvE '^(custom/|docs/|\.githooks/|\.husky/|\.gitignore$|STATUS\.md$|STATUS-archive\.md$|onboarding-playbook\.version$|install-global-assets\.sh$|onboard-project\.sh$|check-[a-z-]*\.sh$|standards-drift-report\.sh$|.*\.md$)')"
 if [ -z "$changed" ] || [ "$non_fork" -gt 0 ]; then
   npm test
 else
