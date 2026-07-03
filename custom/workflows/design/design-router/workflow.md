@@ -39,7 +39,7 @@ This is a **router**. It owns the *routing*, nothing downstream.
 
 **Do NOT use when:** (a) you already know the specialist + target → run it directly; (b) the request is code-shaped (a bug, a slow query, a dead handler) → that's `maintenance-triage` / `quick-spec`; (c) it's pure backend/schema/data work with no visual surface.
 
-**Composition:** `maintenance-triage`'s design lane **dispatches design-shaped clusters into this workflow** (it names the surface + the want; design-router does the routing). design-router is the *single source of design-lane routing truth* — so the two front doors give one answer, not two divergent ones.
+**Composition:** `maintenance-triage`'s design lane **dispatches design-shaped clusters into this workflow** (it names the surface + the want; design-router does the routing). Likewise `quick-brainstorm` dispatches here twice: its convergent triage sends design-shaped brainstorm asks (surface + felt want, no specialist pre-picked), and its divergent sessions hand off brainstorm-born surfaces the same way. design-router is the *single source of design-lane routing truth* — so all front doors give one answer, not divergent ones.
 
 **If uncertain, ABSTAIN — never guess a route:**
 - Cannot ground **either** the **surface** (or "system-wide" for policy) **or** the **felt want** from the input → **HALT** and ask (intent autonomy; see Initialization).
