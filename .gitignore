@@ -92,3 +92,4 @@ dist/web-bundles/
 
 # Sharded module build output
 bmad/
+.fork-gaps-last-scan
