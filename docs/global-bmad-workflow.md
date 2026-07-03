@@ -48,6 +48,12 @@ Full cross-project policy → the `workflow-routing` global memory; this is its 
 
 **Never modify workflows directly in `_bmad/bmm/workflows/`.** Changes made in projects will be overwritten on next sync. Instead, modify `~/bmad-method-v6/custom/workflows/` and re-sync, or use `--pull` to bring project changes back to the source first.
 
+### The core lane (`_bmad/core/workflows/`) is UNMANAGED — shadow, don't patch
+
+The sync maps `custom/workflows/` → `_bmad/bmm/workflows/` only. Core workflows (`_bmad/core/workflows/*` — e.g. `brainstorming`, `party-mode`) are frozen at whatever the original install shipped: they are NOT in the fork lane, the sync never touches them, and the managed-path edit guard blocks in-place edits with nowhere to redirect. That is by design, not an oversight — but it means a core workflow can drift from fork doctrine with no in-place fix.
+
+**The blessed fix is a custom-lane SHADOW:** author a fork-managed replacement in `custom/workflows/` and point routing/docs/skills at it, leaving the core original as the upstream specialist (precedent: `quick-brainstorm` shadows core `brainstorming` — the shadow is the front door, core remains the deep-divergence specialist). Do NOT hand-edit `_bmad/core/`, and do NOT build sync machinery for it: a structural `custom/core-overrides/` sync lane is deliberately DEFERRED until a second core workflow actually needs fork management — one shadow is a pattern, one override lane for one file is machinery (fork-gaps `2026-07-03 — _bmad/core/workflows/ has no fork lane`).
+
 ## Parallel work does NOT isolate BMAD state
 
 **Guardrail.** Worktrees isolate the source tree only. They do **not** isolate BMAD planning state
