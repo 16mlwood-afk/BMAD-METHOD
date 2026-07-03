@@ -57,7 +57,15 @@ Per workflow.md §SKILL ROUTING, skill routing is **driven by `{page_mode}`**, n
 For EACH skill named above (and each conditional skill below), invocation means calling the `Skill` tool with that skill's name AND receiving its content into context. Do NOT add a skill to `{skills_invoked}` unless you actually invoked it:
 
 - **Skill loads successfully** → append to `{skills_invoked}` and proceed.
-- **Skill is not in the runtime's available-skills list** OR the Skill tool call fails OR you chose to skip it → append to `{skills_unloaded}` with `{name, reason}` and proceed. The bundle's `compliance_state` becomes `under_grounded` in step 6.
+- **Skill is not in the runtime's available-skills list AND the cwd is a worktree** → before recording it unloaded, check the MAIN checkout: a project skill synced into `.claude/skills/` but never committed is invisible to `git worktree add` (tracked sisters carry over, the untracked one doesn't — the documented `operational-finance-ui` worktree-visibility failure, fork-gaps 2026-06-29). Probe and, if present, READ the skill file directly:
+
+  ```bash
+  main_root="$(dirname "$(git rev-parse --git-common-dir)")"
+  ls "$main_root/.claude/skills/{skill_name}/SKILL.md"
+  ```
+
+  If the file exists, Read it (and any files it directs you to load) so its content is genuinely in context, then append to `{skills_invoked}` with `loader: main_checkout_read`. This is REAL grounding, not paraphrasing — the same content the Skill tool would have delivered was loaded; only the loader differs. It does NOT trip the honesty rule below, which forbids operating from a summary, not from the skill itself.
+- **Skill is absent in BOTH the runtime list and the main checkout** OR the Skill tool call fails OR you chose to skip it → append to `{skills_unloaded}` with `{name, reason}` and proceed. The bundle's `compliance_state` becomes `under_grounded` in step 6.
 - **You operated "in the spirit of" the skill without loading it** (read this workflow's prose summary of the skill's rules, applied your own taste, etc.) → that is NOT invocation. Record in `{skills_unloaded}` with `reason: tool_call_skipped`.
 
 The downstream `under_grounded` label exists so the synthesizer doesn't need to lie about skill loading to ship a bundle. A `pass` bundle whose `skills_invoked` falsely lists an un-loaded skill is worse than an `under_grounded` bundle whose `skills_unloaded` is honest about what happened — the former leaks visually un-grounded work into `design-implement`; the latter routes it to human review.

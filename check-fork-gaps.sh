@@ -59,8 +59,9 @@ def is_open(title, body_lines):
     if "[resolved" in t or "[closed" in t:
         return False
     body = "\n".join(body_lines).lower()
-    if "**closed" in body or "**resolved" in body:
-        return False
+    for marker in ("**closed", "**resolved", "**[closed", "**[resolved"):
+        if marker in body:
+            return False
     return True
 
 open_titles = [t for t, b in entries if is_open(t, b)]
