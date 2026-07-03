@@ -11,6 +11,10 @@ Only the variables whose definition carried multi-sentence rationale are documen
 
 ---
 
+## `{surface_class}` — pages get the page machinery; chrome gets none of it
+
+`page` (default) | `chrome`. Set FIRST, in step-01 §0, before any capture runs. `chrome` = app-shell surfaces (global nav, sidebar, top-bar, mobile nav drawer, the shell frame): `page_mode` becomes `n/a`, the data-walk/finance/band/drawer machinery (§3–§3b, §5–§5g, step-01b) is skipped, and the chrome-equivalent captures run instead (route inventory · per-item states · role visibility · breakpoints). The visual system and anti-AI hard failures apply verbatim — chrome is exempt from page COMPOSITION rules, never from the design system. Contract + consumer obligations (don't enforce page-mode composition against chrome): `shared/brief-revision-policy.md` Block B `surface_class` row + invariant 1a. Exists because forcing the page template onto a nav redesign fabricates `page_mode`/`composition` metadata that strict consumers then enforce against a surface they don't model (fork-gaps 2026-07-02, nav-redesign).
+
 ## `{injected_placement}` / `{injected_archetype}` — the consumability contract
 
 These carry an upstream decision (from `analytics-placement-triage`, or a direct `--placement`/`--archetype`) so this workflow **honors** it rather than silently re-deriving it. The point is the consumability contract: a placement/shape verdict made by the single-source brain upstream must not degrade into advisory prose that this workflow re-decides differently. When non-empty, §5b (band-belongs) / §5d (topology) / §5c (archetype) honor the injected value (after a §5b-style sanity gate) and skip re-derivation, threading provenance (`injected-by-triage`). Empty (the default) → fully derive as before — backward-compatible.

@@ -13,6 +13,8 @@ This step carries forward ALL state set in `step-01-gather.md` (`{data_shape}`, 
 
 ### 5. Determine Page Mode
 
+**Chrome short-circuit:** if step-01 §0 set `{surface_class}` = `chrome`, this whole file is n/a — `page_mode` is already `n/a`, there is no composition-fit question and no band gate for app-shell chrome (contract: `brief-revision-policy.md` Block B `surface_class` row). **NEXT:** skip directly to `step-01c-topology.md`.
+
 Set `{page_mode}` based on the feature's **dominant user task**:
 
 - **"operational"** — the user processes, reviews, approves, reconciles, files, or resolves records. The page is a worklist. The design should prioritize throughput, scanability, and status visibility. Most pages are operational.

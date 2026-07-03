@@ -237,7 +237,7 @@ This bundle is malformed — re-run design-synthesize to regenerate it.
 
 - `{bundle_manifest}.screens` — ordered list of screen names (e.g., `["list", "detail", "drawer"]`).
 - `{bundle_manifest}.target_route` / `routes` — the route(s) the bundle represents.
-- `{bundle_manifest}.page_mode` — `operational | analytical | detail`.
+- `{bundle_manifest}.page_mode` — `operational | analytical | detail` — or `n/a` when the brief/bundle carries `surface_class: chrome` (app-shell nav/top-bar/shell). page_mode is a framing hint here (never authoritative); for chrome, do NOT enforce page-mode composition expectations — the frames list + design system carry the whole contract, and `composition` is absent by design (degrade gracefully per brief-revision-policy invariant 1a).
 - `{bundle_manifest}.components_emitted` — list of components the bundle declares it emitted.
 - `{bundle_manifest}.tokens.used` and `tokens.proposed` — token attribution (not values; values are in `tokens.css`).
 - `{bundle_manifest}.policy_sections_cited` — for traceability when comparing implementation choices.

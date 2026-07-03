@@ -9,6 +9,8 @@ description: 'Surface topology, analytics hierarchy, spawned-surface inventory, 
 
 This step carries forward ALL state from `step-01-gather.md` and `step-01b-decide.md`. The COMPLETION checklist below is the final gather checklist for the whole of step-01 (§1–§6), not just this sub-step.
 
+**Chrome short-circuit:** when `{surface_class}` = `chrome` (step-01 §0), the topology / analytics-hierarchy / spawned-surface machinery in this file is n/a — run ONLY the user-context capture (if not already done) and the COMPLETION checklist, marking page-machinery boxes `n/a — chrome` and verifying instead that step-01 §0's chrome captures are present: route inventory, per-item states, role visibility, breakpoints, and the chrome `frames` list.
+
 ## EXECUTION SEQUENCE (continued)
 
 ### 5d. Surface Topology Assessment

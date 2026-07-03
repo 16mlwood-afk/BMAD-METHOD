@@ -40,9 +40,11 @@ last_modified_date: {date}
 
 # Block B — Content (see shared/brief-revision-policy.md §2)
 mode: {handoff_mode}                     # fresh-design | refine-screen
-page_mode: {page_mode}                   # operational | analytical | detail
-route: {route}                           # primary route this brief targets
+surface_class: {surface_class}           # page | chrome (absent ⇒ page). chrome = app-shell (nav/top-bar/sidebar/shell): page_mode is n/a and the composition/band lines below are OMITTED ENTIRELY — see brief-revision-policy.md Block B surface_class row
+page_mode: {page_mode}                   # operational | analytical | detail — or n/a iff surface_class: chrome
+route: {route}                           # primary route this brief targets (chrome: the shell's scope anchor, normally "/")
 surface_part: {surface_part}             # sub-surface within route — a tab/section/panel inside the page (kebab, e.g. raw-records); "" when this brief IS the route's whole primary surface. With route (normalised) + mode it forms the surface identity that keys the active-uniqueness invariant (brief-revision-policy.md §2.6). §13 lookup drawers are NOT surfaces — never give them a surface_part.
+{# When surface_class == chrome: OMIT the composition_provenance, composition, and band_provenance lines entirely (absent by design — policy invariant 1a). #}
 composition_provenance: {composition_provenance}   # policy-default | recommended-alt (decided in §5a; recommended-alt names a job-fit composition in §4a and was veto-surfaced)
 composition: {composition}               # machine-readable composition key the design-implement bundle→implement conformance gate (step-01 §SHARED.1b) diffs against. Default = the page_mode default (operational→worklist | analytical→chart-led | detail→record-view). When composition_provenance is recommended-alt, set the named job-fit composition from §4a as a kebab key (e.g. scanner-terminal, single-item-stream, source-co-present). A NON-default composition (e.g. a clerk scan station) is the signal that the gate must verify the bundle expresses the JOB LOOP (scan→feedback→tally→close), not a centered hero card.
 band_provenance: {band_provenance}       # inherited | recommended-new | recommended-drop | none
@@ -104,7 +106,7 @@ This brief was generated from the codebase after implementation. It intentionall
 > These constraints are enforced downstream by `design-review-pr` (a hard gate) and the `design-implement` bundle→implement conformance gate — not by good intentions.
 
 ```
-  page_mode:   {page_mode}                 # operational | analytical | detail
+  page_mode:   {page_mode}                 # operational | analytical | detail — n/a iff surface_class: chrome (then the composition line is omitted)
   composition: {composition}               # {if composition_provenance == "recommended-alt"}job-fit composition — NOT the page_mode default{else}page_mode default composition{endif}
   shell:       {if has_shell_role}{required_shell} — render under this shell; the forbidden chrome in §5 MUST NOT appear over this surface{else}single shell — every surface shares one app shell{endif}
   route:       {route}

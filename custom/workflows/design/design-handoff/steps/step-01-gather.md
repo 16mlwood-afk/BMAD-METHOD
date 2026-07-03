@@ -22,6 +22,17 @@ description: 'Gather feature purpose, data model, API surface, and user context 
 
 ## EXECUTION SEQUENCE
 
+### 0. Surface class — chrome short-circuit
+
+Before anything else, classify the target: is it a content PAGE (a route's primary surface or a sub-surface within one), or app-shell CHROME — the global navigation, sidebar, top-bar, mobile nav drawer, or the shell frame itself? Set `{surface_class}` = `page` (the default; everything below runs as written) or `chrome`.
+
+**When `{surface_class}` = `chrome`** (contract: `brief-revision-policy.md` Block B `surface_class` row):
+
+- Set `page_mode: n/a`. SKIP §3–§3b (data-shape walk, linked-records §13 pass, finance pass), §5–§5g (band gate, archetype, drawer spawning, list-rendering) and step-01b's page-mode selection — chrome has no page_mode, no data table, no analytics band, no lookup drawers. Project design policies scope their page-layout rules to pages for exactly this reason (e.g. policy §5 "app-shell navigation is out of scope").
+- Still run: §1/§1b (repo + policy — the visual system and anti-AI hard failures apply to chrome VERBATIM), §2 (user context), §4 (constraints), and the runtime §3c check if the chrome carries live indicators (e.g. a sync badge).
+- Capture INSTEAD, as the chrome equivalent of the data walk: (a) the **route inventory** the nav must express (every top-level destination, grouping, and ordering — from the router/nav config, not invented); (b) **states** per item (active, hover, collapsed, disabled-by-role); (c) **role visibility** (`shell_role` — which items each role sees, when the app is multi-role); (d) **breakpoints** (desktop rail vs mobile drawer trigger).
+- `frames` = the chrome variants + operator-distinct states (e.g. `nav-desktop`, `nav-mobile-drawer`, `nav-desktop--collapsed`), never empty. `route` = the shell's scope anchor (normally `/`), `surface_part` = the chrome piece (`primary-nav`, `top-bar`).
+
 ### 1. Resolve Repository URL
 
 Capture `{github_repo_url}`:

@@ -79,6 +79,7 @@ The downstream `under_grounded` label exists so the synthesizer doesn't need to 
 | `operational` | `operational-finance-ui` — table-first composition, filter bar, status hierarchy, dense row treatment per policy §6 | `operational-analytics-band` if the screen carries a narrow analytics band above or beside the table |
 | `analytical` | `operational-analytics-band` — chart-led composition, drill-down evidence, no card-grid openers per policy §6 | `operational-finance-ui` if drill-down tables are part of the brief |
 | `detail` | `operational-finance-ui` — drawer/detail extends an operational list; same surface, typography, badges per policy §7 | `operational-analytics-band` is **NOT applicable** — detail views forbid KPI cards / charts per policy §7 |
+| `n/a` (`surface_class: chrome`) | — none beyond the always-invoke pair — the finance/analytics sisters model PAGES, not app-shell chrome; compose the chrome from the policy's visual system + `{frontend_skill}` taste, against the brief's route inventory / states / breakpoints | — |
 
 Record every invocation into `{skills_invoked}` (a list). This list is written to `manifest.skills_invoked` in step 7. A bundle emitted with `{skills_invoked}` missing the mandatory entries for `{page_mode}` is a routing failure — step 6's enforcement rule rewinds to this step.
 
