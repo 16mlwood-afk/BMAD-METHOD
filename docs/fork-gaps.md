@@ -730,3 +730,10 @@ Output: a one-paragraph verdict + at most one recommended "bigger surgery" (or "
 **Class:** enforcement / silent-partial-implementation
 **Fix scope:** fork-only (distributes via sync)
 **Target file:** `custom/githooks/pre-commit` + `custom/githooks/pre-push` (the `cmd=` parse in `run_gates_from`).
+
+## 2026-07-03 — sync has no per-project scoping for custom workflows
+
+Authoring `implement/file-de-vat` (a quarterly German VAT filing front door that is only meaningful in accounting-tools — it drives that project's avask-filing MCP server) surfaced that `SYNC_DIRS` distributes every custom workflow wholesale to all 14 targets. There is no per-workflow or per-project scoping mechanism, and a project-local drop into `_bmad/bmm/workflows/` is hostile to the design (the local-only classifier blocks the next sync). The workaround shipped: a runtime project gate in the workflow's INITIALIZATION (project_name + MCP-presence check → BLOCKED elsewhere), costing an inert `/bmad:bmm:workflows:file-de-vat` slash command in 13 projects. That works but scales badly — every future project-specific workflow adds another dead command to every other project's namespace and another prose-only gate. Target: `sync-bmad-workflows.sh` — a small `scope:` frontmatter key (project allowlist) that the sync/command-generation loop respects would make placement, not prose, the gate. Priority: medium — revisit when a second project-specific workflow appears (second-occurrence rule).
+
+**Class:** sync-scoping
+**Fix scope:** fork-only
