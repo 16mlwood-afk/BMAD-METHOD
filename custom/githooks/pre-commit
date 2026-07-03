@@ -25,7 +25,11 @@ run_gates_from() {
     case "$line" in '' | \#*) continue ;; esac
     event=$(printf '%s' "$line" | awk '{print $1}')
     [ "$event" = "$want" ] || continue
-    cmd=$(printf '%s' "$line" | sed 's/^[^[:space:]]*[[:space:]]*//')
+    # strip the event, any trailing inline "# comment", and trailing whitespace —
+    # without the comment strip, "$ROOT/$cmd" includes the comment, [ -f ] fails,
+    # and the gate is SILENTLY skipped (bit every gates.d conf, which carry
+    # inline comments — the design-brief/dataflow gates were inert fleet-wide)
+    cmd=$(printf '%s' "$line" | sed 's/^[^[:space:]]*[[:space:]]*//; s/[[:space:]]*#.*$//; s/[[:space:]]*$//')
     [ -n "$cmd" ] || continue
     case "$RAN" in *"|$cmd|"*) continue ;; esac   # already ran this script
     RAN="$RAN|$cmd|"
