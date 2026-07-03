@@ -91,7 +91,7 @@ deferred_violations:
 >
 > **Revision provenance** follows `brief-revision-policy.md` in the shared design workflow docs. Consumers (design-artifact-loop, design-synthesize) validate the provenance frontmatter at intake; do not hand-edit this brief into a scope or intent change — re-run `design-handoff` instead.
 >
-> **Why connecting the repo is safe here:** this brief is the bias filter — it deliberately omits the current layout, so reading the repo for the data model, tokens, and referenced files will not anchor you to the existing screens. This is distinct from Claude Design **system setup** (`onboard-design-system`), where the live repo / current screens must NEVER be the seed. Here, read the brief and the files it names, then design the information architecture fresh.
+> **Repo read protocol (the bias filter — obey exactly):** this brief deliberately omits the current layout; **the repo does NOT** — it contains the current UI's implementation. {If feature_scope == "redesign": Read ONLY the files named in §8. The current view's markup/component files are listed there as **DO-NOT-READ** — opening one to "understand the feature" anchors you to the exact layout this brief withholds, and the failure mode is invisible (a re-skin renders as confidently as a fresh design). Everything the design needs is in this brief; if something is missing, that is a brief defect — say so rather than reading the view.}{If feature_scope == "new": there is no existing screen for this surface, so repo reading cannot anchor you — read the brief and the files it names, then design fresh.} This is distinct from Claude Design **system setup** (`onboard-design-system`), where the live repo / current screens must NEVER be the seed.
 
 This brief was generated from the codebase after implementation. It intentionally omits the current layout — you have full creative freedom to design from the data, purpose, and constraints below.
 
@@ -726,6 +726,14 @@ Technical context only — NOT layout or design references.
 - Categorical `--tag-*` palette in `tokens.css` — exceeds the 4-color operational status cap; status communication uses only `--status-danger/warning/success/neutral`
 
 Read token VALUES (colors, `--radius-md`) from `tokens.css` — anchor to those. Do NOT anchor to the shape, size, icon, or decoration pattern of any component whose compliance is a migration target.}
+
+{If feature_scope == "redesign", add this block after the file table (and after the token-values warning when present) — it is the enforcement half of the "Repo read protocol" in the preamble:
+
+🚫 **DO-NOT-READ — current view implementation.** The files below render the CURRENT layout of this surface. Reading any of them defeats this brief's blank-canvas premise (structure, grouping, and control order will anchor you even if you only meant to check a detail). They are listed so the boundary is explicit, not discoverable by accident:
+{For each entry in `{do_not_read_files}` (gathered in step-01 §3), one line:}
+- `{file path}` — {what it renders, e.g. "the current view markup" / "current state→DOM rendering"}
+
+If a fact you need lives only in a DO-NOT-READ file, STOP and report the gap as a brief defect — the fix is a brief revision, never reading the view.}
 
 ---
 

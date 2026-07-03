@@ -198,6 +198,7 @@ Capture `{data_shape}` in **domain-entity table form** (see step-03 template). I
 - List relevant file paths → `{implementation_files}`
 - Include: type definitions, API route handlers, the main page component path, CSS/style files
 - These are for technical reference, NOT layout reference
+- **DO-NOT-READ list (redesign scope only):** for `{feature_scope}` = "redesign", also list every file that renders the target surface's CURRENT markup/structure — the view entry point (page/HTML/component file), its section components, and any layout-owning module (state→DOM rendering, template builders) → `{do_not_read_files}`, one line each with a short "what it renders" note. You already touched these in the mutation-derivation audit above (grepping verbs, not layout) — record their paths now so brief §8 can name them as off-limits to the designer. This list feeds the §8 🚫 DO-NOT-READ block; a redesign brief without it leaves the current layout one innocent file-open away (the anchoring hole). For "new" scope, leave `{do_not_read_files}` unset.
 
 ### 3a. Linked-records inventory — every on-screen value that IS a foreign record
 
