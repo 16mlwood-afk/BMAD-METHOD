@@ -119,6 +119,7 @@ This brief was generated from the codebase after implementation. It intentionall
 - Every id in `frames` is a rendered frame. An un-drawn frame is inferred downstream and ships thin.
 {if has_shell_role}- Render under the `{required_shell}` shell; the chrome named in `forbidden_chrome` (§5) MUST NOT appear over this surface.
 {endif}{if linked_records_inventory is non-empty}- §2a expand-in-context (§13): acting on a linked reference opens the foreign record's OWN fields in a drawer *over* this surface — never inert duplicated text, never a navigate-away, never a loud button/CTA/pill/chip. "Open full {sibling} →" is a quiet secondary action only.
+{endif}{if is_live_process_surface}- §2c runtime contract: every lifecycle state has its state-variant frame drawn (`{primary}--{state}` ids in `frames`); the design's liveness claims stay inside the §2c staleness budget; every §2c control verb is reachable in the states where it is legal.
 {endif}- The §5 hard-failure list holds — a design tripping any §5 item is rejected — and status stays inside the §4 colour system (the product accent is interaction-only, never a status).
 {for inv in {contract_must_preserve}}- {inv}
 {endfor}
@@ -232,6 +233,37 @@ or as workflow questions):**
 {endfor}
 
 **Terminology — use consistently:** {finance_terminology}
+
+---
+{endif}
+
+{if {is_live_process_surface}}
+## 2c. Runtime behavior contract
+
+*This surface's primary job is watching/controlling a **long-running in-flight process**. The temporal
+semantics below MUST survive the blank-canvas redesign — they describe what changes over time and what
+the operator can do about it, never how to lay it out. Each lifecycle state below is a required
+state-variant frame in §7 (the film-strip): a state this brief names but the design never draws ships
+un-designed.*
+
+**Run lifecycle (from the implementation's own state machine — design every state):**
+
+| State | What is true in it | Operator's question | Legal control verbs |
+|---|---|---|---|
+| {state} | {what the process is doing / has done} | {e.g. "is it still working?", "what failed?"} | {pause / resume / cancel / retry / none} |
+
+{One row per lifecycle state in `{runtime_behavior_contract}`. Transitions and triggers as a short plain-English list below the table.}
+
+**Per-item states (including every failure/partial lane):** {per-item states — throttled, held, load-error, retrying, skipped, missing-at-source, … Partial failure is the normal case, not an edge case; the design must make "done with exceptions" distinguishable from "done clean" at a glance.}
+
+**Update transport & staleness (honesty constraint):** {how the surface learns of change — pushed message / storage listener / poll — and its cadence. The design may only promise the liveness this transport delivers: if the display can be N seconds stale, the design must not present itself as real-time. State the staleness budget explicitly.}
+
+**Control verbs (outcomes, with real semantics):** {each verb the operator has over a run in flight, with what it actually does — e.g. "stop the run without losing completed work (cancel drains in-flight items)", "resume a paused run from where it stopped". Never buttons — jobs.}
+
+**Progress signals available (derive from these — presentation is the design's):** {the raw signals — counts by state, per-item/per-marketplace telemetry, timing data, run-report/history data. No progress-bar, spinner, or log-panel prescription here.}
+
+**Open questions — unresolved runtime semantics (do NOT guess these):**
+{the unresolved entries from `{runtime_behavior_contract}` — e.g. what cancel does to in-flight items, whether a run is resumable. Omit the block when none.}
 
 ---
 {endif}
