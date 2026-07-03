@@ -188,15 +188,30 @@ Worktrees created via `EnterWorktree` start on an auto-generated name like `work
 current=$(git branch --show-current)
 case "$current" in
   worktree-*)
-    new_name="docs/design-brief-{target_slug}"
+    new_name="docs/design-brief-{target_slug}-$(date +%Y%m%d)"
     git branch -m "$new_name"
     ;;
 esac
 ```
 
+The date suffix is load-bearing, not cosmetic: material revisions re-run on the SAME slug by design (brief-revision-policy), and delivery branches leak on the remote (see §7 — `--delete-branch` doesn't work from worktrees), so an un-suffixed deterministic name collides with its own previous delivery.
+
 If the branch is already conventionally named (`docs/...`, `feat/...`, etc.), skip the rename.
 
 ### 5. Push the Branch
+
+Guard first — if the target branch name already exists on origin (a leftover from a previous same-slug delivery, possible even with the date suffix on a same-day re-run), check its PR state before pushing:
+
+```bash
+if git ls-remote --exit-code --heads origin "$(git branch --show-current)" >/dev/null 2>&1; then
+  gh pr list --head "$(git branch --show-current)" --state all --json state --jq '.[0].state'
+fi
+```
+
+- `MERGED` (or no PR) → the remote branch is a stale leak; safe to replace: push with `--force-with-lease`.
+- `OPEN` → HALT. A genuinely in-flight delivery exists for this branch — surface it to the user instead of clobbering.
+
+Then push:
 
 ```bash
 git push -u origin "$(git branch --show-current)"
@@ -239,13 +254,15 @@ Capture the PR number from the `gh pr create` output as `{pr_number}`.
 Prefer the standard squash-merge:
 
 ```bash
-gh pr merge {pr_number} --squash --delete-branch
+gh pr merge {pr_number} --squash
 ```
+
+Do NOT pass `--delete-branch`: from inside a worktree it fails (`fatal: 'main' is already used by worktree...`) because the flag tries to check out `main` locally after deleting. The remote branch is deleted explicitly in §8 instead — never leave it to auto-cleanup that structurally can't run here.
 
 If branch protection blocks the merge AND the failing check is structurally unavailable (GH Actions quota exhausted, zero-step CI failure — see project `CLAUDE.md` "CI Health Check"), retry with admin override:
 
 ```bash
-gh pr merge {pr_number} --squash --delete-branch --admin
+gh pr merge {pr_number} --squash --admin
 ```
 
 The `--admin` escape is acceptable here because the brief is doc-only — no runtime impact. **Never use `--admin` to bypass real CI signal.** The condition for `--admin` is:
@@ -261,6 +278,14 @@ If both conditions are not met, halt and surface to the user.
 ```bash
 gh pr view {pr_number} --json state,mergedAt,mergeCommit
 ```
+
+Once `state` is `MERGED`, delete the remote delivery branch explicitly (this works fine from a worktree, unlike `--delete-branch`):
+
+```bash
+git push origin --delete "$(git branch --show-current)"
+```
+
+Skipping this is how stale `docs/design-brief-*` branches accumulate on origin and collide with future same-slug deliveries.
 
 If `"state": "MERGED"`, the delivery succeeded. The local error from step 7 (if any) is non-blocking and unrelated to merge success.
 
