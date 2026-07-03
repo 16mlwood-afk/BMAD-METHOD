@@ -10,6 +10,7 @@ change_log:
 inherited_by:
   - inbound-flow        # Amazon FBA inbound & inventory operations
   - accounting-tools    # VAT / accounting tool
+  - bison-ops           # Amazon invoice retrieval (Chrome extension) — inherits since 2026-07-03 (docs/design-policy.md v1, first residue-only policy)
   # future Bison Management operational tools inherit by adding `inherits: bison-product-family-policy` to their docs/design-policy.md
 precedence: "project design-policy.md  >  THIS overlay  >  shared/design-standards.md  >  code tokens"
 ---
