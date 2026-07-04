@@ -184,15 +184,17 @@ Show:
    ```
 
    If `{dropped_capabilities}` is empty, state one line: "All capabilities the current surface exposes are carried forward — no drops." This disclosure is the *output* half of the anti-silent-drop contract (the *log* half is `{dropped_capabilities}` + the brief's §1 subsection); the drop must reach the user's eyes at hand-off, not just sit in a state variable.
-4. Copy-paste prompt for Claude Design:
+4. Claude Design intake pointer — paste the SHORT prompt below, **not** the brief body. Claude Design reads the brief FROM the connected repo by path; the pointer just tells it where:
 
 > **To hand off to Claude Design:**
 >
-> "Connect to **{github_repo_url}** and read `{output_path_relative_to_repo_root}` on `main`. This is a design brief for {feature_name}. Design the UI following the brief exactly."
+> "Connect to **{github_repo_url}** and read `{output_path_relative_to_repo_root}` on `main`. This is a design brief for {feature_name}. Design the UI following the brief exactly, rendering every frame in its §7 Surface Inventory."
 >
 > {If external, append: "Apply the {design_system_name} design system — ignore CSS tokens in the repo's style files."}
 >
 > {If feature_scope == "redesign", append: "Read ONLY the files the brief's §8 names — the §8 DO-NOT-READ files render the current layout and are off-limits (the brief omits it deliberately)."}
+
+**Terminal-native alternative (no Claude Design round-trip):** run `design-synthesize`, which reads THIS brief locally from disk and emits a code-shaped bundle for `design-implement` — the copy-paste-free path when a repo-connected Claude Design session isn't wanted. Either way the brief is the single source of truth; its body is never pasted into a chat.
 
 If `{has_analytics_band}` is `true`, add one line: "An analytics presentation rationale (the reasoning behind the page-mode, band, and archetype choices) will be written alongside this brief and delivered with it." Do NOT inline that reasoning into the brief or this summary — it lives in the rationale artifact.
 

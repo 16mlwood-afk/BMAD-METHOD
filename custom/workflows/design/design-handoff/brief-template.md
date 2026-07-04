@@ -85,7 +85,7 @@ deferred_violations:
 
 ## For Claude Design
 
-> **Repository:** **{github_repo_url}** (branch: `main`). Connect to THIS repository to read referenced files.
+> **Repository:** **{github_repo_url}** (branch: `main`). Connect to THIS repository: Claude Design reads THIS brief from the repo **by the path below** (do NOT paste the brief body into a chat) and reads the files it references. Terminal-native alternative: `design-synthesize` reads this brief locally with no Claude Design round-trip.
 >
 > **This brief:** `{github_repo_url}/blob/main/{output_path_relative_to_repo_root}`
 >
