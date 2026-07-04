@@ -42,6 +42,17 @@ Render from `{return_data}` + `{fill_manifest}`:
 - Amendability of a submitted filing is UNCONFIRMED — treat this submission as irreversible.
 ```
 
+### 2b. Advance the case (best-effort — see step-01 §6)
+
+The portal form is filled and awaiting your decision — reflect that so the PA banner shows the case as ready-to-send if this session ends here. This records state only; it is NOT approval and does not gate §3:
+
+```bash
+bash {project-root}/scripts/vat-filing-case-update.sh --period de-vat-{period} \
+  --status ready_to_send \
+  --last-action "portal filled — awaiting your review before submit" \
+  --next-actions "review the summary|approve to submit"
+```
+
 ### 3. Ask for fresh approval
 
 Ask exactly one question: **"Submit this {period} German VAT return to the AVASK portal via `{pending_submit_action}`? (yes to submit / no to stop — I'll hold the filled form either way)"**
@@ -52,7 +63,7 @@ Then STOP. End the turn. Wait.
 
 - **Clear affirmative** ("yes", "submit", "go") given after the summary → record `{approval_given} = true`, `{approver} = user_name`, `{approval_time}` = current datetime. Write the approval marker `{project-root}/.claude/filing-session/approval-{period}.json` (`{"period","approver","approved_at","action":"{pending_submit_action}"}`) — step-05's gate reads it and it must be minutes-fresh, so write it only now, at real approval. Emit `✔ PHASE 5/7 — HALT — human review complete: approved by {approver} at {approval_time}` and proceed to step-05. Where the settings track is installed, the harness will additionally prompt on the submission call itself (permission `ask`) — expected, not an error.
 - **Anything else** — a question, a correction, a partial approval ("yes but exclude invoice X") → answer/apply it, re-render the summary with the change, and ask again. A modified return needs a fresh yes against the new summary.
-- **No / stop** → emit `✔ PHASE 5/7 — review complete: submission declined; form held unsubmitted`, DELETE the pre-flight marker `{preflight_marker}` (the gate must re-arm — see workflow.md marker-lifecycle rule), and END the workflow cleanly with a one-line state summary (what exists in the portal, how to resume: re-run the workflow; pre-flight is cheap).
+- **No / stop** → emit `✔ PHASE 5/7 — review complete: submission declined; form held unsubmitted`, DELETE the pre-flight marker `{preflight_marker}` (the gate must re-arm — see workflow.md marker-lifecycle rule), and END the workflow cleanly with a one-line state summary (what exists in the portal, how to resume: re-run the workflow; pre-flight is cheap). Record the decline so the PA banner is honest (best-effort — see step-01 §6): `bash {project-root}/scripts/vat-filing-case-update.sh --period de-vat-{period} --last-action "submission declined; form held unsubmitted" --next-actions "re-run file-de-vat to resume"`.
 
 ## NEXT STEP
 

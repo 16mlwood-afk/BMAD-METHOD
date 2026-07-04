@@ -41,6 +41,14 @@ Store `{validation_report}`. Verdict rules:
 - **Clean or clean-with-disclosed-n/a:** emit `✔ PHASE 3/7 — Validation complete` with the one-line verdict.
 - **Defects that change what gets filed** (wrong totals, unresolvable invoices): BLOCKED box. Filing on known-bad data is never the autonomous choice.
 
+### 3. Advance the case (best-effort — see step-01 §6)
+
+```bash
+bash {project-root}/scripts/vat-filing-case-update.sh --period de-vat-{period} \
+  --last-action "return prepared and validated ({invoice count} invoices)" \
+  --next-actions "fill AVASK portal|review & approve|submit"
+```
+
 ## NEXT STEP
 
 Read fully and follow: `{project-root}/_bmad/bmm/workflows/implement/file-de-vat/steps/step-03-portal-fill.md`

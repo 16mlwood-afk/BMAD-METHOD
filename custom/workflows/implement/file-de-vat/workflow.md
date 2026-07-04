@@ -61,7 +61,16 @@ main_config: '{project-root}/_bmad/bmm/config.yaml'
 
 Step-file architecture. Steps 1–3 run autonomously (within the rules above); step 4 is a mandatory interactive HALT; step 5 runs only after fresh approval.
 
-State variables: `{period}` (e.g. `2026-Q1`), `{period_source}` (`user-named` | `defaulted`), `{preflight_marker}`, `{return_data}`, `{validation_report}`, `{fill_manifest}`, `{pending_submit_action}` (`avask_submit` default; `avask_file_invoices` when step-03 defers it as the trigger), `{approval_given}`, `{approver}`, `{approval_time}`, `{approval_marker}`, `{confirmation_ref}`.
+State variables: `{period}` (e.g. `2026-Q1`), `{period_source}` (`user-named` | `defaulted`), `{preflight_marker}`, `{return_data}`, `{validation_report}`, `{fill_manifest}`, `{pending_submit_action}` (`avask_submit` default; `avask_file_invoices` when step-03 defers it as the trigger), `{approval_given}`, `{approver}`, `{approval_time}`, `{approval_marker}`, `{confirmation_ref}`, `{case_slug}` (`de-vat-{period}` lowercased — the PA case key).
+
+## CASE RECORD (PA mode)
+
+Alongside the phase markers, this workflow keeps a durable **filing case** in comms_dashboard so the session-start PA banner can LEAD with an unsent, near-due filing instead of waiting to be asked. The case is keyed by `{case_slug}` = `de-vat-{period}` lowercased (e.g. `de-vat-2026-q2`). Each boundary step advances it via `{project-root}/scripts/vat-filing-case-update.sh` (step-01 §6, step-02 §3, step-04 §2b/§4, step-05 §1). Contract:
+
+- **Best-effort, never blocking.** The helper always exits 0; a comms_dashboard outage degrades PA visibility, never the filing. No phase gates on its result.
+- **Lifecycle:** `in_progress` (pre-flight passed) → `ready_to_send` (portal filled, awaiting your review) → `sent` (submitted). `sent` is terminal server-side — a resumed session can advance the case but never un-sends a filed return.
+- **The `sent` write is re-prompted deterministically** by a PostToolUse reminder (`scripts/hooks/avask-submit-sent-reminder.sh`) right after the submission tool runs, so step-05's write is never silently skipped. It NEVER auto-marks — an ambiguous or failed submit must not show as sent — it only re-prompts the step-05 write once a real confirmation exists.
+- **State reporting only.** It is NEVER a substitute for the step-04 human-approval HALT.
 
 ## INITIALIZATION
 

@@ -22,7 +22,13 @@ Emit `▶ PHASE 6/7 — Submit: submitting the approved {period} return now via 
 
 Call the approved submission action — `mcp__avask-filing__avask_submit`, or `mcp__avask-filing__avask_file_invoices` where step-03 determined it is the portal's trigger (`{pending_submit_action}`). The anti-retry and ambiguity rules below apply identically to either. Then verify: capture the portal's confirmation state (reference number, timestamp, status page content) as `{confirmation_ref}`.
 
-- **Success:** emit `✔ PHASE 6/7 — Submit complete: confirmation {confirmation_ref}`.
+- **Success:** emit `✔ PHASE 6/7 — Submit complete: confirmation {confirmation_ref}`. Then mark the case FILED — this is the `sent` write, done only now that a real confirmation is captured (a PostToolUse reminder, `scripts/hooks/avask-submit-sent-reminder.sh`, re-prompts this write right after the submit tool runs so it is never skipped; it never auto-marks, because an ambiguous or failed submit must never show as sent):
+
+  ```bash
+  bash {project-root}/scripts/vat-filing-case-update.sh --period de-vat-{period} \
+    --status sent --submitted-now --confirmation-ref "{confirmation_ref}" \
+    --last-action "filed {period} — confirmation {confirmation_ref}"
+  ```
 - **Failure or ambiguous outcome:** BLOCKED box. State plainly whether the submission may have gone through ("portal errored AFTER the submit action — the return may be filed; do not re-submit until we verify"). An ambiguous submit is NEVER retried automatically — double-filing is the failure mode.
 
 ### 2. Phase 7 — Confirmation receipt

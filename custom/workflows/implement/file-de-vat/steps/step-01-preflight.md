@@ -65,6 +65,19 @@ This marker is the PROOF a PreToolUse gate on `mcp__avask-filing__*` reads. Writ
 
 Emit `✔ PHASE 1/7 — Pre-flight complete: {n} PASS, {n} n/a, 0 blocking` and store `{preflight_marker}`.
 
+### 6. Register the case (best-effort — never blocks the filing)
+
+Advance the durable filing case so the session-start PA banner leads with real state (workflow.md → case-record contract). Use the slug `de-vat-{period}` lowercased (e.g. `de-vat-2026-q2`):
+
+```bash
+bash {project-root}/scripts/vat-filing-case-update.sh --period de-vat-{period} \
+  --status in_progress \
+  --last-action "pre-flight passed" \
+  --next-actions "prepare & validate return|fill AVASK portal|review & approve|submit"
+```
+
+The helper always exits 0 — a comms_dashboard outage degrades PA visibility, never the filing. Do not gate the phase on its result. Set `--filing-due {ISO}` here only if check 1 established a concrete due date; never invent one.
+
 ## NEXT STEP
 
 Read fully and follow: `{project-root}/_bmad/bmm/workflows/implement/file-de-vat/steps/step-02-prepare-return.md`
