@@ -100,7 +100,13 @@ ch = (ensure('SessionStart', None, 'prod-readiness-probe.sh')
       # only reliable "feature work starting" signal — not a skippable step)
       + ensure_cmd('PostToolUse', 'EnterWorktree',
                    f'bash "{forkdir}/wip-claim-on-worktree.sh" 2>/dev/null || true',
-                   'wip-claim-on-worktree.sh', 5))
+                   'wip-claim-on-worktree.sh', 5)
+      # …and bootstrap the worktree's VERIFIABILITY — generate SvelteKit ambient
+      # types (svelte-kit sync) so LSP/tsc are trustworthy from the first edit,
+      # not wall-to-wall phantom errors (worktree-portability.md §9; fork-gaps 2026-07-04)
+      + ensure_cmd('PostToolUse', 'EnterWorktree',
+                   f'{hooks}/worktree-verify-bootstrap.sh',
+                   'worktree-verify-bootstrap.sh', 30))
 if ch: json.dump(d, open(p,'w'), indent=4); print(f"  ✓ registered {ch} hook(s) in settings.json")
 else: print("  • hooks already registered in settings.json")
 PY
