@@ -31,6 +31,8 @@ Call the approved submission action — `mcp__avask-filing__avask_submit`, or `m
   ```
 - **Failure or ambiguous outcome:** BLOCKED box. State plainly whether the submission may have gone through ("portal errored AFTER the submit action — the return may be filed; do not re-submit until we verify"). An ambiguous submit is NEVER retried automatically — double-filing is the failure mode.
 
+> **Owner filed manually (outside this workflow)?** When the owner reports a period already filed on the AVASK portal ("i officially filed q2") — so phases 1–6 here never ran — do NOT hand-assemble the close-out. Closing out is TWO writes with TWO different status words for the same event (portal-truth marker `filed` + PA case `sent`; `vat-filing-case-update.sh --status filed` silently 400s because the case enum has no `filed`). Run the single wrapper that owns the mapping and fails loudly instead: `bash {project-root}/scripts/close-out-filing.sh --period {period} [--by "…"] [--note "…"] [--confirmation-ref "…"]`. It sets the human-owned portal-truth marker to `filed` (locks the submit gate — safe direction, never opens it) then advances the case to `sent`. The marker stays owner-driven — this records a portal reading the owner has already done; it does not decide filing status.
+
 ### 2. Phase 7 — Confirmation receipt
 
 Emit `▶ PHASE 7/7 — Confirmation receipt`.
