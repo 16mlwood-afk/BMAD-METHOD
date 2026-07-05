@@ -84,7 +84,22 @@ Run both reviews against `{diff_output}`. These are orthogonal — the adversari
 
 If possible, run them in parallel using separate subagents with read access to the project but no context except `{diff_output}`.
 
+#### Scale the adversarial pass to diff size
+
+Measure the change size first:
+
+```bash
+git diff {baseline_commit} --stat | tail -1
+```
+
+- **≤ ~400 changed lines:** run a SINGLE adversarial reviewer (2a) over the whole `{diff_output}`.
+- **> ~400 changed lines:** SPLIT the adversarial pass into **2–3 layer-scoped reviewers launched in PARALLEL** — each gets the same `{diff_output}` but a scoped mandate: partition by top-level directory or by pipeline layer (producer / transport / consumer). A single reviewer over a large diff stalls against the 600s stream watchdog and thins coverage; parallel layer-scoped reviewers give the same coverage at shorter per-agent runtime. Merge their findings before step 3.
+
+The edge-case hunter (2b) stays a **SINGLE agent regardless of size** — it is method-driven (exhaustive path enumeration), not runtime-bottlenecked the way the attitude-driven adversarial pass is.
+
 #### 2a. Adversarial Review
+
+Run this **once** (small diff) or **once per scope partition** (large diff, in parallel) per the sizing above — each invocation gets the same task with its scoped mandate stated in the prompt.
 
 ```xml
 <invoke-task>Review {diff_output} with also_consider="If the diff expands a model with new fields, check the OUTBOUND PAYLOAD CONTEXT section (if present) for webhook/export payload builders that serialize a subset of that model. Flag any fields on the expanded model that are missing from the outbound payload as potential drift." using {project-root}/_bmad/core/tasks/review-adversarial-general.xml</invoke-task>
@@ -146,6 +161,7 @@ With findings in hand, read fully and follow: `{project-root}/_bmad/bmm/workflow
 - Diff constructed from baseline_commit
 - New files included in diff
 - Outbound payload context gathered for any expanded models (step 1b)
+- Adversarial pass scaled to diff size (single reviewer ≤ ~400 lines; 2–3 layer-scoped parallel reviewers above)
 - Both review tasks invoked with augmented diff as input
 - Findings received from both reviews
 - Findings merged, normalized, and presented as unified table/TODOs
@@ -156,6 +172,7 @@ With findings in hand, read fully and follow: `{project-root}/_bmad/bmm/workflow
 - Not including new untracked files in diff
 - Invoking tasks without providing diff input
 - Running only one review and skipping the other
+- Running a SINGLE adversarial reviewer over a >400-line diff — it stalls against the 600s watchdog and thins coverage; split it into layer-scoped parallel reviewers instead
 - Accepting zero findings from both reviews without questioning
 - Presenting fewer findings than the review tasks returned without explicit instruction to do so
 - Not attributing findings to their source (adversarial vs edge-case)

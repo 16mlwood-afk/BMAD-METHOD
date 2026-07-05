@@ -129,7 +129,12 @@ Load `{main_config}` and resolve: `user_name`, `communication_language`, `autono
 
 ### Where this session runs
 
-Run in a worktree per project policy (the parallel-session edit guard would otherwise block the marker/receipt writes). This is consistent by construction: the workflow's marker writes and the PreToolUse avask gate both resolve against the running session's `{project-root}`, so within one session they always see the same `.claude/filing-session/`. The receipt artifact is delivered to main via the normal delivery contract at session close.
+Run in a worktree per project policy (the parallel-session edit guard would otherwise block the marker/receipt writes). **Two roots, not one — do not conflate them** (fork-gap 2026-07-04: "consistent by construction" was false in a worktree):
+
+- **Step files** resolve from wherever they are readable. A fresh worktree contains **no `_bmad/`** (it is untracked on `main`, and the EnterWorktree auto-sync is opt-in / off by default), so `{project-root}/_bmad/.../step-NN.md` will 404 in the worktree and you will read the step files from the **MAIN checkout** instead. That is expected — the step content is identical; only the path differs.
+- **Filing-session markers and the PreToolUse avask gate** must both anchor to the gate's own root, **`CLAUDE_PROJECT_DIR` (the MAIN checkout)** — NOT the worktree's `.claude/`. The gate reads markers from `CLAUDE_PROJECT_DIR/.claude/filing-session/`; a marker written into the worktree's `.claude/` is invisible to it and the gate will deny a legitimate session. Write every pre-flight / approval / portal-reconcile marker under `CLAUDE_PROJECT_DIR/.claude/filing-session/`.
+
+Init check: if `_bmad/` is absent in the worktree and you have not run `sync-bmad-workflows.sh --worktree "$(pwd)"`, do not treat the missing path as an error — resolve step files from the main checkout and keep marker writes anchored to `CLAUDE_PROJECT_DIR`. The receipt artifact is delivered to main via the normal delivery contract at session close.
 
 ## EXECUTION
 

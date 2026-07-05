@@ -21,6 +21,7 @@ WORKTREE_TARGET=""
 REAP_ONLY=false
 REAP_PATH=""
 ONLY_TARGET=""
+COMMIT_SYNCED=false
 
 usage() {
   echo "Usage: $0 [--check] [--force] [--only <path>] [--pull <path> | --worktree <path> | --reap [<path>]]"
@@ -29,6 +30,9 @@ usage() {
   echo "                  Includes automatic stale-worktree reap on each target."
   echo "  --check         Report drift without modifying anything"
   echo "  --force         Sync even if targets have local-only content (DESTRUCTIVE)"
+  echo "  --commit        After writing, scoped-commit the synced BMAD paths in each project"
+  echo "                  (_bmad/, .claude/skills/, .claude/commands/bmad/, CLAUDE.md) so the"
+  echo "                  sync has a real done-state instead of leaving a dirty tree"
   echo "  --only PATH     Sync just ONE project (its root or _bmad/bmm/workflows path); skip all others"
   echo "  --pull PATH     Pull changes from a project back to the source of truth"
   echo "  --worktree PATH Sync custom workflow dirs + skills into a single worktree path"
@@ -42,6 +46,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --check) CHECK_ONLY=true; shift ;;
     --force) FORCE=true; shift ;;
+    --commit) COMMIT_SYNCED=true; shift ;;
     --pull)
       [[ -z "${2:-}" ]] && { echo "ERROR: --pull requires a path argument"; usage; }
       PULL_TARGET="$2"; shift 2 ;;
@@ -77,6 +82,21 @@ for cmd in rsync jq shasum; do
     exit 1
   fi
 done
+
+# Durability guard (fork-gap 2026-07-05 "sync has no delivery contract", part c):
+# the sync reads the LOCAL fork working tree, so syncing while the fork is ahead of its
+# remote propagates UNPUSHED edits to every target — state that exists nowhere in version
+# control if this checkout is lost. Warn (don't block) on the main sync paths.
+if [[ -z "$PULL_TARGET" && -z "$WORKTREE_TARGET" ]] && ! $REAP_ONLY; then
+  fork_ahead=$(git -C "$SCRIPT_DIR" rev-list --count '@{upstream}..HEAD' 2>/dev/null || echo 0)
+  if [[ "${fork_ahead:-0}" -gt 0 ]]; then
+    echo "⚠  Local fork is $fork_ahead commit(s) ahead of its remote (@{upstream})."
+    echo "   Syncing now propagates UNPUSHED fork state to all targets. If this checkout is"
+    echo "   lost before you push, those projects carry wiring that exists nowhere in git."
+    echo "   Recommend: git push myfork custom   (then re-run sync)."
+    echo ""
+  fi
+fi
 
 SYNC_DIRS=(
   "implement"
@@ -1197,6 +1217,38 @@ classify_local_only() {
   done
 }
 
+# Delivery contract (fork-gap 2026-07-05 "sync has no delivery contract", parts a+b):
+# after a project is synced, make "did this land durably?" VISIBLE instead of leaving a
+# silently-dirty tree. Reports the count of uncommitted BMAD-managed path changes
+# (tracked-modified vs untracked); with --commit, scoped-commits just those paths.
+# Gitignored paths are neither reported nor committed (git never sees them) — that's the
+# correct conservative behavior; we never force-add ignored files.
+summarize_bmad_delivery() {
+  local project_root="$1"
+  $CHECK_ONLY && return 0
+  git -C "$project_root" rev-parse --is-inside-work-tree &>/dev/null || return 0
+  local bmad_paths=(_bmad .claude/skills .claude/commands/bmad CLAUDE.md)
+  local status total untracked tracked
+  status=$(git -C "$project_root" status --porcelain -- "${bmad_paths[@]}" 2>/dev/null || true)
+  [[ -z "$status" ]] && return 0
+  total=$(printf '%s\n' "$status" | grep -c . || true)
+  untracked=$(printf '%s\n' "$status" | grep -c '^??' || true)
+  tracked=$(( total - untracked ))
+  echo "  ℹ  delivery: $total BMAD path change(s) uncommitted ($tracked tracked-modified, $untracked untracked)"
+  if $COMMIT_SYNCED; then
+    git -C "$project_root" add -- "${bmad_paths[@]}" 2>/dev/null || true
+    if git -C "$project_root" diff --cached --quiet -- "${bmad_paths[@]}" 2>/dev/null; then
+      echo "         nothing stageable (all changes gitignored) — commit skipped"
+    elif git -C "$project_root" commit -q -m "chore(bmad): deliver synced fork workflows/skills/commands" -- "${bmad_paths[@]}" 2>/dev/null; then
+      echo "  OK    delivery: scoped-committed BMAD path changes"
+    else
+      echo "  ⚠  delivery: scoped commit failed — resolve by hand"
+    fi
+  else
+    echo "         run with --commit to deliver them, or commit by hand"
+  fi
+}
+
 synced=0
 skipped=0
 stale=0
@@ -1608,6 +1660,9 @@ STAMP
     if project_in_skills_transition "$project_root"; then
       deliver_skills_native_overlay "$project_root"
     fi
+
+    # Delivery contract: report (and optionally --commit) the synced BMAD paths.
+    summarize_bmad_delivery "$project_root"
 
     synced=$((synced + 1))
   fi

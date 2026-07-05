@@ -48,7 +48,7 @@ Evaluate each check and print the table with PASS / FAIL / n/a and a one-line de
 
 ### 4. Write the pre-flight marker
 
-Write `{project-root}/.claude/filing-session/preflight-{period}.json`:
+Write `${CLAUDE_PROJECT_DIR}/.claude/filing-session/preflight-{period}.json` — anchor to `CLAUDE_PROJECT_DIR` (the MAIN checkout), **not** `{project-root}` (in a worktree that is the worktree's `.claude/`, which the PreToolUse avask gate cannot see — see workflow.md "Where this session runs"):
 
 ```json
 {
