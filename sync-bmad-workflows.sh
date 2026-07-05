@@ -87,14 +87,21 @@ done
 # the sync reads the LOCAL fork working tree, so syncing while the fork is ahead of its
 # remote propagates UNPUSHED edits to every target — state that exists nowhere in version
 # control if this checkout is lost. Warn (don't block) on the main sync paths.
+# Key on the FORK's own remote branch (myfork/<branch>), NOT @{upstream} — the custom
+# branch tracks the original bmad-code-org upstream (origin/main), so @{upstream}..HEAD is
+# always ~600 (the whole fork divergence) and would fire on every sync = ignore-training noise.
 if [[ -z "$PULL_TARGET" && -z "$WORKTREE_TARGET" ]] && ! $REAP_ONLY; then
-  fork_ahead=$(git -C "$SCRIPT_DIR" rev-list --count '@{upstream}..HEAD' 2>/dev/null || echo 0)
-  if [[ "${fork_ahead:-0}" -gt 0 ]]; then
-    echo "⚠  Local fork is $fork_ahead commit(s) ahead of its remote (@{upstream})."
-    echo "   Syncing now propagates UNPUSHED fork state to all targets. If this checkout is"
-    echo "   lost before you push, those projects carry wiring that exists nowhere in git."
-    echo "   Recommend: git push myfork custom   (then re-run sync)."
-    echo ""
+  fork_branch=$(git -C "$SCRIPT_DIR" branch --show-current 2>/dev/null || echo custom)
+  fork_ref="myfork/${fork_branch}"
+  if git -C "$SCRIPT_DIR" rev-parse --verify --quiet "$fork_ref" >/dev/null 2>&1; then
+    fork_ahead=$(git -C "$SCRIPT_DIR" rev-list --count "${fork_ref}..HEAD" 2>/dev/null || echo 0)
+    if [[ "${fork_ahead:-0}" -gt 0 ]]; then
+      echo "⚠  Local fork is $fork_ahead commit(s) ahead of ${fork_ref} (unpushed)."
+      echo "   Syncing now propagates UNPUSHED fork state to all targets. If this checkout is"
+      echo "   lost before you push, those projects carry wiring that exists nowhere in git."
+      echo "   Recommend: git push myfork ${fork_branch}   (then re-run sync)."
+      echo ""
+    fi
   fi
 fi
 
