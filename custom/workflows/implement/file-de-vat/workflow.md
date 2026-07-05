@@ -41,7 +41,7 @@ main_config: '{project-root}/_bmad/bmm/config.yaml'
 | 6 | Submit | step-05-submit-and-receipt |
 | 7 | Confirmation receipt | step-05-submit-and-receipt |
 
-**Phase banner format** (emit on entry and on completion of every phase):
+**Phase banner format** — the *trace-tier* form of a transition (emit on entry and on completion of every phase):
 
 ```text
 ▶ PHASE n/7 — {phase name}: {one-line what happens now}
@@ -55,6 +55,40 @@ main_config: '{project-root}/_bmad/bmm/config.yaml'
   What happened: {one line}
   Why I stopped: {one line}
   What I need from you: {one specific action or answer}
+```
+
+## OUTPUT — two tiers and the voice slot
+
+The phase contract above is load-bearing — visibility is the whole point — but its raw form reads as an operator console, and when the gate's agent-facing text leaks straight to the user the session feels like three systems, not one assistant. Surface the contract in two tiers and let the executing agent speak in three sanctioned spots. This is presentation only: it does not weaken, move, or reword a single gate, marker, HALT, or approval rule above. On any conflict, the gate and the answer-shape standard win and the voice yields.
+
+**Two tiers.**
+
+- **Conversational lane (default — what the user reads):** one plain-language line per phase transition, the step-04 HALT summary, and the BLOCKED box. This is all the user sees unless they ask for more. The lane-line and its `▶ PHASE n/7` banner are the SAME transition at two altitudes — emitting the human line already satisfies "every phase announces"; the banner is its trace twin, not a second event.
+- **Trace tier (on demand):** the raw `▶ PHASE n/7` / `✔` banners, worktree/sync/hook logs, and any agent-facing gate `permissionDecisionReason`. Surface it only when the user says "show the trace" (or equivalent), or when a raw reason is genuinely needed to act. Never dump it by default — but never withhold it when asked (compression is not concealment; a failed check, skipped step, or unverified state is stated plainly in the lane regardless).
+
+**The voice slot (`persona_slot`).** The agent executing this workflow MAY speak in its own voice in exactly three spots (per `shared/workflow-personas.md` §1 — presentation only, never decision-making):
+
+1. **Opening re-orientation** — one line at session start (step-01 §1) naming what we're about to do.
+2. **Risk acknowledgement on a BLOCK** — the `What happened` / `Why I stopped` lines atop a BLOCKED box.
+3. **"I" on the approval recommendation** — first person when owning the step-04 recommendation.
+
+If no voice is bound, these render plain and anonymous — **today's behavior, unchanged.** The workflow itself stays voice-agnostic and names no persona; the binding is the project's, per `persona-placement.md`. (In accounting-tools the slot is filled by the executing agent **Anya** (`custom/agents/anya-de-vat.md`), handed off from the session-start **Remy** brief — but this file does not depend on that.) The voice flavors those three lines and nothing else: it never drives a decision, reopens a menu, or changes phase/HALT/gate structure.
+
+**Decision-line contract (the BLOCKED box, tightened).** Every BLOCKED box is written for the OWNER, not the agent. The `What I need from you:` line MUST:
+
+- be in **owner terms** — portal status, the DE Apr–Jun row, "confirm Q2 already filed" — NEVER tool names, script paths, marker filenames, or raw `permissionDecisionReason` text;
+- name the **single fact that would unblock it** and the **smallest next move**;
+- push the raw gate reason / tool output to the **trace tier** (available on "show the trace").
+
+This is a presentation wrapper only. It MUST NOT soften, restate-away, or invent a path around a deny — the gate's decision stands exactly as the hook made it. A voice that weakens a deny is a `workflow-personas.md` §1 violation (voice driving a decision). Same block, same safety; the owner just reads it in their own terms.
+
+**Worked example — a gate deny becomes a decision-line.** A mutating avask tool denied by the PreToolUse gate returns an agent-facing `permissionDecisionReason` ("…portal-truth = not_checked… scripts/set-filing-status.sh --period … Do NOT write the marker by hand"). Do NOT surface that raw. Render:
+
+```text
+■ BLOCKED — need you (phase 6/7 — Submit)
+  What happened: I can't confirm whether {period} was already filed.
+  Why I stopped: the receipt, the PA banner, and the ledger disagree, and none of them is portal-truth — I won't submit on a guess.
+  What I need from you: read the AVASK portal's DE {month-range} row and tell me what it says — filed, or still "Provide Data". (Say "show the trace" for the exact gate reason.)
 ```
 
 ## WORKFLOW ARCHITECTURE

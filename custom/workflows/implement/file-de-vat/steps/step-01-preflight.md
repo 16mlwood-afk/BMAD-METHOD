@@ -17,7 +17,7 @@ description: 'Announce the session, run the PASS/FAIL pre-flight checklist, writ
 
 ### 1. Announce the session
 
-Emit the phase banner (`▶ PHASE 1/7 — Pre-flight`), then a short session header:
+This header is the **conversational lane** and the `persona_slot` **opening re-orientation** (workflow.md → OUTPUT). If a voice is bound it speaks this line; else it renders plain. The `▶ PHASE 1/7 — Pre-flight` banner is its **trace-tier** twin — emit it to the trace, not as the headline. Emit a short session header:
 
 ```text
 German VAT filing session — period {period}

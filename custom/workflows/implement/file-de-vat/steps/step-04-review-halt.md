@@ -17,7 +17,7 @@ description: 'Mandatory HALT: present the exact submission context and obtain fr
 
 ### 1. Announce
 
-Emit `▶ PHASE 5/7 — HALT — human review: nothing will be submitted until you approve below`.
+The submission summary (§2) and the approval question (§3) ARE the **conversational lane** here — the HALT is already human by design. The `▶ PHASE 5/7 — HALT — human review` banner is its **trace-tier** twin; emit it to the trace, then lead the lane with one plain line: *nothing will be submitted until you approve below*. The `persona_slot` **"I" recommendation** spot applies to §3 — a bound voice may own the recommendation in first person ("I'd file this" / "I'd hold — the reconciliation flag isn't resolved"), but the yes/no decision and the gate are the user's and the workflow's, never the voice's.
 
 ### 2. Present the submission summary
 

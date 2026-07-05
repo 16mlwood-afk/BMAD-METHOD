@@ -18,7 +18,7 @@ description: 'Submit the approved return (phase 6) and capture the confirmation 
 
 ### 1. Phase 6 — Submit
 
-Emit `▶ PHASE 6/7 — Submit: submitting the approved {period} return now via {pending_submit_action}`.
+Lane line: *submitting the approved {period} return now.* The `▶ PHASE 6/7 — Submit … via {pending_submit_action}` banner is its **trace-tier** twin. If the submission tool is **denied by the PreToolUse gate**, do NOT surface the raw `permissionDecisionReason` — render it as a **decision-line BLOCKED box** in owner terms (workflow.md → OUTPUT, decision-line contract + worked example), raw reason to trace. The deny stands exactly as the gate made it; the voice never restates a path around it.
 
 Call the approved submission action — `mcp__avask-filing__avask_submit`, or `mcp__avask-filing__avask_file_invoices` where step-03 determined it is the portal's trigger (`{pending_submit_action}`). The anti-retry and ambiguity rules below apply identically to either. Then verify: capture the portal's confirmation state (reference number, timestamp, status page content) as `{confirmation_ref}`.
 
