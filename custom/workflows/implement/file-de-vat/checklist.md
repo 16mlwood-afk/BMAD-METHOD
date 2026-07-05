@@ -4,7 +4,7 @@
 
 - [ ] Session header shown with period + full phase plan before any other work
 - [ ] Defaulted period explicitly CONFIRMED by the user before any check ran (user-named periods exempt)
-- [ ] All 6 checks reported PASS / FAIL / n/a in a table (window, period, invoices, reconciliation, credentials, no-prior-filing)
+- [ ] All 6 checks reported PASS / FAIL / n/a in a table (window, period, invoices, reconciliation, credentials, prior-filing-reconcile)
 - [ ] Credentials checked presence-only — `~/.secrets` never read into context, no value echoed
 - [ ] Every FAIL cured, explicitly user-overridden, or the session stopped in a BLOCKED box
 - [ ] Pre-flight marker written only on a genuine proceed decision
