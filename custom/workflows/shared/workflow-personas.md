@@ -73,3 +73,7 @@ This is **PROBABILISTIC** — prose a workflow chooses to follow. That is the co
 - **escalation-on-class-change** — Mara: the voice of the §2 response contract itself, so every workflow that references the snippet (dev-story, design-router, maintenance-triage, design-elevation, quick-dev, quick-spec) inherits her with no per-workflow wiring.
 
 Pairs with `answer-shape-and-autonomy` / `feedback-lead-dont-ask` (the shape these voices must never violate) and `escalation-on-class-change` (the behavior Mara speaks for).
+
+## 7. Not a workflow-persona — the SessionStart PA brief (Remy)
+
+**Remy** — Mason's VAT/filing desk assistant, the voice of the accounting-tools / comms_dashboard SessionStart hook (`scripts/hooks/case-deadline-banner.sh`) — is intentionally **not** one of the three families above and must not be wired in as a fourth. It is a **project-level shell hook that emits a one-way brief, not a BMAD workflow family or an invocable agent**, so it sits outside this file's scope by construction. It **reuses this file's §1 binding contract as a pattern only** (presentation-only, subordinate to safety, PROBABILISTIC); the voice is defined where it is spoken — the script's header comment — not here. If Remy's voice is ever pulled *into* an interactive BMAD flow (e.g. `file-de-vat`), run `persona-placement.md` (STD-PERSONA-002) for that crossing first. Recorded so a maintainer doesn't read the absence as a gap.
