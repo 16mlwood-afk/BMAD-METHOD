@@ -20,7 +20,7 @@ description: 'Download/locate the design source, extract tokens + layout constra
 
 ## 1. Locate the design source → `{design_dir}`
 
-**URL path:** download and extract exactly as `design-implement` step-01 URL.1 (gzip/tar/HTML handling), then `find … -name "*.html"` to locate the project directory. Store as `{design_dir}`.
+**URL path:** download and extract exactly as `design-implement` step-01 URL.1 (gzip/tar/HTML handling), then `find … -name "*.html"` to locate the project directory. Store as `{design_dir}`. **On the DesignSync (`claude_design`) MCP path (`claude.ai/design/p/<uuid>`), mirror each `get_file` to disk via the context-free persist mechanism in `design-implement` step-01 URL.1b step 3 — never paste `get_file`'s return value through context, or a large bundle blows the very context budget this fan-out exists to protect.**
 
 **Bundle path:** `{design_dir} = {bundle_dir}`; verify `manifest.yaml` + `tokens.css` + at least one `<screen>.html` exist (halt with the malformed-bundle diagnostic if any is missing).
 

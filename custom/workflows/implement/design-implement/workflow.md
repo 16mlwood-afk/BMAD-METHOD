@@ -230,6 +230,19 @@ Halt — do NOT proceed to step 1. If the invariant holds, set `{design_file} = 
 - **`ambiguous`** → warn (two briefs claim `active` for this slug; `brief-revision-policy.md` §2.6) but proceed — the manifest itself is well-formed.
 - **Absent stamp** (a manifest emitted before this contract) → treat as `no_brief` and proceed (backward-compatible default, same posture as the policy's absent-field defaults).
 
+**Freshness reconciliation (every ingest_manifest run) — a manifest can be STALE even when its supersede stamp reads `active`.** Supersede (above) catches a DIFFERENT brief replacing this one; freshness catches the SAME active brief being *materially revised AFTER the manifest was built*, so the manifest now encodes an older design version of a still-current brief. At intake, compare the manifest's provenance — `{ingest_manifest}.ingest.source`, `ingest.target_file`, and the brief `source_run_date` the manifest recorded at build time — against the CURRENT brief matched for `{target_slug}` (`brief-revision-policy.md` Block A / `source_run_date`). If the current brief carries an active material revision NEWER than the manifest's recorded `source_run_date` (same slug, same target_file, later revision), WARN before consuming it:
+
+```
+⚠ MANIFEST STALE (built from a superseded design version)
+  manifest built from:  {ingest.source}  (source_run_date {manifest_source_run_date})
+  current brief:        {matched brief}  (source_run_date {brief_source_run_date}, materially revised since)
+  → the section inventory / grid scaffold may not reflect the current design.
+    Re-run design-ingest against the current brief to refresh, or confirm you
+    intend to apply the older captured version.
+```
+
+This is a **soft warn, not a halt** (symmetric with the `ambiguous` case) — the manifest is still well-formed and may be applied deliberately; it just must never be consumed *silently* as if current. If provenance can't be compared (no `source_run_date` on the manifest or the brief — a pre-contract artifact), record `freshness: unverified` and proceed, same backward-compatible posture as the absent-stamp default.
+
 ### Paths
 
 - `installed_path` = `{project-root}/_bmad/bmm/workflows/implement/design-implement`

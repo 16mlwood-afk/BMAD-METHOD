@@ -79,10 +79,53 @@ This URL is a design-system project read through the **DesignSync** (`claude_des
 0. **Resolve `{design_file}` BEFORE fetching — and URL-decode it.** The `<uuid>` in `claude.ai/design/p/<uuid>` is the DesignSync `projectId`. The target file comes from one of two places, in this order: (a) the `Implement: <file>` line if the input was Claude Design's paste-prompt — it is **already path-decoded** (e.g. `orders-spend/Spend Analysis.html`), use it verbatim; (b) otherwise the URL's `?file=<path>` query param, which is **percent/`+`-encoded** and MUST be decoded — `%2F`→`/`, `+`→space, `%20`→space (e.g. `?file=orders-spend%2FSpend+Analysis.html` → `orders-spend/Spend Analysis.html`). The decoded value is the project-relative key `get_file` and the `list_files` tree match against; an undecoded `%2F`/`+` key will miss every file. If neither source is present, leave `{design_file}` unset and default it at step 4.
 1. `get_project` with `projectId = <uuid>`; verify `type: PROJECT_TYPE_DESIGN_SYSTEM`. (If auth is missing, run `/design-login` first, per the command surface.)
 2. `list_files` to enumerate the project tree (HTML/JSX frames, `tokens/*.css`, `readme.md`, data/app modules).
-3. `mkdir -p /tmp/design-bundle` → `{design_dir}`. For the target frame (the decoded `{design_file}` from step 0), its `<script src>` module dependencies, the `tokens/*.css` files, and `readme.md`, call `get_file <path>` (the decoded path) and write each to `{design_dir}/<path>` **preserving the project-relative path** (so URL.2's README read, URL.3's target-file read, URL.3a's `<script src>`/sibling-`.html` enumeration, and URL.4's token-file reads all resolve against `{design_dir}` unchanged).
+3. `mkdir -p /tmp/design-bundle` → `{design_dir}`. For the target frame (the decoded `{design_file}` from step 0), its `<script src>` module dependencies, the `tokens/*.css` files, and `readme.md`, mirror each file to `{design_dir}/<path>` via the **context-free persist mechanism below** — NOT by pasting `get_file`'s return value back out — **preserving the project-relative path** (so URL.2's README read, URL.3's target-file read, URL.3a's `<script src>`/sibling-`.html` enumeration, and URL.4's token-file reads all resolve against `{design_dir}` unchanged).
+
+> **Mirror `get_file` to disk WITHOUT pulling the bytes through context (fork-side workaround — DesignSync `get_file` has no to-disk sink).** `claude_design`'s only read verb, `get_file`, RETURNS file content into the caller's context — unlike `write_files`, which has a `localPath` sink. So the naive "call `get_file`, then write the returned string to disk" pulls every byte of every mirrored file through the orchestrator context first; a large bundle blows the budget in exactly the case the ingest fan-out exists to protect (the bigger the bundle, the worse it fails). Sidestep it by staging each `get_file` through the harness's tool-results file, so the content lands on disk and NEVER re-enters your context:
+> 1. Call `get_file <path>`. When the result is large the harness auto-persists the raw tool output to a `tool-results/*.txt` JSON file and hands you back only that PATH — treat that file as the mirror source; do NOT echo or re-read its contents into context. (If you must force the raw JSON to a file yourself, write it to a temp path first — same downstream extract.)
+> 2. Extract the file body straight from that JSON to the target path, so the content goes file→file and is never returned to you:
+>
+>    ```bash
+>    python3 -c "import json;print(json.load(open('$TOOL_RESULT_PATH'))['content'])" > "{design_dir}/<path>"
+>    ```
+>
+>    (`content` is the `get_file` payload key; adjust if the MCP nests it, e.g. `['result']['content']`.) A small `get_file` that returned inline rather than via a `tool-results/*.txt` file can be written directly — the O(1)-context win is for the LARGE files that would otherwise dominate the budget.
+>
+> This keeps mirroring **O(1) context regardless of bundle size**. It is a **fork-side workaround**, formalized here so it isn't rediscovered per session — the clean upstream fix is the follow-up noted under step 4.
 4. `{design_file}` is the decoded path from step 0. If it was unset, default to the project's primary HTML frame per `readme.md`.
 
+> **Upstream follow-up (the clean fix — not for this workflow to build).** The persist-to-disk dance in step 3 exists only because DesignSync `get_file` returns content into context. The proper fix is in the MCP itself: give `get_file` a `localPath` sink symmetric with `write_files` (read straight to disk, content never returned to the caller). That would retire the tool-results workaround above. Tracked as a DesignSync gap.
+
 The fetch mechanism is the ONLY difference — URL.2 (README) through URL.6 are mechanism-agnostic and run identically once `{design_dir}` holds the files.
+
+### URL.1c. Size preflight — recommend `design-ingest` for a large surface
+
+**Estimate the surface's scale NOW — after `list_files` + the target `get_file`, BEFORE the inline re-catalog (URL.3–URL.5) spends orchestrator context.** The URL path pulls the whole design into THIS context and re-enumerates every component; a large multi-frame bundle can burn the context budget before the run can even tell the surface was too big — the exact `context-budget-overflow` failure the `design-ingest` manifest path exists to avoid (durable manifest → resumable, checkpointed apply; see the resumable-apply Critical Rule in workflow.md). So gate on a CHEAP, pre-catalog estimate:
+
+- **Frame count** — count the frame-inventory *sources* without tracing them: the `<script src>` module groups the target imports plus the sibling standalone `<frame>.html` files from URL.1's `find` / `list_files` (the same evidence URL.3a lifts into `{design_frame_inventory}`, counted here, not yet cataloged).
+- **Target byte size** — `wc -c {design_dir}/{design_file}` (or the `get_file` payload size on the MCP path).
+
+**Above a SOFT threshold — ≈5 frames OR ≈60KB target (thresholds, not cliffs, per the context-budget principle) — SURFACE this recommendation before continuing:**
+
+```
+────────────────────────────────────────────────────────────────
+◇ Large surface — recommend routing through design-ingest first.
+
+  frames (est):  {n}   ·   target size:  {kb}KB
+  soft threshold: ≥5 frames OR ≥60KB
+
+This URL run would pull the whole design into THIS context and re-catalog it
+inline — a large surface can exhaust the context budget before the grid is even
+built. design-ingest fans out per-frame, enumerates every section under its
+completeness gate into a DURABLE manifest, and hands design-implement a
+resumable, checkpointed apply — the reason that path exists.
+
+  Recommended:  /bmad:bmm:workflows:design-ingest {design_url}
+  then:         /bmad:bmm:workflows:design-implement <the design-ingest-*.md it emits>
+────────────────────────────────────────────────────────────────
+```
+
+This is a **recommendation, not a hard refuse** — a clean, low-cost early exit offered while almost no context has been spent, NOT a halt. In interactive mode, prefer the exit (re-route through `design-ingest`) unless the user says to continue inline; in autonomous mode, DISCLOSE the recommendation and proceed with the inline URL ingest (same posture as the other autonomous-mode disclosures). Below the threshold, record nothing and continue silently to URL.2.
 
 ### URL.2. Read the README
 
