@@ -16,6 +16,14 @@
 # OR a bold `**CLOSED`/`**RESOLVED` closure paragraph in the body.
 # `[partly resolved …]` stays OPEN (it names an owed follow-up).
 #
+# Archive split (2026-07-06, gap 874): resolved entries now MOVE to
+# docs/fork-gaps-archive.md; docs/fork-gaps.md holds ONLY open gaps, so the
+# open set == every entry in the live file and the count matches a trivial
+# heading grep. The body `**RESOLVED`/`**CLOSED` scan is kept as a harmless
+# belt (a resolved entry should never be left here in the first place). This
+# surfacer reads ONLY the live file. It also LISTS the open headings, not just
+# a count, so the backlog is visible without opening the file.
+#
 # Also nudges (one line) when the periodic fork-gaps TREND SCAN is overdue:
 # stamp file .fork-gaps-last-scan (gitignored, touched by the scan) older than
 # 30 days or missing. Deterministic delivery, probabilistic action — the scan
@@ -55,25 +63,32 @@ for ln in text.splitlines():
         cur[1].append(ln)
 
 def is_open(title, body_lines):
+    # HEADING-ONLY (gap 874): closure is the heading tag `[RESOLVED …]`/`[CLOSED …]`
+    # and a resolved entry MOVES to fork-gaps-archive.md, so the live file is
+    # open-only by construction. The old body-scan for **RESOLVED/**CLOSED was
+    # dropped — it false-hid an OPEN entry whose prose merely QUOTED those marker
+    # strings (the 874 entry itself). `[partly resolved …]`/`[partial …]` lack the
+    # bare `[resolved`/`[closed` substring, so they correctly stay open.
     t = title.lower()
-    if "[resolved" in t or "[closed" in t:
-        return False
-    body = "\n".join(body_lines).lower()
-    for marker in ("**closed", "**resolved", "**[closed", "**[resolved"):
-        if marker in body:
-            return False
-    return True
+    return "[resolved" not in t and "[closed" not in t
 
 open_titles = [t for t, b in entries if is_open(t, b)]
 
+def short(t):
+    # drop any trailing `[…]` closure/status tag and clip for the list line
+    t = re.split(r"\s*`?\[", t, 1)[0].strip()
+    return t[:80]
+
 parts = []
 if open_titles:
+    listed = " · ".join(short(t) for t in open_titles)
     parts.append(
         "⚠ %d open fork-gap(s) in ~/bmad-method-v6/docs/fork-gaps.md "
-        "(top: %s). If the user asks what to work on, or you're doing fork "
+        "(open-only file; resolved history in fork-gaps-archive.md). "
+        "Open: %s. If the user asks what to work on, or you're doing fork "
         "maintenance, surface these; route a chosen one via the "
         "mason-bmad-workflow-expert skill (it does not auto-action — the "
-        "investment decision is the user's)." % (len(open_titles), open_titles[-1][:120])
+        "investment decision is the user's)." % (len(open_titles), listed)
     )
 
 THIRTY_DAYS = 30 * 24 * 3600
