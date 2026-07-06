@@ -338,11 +338,13 @@ sync_scripts_for_project() {
   [[ ! -d "$SCRIPTS_SOURCE" ]] && { echo "0"; return; }
 
   local scripts_target="$project_root/scripts"
+  local delivered=()
   for script_file in "$SCRIPTS_SOURCE"/*; do
     [[ ! -f "$script_file" ]] && continue
     local script_name script_dst
     script_name="$(basename "$script_file")"
     script_dst="$scripts_target/$script_name"
+    delivered+=("$script_name")
 
     if [[ ! -f "$script_dst" ]] || ! cmp -s "$script_file" "$script_dst"; then
       if [[ "$mode" == "sync" ]]; then
@@ -353,6 +355,18 @@ sync_scripts_for_project() {
       count=$((count + 1))
     fi
   done
+
+  # Manifest of the exact fork-delivered basenames, so bmad-deploy.sh's dirty-tree
+  # filter can treat these fork-owned scripts as deploy-irrelevant (they never enter
+  # the build output) while a project's OWN uncommitted scripts still block. Written
+  # under .claude/ (itself deploy-irrelevant) and refreshed EVERY sync — regardless
+  # of whether any script changed — so a fork script removed later drops off the list.
+  # This closes the "sync drops a runnable script into scripts/, which then trips the
+  # deploy dirty-tree gate until each project happens to commit it" false-block.
+  if [[ "$mode" == "sync" && ${#delivered[@]} -gt 0 ]]; then
+    mkdir -p "$project_root/.claude"
+    printf '%s\n' "${delivered[@]}" > "$project_root/.claude/bmad-synced-scripts.txt"
+  fi
 
   echo "$count"
 }

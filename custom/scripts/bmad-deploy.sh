@@ -139,6 +139,21 @@ mapfile -t dirty_paths < <(git status --porcelain | sed -E 's/^.{3}//' | sort -u
 if [[ ${#dirty_paths[@]} -gt 0 ]]; then
   mapfile -t irrelevant_globs < <(cfg_get_list '.deploy.deploy_irrelevant_paths')
 
+  # Fork-synced tooling scripts (delivered into ./scripts/ by sync-bmad-workflows.sh)
+  # are deploy-irrelevant BY NATURE — they are tooling, never part of the build
+  # output — but a project's OWN uncommitted script (e.g. scripts/deploy-prod.sh)
+  # must still block. The sync writes the exact basenames it delivered to this
+  # manifest so the filter can tell fork-owned from project-owned WITHOUT a broad
+  # `scripts/` exemption. Missing manifest (project not yet re-synced) → no exemption
+  # → today's behavior, so this is a strict de-false-positiving with no regression.
+  declare -A synced_scripts=()
+  synced_manifest=".claude/bmad-synced-scripts.txt"
+  if [[ -f "$synced_manifest" ]]; then
+    while IFS= read -r _s; do
+      [[ -n "$_s" ]] && synced_scripts["scripts/$_s"]=1
+    done < "$synced_manifest"
+  fi
+
   # Build a set of "still-dirty" paths after irrelevant-glob subtraction.
   still_dirty=()
   for path in "${dirty_paths[@]}"; do
@@ -151,6 +166,10 @@ if [[ ${#dirty_paths[@]} -gt 0 ]]; then
         "$glob"*|"$glob") is_irrelevant=true; break ;;
       esac
     done
+    # A fork-synced script (exact basename in the manifest) is deploy-irrelevant too.
+    if ! $is_irrelevant && [[ -n "${synced_scripts[$path]:-}" ]]; then
+      is_irrelevant=true
+    fi
     $is_irrelevant || still_dirty+=("$path")
   done
 
