@@ -127,3 +127,26 @@ Authoring `implement/file-de-vat` (a quarterly German VAT filing front door that
 - (a) **Deterministic to-disk mirror in the workflow:** in URL.1b, stage each `get_file` through a persist-to-disk step that keeps content out of context — e.g. formalize the tool-results-persistence trick (write the raw MCP JSON to a temp file, `python -c "json.load(...)['content']"` to the target path) as the prescribed mirror mechanism, so mirroring is O(1) context regardless of bundle size. Document it in step-01 so it isn't rediscovered per session.
 - (b) **Upstream MCP request:** give DesignSync `get_file` a `localPath` sink symmetric with `write_files` — read straight to disk, content never returned. This is the clean fix; (a) is the fork-side workaround until it lands.
 - **Priority: medium** — no data loss, but it silently caps how large a bundle design-ingest can actually handle, undercutting the one thing that workflow is for.
+
+
+---
+
+## 2026-07-06 — design-implement's page-shell guard is a DRIFT detector; on a NET-NEW page `{impl_page_shell}` is empty so it silently passes "design-bundle-full-bleed → build full-bleed" against the house container convention  `[RESOLVED 2026-07-06 — fork fix DONE (step-02 §1a mandatory net-new sibling-convention derivation + step-03 §2d diff-against-sibling-baseline / full-bleed-is-artifact rule), distribution owed (sync fan-out to 13 deferred). Archive on distribution.]`
+
+**Class:** contract-dimension-gap (missing-source-on-one-input-path flavor, same shape as the `56d44fc9` §2f frame-inventory fix)
+**Fix scope:** fork-only
+**Target file:** `custom/workflows/implement/design-implement/steps/step-02-map-implementation.md` (§1a page-shell mapping) + `steps/step-03-build-grid.md` (§2d mandatory Page-shell row).
+
+**Friction (real this session — accounting-tools `/vat-filings`, a NET-NEW operational page from a `claude.ai/design/p/` URL).** The workflow HAS a guard for exactly this — the mandatory "Page shell" grid row (step-03 §2d) fed by `{impl_page_shell}` (step-02 §1a), which the workflow's own critical-rules text names "the inbound-flow /orders miss (PR #2017)." But that guard is a **drift** detector: it diffs the design's intended shell width against the **existing implementation's** effective width. `/vat-filings` was net-new — no existing page to map — so `{impl_page_shell}` was empty, the §2d row had only the design side, and with nothing to contradict it the run built the page **full-bleed** (`max-width:none`) exactly as the design BUNDLE renders it. The house convention (sibling operational pages cap+center — `/avask` `max-width:1400px; margin:0 auto`, `/order-summaries` 1480px) was never consulted. It shipped; the owner caught the full-bleed sprawl on a wide monitor after deploy.
+
+Three compounding factors:
+- **The sibling cross-check that WOULD have caught it is already in the workflow — but advisory, and wired to the wrong path.** step-02 §1a said "Sibling pages are a useful cross-check … note it" — optional, and attached to *mapping the existing page*, which is a no-op on a net-new page. The one thing that knew `/avask`=1400px never ran.
+- **The bundle's full-bleed wrapper is a RENDERING ARTIFACT misread as intent.** Claude Design renders the frame standalone with an inert app-shell rail, so `.content` is `max-width:none` by construction (the workflow docs even say "the bundle renders its root full-bleed and standalone"). Combined with the policy phrase "full-width **within the content container**," the "within the [capped] container" qualifier got dropped.
+- **The honest done-check agreed.** "Render your surface beside the design render" passed — because the design render is ALSO the artifact-full-bleed one. Nothing said "render beside the live sibling shell (`/avask`)."
+
+**Why structural:** the §2d comparison is design-vs-impl; when the impl side is empty (i.e. EVERY net-new page) it collapses to a no-op and the bundle's artifactual full-bleed becomes the silent default. All 13 projects inherit it. The durable lesson is the §2f one restated at the shell layer: "no existing page is not no baseline" — the house convention IS the baseline, in an already-readable form (sibling pages).
+
+**Fix (shipped fork-local 2026-07-06):**
+- (a) step-02 §1a: a MANDATORY net-new branch — when `{impl_page}` is a brand-new surface, derive `{impl_page_shell}` from 2–3 sibling operational pages of the same page_mode (container `max-width` + centering + padding), stored `source: "sibling-convention"`; never leave the impl side empty. `source` added to the `{impl_page_shell}` shape (`mapped-impl` | `sibling-convention`).
+- (b) step-03 §2d: when `source == "sibling-convention"`, diff the design against that sibling baseline (not an empty impl), and treat the bundle wrapper's full-bleed as an artifact — a design `full-bleed` against a capped house baseline is Tier-1, adopt the house cap unless `docs/design-policy.md` (authoritative) explicitly wants full-width.
+- **Priority: medium-high** — no data-loss, but it silently mis-shells every net-new operational page (the common design-implement case), surfacing only post-deploy by eye.
