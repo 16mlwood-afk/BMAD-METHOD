@@ -192,6 +192,45 @@ Halt — do NOT proceed to step 1.
 
 If neither refusal fires, set `{design_dir} = {bundle_dir}` and `{design_file}` defaults to the first entry in `{bundle_manifest}.screens` (use `<screen>.html` resolution within `{bundle_dir}`). Continue to step 1, which will skip the URL download path and read directly from `{bundle_dir}`. **Supersede awareness for this path is resolved in step-01 §SHARED.1a** (the slug isn't known until the frame inventory is built), same as the URL path — a bundle handed straight to `design-implement` still copes with a superseded handoff.
 
+#### Net-new / no-target preflight (ALL input kinds)
+
+**The existence gate — is there anything to implement against at all?** `design-implement`'s entire model is *diff a design against an EXISTING implementation and fix the deltas*. A design handed off for a **net-new surface whose route, page component, and backing object do not exist yet** has nothing to diff: the grid comes back all `FRAME MISSING in impl` and the run aborts itself at the §2b/§4c fixture-ship halt AFTER a full, non-trivial ingest. This bites hardest on exactly the normal case — a paste straight from Claude Design's "Send to local coding agent" panel for a surface you just designed but have not built. The strong, DETERMINISTIC routing layer (the paste-prompt handling above, and any project `design-handoff-detect` hook) points every paste here; this preflight is the deterministic guard that stops a net-new paste *before* the spend, so the catch no longer depends on the operator probabilistically recalling onboarding doctrine.
+
+Run this check **as soon as `{target_slug}` + the target route are resolved** (step-01 §SHARED.1a — the earliest cheap point, before ingest and the grid). Cheaply probe whether the target surface exists in the implementation — **all three absent ⇒ net-new**:
+
+1. **Route** — no route / nav entry matches the surface (`{target_slug}` or its route) in the app's router or nav config.
+2. **Page component** — no page / screen component file exists for the surface.
+3. **Backing object** — no schema table and no shared type exists for the surface's primary object (grep the schema + shared types for the object name).
+
+If ANY of the three exists, this is a brownfield surface — proceed normally; `design-implement` is the right workflow. If **NONE** exists, surface this and **EARLY-EXIT (soft — recommendation, not a hard refuse; the operator may override)**:
+
+```
+══════════════════════════════════════════════════════════════════
+◇ design-implement: this looks like a NET-NEW surface — nothing to diff against.
+
+Target:  {target_slug} ({design_file})
+Checked: no route, no page component, and no backing schema/type for
+         this surface exist in the repo.
+
+design-implement diffs a design against an EXISTING implementation. A
+net-new surface has no implementation yet, so this run would produce an
+all-"FRAME MISSING in impl" grid and abort at the fixture-ship halt after
+a full ingest — wasted spend, wrong workflow.
+
+Onboarding path for a net-new surface (project doctrine where present —
+`project-net-new-design-onboarding`):
+  1. Build the minimal backend first (schema + service + types).
+  2. Run brownfield design-handoff (it reads the real schema).
+  3. design-synthesize → THEN re-invoke design-implement.
+
+To proceed anyway (e.g. the backend is landing in this same session, or
+you are knowingly implementing ahead of it), re-invoke with an explicit
+"proceed anyway" / override.
+══════════════════════════════════════════════════════════════════
+```
+
+This is a **soft** early-exit (recommend + override), NOT a hard refuse like the two bundle gates above — it stops a mis-route by default while leaving the owner the wheel. Distinct from a *size* preflight (a large but EXISTING surface): this is about **existence** — whether there is anything to implement against at all. Surface the net-new determination in the run's opening summary (§SHARED.2) so an override is visible in the record.
+
 #### When `{input_kind} == "claude_design_url"`: existing flow
 
 Store the share-link as `{design_url}` and the resolved target as `{design_file}` (per the URL-kind resolution above: `Implement:` line first, else URL-decoded `?file=`). Continue to step 1 — step-01 URL.1b is the authoritative `{design_file}` resolver (it has the project file tree from `list_files`), so an unresolved `{design_file}` here is fine; it defaults to the project's primary frame there. **Supersede awareness is resolved in step-01 §SHARED.1a** (the slug isn't known until the frame inventory is built), not here — a direct URL run still copes with a superseded handoff.
