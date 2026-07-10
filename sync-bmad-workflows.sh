@@ -124,6 +124,29 @@ LEGACY_SUBPATHS_TO_REMOVE=(
   "design/apply-design-policy-change"  # moved to meta/apply-design-policy-change
 )
 
+# BMAD-managed paths the destructive rsync -a --delete fan-out overwrites in each target.
+# Used by the deterministic skip-if-dirty guard (fork-gap 2026-07-10): uncommitted TRACKED
+# modifications in any of these signal a peer session mid-edit → refuse that target unless
+# --force. (Untracked local-only content is handled separately by classify_local_only + the
+# manifest; that is why the guard uses --untracked-files=no.)
+BMAD_MANAGED_GIT_PATHS=(
+  "_bmad/bmm/workflows"
+  "_bmad/bmm/agents"
+  "_bmad/bmad-shared"
+  ".claude/commands/bmad"
+  ".claude/skills"
+)
+
+# Uncommitted TRACKED modifications in a target's BMAD-managed paths ("" if clean or non-git).
+# The single deterministic predicate behind the skip-if-dirty guard (both --check preview and
+# the sync-mode refusal call it), so the two paths can never diverge. Regression-locked by
+# test/test-sync-skip-if-dirty.sh.
+bmad_managed_dirty() {
+  local project_root="$1"
+  git -C "$project_root" rev-parse --is-inside-work-tree &>/dev/null || return 0
+  git -C "$project_root" status --porcelain --untracked-files=no -- "${BMAD_MANAGED_GIT_PATHS[@]}" 2>/dev/null || true
+}
+
 JQ_MERGE='
   input as $base | input as $template |
   ($template.hooks | [.. | .statusMessage? // empty]) as $bmad_msgs |
@@ -1357,6 +1380,17 @@ while IFS= read -r target || [[ -n "$target" ]]; do
       echo "$LOCAL_ONLY_PURGEABLE" | sed '/^$/d; s/^/     /'
     fi
 
+    # Skip-if-dirty guard preview (fork-gap 2026-07-10): would a real sync REFUSE this target?
+    check_dirty_managed="$(bmad_managed_dirty "$project_root")"
+    if [[ -n "$check_dirty_managed" ]]; then
+      if ! $dirty; then
+        echo "STALE $project"
+        dirty=true
+      fi
+      echo "  ⛔ uncommitted BMAD-managed changes — sync would SKIP this target (commit, or --force):"
+      echo "$check_dirty_managed" | sed 's/^/     /'
+    fi
+
     settings_file="$project_root/.claude/settings.local.json"
     if [[ -f "$HOOKS_SRC" ]]; then
       if [[ ! -f "$settings_file" ]]; then
@@ -1494,6 +1528,28 @@ while IFS= read -r target || [[ -n "$target" ]]; do
       echo "OK    $project"
     fi
   else
+    # --- Deterministic skip-if-dirty guard (fork-gap 2026-07-10) ---
+    # The destructive rsync -a --delete fan-out below overwrites BMAD-managed paths in the
+    # target. If a peer session has uncommitted TRACKED modifications there, --delete would
+    # clobber working-tree edits git can't recover. Refuse THIS target (safe-partial: the
+    # fan-out continues to the clean projects) unless --force. Only tracked modifications
+    # count — untracked local-only content is handled by classify_local_only + the manifest.
+    # SAFE-PARTIAL over REFUSE-ALL by design: this workspace is perpetually multi-session, so
+    # refuse-all would never fan out. Over-block note: an uncommitted PRIOR sync (ran without
+    # --commit) also trips this — the fix is `sync --commit` (leaves a clean tree) or --force.
+    if ! $FORCE; then
+      dirty_managed="$(bmad_managed_dirty "$project_root")"
+      if [[ -n "$dirty_managed" ]]; then
+        echo "BLOCK $project — uncommitted TRACKED changes in BMAD-managed paths (a peer session may be mid-edit; --delete would clobber them):"
+        echo "$dirty_managed" | sed 's/^/    /'
+        echo "  Resolve (pick one):"
+        echo "    • Commit them (often an uncommitted prior sync):  git -C $project_root commit -- ${BMAD_MANAGED_GIT_PATHS[*]}   (or re-run sync with --commit)"
+        echo "    • Override (DESTRUCTIVE — overwrites the edits):   $0 --force"
+        blocked=$((blocked + 1))
+        continue
+      fi
+    fi
+
     # --- Pre-sync safety check: local-only content (manifest-aware) ---
     classify_local_only "$target" "$project_root"
 
