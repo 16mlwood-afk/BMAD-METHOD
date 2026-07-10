@@ -862,3 +862,17 @@ Three compounding factors:
 - (b) step-03 §2d: when `source == "sibling-convention"`, diff the design against that sibling baseline (not an empty impl), and treat the bundle wrapper's full-bleed as an artifact — a design `full-bleed` against a capped house baseline is Tier-1, adopt the house cap unless `docs/design-policy.md` (authoritative) explicitly wants full-width.
 - **Priority: medium-high** — no data-loss, but it silently mis-shells every net-new operational page (the common design-implement case), surfacing only post-deploy by eye.
 
+## 2026-07-10 — fork-maintenance autonomy gate was keyed on SUBJECT-MATTER, so routine single-project reversible work required repeated human gating (gating-fatigue)  `[RESOLVED: 2026-07-10 — re-keyed the rule from topic to BLAST RADIUS (three-tier ladder: Tier1 act-then-report / Tier2 propose-then-proceed / Tier3 stop), added a load-bearing Tier1 read-only-verification precondition + six golden-case fixtures as a tier-drift regression check. Home: feedback-lead-on-policy-governed-maintenance.md (inbound-flow project memory); global CLAUDE.md BMAD Workflow Management carries a one-line pointer (single home, no copy).]`
+
+**Class:** autonomy-keying / gating-fatigue
+**Fix scope:** project-memory + global doctrine (no fork-file change — cross-linked here per the "Cross-link doctrine fixes" rule)
+**Target file:** `feedback-lead-on-policy-governed-maintenance.md` (inbound-flow project memory shelf) + the pointer in global `~/.claude/CLAUDE.md` § BMAD Workflow Management.
+
+**What fought us:** the autonomy / act-vs-ask gate keyed on a TOPIC — "touches BMAD sync / fork maintenance → ask Mason." But fork maintenance touches that topic on nearly every step, so the gate fired on read-only diagnosis, dry-runs, scoped discards of confirmed-orphaned diffs, and local rebases — actions that are single-project and fully reversible. The result was repeated human gating of boring-but-safe work: the user had to keep granting permission for things that never needed it, while the gate gave no extra protection at the one place it matters (the cross-project fan-out).
+
+**Why structural (not a one-off):** the miscalibration is in the *keying axis* of a decision rule, not in any single action. A subject-matter gate on a high-frequency topic is a standing source of gating-fatigue — it trains both sides to rubber-stamp, which erodes the signal value of the ask exactly where a real Tier 3 stop (a 13-project `rsync --delete`, a force-push) needs to stand out. Any rule of this shape (gate-on-topic where the topic recurs constantly) will produce the same fatigue.
+
+**Pattern captured (for other rules of this shape):** prefer BLAST-RADIUS keying over subject-matter keying for act-vs-ask gates. The deciding test is "confined to one target + reversible + non-clobbering?" — not "does it mention $TOPIC?". Reserve the hard stop for cross-boundary / irreversible / possibly-live-clobbering radius. If a second autonomy rule is found keyed on topic, promote this into the `mason-bmad-workflow-expert` root-cause-class catalog (Mode 3) as `autonomy-keying` — symptom: repeated asks on safe recurring-topic work; canonical fix: re-key to blast radius + golden-case fixtures.
+
+**Resolution:** applied this session (see the RESOLVED note above). Priority was medium — a friction/erosion gap, not data-loss.
+
