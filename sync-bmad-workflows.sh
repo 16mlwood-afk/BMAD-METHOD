@@ -112,6 +112,7 @@ SYNC_DIRS=(
   "meta"
   "shared"
   "4-implementation/code-review"
+  "4-implementation/sprint-planning"  # fork-customized 2026-07-11: adds an incremental --epic mode (promoted OUT of UPSTREAM_WORKFLOW_DIRS below). workflow.yaml format (no workflow.md) → the skills-native porter skips it by design; it ships via the _bmad/bmm/workflows tree that skills-native projects also read.
 )
 
 # Legacy subpaths that have been moved or removed in the canonical source.
@@ -678,7 +679,7 @@ UPSTREAM_WORKFLOW_DIRS=(
   "4-implementation/create-story"
   "4-implementation/dev-story"
   "4-implementation/retrospective"
-  "4-implementation/sprint-planning"
+  # "4-implementation/sprint-planning" — PROMOTED to fork-customized (SYNC_DIRS) 2026-07-11 for the incremental --epic mode; no longer reference-synced (the reference-sync runs AFTER SYNC_DIRS and would clobber the custom copy).
   "4-implementation/sprint-status"
   "document-project"
   "generate-project-context"
