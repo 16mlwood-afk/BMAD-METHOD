@@ -522,6 +522,48 @@ Render the page-specific bans from `{archetype_prohibited}` (the skill's `prohib
 
 ---
 
+{if {is_processing_cockpit}}
+## 4f. Interaction model
+
+*This surface's job is **repetitive per-item processing at speed** by expert, high-frequency operators
+(a queue/cockpit worked one item at a time). How the operator DRIVES the surface is a load-bearing
+requirement, not decoration — a beautiful surface with no operation model ships as a click-only form and
+the speed goals silently fail. The signals for this section are already in the brief (§3 "keyboard-first
+/ high-frequency", §1 success metrics about time-to-decision / fewer stuck defers); this section turns
+them into requirements. Describe the OPERATION, never widgets or key bindings' visual chrome. Each
+requirement below is derived from `{interaction_model_contract}`, never invented.*
+
+- **Operation surface (keyboard-first is a requirement, not a nicety):** {is the primary driver the
+  keyboard or the pointer? For an expert high-frequency processing cockpit it is keyboard-first: every
+  per-item action (§1 capabilities) must be reachable and committable without leaving the keyboard, and
+  a persistent shortcut affordance must exist. State it as an outcome ("clear a lane without touching the
+  mouse"), never a specific key map — the bindings are the designer's.}
+- **Per-item action set & commit semantics:** {the operator's per-item verbs (from §1's must-support
+  capabilities), each classed by commit weight: **reversible** (skip, defer, claim) vs **irreversible /
+  high-stakes** (writes an immutable key, money, or a partner-facing record). The irreversible ones REQUIRE
+  a consequence-preview (below). These verbs cross-check the §3 mutation-derivation audit — a commit that
+  invokes a server action must already be in `{must_support_capabilities}`.}
+- **Momentum / flow after a commit:** {what happens the instant an item is decided — does the operator
+  advance to the next actionable item, and how (auto-advance vs manual), with what safety window (an
+  undo/toast). Clearing a lane must be continuous motion, not commit → hunt → click. Derived from the §1
+  speed metrics; auto-advance must skip items the operator cannot act on (claimed-by-other, read-only).}
+- **Consequence-preview before an irreversible commit:** {for any commit that writes something hard to
+  undo (an immutable join key, a money figure, a partner write), the operator must be able to see WHAT the
+  commit will write — the resulting record and any derived figure (§2b basis) — BEFORE committing. Seeing
+  the outcome is the correctness lever; a blind irreversible commit is a defect. Name which per-item
+  verbs need it.}
+- **Confidence-scaled effort (fast path vs forced decision):** {where the machine is confident and
+  unambiguous, a one-action fast path (the uncontested case costs one key/tap); where it is ambiguous or
+  the detectors disagree, the full decision is FORCED (no rubber-stamp). Derived from the §1
+  "fewer stuck defers / faster decisions" metrics — the design must let the easy case be fast without
+  letting the hard case be skipped.}
+- **Open questions — unresolved interaction semantics (do NOT guess these):** {any per-item verb whose
+  commit weight, momentum behaviour, or preview need is not derivable from the code/context — carried to
+  the brief's Open Questions verbatim, never resolved here.}
+
+---
+{endif}
+
 ## 5. Hard Constraints
 
 {Use ONE of the following variants based on `{design_system}`:}
