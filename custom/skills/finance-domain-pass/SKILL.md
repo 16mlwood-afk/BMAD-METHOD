@@ -83,7 +83,11 @@ otherwise continue without the skill and note the ambiguity.
    only — it does NOT set page-mode or composition.
 2. **Map source columns to semantic groups** — each column → `quantity | money | status | identity |
    date | meta` + its meaning. Keep quantity and value distinct; note any money stored with an
-   embedded currency glyph or as text (a parse/data-quality fact, not a display choice).
+   embedded currency glyph or as text (a parse/data-quality fact, not a display choice). **For every
+   `money` column (and any cost / KPI figure), also classify its `basis`: `persisted` (stored as-is in
+   the source / DB) vs `derived` (computed at render — e.g. an implied unit cost = total ÷ pack qty) vs
+   `unknown`. A derived figure must be labelled as derived wherever it is shown, so the operator never
+   reads a computed number as a stored fact.**
 3. **Name finance-critical capabilities to preserve**, as outcomes. Lifecycle segmentation, qty/value
    separation, reconciliation (expected vs received/delivered/held/returned), cost/landed-value
    breakdown, etc. — only those grounded in the source.
@@ -110,7 +114,7 @@ Return the appendix in this exact shape (consumed by design-handoff step-01 §3b
 ```
 report_type_detected:   "<e.g. inbound inventory reconciliation>"   # signal only; does NOT set page_mode
 source_column_semantics:
-  - { column: "<src column>", group: <quantity|money|status|identity|date|meta>, meaning: "<one line>" }
+  - { column: "<src column>", group: <quantity|money|status|identity|date|meta>, basis: <persisted|derived|unknown>, meaning: "<one line>" }   # basis REQUIRED for money / cost / KPI columns (derived = computed at render); omit or "unknown" for non-money
 must_preserve_capabilities:                 # outcomes; fold into {must_support_capabilities}
   - "<capability as an outcome>"
 dropped_capability_flags:                   # candidates for {dropped_capabilities}; brief author confirms
@@ -125,6 +129,7 @@ terminology:                               # canonical terms for the brief
   - "<term>"
 must_not_infer:                            # accounting-truth constraints
   - "<e.g. no valuation method assumed; missing cost marked, never imputed>"
+  - "<a derived figure (computed at render — e.g. a pack-split implied unit cost) is labelled DERIVED, never presented as a persisted / stored value>"
 policy_collisions:                         # where finance meaning may meet a policy hard-constraint
   - "<surface as open question; do NOT override policy>"   | none
 ```

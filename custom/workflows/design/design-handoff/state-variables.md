@@ -57,7 +57,7 @@ Set in step-01 §3b only when the surface is finance-shaped; empty/absent otherw
 
 - `{is_finance_surface}` — `true` iff a ledger / transactions / inventory movement / reconciliation / P&L / balance sheet / cash flow / FP&A surface. Gates §3b and the finance render in step-03.
 - `{finance_report_type}` — detected finance report/data type. A §1 context signal — does NOT set `{page_mode}` or composition.
-- `{finance_column_semantics}` — each source column → semantic group (`quantity|money|status|identity|date|meta`) + meaning; enriches `{data_shape}`. Quantity and value stay distinct.
+- `{finance_column_semantics}` — each source column → semantic group (`quantity|money|status|identity|date|meta`) + meaning; enriches `{data_shape}`. Quantity and value stay distinct. For money columns it also carries `basis` (`persisted | derived | unknown`) — a derived figure (computed at render) is labelled derived, never shown as a stored value (rendered at §4d).
 - `{finance_exception_expectations}` — finance exceptions the design must be able to REPRESENT (missing cost, negative stock/value, reconciliation break, pending receipt, duplicate/exploded references, estimated-vs-actual) — as outcomes, not a panel design.
 - `{finance_unresolved_assumptions}` — finance definitions that must stay explicit and NEVER be inferred (status SoT, valuation/costing basis, block/line semantics, FX basis). Rendered as brief Open Questions; the workflow never resolves them.
 - `{finance_terminology}` — canonical finance terms to use consistently (per `finance-presentation`).
