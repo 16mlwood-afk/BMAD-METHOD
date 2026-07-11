@@ -78,6 +78,21 @@ If GitHub auth breaks mid-deliver (push / PR / merge fails), the commit has **no
 
 ---
 
+## 1C. Delivery-integrity — the created PR's head must equal local HEAD
+
+**Why this exists.** This contract disclaims PR *creation* (§1/§28 — CLAUDE.md "ALWAYS Deliver Your Work" owns commit → push → PR). But a PR whose head is the **wrong content** is a deploy-correctness failure this contract owns the tail of: merge it, `main` moves, and the next deploy ships ancient code over a live surface. So the one delivery-integrity precondition to a safe deploy lives here.
+
+**The class.** The delivery flow `git branch -m <feat/name>` → `git push -u` → `gh pr create --head <feat/name>` can silently latch onto a **stale, never-deleted remote branch of the same name** when `<feat/name>` is an obvious feature name (observed: `feat/log-order-redesign` collided with the original build of that same screen). Symptom: `git push` is rejected as *"tip behind remote counterpart,"* but `gh pr create` **still succeeds** and opens a PR whose head is the *stale branch's* content, not the local commit. Nothing in the flow verifies the created PR's `headRefOid` equals local `HEAD`. Merging it overwrites the production surface with old code — caught here only by manual head-SHA inspection.
+
+**The two guards (additive to the delivery flow):**
+
+1. **Prefer session-unique branch names** — `feat/<slug>-<yyyymmdd-hhmm>` (or include the session id) so a rename can't collide with a historical branch. This removes the *cause* (near-zero collision), not just the symptom.
+2. **After `gh pr create`, assert identity** — `gh pr view <n> --json headRefOid --jq .headRefOid` MUST equal `git rev-parse HEAD`. On mismatch, **abort**: close the mis-created PR and recreate from a uniquely-named branch. Corollary: if `git push -u` is rejected as *"behind remote counterpart"* for a **supposedly new** branch, treat that as a **collision signal** (the name already exists remotely) and rename — never reconcile against the stale tip.
+
+**Enforcement (honest ceiling).** As prose in this contract + CLAUDE.md, both guards are **PROBABILISTIC** — they fire only if the delivering agent chooses to run the assert; prose alone for a wrong-content-to-prod risk is under-enforced. The `headRefOid == HEAD` check is a **conservative detector** (exact SHA match — fires only on a real mismatch, near-zero false positives), and session-unique naming is a cause-removal, so the residual risk is low. The **DETERMINISTIC upgrade** (named here so the gap is on the record, NOT shipped by this sync): a delivery hook or CI check that asserts `headRefOid == HEAD` on PR create / pre-merge — it rides the hook-activation rail (`STD-HOOKACTIVATE-001`), not this contract. The branch-naming + assert *steps themselves* are owned by CLAUDE.md "ALWAYS Deliver Your Work" (per-project); this section is the deploy-side precondition that consumes them.
+
+---
+
 ## 2. The merge-phase rule (admin-merge on code PRs)
 
 `gh pr merge --admin` is acceptable on a **code-change** PR iff ALL of the following hold:

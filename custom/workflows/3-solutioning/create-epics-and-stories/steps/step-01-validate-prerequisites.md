@@ -171,7 +171,17 @@ Review the UX document for requirements that affect epic and story creation:
 
 ### 7. Load and Initialize Template
 
-Load {epicsTemplate} and initialize {outputFile}:
+**Add-epic intake short-circuit (check FIRST — brownfield "add ONE epic" mode).** This step's default is a **whole-corpus initial generation** — it copies the template OVER {outputFile}. On a mature brownfield project that already has a populated {outputFile} (e.g. a 78 KB live `epics.md` with a running board), that copy is **destructive**: it wipes the existing epics. So before initializing, detect the incremental case:
+
+- **Trigger:** the intent is "decompose / add ONE new epic" (not "generate the epics corpus"), AND `{outputFile}` already exists and is non-empty, OR the input is a standalone `epic-<slug>.md` doc (the first-class brownfield convention — a single epic authored on its own, folded into the board later; e.g. `epic-regrade-lineage.md`, `epic-reimbursement-claim-bundle.md`).
+- **When triggered, do NOT copy the template.** Instead:
+  1. Read the existing {outputFile} — treat it as the authority; **never overwrite it**.
+  2. If the input is a standalone `epic-<slug>.md`, treat that doc as first-class input — leave it as-is on disk; you are APPENDING its epic + stories to the corpus, not rebuilding the corpus from it.
+  3. **APPEND** the new epic's stories to {outputFile}'s `{{epics_list}}` section and add only its rows to `{{requirements_coverage_map}}` — a per-section additive edit, never a whole-file rewrite (preserves every existing epic and its statuses).
+  4. Skip the template-copy steps 1–4 below; proceed to §8 with the appended epic as the working set.
+- **Distribution note:** the board/sprint side of "add one epic" (adding only the new epic's keys to `sprint-status.yaml`, per-key, without regenerating the whole board) is owned by `sprint-planning` — see its incremental `--epic` intake; do not regenerate the sprint board from here.
+
+**Otherwise (default — initial whole-corpus generation on a project with no live epics.md):** Load {epicsTemplate} and initialize {outputFile}:
 
 1. Copy the entire template to {outputFile}
 2. Replace {{project_name}} with the actual project name
