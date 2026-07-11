@@ -21,6 +21,20 @@ From step-02: `{lane}`, `{altitude}`, `{depth}`, `{placement_dispatch}`, `{route
 
 ## SEQUENCE OF INSTRUCTIONS
 
+### 0. Topology halt (IA-override) — surface the frame, do not emit a specialist command
+
+If `{altitude}` = `topology`: this run does NOT emit a runnable specialist command and does NOT fan out consultants. Render `{ia_override_frame}` into the routing artifact and surface it to the owner as a HALT:
+
+```
+**IA-override decision — owner confirmation required** on {surfaces in scope}.
+Governing question: {one-sentence question}.
+Pre-divergence frame: {surfaces-in-scope · overlap map · fixed lenses · fixed output shape · synthesis rule}.
+
+This is an ownership decision (override the existing IA, or not). No consultant/agent fan-out runs until you confirm this frame. Confirm, or adjust surfaces / lenses / question.
+```
+
+Then STOP — do not fall through to §1. On owner confirmation (a later turn / invocation), the caller runs the bounded consultant pass and synthesizes against the governing question; this router's job ended at the confirmed frame. Under `autonomous_mode`, the same HALT applies (an IA-override is intent, not decision, autonomy) — draft the frame, write it to the artifact, surface it, and stop.
+
 ### 1. Build the exact next command
 
 Set `{handoff_command}` from the fired axis:

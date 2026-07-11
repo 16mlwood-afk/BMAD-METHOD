@@ -30,7 +30,7 @@ Infer `{triage_verdict}` from the shape of the ask:
 |--------|---------|
 | A bounded choice: "which option", "A or B", "how should X work", "is Y worth it", "what's the risk of Z" | `convergent` (route: inline-deliberation) |
 | The outcome is clearly a code change or spec ("brainstorm how to implement/fix/migrate X") | `convergent` (route: quick-spec) |
-| ANY design-shaped want — "brainstorm the layout", "ideas to make this page feel better", "what would make X even better" | `convergent` (route: design-router — it owns ALL further design-lane routing: depth, specialist, placement; never resolve those here) |
+| ANY design-shaped want — "brainstorm the layout", "ideas to make this page feel better", "what would make X even better"; **and any IA/convergence/dashboard-shape ask — regroup a set of surfaces, partner-centric dashboard, override the existing IA** | `convergent` (route: design-router — it owns ALL further design-lane routing: depth, specialist, placement, **and the `topology` altitude / frame-first-halt handling for IA-override asks**; never resolve those here) |
 | A genuinely open space: new directions, feature discovery, naming, roadmap shaping, "what could we build with X" — no bounded option set exists yet | `divergent` |
 
 **Tiebreaker:** if a bounded option set can be written down in one sitting, it's convergent. Divergent is reserved for asks where enumerating the space IS the work. When genuinely torn, prefer `convergent` — routing to a decision costs less than ceremony, and the user's veto flips it.

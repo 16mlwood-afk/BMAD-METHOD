@@ -55,7 +55,7 @@ The router walks four axes **in order**; the first that fires determines the rou
 | # | Axis | Question | Resolves to | Status |
 |---|------|----------|-------------|--------|
 | 1 | **lane** | Is this a *visual/design* task, or a product/flows/data spec wearing design clothes? | non-visual → route OUT to `quick-spec` / `maintenance-triage`; visual → continue | `wired` (coarse: visual-vs-not) |
-| 2 | **altitude** | Is the change to the *project design policy* (system-wide tone/density/tokens), or to *one surface*? | policy → `create-design-policy` (none exists) / `modify-design-policy` (refine) → then `apply-design-policy-change` to propagate; surface → continue | `wired` |
+| 2 | **altitude** | Is the change to the *project design policy* (system-wide tone/density/tokens), to the *cross-surface IA/grouping* of a SET of surfaces (topology), or to *one surface*? | policy → `create-design-policy` (none exists) / `modify-design-policy` (refine) → then `apply-design-policy-change` to propagate; **topology → FRAME-FIRST HALT (step-02 §2a): produce the pre-divergence frame, name the IA-override as an ownership decision, halt for owner confirmation — do NOT route to a specialist, do NOT fan out consultants until confirmed**; surface → continue | `wired` |
 | 3 | **depth** | For one surface: fresh redesign? refine an existing baseline? mechanical restyle-to-policy? deepen a settled surface? audit only? | fresh → `design-handoff`; refine → `design-artifact-loop` (refine) / `design-tuning`; restyle → `apply-design-policy-change` (scoped); elevate → `design-elevation`; audit → `design-review` | `wired` |
 | 4 | **target + placement** | Which surface/route — and if the want is *"add analytics to an operational page"*, where does it live? | surface/route named; analytics-placement → **dispatch to `analytics-placement-triage`** (returns band\|tab\|sibling-page + its own `design-handoff --placement` command) | `wired` |
 
@@ -76,7 +76,8 @@ Three-step linear flow. Autonomous for decisions; only intent grounding can halt
 - `{request_surface}` — the route/surface the request targets, or `system-wide` (policy altitude)
 - `{felt_want}` — the user's want in their words ("tighten it", "add analytics", "feels wrong", "more corporate")
 - `{lane}` — `visual` | `non-visual` (axis 1)
-- `{altitude}` — `policy` | `surface` (axis 2)
+- `{altitude}` — `policy` | `topology` | `surface` (axis 2)
+- `{ia_override_frame}` — topology only: the pre-divergence frame (surfaces-in-scope + overlap map · one-sentence governing question · fixed named lenses · fixed output shape · single synthesis rule) surfaced for owner confirmation before any consultant fan-out
 - `{depth}` — `fresh` | `refine` | `restyle` | `elevate` | `audit` (axis 3; empty when altitude=policy)
 - `{placement_dispatch}` — `true` when the want is "add analytics to an operational page" → analytics-placement-triage is dispatched (axis 4)
 - `{fired_axis}` — `lane` | `altitude` | `depth` | `placement` — the axis that determined the route (set in step-02 §5)

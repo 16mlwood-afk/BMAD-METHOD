@@ -33,6 +33,17 @@ Is the change system-wide design *policy* (tone, density, tokens, component lang
 - `policy` → route to `create-design-policy` (no `docs/design-policy.md` exists) or `modify-design-policy` (refine an existing one), then note `apply-design-policy-change` propagates it to affected pages. Record `{route_target}`, leave `{depth}` empty, skip to step-03.
 - `surface` (or `{request_surface}` is a concrete route) → continue to axis 3.
 
+### 2a. Axis 2 — altitude value `topology` (cross-surface IA / dashboard-consolidation)
+
+If the want is to **re-group a SET of surfaces** — override the existing information architecture, consolidate distributed surfaces into a partner-/entity-centric dashboard, or otherwise change how multiple routes are grouped (signals: "should these become one dashboard", "partner-centric view", "override the in/out IA", "regroup X across pages") — set `{altitude}` = `topology`. This is an **IA-override / ownership decision**, not a single-surface redesign. Do NOT continue to depth, do NOT route to a specialist, and do NOT begin any consultant/agent divergence. Instead:
+
+1. **Collect the real surface inventory** — the actual routes in scope + what each does + shared entities — from the repo, never guessed.
+2. **Build `{ia_override_frame}`**: surfaces-in-scope + the overlap map · the one-sentence governing question · fixed named lenses (no ad-hoc mid-pass expansion) · the fixed output shape each consultant returns (recommended grouping principle · what merges · what stays separate · why · one risk) · a single synthesis rule (compare returns against the governing question, not a vibe-merge).
+3. **Name the IA-override out loud** — state plainly that the governing question is an ownership decision (override the existing IA or not), and that consultant fan-out must not smuggle that unmade decision into a "ranked proposal."
+4. **HALT for owner confirmation** (step-03 §0). Only on explicit owner confirmation does the bounded consultant pass run — and that pass is the caller's orchestration, downstream of this router.
+
+**Degrade — owner unavailable / `autonomous_mode: true`:** `autonomous_mode` grants *decision* autonomy, NOT *intent* autonomy (see Initialization). An IA-override is an intent/ownership decision → the router **drafts `{ia_override_frame}`, writes it into the routing artifact, surfaces the HALT, and STOPS. It never auto-fans-out.** Draft-and-log, never diverge.
+
 ### 3. Axis 3 — depth (intervention type for one surface)
 
 Classify the intervention from `{felt_want}` + cheap signals (does a `screen-review-*`/`design-brief-*` artifact already exist for this surface? is the surface settled/shipped?). Set `{depth}`:
@@ -68,6 +79,7 @@ Confirm the fired axis, `{route_target}`, and (if dispatched) the placement leaf
 ## FAILURE MODES
 
 - Evaluating depth before ruling out non-visual lane / policy altitude (misroutes a policy change as a surface redesign)
+- Continuing to depth / routing a topology (IA-override) request to a single-surface specialist, or fanning out consultants before the owner confirmed the frame
 - Deciding band/tab/page inline instead of dispatching to the leaf (router invariant break)
 - Re-deriving a specialist's logic instead of routing to it
 - Forcing a straddle down a single lane
