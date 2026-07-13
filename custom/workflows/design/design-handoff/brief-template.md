@@ -382,7 +382,7 @@ Move any feature-specific color-mapping guidance HERE rather than burying it ins
 > - **M5 — consequence-visibility.** Before an irreversible commit, show the resulting record/figure that will be written (rendered, basis-labelled) — not a prose description.
 > - **M6 — no working blind.** The workspace surfaces the evidence the decision requires; a commit control without its evidence is a form, not a cockpit.
 >
-> Heuristics **H1–H5** (confidence-scaled fast path · geometry flexibility · one-viewport · reversibility calibration · inert-control checks) live in the skill — apply from there. The **truthful-labels** and **waiting ≠ actionable** IA rules are the project policy / overlay status-system rules the skill defers to (labels match the real destination + operator action; a no-op waiting state never sits in an actionable bucket).
+> Heuristics **H1–H5** (confidence-scaled fast path · geometry flexibility · one-viewport · reversibility calibration · inert-control checks) live in the skill — apply from there. The **truthful-labels** and **waiting ≠ actionable** IA rules are carried directly by the `operational-cockpit` skill (labels match the real destination + operator action; a no-op waiting state never sits in an actionable bucket) — they are not in the family overlay or project residue, so the skill is their only home.
 
 {Then include ONE of the following based on `{page_mode}`:}
 

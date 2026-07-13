@@ -75,6 +75,13 @@ Strong "should"s — apply with judgment, calibrated to the surface. Not a revie
 - **H4 — Reversibility calibrates M5.** A reversible commit (append-only, re-settable) is satisfied by a live recomputed preview. An irreversible commit (goes live externally, cannot be undone) demands the full rendered resulting record. Match strictness to blast radius.
 - **H5 — Inert-control checks live in the enforcement/wire-check lane, not doctrine prose.** A primary or throughput control that is a no-op (a Route/Approve/File button that only sets local state or has no handler) is a recurring shipped defect — but it is a `design-review-pr` grep + wire-check concern, surfaced there, not a design rule to reason about here.
 
+## Cockpit IA rules (mandatory)
+
+Two archetype-specific rules the cockpit carries **directly** — preserved from the origin policy §6. They are **not** in the extracted family overlay or the project residue, so this skill is their only home; do not assume a project policy backs them.
+
+- **Truthful labels.** Every action / next-step / destination label matches the real destination and the actual operator action — never a label driven by a simplified branch when routing is driven by a richer contract. A control that opens Blocked stock must not read "Staged review"; one that opens Listings must not read "Mapping queue". Labels ↔ routing derive from one source of truth.
+- **Waiting is not actionable.** A state that requires no operator action now — an external or system process already in progress — belongs in a waiting / informational lane, never an actionable review bucket. Do not surface a no-op as a task.
+
 ## Refusals (and what to offer instead)
 
 When this skill is active, refuse these drift modes and propose the alternative each time. Ordered by how often they occur in the wild.
