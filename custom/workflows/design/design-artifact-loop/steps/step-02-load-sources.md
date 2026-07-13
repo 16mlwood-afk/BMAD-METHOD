@@ -106,6 +106,7 @@ Per workflow.md → "Frontend skill routing", routing is mode-driven. Build `{si
 **Conditionally invoke:**
 
 - `operational-analytics-band` when the screen includes (or the brief asks for) a KPI strip, analytics row, trend band, or quarter-by-quarter summary band — applies to all modes.
+- `operational-cockpit` when the surface is a decide-one triage + single-item decision workspace (`composition: operational-cockpit`, design-handoff §5a) — the canonical doctrine (M1–M6 floor + H1–H5) for the cockpit archetype; applies in operational mode.
 - Frontend / webapp skill in `refine-screen` when concrete visual / layout / spacing / control / component changes are being proposed.
 
 Record each skill name plus a one-line reason in `{sister_skills_invoked}`. Do NOT load their rules inline; step 3 invokes the skill via the Skill tool at the moment a specific decision needs interpretation.

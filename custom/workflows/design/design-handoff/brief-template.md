@@ -374,12 +374,15 @@ Move any feature-specific color-mapping guidance HERE rather than burying it ins
 
 **--- Operational cockpit checklist (include ONLY if `{composition}` = "operational-cockpit") ---**
 
-> **Operational cockpit — obey project design-policy §6 "Operational cockpit (decision-first sub-pattern)".** This surface is a triage queue feeding a single-item decision workspace; design and review it against this checklist:
-> - **Queue rail = triage.** The list is for choosing the next item — compact, scannable, subordinate. Not the home screen.
-> - **Workspace = the star.** The single-item decision surface is the full-width focus (image, candidates, evidence side-by-side), not a ~400px drawer.
-> - **Tools rail = secondary.** Supporting lookups / actions sit beside the workspace, never competing with it for weight.
-> - **Truthful labels.** Every action / next-step / destination label matches the real destination and the actual operator action — never a label driven by a simplified branch when routing is driven by a richer contract (a control that opens Blocked stock must not read "Staged review"; one that opens Listings must not read "Mapping queue").
-> - **Waiting is not actionable.** A state that requires no operator action now — an external or system process already in progress — goes to a Waiting / informational lane, NOT an actionable review bucket. Do not surface a no-op as a task.
+> **Operational cockpit — apply the `operational-cockpit` skill (canonical doctrine).** This surface is a triage queue feeding a single-item decision workspace (project design-policy §6 "Operational cockpit"). The **`operational-cockpit` skill is the single source of truth** for this archetype — design, synthesize, and review against that skill; do NOT restate a partial checklist here. Its **mandatory floor (M1–M6) MUST all hold**:
+> - **M1 — classify first.** Decide-one, not a table-first + drawer-as-workspace composition.
+> - **M2 — queue + workspace co-present.** Queue rail = triage (compact, subordinate, not the home screen); workspace = the full-width star (image / candidates / evidence side-by-side, not a ~400px drawer); tools rail = secondary.
+> - **M3 — per-item momentum.** After a commit, auto-advance to the next actionable item, with an undo/toast safety window — never commit → return to list → re-hunt.
+> - **M4 — keyboard-first.** Every per-item commit reachable and committable from the keyboard, with a persistent shortcut affordance.
+> - **M5 — consequence-visibility.** Before an irreversible commit, show the resulting record/figure that will be written (rendered, basis-labelled) — not a prose description.
+> - **M6 — no working blind.** The workspace surfaces the evidence the decision requires; a commit control without its evidence is a form, not a cockpit.
+>
+> Heuristics **H1–H5** (confidence-scaled fast path · geometry flexibility · one-viewport · reversibility calibration · inert-control checks) live in the skill — apply from there. The **truthful-labels** and **waiting ≠ actionable** IA rules are the project policy / overlay status-system rules the skill defers to (labels match the real destination + operator action; a no-op waiting state never sits in an actionable bucket).
 
 {Then include ONE of the following based on `{page_mode}`:}
 
