@@ -50,7 +50,7 @@ On operational and hybrid-as-operational pages:
 
 The archetype chosen in §1b dictates the **lead form**; pick from the vocabulary below to render it. These are the available compact surfaces — not a fixed sequence to assemble every time:
 
-- **Coverage strips / timelines / progress tick marks** — lead form for `coverage`: a status meter where the *gaps are the content* (per-week completeness, filing readiness). Render as a single narrow strip (§2 *Coverage strip*).
+- **Coverage strips / timelines / progress tick marks** — lead form for `coverage`: a status meter where the *gaps are the content* (per-week completeness, filing readiness). Render as a single narrow strip (§2 *Coverage strip*). **A single accent marks the gaps — never a multi-colour heatmap:** the strip reads present-vs-missing, so gaps carry one accent against a neutral track; a rainbow/heatmap gradient turns a completeness signal into decorative noise and defeats the at-a-glance read.
 - **Micro bar charts / small-multiple sparklines** — lead form for `trend`: a single compact row, restrained heights and colors, one panel per series rather than one multi-series chart (§2 *Weekly spend / trend charts*).
 - **Sorted bar lists** — lead form for `ranking`: top-N, capped and labelled ("top 8 of 142"), optional rank-delta arrows.
 - **A single stacked / 100% bar** — lead form for `composition`: part-to-whole in one bar, never a pie and never a time-stacked series.

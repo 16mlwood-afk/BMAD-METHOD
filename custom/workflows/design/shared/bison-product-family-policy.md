@@ -139,6 +139,16 @@ A design containing any of the following fails review and must be revised before
 - **Decorative patterns must be justified or removed.** Every decorative element must answer "what job does this do?" — if "looks nice" or "fills space," remove it.
 - **AI outputs require a human authorship pass** before they ship.
 
+### Exemplars (policy-first authoring)
+
+Any exemplar, mockup, playground story, or design-agent output that stands in for a real surface must be **policy-first**, not decorative filler:
+
+- **Declare its page mode** (operational / analytical / detail) — an exemplar with no declared mode can't be checked against the right rules.
+- **Cite the policy sections it demonstrates** — name the §s it is an example *of*, so the exemplar is traceable to the doctrine it teaches.
+- **Use real domain content, never lorem / generic placeholder** — a mockup on fake data hides exactly the density, overflow, and edge-case problems the policy exists to catch. (Illustrative sample data is allowed only when explicitly labelled as illustrative.)
+
+This is the authoring discipline behind the §E liftability rule: an exemplar that could be dropped unchanged into any generic SaaS demo isn't demonstrating *this* family's doctrine.
+
 ---
 
 ## §F. Page modes
@@ -189,6 +199,8 @@ Detail views (drawers or pages) are extensions of operational lists, not separat
 - **Mode:** operational by default — review/verify/update a single record while staying in context.
 - **Structure:** header (primary identifier, summary, status pill); body (key fields in ≤3–4 short logical groups); footer (one primary action + clearly-subordinate secondary actions).
 - **Visual rules:** same surface, typography, and status system as the list. No hero sections, banners, or marketing layouts. Compact form spacing; sentence-case labels close to inputs. Primary buttons solid/rectangular with the project accent; secondary are neutral-outline or text.
+
+**Review heuristic (guidance, not a hard failure).** A detail view earns its place when it answers, at a glance: (1) *what record am I looking at?* (2) *is it correct and complete?* (3) *what is its workflow status?* (4) *what is the next action?* A drawer that doesn't answer all four is under-serving the operator — tighten it. This is a design-review checklist item, not a merge-blocking rule.
 
 **Hard failures (detail views):** turning the drawer into a mini-dashboard (KPI cards, charts, bento inside it); different badge shapes/colors in detail vs list; centered card-on-gray detail layouts; over-decorated sections.
 
