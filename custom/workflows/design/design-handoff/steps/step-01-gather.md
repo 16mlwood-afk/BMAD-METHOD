@@ -292,6 +292,38 @@ Fires **only when the surface is a processing cockpit**: `{page_mode}` = `operat
 
 **Route into the existing machinery:** the per-item verbs cross-check the §3 mutation-derivation audit exactly like §3c control verbs (a commit that invokes a server action must be in `{must_support_capabilities}` / `{dropped_capabilities}`). A consequence-preview that shows a cost/KPI figure inherits the §2b/§4d **DERIVED-vs-PERSISTED** basis rule (never present a derived number as stored). This pass produces **no new frames** — it is a cross-cutting behavior contract rendered into brief §4f (like §2c), NOT a Surface-Inventory entry. Unresolved semantics go to the brief's Open Questions verbatim. Actual keyboard-focus/animation verification stays ceded downstream (`design-review` / `verify`); the brief carries the operation model, not the bindings.
 
+### 3e. Operator-domain pass — who the operator is and what the surface must SHOW before it ASKS (conditional)
+
+Fires when **`{is_processing_cockpit}` = true** (the same flag §3d sets — §3d and §3e **co-fire** on a decide-one operator cockpit). §3d captures how the operator DRIVES the surface; §3e captures **who the operator is and what they must know**. **Skip** (`{operator_domain_present}` = `false`) whenever §3d skipped.
+
+**Why this pass exists (the gap it closes):** `design-handoff` already detects the cockpit, applies the `operational-cockpit` M1–M6 floor (into §4f), and captures the interaction model (§3d) — but nothing injects the operator's ROLE semantics (who they are, the trust boundary, what the system already knows before each ask, what they must decide, the evidence required BEFORE input, the forbidden asks). So M6 ("surface the evidence the decision requires") ships **domain-blind** — the surface asks the operator for input the system could have resolved and shown first (the clerk-works-blind defect). This pass captures operator **meaning** — never layout. It is the twin of §3b `finance-domain-pass` for MONEY, applied to OPERATOR ROLE.
+
+**Invoke the skill (mode: extract).** Load `operator-domain-pass` via the Skill tool and pass it:
+- the resolved **operator-domain profile** — `docs/<operator>-operational-profile.md` (e.g. `docs/clerk-operational-profile.md`); resolving this is §3e's first action,
+- read-only extraction context: `{is_processing_cockpit}`, `{page_mode}`, `{must_support_capabilities}` (§4), `{interaction_model_contract}` (§3d), the §3 mutation/ask audit, and §2 user context — never layout,
+- read-only awareness of `docs/design-policy.md` (so a policy collision is surfaced as an open question, never overridden).
+
+**HALT-on-missing-profile (hard stop).** If `{is_processing_cockpit}` = true and no `docs/<operator>-operational-profile.md` resolves, **do NOT emit an operator appendix and do NOT proceed on generic cockpit doctrine** — surface the blocking diagnostic (see the `operator-domain-pass` skill § Enforcement: "missing operator-domain profile for cockpit handoff / why this blocks … / next step: supply or select `docs/<operator>-operational-profile.md`, then rerun design-handoff"). `semantically_incomplete` is permitted only if a safe downstream consumer behavior is named that keeps the warning visible and prevents silent best-effort use; absent that, HALT.
+
+The skill runs its procedure (resolve profile → per-decision extract → operator header → must-not-infer → ordering-invariants → policy-collision detect → **internal-consistency validation gate**) and returns its **appendix object**. Capture each field into the `{operator_*}` state variables:
+
+| Appendix field | Captured into |
+| --- | --- |
+| `operator_detected` | `{operator_detected}` — a §1 context signal; does **not** set `{page_mode}`/composition |
+| `operator_role` | `{operator_role}` |
+| `trust_boundary` | `{operator_trust_boundary}` (`may_decide` / `may_not_decide` / `write_trust`) |
+| `decision_points[].operator_decides` | `{operator_decides}` (per decision) |
+| `decision_points[].known_before_each_ask` | `{operator_known_before_ask}` (per decision) |
+| `decision_points[].evidence_required` | `{operator_evidence_required}` (per decision) |
+| `decision_points[].forbidden_asks` | `{operator_forbidden_asks}` (per decision) |
+| `must_not_infer` | `{operator_must_not_infer}` — top-level operator-truth constraints |
+| `ordering_invariants` | `{operator_ordering_invariants}` — top-level |
+| `policy_collisions` | `{operator_policy_collisions}` — open questions to the brief; **never resolved here** |
+
+Set `{operator_domain_present}` = `true` once the profile resolved AND the validation gate passed. The per-item verbs cross-check the §3 mutation audit exactly like §3d (a commit that invokes a server action must be in `{must_support_capabilities}` / `{dropped_capabilities}`). This pass produces **no new frames** — it is a cross-cutting operator-meaning contract rendered into brief §4f alongside the interaction model, NOT a Surface-Inventory entry. A `{operator_policy_collision}` is an open question a human must resolve in the brief; the pass never bends policy to fit the profile or vice versa.
+
+**Fallback (skill not synced).** If `operator-domain-pass` is absent (older sync), produce the same appendix **by hand** from `docs/<operator>-operational-profile.md` against the skill's manual checklist — **the same internal-consistency validation gate runs on this path**, so skipping the skill does not skip the gate, and HALT-on-missing-profile still applies (the profile, not the skill, is the load-bearing input). `{is_processing_cockpit}` may not be marked fully captured until the checklist passes.
+
 ### 4. Capture Feature Purpose
 
 Write `{feature_purpose}`:

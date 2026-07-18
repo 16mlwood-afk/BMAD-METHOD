@@ -564,6 +564,39 @@ requirement below is derived from `{interaction_model_contract}`, never invented
   commit weight, momentum behaviour, or preview need is not derivable from the code/context — carried to
   the brief's Open Questions verbatim, never resolved here.}
 
+{if {operator_domain_present}}
+### Operator domain
+
+*Who the operator is, and what this surface must SHOW before it ASKS. §4f (above) captured how the
+operator DRIVES the surface; this captures the operator's ROLE semantics so the evidence layer (the
+cockpit's M6 floor) is grounded in the operator's real job, not generic cockpit doctrine. The failure
+this prevents: a surface that asks the operator for input the system could have resolved and shown
+first (asking for an identifier the system already holds). Every requirement below is lifted from
+`docs/{operator}-operational-profile.md` via `{operator_role}` / `{operator_trust_boundary}` /
+`{operator_decides}` / `{operator_known_before_ask}` / `{operator_evidence_required}` /
+`{operator_forbidden_asks}` / `{operator_must_not_infer}` / `{operator_ordering_invariants}` — never
+invented, never read from the current UI.*
+
+- **Operator & trust boundary:** {`{operator_role}` — identity, trust relationship, expertise,
+  frequency. Then the boundary from `{operator_trust_boundary}`: what the operator **may decide**, what
+  they **may not decide** (owner-gated / verification-required), and which of their writes are
+  verifiable vs. taken on trust. A required ask that would force a *may-not-decide* outcome is a defect.}
+- **Per-decision — show before ask:** {for each decision in `{operator_decides}`: the one outcome the
+  operator commits, the facts the system must RESOLVE AND SURFACE FIRST (`{operator_known_before_ask}`),
+  the evidence that must be on-screen for that decision (`{operator_evidence_required}` — this fills the
+  cockpit M6 "which evidence"), and the asks the surface must NOT make at that point
+  (`{operator_forbidden_asks}`). State as outcomes, never widgets.}
+- **Ordering invariants (the design must honour these):** {`{operator_ordering_invariants}` —
+  expected-contents-first → identity-before-identifier → evidence-before-input, plus any
+  operator-specific ordering. No decision may require operator input before the evidence/knowledge it
+  depends on is surfaced.}
+- **Must not infer (operator-truth constraints):** {`{operator_must_not_infer}` — e.g. don't guess an
+  identity the operator can't confirm; don't ask the operator to decide outside the trust boundary.}
+- **Open questions — operator/policy collisions (do NOT resolve here):** {`{operator_policy_collisions}`
+  — any place operator meaning collides with `docs/design-policy.md`, carried to the brief's Open
+  Questions verbatim for a human to decide and record; `none` when clean.}
+{endif}
+
 ---
 {endif}
 
