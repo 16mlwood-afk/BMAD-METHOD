@@ -600,6 +600,30 @@ invented, never read from the current UI.*
 ---
 {endif}
 
+## 4g. Viewport & responsive
+
+{Render on EVERY `page` run (required; `chrome` runs skip — nav breakpoints are in step-01 §0). If `{viewport_present}` — fill the table from policy. If `{viewport_pending_policy}` (an owner class whose §8.3 mobile ambition is still OPEN) — STILL render, but show the ⚠ PENDING POLICY banner below and leave the six fields as `pending`; never render a guessed posture.}
+
+The per-surface viewport contract, sourced from `docs/design-policy.md §8` — not invented. Mobile is a design contract, not an afterthought.
+
+| Field | Value |
+|---|---|
+| `surface_class` | {viewport_surface_class} |
+| `primary_viewport_class` | {primary_viewport_class} |
+| `breakpoints` | {viewport_breakpoints} |
+| `min_tap_target` | {viewport_min_tap_target} |
+| `overflow_rules` | {viewport_overflow_rules} |
+| `device_exclusions` | {viewport_device_exclusions} |
+
+{if `{viewport_pending_policy}`:}
+> **⚠ PENDING POLICY — owner mobile ambition not set.** The owner has not chosen the mobile ambition for this surface-class in `docs/design-policy.md §8.3` (tablet-down desktop-primary · mobile-first · desktop-only). This brief is **unverified / pending-policy**; the viewport fields above are `pending` and must NOT be designed against a guessed posture. Set the ambition in §8.3, then re-run to fill them. (Work continues — this is a warn, not a freeze.)
+{endif}
+{if `{viewport_surface_class}` is a desktop-only bench class (policy §8.2):}
+> **Bench surface — desktop-only (DECIDED, policy §8.2).** ≥1280px, landscape, keyboard + hardware scanner, scanner-first. A mobile / faux-mobile card here is a policy VIOLATION (the project's clerk-web-mode hard-failure) — do NOT design phone/tablet layouts for this surface.
+{endif}
+
+---
+
 ## 5. Hard Constraints
 
 {Use ONE of the following variants based on `{design_system}`:}
