@@ -246,9 +246,11 @@ files_to_change:                       # EXACT tracker paths the executor may wr
   - <e.g. {implementation_artifacts}/sprint-status.yaml>
   - <e.g. {implementation_artifacts}/stories/2.10.md>
 risk_class: autopilot_safe | owner_gate_required   # OPTIONAL hint, advisory only
+sprint_apply_marker: dropped | NOT_DROPPED — no tracker files | BLOCKED — slot held by <id>   # set by step 6
 ```
 
 - `proposal_id` MUST be unique and is what the user echoes in `APPROVE: APPLY_SPRINT_PROPOSAL::<proposal_id>`.
+- `sprint_apply_marker` records what step 6 did with `.sprint-apply-pending.json`. A proposal whose `files_to_change` has **no** sprint-execution artifact (design-lane / planning-artifact — e.g. correct-course used only as the scope-register front door) is `NOT_DROPPED — no tracker files`: it never touches the single-slot marker. If the slot is already held by a different `proposal_id`, step 6 is `BLOCKED` rather than clobbering it. Only a proposal that edits sprint-execution artifacts into a free/own slot is `dropped`.
 - `risk_class` is an OPTIONAL advisory hint. **The sprint-apply gate DERIVES the real class deterministically from `files_to_change` (single repo + every path a sprint-execution artifact under `_bmad-output/implementation-artifacts/` or `epics.md` + bounded count + no governance/doctrine path) and ignores a wrong or missing label — it fails closed to owner-gate.** Declare `autopilot_safe` only for a genuinely bounded, single-project sprint-execution edit (stories, sprint-status, epics); never for `planning-artifacts/` (PRD/architecture/specs), policy/doctrine, shared BMAD infra, or multiple repos. A hint that disagrees with the gate's derivation is surfaced in the gate log (planner-vs-gate mismatch), which is itself a useful signal — so set it honestly, but know it grants nothing on its own.
 - `files_to_change` MUST list every tracker file the executor will modify and NO others. An omitted file cannot
   be applied without re-approval; an extra file widens the blast radius — keep it minimal and exact.
@@ -315,13 +317,23 @@ risk_class: autopilot_safe | owner_gate_required   # OPTIONAL hint, advisory onl
 - Specific edit proposals with before/after
 - Implementation handoff plan
 
-<action>Drop the executor-gate pending marker (PROOF tier — declares exactly which tracker files this proposal freezes for the downstream executor gate):</action>
+<action>Conditionally drop the executor-gate pending marker (PROOF tier — freezes the exact tracker files this proposal authorizes for the downstream executor gate). This drop is GATED twice: a marker is written ONLY for a proposal that actually edits sprint-execution artifacts, and it NEVER silently overwrites a live marker that belongs to a different proposal.</action>
 
-Write `{project-root}/_bmad/.sprint-apply-pending.json` with the proposal's manifest:
+<check if="`files_to_change` contains NO sprint-execution artifact (no `sprint-status.yaml`, no story file, no `epics.md`) — e.g. a design-lane or planning-artifact proposal that used correct-course only as the scope-register / provenance front door">
+  Do NOT write `.sprint-apply-pending.json`. The marker + `sprint-apply-gate` hook exist to bound an executor's edits to sprint-execution artifacts; a proposal that edits none has nothing to bound, so a marker is meaningless here and would only pollute the single slot. Record `sprint_apply_marker: NOT_DROPPED — no tracker files` in the Section 6 Executor Manifest and skip the write.
+</check>
 
-```json
-{ "proposal_id": "<proposal_id>", "files_to_change": ["<path>", "..."], "created_at": "{date}" }
-```
+<check if="`{project-root}/_bmad/.sprint-apply-pending.json` already exists AND names a DIFFERENT `proposal_id` than this one">
+  Do NOT overwrite it. The file holds exactly ONE proposal; clobbering another proposal's live marker silently disarms its gate (a later `APPROVE: APPLY_SPRINT_PROPOSAL::<other_id>` could then mis-target). HALT and surface: "A pending marker for proposal `<existing_id>` is already live (freezing `<its files_to_change>`). Apply or resolve that proposal first, or explicitly move its marker aside, before this proposal drops its own." Record `sprint_apply_marker: BLOCKED — slot held by <existing_id>` in the manifest. (Single-slot contention is a known concurrency hazard when two proposals are open in parallel — see `docs/fork-gaps.md` 2026-07-19.)
+</check>
+
+<check if="`files_to_change` contains ≥1 sprint-execution artifact AND the slot is free or already names THIS `proposal_id`">
+  Write `{project-root}/_bmad/.sprint-apply-pending.json` with the proposal's manifest:
+
+  ```json
+  { "proposal_id": "<proposal_id>", "files_to_change": ["<path>", "..."], "created_at": "{date}" }
+  ```
+</check>
 
 This marker is read by the `sprint-apply-gate` PreToolUse hook (separate distribution track — ships with the
 hooks, not this skill). It bounds any later apply to the exact `files_to_change` set; an
