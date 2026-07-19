@@ -618,8 +618,8 @@ The per-surface viewport contract, sourced from `docs/design-policy.md §8` — 
 {if `{viewport_pending_policy}`:}
 > **⚠ PENDING POLICY — owner mobile ambition not set.** The owner has not chosen the mobile ambition for this surface-class in `docs/design-policy.md §8.3` (tablet-down desktop-primary · mobile-first · desktop-only). This brief is **unverified / pending-policy**; the viewport fields above are `pending` and must NOT be designed against a guessed posture. Set the ambition in §8.3, then re-run to fill them. (Work continues — this is a warn, not a freeze.)
 {endif}
-{if `{viewport_surface_class}` is a desktop-only bench class (policy §8.2):}
-> **Bench surface — desktop-only (DECIDED, policy §8.2).** ≥1280px, landscape, keyboard + hardware scanner, scanner-first. A mobile / faux-mobile card here is a policy VIOLATION (the project's clerk-web-mode hard-failure) — do NOT design phone/tablet layouts for this surface.
+{if `{viewport_surface_class}` is DECIDED in policy §8.2 — render the banner matching ITS decided posture, never a hardcoded one:}
+> **Decided surface (policy §8.2) — design to the decided posture verbatim.** If **desktop-only** (e.g. a grading/bench class): ≥1280px, landscape, keyboard + hardware scanner, scanner-first; a mobile / faux-mobile card here is a policy VIOLATION (the project's clerk-web-mode hard-failure). If **handheld-first / mobile-primary** (e.g. a roaming receiving clerk): phone viewport, portrait, one-handed, mobile scanner, offline-capable per policy; a desktop-only, mouse-dependent layout is the VIOLATION here. Do NOT invert the class's decided posture.
 {endif}
 
 ---
