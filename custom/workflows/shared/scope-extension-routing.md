@@ -59,3 +59,19 @@ Correctness is therefore **measured, not enforced.** The reference validation is
 - The **doctrine** (this file) syncs to every project via the `_bmad/bmad-shared` lane; projects reference it BY PATH, never restate it (a disagreeing restatement is drift — log in `docs/fork-gaps.md`).
 - The **hook** ships via the `hooks.json` template merge into project settings (fork-managed / gate-less repos; bespoke repos left intact).
 - A project **CLAUDE.md** block is NOT auto-synced (the sync excludes CLAUDE.md). The doctrine is "fork official" via this standard + the memory + the hook; explicit per-project CLAUDE.md pointers, if ever wanted, are a single deliberate cross-repo pass, not part of the sync.
+
+## 8. Hook tuning log
+
+**Tuning tracks (explicit, so they don't get lost between sync and future tuning):**
+
+- **v1 — payload trim (SHIPPED 2026-07-19, `cf49c6a8` on `myfork/custom`, reversible in one commit).** Wording/format only; grep + exit logic unchanged.
+- **v2 — dedup/cooldown marker (DEFERRED).** A throttle scoped to the `bmad-scope-extension-router` hook (mirroring `bmad-parallel-session-check`'s 30-min marker), to suppress repeat injection. Do this ONLY if repeat injection proves costly across more sessions — it is a **mechanics** change, kept separate from v1's wording change on purpose.
+
+**v1 evidence (captured so later audits need not rediscover why the trim happened):**
+
+- **Char count:** 1068 → **770** (−298, ~28% shorter). Full verbatim OLD payload is preserved in git at `cf49c6a8^`.
+- **What changed (the diff):** REMOVED — the redundant numbered answer-shape restatement (folded into the one-line opening), and verbose lane prose ("then design-handoff", "architecture", "single new enum value", the long premise-check sentence). PRESERVED — both guardrails (MATERIALITY, PREMISE-CHECK), the banned "no-button" nudge, all four lanes + the mixed rule, the STD-ID + doctrine path.
+- **Triggered example:** input `add carrier tracking to /inbound` → injects the 770-char router block, exit 0.
+- **Non-triggered example:** input `fix the null-metadata crash on /receive` → silent, no injection, exit 0.
+- **Duplicate-injection example (the v2 driver):** on a turn carrying batched background-task notifications, the router block appeared **~4× in a single turn's injected context** — one identical injection per stacked `UserPromptSubmit`. Unchanged by the v1 trim (payload-only); this is exactly what the v2 cooldown would address.
+- **Claim scope:** evidence is **one live thread** (cash-recovery) → sufficient for a safe v1 trim, NOT a fork-wide "confirmed". The hook layer is not exercised by the sub-agent eval (agents don't fire hooks); validate it in one full interactive session before it rides the sync, and reassess v2 once repeat-injection cost is observed across more sessions.
