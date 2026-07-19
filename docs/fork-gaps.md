@@ -534,3 +534,22 @@ The `git status` "UNDELIVERED WORK / N commits ahead" hook does NOT catch this �
 - (c) **Add a memory/doctrine-path allowance** to the write-scanner so `MEMORY.md`/`memory/*.md` doctrine edits stop false-positiving (reduces alarm fatigue that trains the owner to ignore the warning — exactly when the real one gets missed).
 - **Immediate (owner action, NOT a code fix):** treat the tokens already in `settings.local.json` as compromised — rotate the exposed Cloudflare API token(s), GitHub PAT(s), and any `CRON_SECRET`, then scrub the inline-secret entries from the allowlist.
 - **Priority: high** — live credentials sit in plaintext in a config file today, and the mechanism keeps adding more; the false-positive half is only medium but shares the root (scanner aimed at the wrong surface).
+
+## 2026-07-19 — correct-course step-6 unconditionally overwrites the single-slot `.sprint-apply-pending.json`, so a design-lane proposal (no tracker files) both mis-drops a marker AND clobbers a different proposal's live gate
+
+**Class:** enforcement
+**Fix scope:** fork-only
+**Target file:** `custom/workflows/correct-course/` (the workflow instructions, step 6 "Drop the executor-gate pending marker"; synced to project `.claude/skills/bmad-correct-course/SKILL.md`).
+
+**What fought us.** correct-course was used as the scope-governance front door for a **design-brief material revision** (clerk-receive photo-step guide assets, SR-17) — a design-lane change that touches ZERO sprint-tracker files (the brief revision itself is produced by design-handoff; the only writes are a design brief + a scope-register append). Step 6 nonetheless instructs the workflow to *unconditionally* write `_bmad/.sprint-apply-pending.json` with the proposal manifest. Two structural problems surfaced:
+1. **Wrong-for-the-change.** The pending marker + `sprint-apply-gate` PreToolUse hook exist to bound an executor's edits to sprint-execution artifacts (`sprint-status.yaml` / story files / `epics.md`). A design-lane proposal has no such files, so a marker is meaningless here — there is nothing for the gate to bound.
+2. **Single-slot clobber.** `.sprint-apply-pending.json` holds exactly ONE proposal. A live marker for a *different* proposal was already present this session (`2026-07-19-inbound-received-backlog-v1`, freezing three real story files). Blindly overwriting it would have silently disarmed that proposal's gate — the inbound-received apply would then either fail-closed unexpectedly or, worse, a stale approval token could mis-target. I had to notice this and **skip the marker by hand** (recorded `sprint_apply_marker: NOT_DROPPED` in the proposal's executor manifest) — i.e. work *around* the workflow.
+
+**Why it's structural.** The workflow assumes every correct-course run is a sprint-tracker change with tracker `files_to_change`. That assumption is false for the (increasingly common) case where correct-course is the scope-register/provenance front door for a design-lane or planning-artifact change. There's no branch that says "if this proposal changes no sprint-execution artifact, do NOT drop a marker," and no guard against overwriting a live marker for a different `proposal_id`.
+
+**Proposed fix.**
+- (a) **Gate the marker drop on the change class.** In step 6, only write `.sprint-apply-pending.json` when `files_to_change` contains at least one sprint-execution artifact (`sprint-status.yaml` / a story file / `epics.md`). For a design-lane / planning-artifact proposal, skip the marker and say so in the manifest (`sprint_apply_marker: NOT_DROPPED — no tracker files`).
+- (b) **Never blind-overwrite a live marker for a different `proposal_id`.** Before writing, if an existing marker names a different proposal, refuse-and-surface (or move it aside) rather than clobber — the single slot is a real concurrency hazard when two proposals are open in parallel (this session had two).
+- (c) Consider whether the single-slot file should become a small keyed set (`proposal_id → files_to_change`) so parallel proposals don't contend for one slot at all — the `sprint-apply-gate` hook would then look up by the approval token's `proposal_id`.
+
+**Handled this session** by manually skipping the drop and recording it — so no gate was disarmed — but a less-careful run would have clobbered the inbound-received marker silently. **Priority: medium** — no data loss occurred, but it's a silent-disarm-of-a-safety-gate shape under parallel proposals, which is exactly the class that bites when unnoticed.
