@@ -105,6 +105,13 @@ Breaking: no
 Home: shared/escalation-on-class-change.md
 Applies: all
 
+scope-extension-routing — route a scope-extension ask (add / deepen / extend) to the correct BMAD mechanism BEFORE discussing the idea, and answer in a fixed 4-part shape (mechanism · lead lane + why · downstream artifacts · exact next step). Lanes: design-elevation (settled surface, no new capability/source/model) · correct-course + scope-register (owner-added scope mid-work) · correct-course → PRD/Architecture → create-epics-and-stories (new table / new external source / schema-level model / architecture / PRD FR / epic-level capability); mixed → name BOTH + which LEADS. Two guardrails: MATERIALITY (a small clerk-writable field / single enum value is quick-spec + scope-register, NOT the capability lane) and PREMISE-CHECK (verify we don't already ingest/build a claimed "new source" before escalating). The at-INTAKE counterpart of STD-ESCALATE-001 (mid-flow class change). References (does not duplicate) the upstream `scope-extension-bmad-router` / `answer-shape-and-autonomy` memory — it is that doctrine's canonical Home. PROBABILISTIC awareness tier (a prose answer has no artifact to gate on): carried by the global memory one-liner + a `bmad-scope-extension-router` UserPromptSubmit hook (additive/contextual, never gates) + optional per-project CLAUDE.md pointer (not auto-synced). Correctness is MEASURED by a golden eval (cash-recovery: `evals/router-shape.md`; validation to date 6/8→8/8→8/8), not enforced.
+ID: STD-SCOPEROUTE-001
+Version: v1
+Breaking: no
+Home: shared/scope-extension-routing.md
+Applies: all
+
 workflow-personas — a thin PRESENTATION layer giving three human-facing families a named voice (Rhea/design-handoff, Sol/quick-spec+quick-dev, Mara/escalation-on-class-change). Voice appears in three sanctioned spots only — opening re-orientation, risk acknowledgement, "I" for responsibility — and never drives decisions, narration, menus, or output structure. Subordinate to STD-ESCALATE-001 and answer-shape-and-autonomy. Not an agent.
 ID: STD-PERSONA-001
 Version: v1
