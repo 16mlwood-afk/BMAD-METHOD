@@ -75,3 +75,14 @@ Correctness is therefore **measured, not enforced.** The reference validation is
 - **Non-triggered example:** input `fix the null-metadata crash on /receive` → silent, no injection, exit 0.
 - **Duplicate-injection example (the v2 driver):** on a turn carrying batched background-task notifications, the router block appeared **~4× in a single turn's injected context** — one identical injection per stacked `UserPromptSubmit`. Unchanged by the v1 trim (payload-only); this is exactly what the v2 cooldown would address.
 - **Claim scope:** evidence is **one live thread** (cash-recovery) → sufficient for a safe v1 trim, NOT a fork-wide "confirmed". The hook layer is not exercised by the sub-agent eval (agents don't fire hooks); validate it in one full interactive session before it rides the sync, and reassess v2 once repeat-injection cost is observed across more sessions.
+
+**Outstanding (OWNER-ONLY, NON-BLOCKING — what deliberately waits vs what shipped):**
+
+| # | Item | Status | When |
+|---|------|--------|------|
+| 1 | Sync fan-out of STD-SCOPEROUTE-001 + hook template to the 13 projects | owner-only | rides the owed **dedicated cockpit re-sync** — NOT a routine session |
+| 2 | Full interactive hook check | recommended owner-run before sync | command-level + live-thread checks are sufficient for v1 |
+| 3 | cash-recovery double-injection (local Python hook + synced hook) | accepted FP | retire the local Python hook **after** the shared hook lands via sync |
+| 4 | v2 dedup/cooldown marker (scoped to this hook) | deferred | only if repeat-injection is noisy across more sessions |
+
+Shipped and live now: the doctrine (this standard) + STANDARDS.md registration + the global `scope-extension-bmad-router` memory pointer + the trimmed awareness hook in the `hooks.json` template. `myfork/custom` is ready for the next scheduled sync; nothing further is owed from the session that authored this.
