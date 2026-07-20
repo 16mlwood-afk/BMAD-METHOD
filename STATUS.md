@@ -714,6 +714,7 @@ Foundational capabilities, shipped. The wave-by-wave feature history (what lande
 - [ ] **Quick-dev split into `spec-dev` and `direct-dev` entry points** — current `quick-dev` carries both modes behind one entry; split would make the safety boundary explicit at the entry point
 - [ ] **`tech-spec` workflow** — lightweight artifact between `maintenance-triage` and dev, for brownfield work that needs more than direct instructions but less than a full PRD
 - [ ] **Full brownfield maintenance pipeline** — `maintenance-triage → tech-spec → spec-dev` (1 of 3 surfaces shipped)
+- [ ] **Depth-pass provenance gates — AUTHORED ON FORK, NOT YET SYNCED** (`c7a6917e`). `rigor_source` / `decision_source`, the brief-template lines, the commit-time warn in `check-design-brief-completeness.sh`, the `PostToolUse:Skill` marker, the `C-RIGOR-01` / `C-DECISION-01` wording fix, and the `design-review-pr` inline-fallback escalation are all on `myfork/custom` and **inert in all 13 consuming projects**. **Fleet re-sync blocked; dedicated thread only** (see the `## Now` ⛔ STOP item — 11 blocked projects, never `--force` into live sessions). **Do NOT describe these gates as live fleet-wide, and do NOT assume fleet-wide enforcement when designing on top of them** — until the sync thread runs, a project's briefs carry no provenance requirement and `design-review-pr` there does not read `rigor_source`. Plan: `docs/sync-plan-depth-pass-provenance.md`.
 
 ## Policy-skill debt
 
