@@ -559,3 +559,43 @@ The `git status` "UNDELIVERED WORK / N commits ahead" hook does NOT catch this �
 **Handled this session** by manually skipping the drop and recording it — so no gate was disarmed — but a less-careful run would have clobbered the inbound-received marker silently. **Priority: medium** — no data loss occurred, but it's a silent-disarm-of-a-safety-gate shape under parallel proposals, which is exactly the class that bites when unnoticed.
 
 **RESOLUTION (2026-07-19):** shipped fixes (a) + (b) in the authoritative sync source `custom/skills/bmad-correct-course/SKILL.md` step 6 — the marker drop is now gated by three mutually-exclusive `<check>` blocks: *no sprint-execution artifact in `files_to_change`* → skip the write + record `sprint_apply_marker: NOT_DROPPED — no tracker files`; *slot already held by a different `proposal_id`* → HALT rather than clobber + record `BLOCKED — slot held by <id>`; *tracker files present AND slot free/own* → write. Section 6's Executor Manifest template gained the `sprint_apply_marker` disposition field so the manifest and the drop agree. Fix (c) (single-slot → keyed set) NOT taken — it touches the `sprint-apply-gate` hook (separate distribution track), left as a noted future enhancement. **OWED:** distribution — the fix reaches project sessions only after `~/bmad-method-v6/sync-bmad-workflows.sh` fans out to the 13 targets (Tier-3, run under the sync's dirty-target guard). Kept `[partly resolved]` in the live file until that sync runs.
+
+## 2026-07-20 — design-implement step-01 URL PATH is hard-coded to the LEGACY Claude Design bundle shape, so its whole ingest machinery silently no-ops on the `.dc.html` format Claude Design now emits — including whole-frame VARIANT props that hide a shipped capability behind a `default: false`
+
+**Class:** contract-dimension-gap (missing-source-on-one-input-path flavour → silently wrong grid denominator)
+**Fix scope:** fork-only
+**Target file:** `custom/workflows/design-implement/step-01-ingest-design.md` (§URL PATH — URL.2 README, URL.3 `<script src>` trace, URL.3a frame inventory, URL.4 token read, URL.5 state axis); synced to project `.claude/skills/bmad-design-implement/step-01-ingest-design.md`.
+
+**What fought us.** Ran `design-implement` against a modern DesignSync share-link (`claude.ai/design/p/<uuid>?file=Inbound+Feed.dc.html`, cash-recovery). Every URL-PATH ingest instruction assumes the legacy bundle shape and finds nothing:
+
+| step-01 instruction | assumes | `.dc.html` reality |
+|---|---|---|
+| URL.2 | `cat {design_dir}/README.md` | no README at bundle root — flat `.dc.html` frames + `_ds/<ds-id>/readme.md` |
+| URL.3 | trace `<script type="text/babel" src="components/*.jsx">` | no JSX modules; one self-contained `.dc.html` using `<x-dc>` / `<x-import>` custom elements |
+| URL.3a (all 5 lookup sources) | `<script src>` comments, `/* ==== frame ==== */` JSX banners, `app.jsx` lookup maps, sibling `<frame>.html` | frames are `<!-- ==== FRAME n · <id> ==== -->` comments + `data-screen-label` / `id` attrs; lookups are plain `<a href="Other Frame.dc.html#anchor">` |
+| URL.4 | `theme/tokens.jsx` | `_ds/<ds-id>/tokens/{colors,fonts,spacing,typography}.css` behind a `<helmet>` block |
+| URL.5 state axis | JSX conditional style objects, template-literal class joins, sibling `data-state` variants | `<sc-if value="{{ flag }}">` blocks driven by a `data-props` JSON editor-prop schema in `<script type="text/x-dc">` |
+
+**Why it's structural — and the dangerous half.** The format change is not just a new extension. `.dc.html` introduces a variant axis step-01 has no concept of: **whole-frame variants gated on editor props with a default.** This bundle carried
+
+```
+"trackingEnrichment": { "editor": "boolean", "default": false,
+                        "section": "Tracking enrichment (proposal, unbriefed)" }
+```
+
+driving `<sc-if value="{{ trackingOn }}">` / `<sc-if value="{{ trackingOff }}">` around two complete renderings of the feed — a 7-column Arrival version and a 6-column version without it. **The default rendering is the one WITHOUT the capability.** step-01's state axis (hover / focus / failed / empty / `data-state`) does not reach editor-prop variants, so a straight ingest catalogs only `trackingOff` and the grid's design-side denominator silently loses an entire column, a tally strip, a provenance line and a footnote — all already shipped in production (cash-recovery `InboundFeed.tsx`, stories 8.5/8.7, PR #306). Applying that grid would have **deleted a live capability**.
+
+The safety net did hold — step-02b's regression-surface check is exactly what flags this as a DROPPED capability — but only because the capability preflight is independent of the (wrong) grid. The ingest step itself would have reported a clean, complete catalog of the wrong variant. Relying on a downstream halt to catch an upstream silent no-op is the shape that bites the moment the downstream check is weakened or skipped.
+
+Compounding: `readme.md` DOES exist inside `_ds/<ds-id>/`, so URL.2's `../README.md` fallback also misses it — `{design_layout_constraints}` comes back empty on a project where the policy read is the only authoritative layout source.
+
+**Proposed fix.**
+- (a) **Add a `.dc.html` sub-branch to URL PATH**, detected on the target file extension (or `<x-dc>` / `support.js` in the project tree), parallel to the existing URL.1a/URL.1b split. Legacy JSX bundles keep the current path untouched.
+- (b) **Frame inventory from `.dc.html` evidence:** `<!-- ==== FRAME n · <id> ==== -->` banners, `data-screen-label` / `id` on each frame root, and cross-frame `<a href="<Other Frame>.dc.html#anchor">` as the §13-lookup edges. The rendered-"Linked records" authoritative-denominator reconciliation (URL.3a source 5) still applies — only the harvest sources change.
+- (c) **Token read from `_ds/<ds-id>/tokens/*.css`** (resolve the `<helmet>` `<link rel=stylesheet>` hrefs rather than globbing `tokens/*.css` at bundle root), and README from `_ds/<ds-id>/readme.md`.
+- (d) **NEW: an editor-prop VARIANT axis, and it is not optional.** Parse the `data-props` JSON in `<script type="text/x-dc" data-dc-script>`, enumerate every `<sc-if>` branch, and catalog **every variant, not just the default** — each becoming its own grid rows (`variant: trackingOn` / `trackingOff`) exactly as `state:` does today. Crucially: a variant whose `default: false` **hides a capability** must be surfaced to step-02b as a candidate dropped capability, never silently excluded from the denominator. A prop `section` label containing "proposal"/"unbriefed" is the design tool flagging its own addition as outside the brief — carry that annotation into the §9 report rather than dropping it.
+- (e) Consider a **loud step-01 guard:** if a URL-path ingest completes with zero traced modules AND zero README AND zero token files, HALT rather than proceed with a near-empty catalog. The current failure is silent-and-plausible, the worst combination — a "clean" catalog of nothing.
+
+**Handled this session** by reading the raw `.dc.html` by hand, spotting the `data-props` schema, and halting before step-02 — the correct verdict (don't implement; the default variant regresses production) was reached by manual inspection, not by the workflow. **Priority: high** — `.dc.html` is what the current Claude Design "Send to local coding agent" panel emits, so this is now the DEFAULT path, not an edge case, and the failure mode is a silently-wrong grid denominator that can license deleting shipped capability.
+
+**Secondary (same session, one line — do NOT re-log as its own gap):** the Bash edit-guard blocked `cat >> ~/bmad-method-v6/docs/fork-gaps.md`, i.e. it blocked *logging a fork gap*, even though CLAUDE.md allowlists `/Users/*/bmad-method-v6/` for the Edit|Write guard. The fork-path allowlist exists on the Edit|Write variant but not the Bash edit-equivalent variant — same root as the already-open 2026-07-16 / 2026-07-18 edit-guard false-positive entries; worked around via the Edit tool.
