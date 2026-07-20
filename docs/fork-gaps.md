@@ -234,7 +234,7 @@ The `git status` "UNDELIVERED WORK / N commits ahead" hook does NOT catch this �
 - (c) **Doctrine line** in project CLAUDE.md § Cross-Repo Edits: machine-local gitignored config (hooks, `settings.local.json`, marker/state files) is edited in place in the main checkout — a worktree is the wrong home for it (it would never be delivered and is not the live config) — mirroring the existing fork-path carve-out.
 - **Priority: medium** — real friction on any session that wires or tweaks local hooks/config under parallelism (a common maintenance shape), and the current de-facto workaround (do it via Write/Edit, not Bash) is an undesigned bypass rather than a decision. Not urgent — no data loss, and the escape hatch exists — but it quietly trains routing-around-the-guard.
 
-## 2026-07-10 — design-implement links the grid artifact in the PR body but never force-adds it, and it lives in gitignored `_bmad-output/`
+## 2026-07-10 — design-implement links the grid artifact in the PR body but never force-adds it, and it lives in gitignored `_bmad-output/`  `[partly resolved: 2026-07-19 — all three deliver paths now force-add + assert-tracked: design-implement step-04 §6 (grid artifact, git add -f + ls-files assert), design-ingest step-03 §1 (manifest, git add -f + assert), design-handoff step-04-deliver VERIFIED already fixed (§76 + §150-152 git add -f output_path + rationale). Distribution to projects owed.]`
 
 **Class:** contract-dimension-gap (deliver step references an artifact the deliver step doesn't ensure is tracked)
 **Fix scope:** fork-only
@@ -418,7 +418,7 @@ The `git status` "UNDELIVERED WORK / N commits ahead" hook does NOT catch this �
 
 **Related friction, same session (points to the standing gap-#111 / (c) allowlist thread, above — NOT a new gap):** the Bash edit-guard hard-blocked a `cat > fill.py` heredoc whose target was the **session scratchpad** (`/private/tmp/claude-501/<project-slug>/<session-uuid>/scratchpad/`) — a **new target class** for that thread, and a sharper contradiction than the prior ones: the harness system prompt *explicitly instructs* agents to use the scratchpad for all temp files and states it "can generally be used without permission prompts", while the guard blocks writes to it as an "edit-equivalent" and redirects to a worktree — meaningless for a session-private tmp dir where cross-session collision is impossible by construction. Same root as every prior hit: the guard classifies on the command SHAPE (`cat >`), not the expanded TARGET path. Worked around via the Write tool, which passed on the identical target — re-confirming the standing Bash-vs-Edit/Write inconsistency ask. Logged here by pointer, not duplicated.
 
-## 2026-07-16 — the local-render "honest done-check" can only paint the states the SEED DATA contains, so the state axis it exists to certify goes silently unverified
+## 2026-07-16 — the local-render "honest done-check" can only paint the states the SEED DATA contains, so the state axis it exists to certify goes silently unverified  `[partly resolved: 2026-07-19 — added a "State-render coverage" cede to design-implement step-04 §5b: a live/local render must enumerate the grid's non-default state rows painted-vs-no-data and CEDE the unpainted ones (visually-unverified, into a §9 prod-smoke checklist), mirroring the content-lane disclose-don't-fake posture. Distribution owed. The per-state seed helper is noted as a non-gating adjunct.]`
 
 **Class:** contract-dimension-gap
 **Fix scope:** fork-only

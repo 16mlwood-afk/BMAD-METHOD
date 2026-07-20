@@ -26,6 +26,13 @@ Build `design-ingest-<target_slug>.md` per `{installed_path}/manifest-schema.md`
 
 Write to `{implementation_artifacts}/design-ingest-<target_slug>.md`. Store `{manifest_path}`.
 
+**Force-add the manifest — it IS this workflow's primary deliverable and must reach `main`.** Most projects gitignore `/_bmad-output/`, so a plain `git add {manifest_path}` is silently rejected as ignored: it stages nothing, the commit reports "nothing to commit," and the push ships an EMPTY branch that still reads as a successful emit (observed: PR #2640, inbound-flow). Use `git add -f`, then ASSERT the file is tracked before declaring done — a silent ignored-path no-op must never pass as a successful emit:
+
+```bash
+git add -f {manifest_path}
+git ls-files --error-unmatch {manifest_path} >/dev/null || { echo "manifest not tracked — force-add failed; deliver would ship an empty branch"; exit 1; }
+```
+
 ## 2. Re-assert the completeness invariant
 
 Before declaring done, verify and stamp:

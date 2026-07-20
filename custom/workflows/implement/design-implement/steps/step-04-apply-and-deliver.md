@@ -125,6 +125,8 @@ The apply ledger above dispositions every *grid* row — but the grid has no row
 1. **Render the BUNDLE beside the design image (primary fallback, not a skip).** On a `claude_design_url` or `synthesize_bundle` run the *bundle* HTML is always present and runnable — render IT beside the design render and step through it top-to-bottom exactly as above. The bundle is the design made concrete, so this still catches copy / chrome / layout / spacing drift even when the built app can't be booted. Then state plainly in §9 that the *built* surface was verified by the transcription pass + green build + token parity (NOT a live render), and that the bundle render stood in for the built-surface compare.
 2. **The built-surface render-compare is then OWED, not skipped** — route it (`verify` skill, or design-review live Chrome once the surface is reachable/auth'd) in the §9 report, exactly as the content-lane and behavior cedes do.
 
+**3. State-render coverage — the axis a render silently under-covers.** A live/local render can only paint the states the SEED DATA contains, so a default-state render that "matches" leaves every non-default state-variant the design implements — `hover`/`failed`/`empty` plus domain state-variants (a split/pack workspace, an open §13 drawer, a claimed-elsewhere banner) — **visually unverified** while reading as a full pass. This is the same shape as the content-lane cede: the verification EVIDENCE (seed data) cannot cover a contract AXIS (state). So when the done-check is a live/local render, **enumerate the grid's non-default state rows and mark each `painted` vs `no-data-to-paint`**, then CEDE the unpainted ones explicitly — name them, mark `visually-unverified (static/unit-covered only)`, and drop them into a short prod-smoke checklist in §9 — exactly the disclose-don't-fake posture the content lane uses. Never let a clean default-state screenshot read as state-axis coverage. (Adjunct, not gating: a per-state seed helper — e.g. `db:local:sample --states` — that injects one row per declared state-variant so the render can actually cover the axis.)
+
 Declaring "done" off the grid alone — no render-compare, no bundle-render fallback, no owed-disclosure — is non-conformant. It is the precise false-green this section exists to stop: the supply-order cost drawer shipped with a generic header, a relabeled footer, and paraphrased copy while every CSS cell matched.
 
 ### 6. Commit and Push
@@ -133,6 +135,13 @@ Follow the project's CLAUDE.md commit procedures:
 
 ```bash
 git add {list of modified files}
+# The comparison grid artifact lives under gitignored `_bmad-output/` but is a REFERENCED
+# deliverable (linked in the PR body §9 and cited for regression by future sessions), so it must
+# be force-added on ALL paths (mirroring §5a's manifest force-add). A plain `git add` silently
+# drops it, and the PR body then links a path that never reached `main` — a 404 for any reviewer.
+git add -f {artifact_path}
+# Assert it actually staged — a gitignored path can no-op silently:
+git ls-files --error-unmatch {artifact_path} >/dev/null || { echo "grid artifact not tracked — force-add failed"; exit 1; }
 git commit -m "$(cat <<'EOF'
 fix: align data-quality page with Meridian design spec
 
