@@ -202,7 +202,13 @@ Run this check **as soon as `{target_slug}` + the target route are resolved** (s
 2. **Page component** — no page / screen component file exists for the surface.
 3. **Backing object** — no schema table and no shared type exists for the surface's primary object (grep the schema + shared types for the object name).
 
-If ANY of the three exists, this is a brownfield surface — proceed normally; `design-implement` is the right workflow. If **NONE** exists, surface this and **EARLY-EXIT (soft — recommendation, not a hard refuse; the operator may override)**:
+**Capability-granularity probe (the overlay case).** Surface existence is necessary but not sufficient. A common handoff is a **net-new capability layered on an EXISTING surface** — a new lifecycle/persistence dimension (drafts, versions, approvals, autosave/park/resume) overlaid on an already-shipped page. Probes 1–2 hit (route + page exist), so the surface reads brownfield — yet the *capability's own* backing object is unbuilt, and a fixture-only run would pass this cheap gate and only stop at the §2b/§4c fixture-ship halt, after a full ingest is already spent (the exact wasted-spend this preflight exists to prevent). So ALSO probe, at capability granularity — **any one firing ⇒ capability-net-new**:
+
+4. **Paired not-ready backend/arch-spec** — a paired backend or architecture-spec artifact for the same `{target_slug}` exists AND self-marks not-ready (e.g. `Status: NOT ready to implement`) or is uncommitted/unlocked.
+5. **Capability's backing object** — the handoff's README/brief declares a net-new capability ("net-new … capability overlaid on …"; a new store such as `order_drafts`), and grepping the schema + shared types for the *capability's* object (the draft/version/approval store — NOT the surface's primary object) finds nothing.
+6. **Assumed read/save path** — the save/park/resume/reload path this design assumes has no implementation (no action/mutation/service for the capability).
+
+**Verdict.** If NONE of probes 1–3 exists **⇒ net-new surface** (early-exit below). If a surface probe exists BUT any capability probe (4–6) fires **⇒ capability-net-new** — early-exit with the SAME soft recommendation, because the read/save path the design assumes does not exist yet, so the run would still ingest fully and stall at §4c. Only when probes 1–3 find an existing surface AND probes 4–6 are all clear is this a true brownfield diff — **proceed normally**. When surfacing a `capability-net-new` exit, name the missing capability object + spec so the override is informed. **EARLY-EXIT (soft — recommendation, not a hard refuse; the operator may override):**
 
 ```
 ══════════════════════════════════════════════════════════════════
@@ -229,7 +235,7 @@ you are knowingly implementing ahead of it), re-invoke with an explicit
 ══════════════════════════════════════════════════════════════════
 ```
 
-This is a **soft** early-exit (recommend + override), NOT a hard refuse like the two bundle gates above — it stops a mis-route by default while leaving the owner the wheel. Distinct from a *size* preflight (a large but EXISTING surface): this is about **existence** — whether there is anything to implement against at all. Surface the net-new determination in the run's opening summary (§SHARED.2) so an override is visible in the record.
+This is a **soft** early-exit (recommend + override), NOT a hard refuse like the two bundle gates above — it stops a mis-route by default while leaving the owner the wheel. Distinct from a *size* preflight (a large but EXISTING surface): this is about **existence** — whether there is anything to implement against at all. The determination has two flavours — `net-new-surface` (probes 1–3 all absent) and `capability-net-new` (surface exists but a capability probe 4–6 fires: a new persistence/lifecycle dimension whose backing object + read/save path are unbuilt). Surface which flavour in the run's opening summary (§SHARED.2) so the override is scoped to the real gap, not a blanket "surface missing."
 
 #### When `{input_kind} == "claude_design_url"`: existing flow
 
