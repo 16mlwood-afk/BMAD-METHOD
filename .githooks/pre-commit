@@ -4,6 +4,15 @@
 # dogfoods the same core.hooksPath=.githooks activation it distributes to projects).
 # This is the FORK's own bespoke hook — NOT the generic dispatcher in custom/githooks/.
 
+# Stash preflight — MUST run BEFORE lint-staged, which backs up the working state with a stash.
+# A corrupt existing stash makes that backup fail as an opaque "invalid object … Error building
+# trees" naming an unrelated path, while HEAD/index/fsck all look clean — a repo-wide commit
+# outage whose only working escape is --no-verify. Fails closed only on a proven-missing object.
+# (fork-gap 2026-07-20)
+if [ -x "$(git rev-parse --show-toplevel)/tools/check-stash-health.sh" ]; then
+  "$(git rev-parse --show-toplevel)/tools/check-stash-health.sh" || exit 1
+fi
+
 # Auto-fix changed files and stage them
 npx --no-install lint-staged
 
