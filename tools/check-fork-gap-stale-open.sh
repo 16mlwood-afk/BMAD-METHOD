@@ -111,4 +111,10 @@ flush
 echo "check-fork-gap-stale-open: $candidates stale-open candidate(s) from $checked entry with a declared Marker."
 echo "  $nomarker entry/entries declared no Marker (not checkable — add a **Marker:** line to include them)."
 echo "  DETECTOR ONLY — the register was not modified. Closing an entry remains a human call."
+if [[ "$candidates" -gt 0 ]]; then
+  echo
+  echo "  ⚠ RULE — NEVER close a gap on a grep hit alone. A marker proves a STRING exists, not"
+  echo "    that the gap is resolved. Open the implementing section, read it, and confirm it"
+  echo "    matches the entry's stated fix direction before tagging anything RESOLVED."
+fi
 exit 0
