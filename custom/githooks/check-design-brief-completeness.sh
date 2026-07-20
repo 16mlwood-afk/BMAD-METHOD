@@ -70,6 +70,49 @@ EOF
     printf '%s' "$body" | grep -qiE 'surface inventory' \
       || warn "$brief: has a Linked Records (§2a) section but no §7 Surface Inventory — each linked record needs a lookup-drawer frame."
   fi
+
+  # Provenance of the depth passes (§4d rigor / §4e decision analysis).
+  # WHY: both sections have a sanctioned by-hand fallback that renders an
+  # IDENTICAL-looking block to the skill path, and every consumer (design-review-pr
+  # step-01 -> {brief_rigor_map}) treats a populated section as evidence the pass
+  # ran. Undeclared, the fallback manufactures the evidence that enforcement
+  # succeeded — and C-RIGOR-01/C-DECISION-01 check the RENDERED SURFACE against
+  # these sections, taking them as ground truth, so they structurally cannot catch
+  # it. Net effect without this check: the only section the gate can fail is an
+  # HONEST one (declared gaps give a reviewer something to flag; a hand-waved block
+  # reads clean). Presence-of-a-declaration is the deterministic sliver; the
+  # declaration itself stays SELF-REPORTED (tier-7 marker is the proof layer).
+  if printf '%s' "$body" | grep -qiE '^#+[[:space:]]*4d\.'; then
+    printf '%s' "$body" | grep -qE 'rigor_source' \
+      || warn "$brief: has a §4d (Analytic depth) but no 'rigor_source' declaration — cannot tell whether the analytics-rigor skill ran or the inline fallback wrote it. Add 'rigor_source: skill | inline-fallback | not-applicable' (design-handoff step-01b §5c-2)."
+  fi
+  if printf '%s' "$body" | grep -qiE '^#+[[:space:]]*4e\.'; then
+    printf '%s' "$body" | grep -qE 'decision_source' \
+      || warn "$brief: has a §4e (Decision analysis) but no 'decision_source' declaration — a modelled distribution and a position size with unstated provenance. Add 'decision_source: skill | inline-fallback | not-applicable' (design-handoff step-01b §5c-3)."
+  fi
+
+  # Tier-7 cross-check: a `skill` claim is only evidence unless a matching
+  # invocation marker exists. The PostToolUse:Skill hook (hooks.json) appends to
+  # .claude/.depth-pass-invocations.jsonl whenever analytics-rigor or
+  # decision-analysis is actually invoked.
+  #
+  # HONEST DEGRADATION — read this before trusting a silent pass: the marker file
+  # is absent in any project where that hook is not installed (hooks ship on the
+  # onboarding/hooks track, NOT via BMAD workflow sync). So "no marker file" means
+  # UNVERIFIABLE, never verified — we do not warn on it, because warning on every
+  # brief in every un-hooked project would be pure noise and would get the whole
+  # gate ignored. The hole is real and named; do not read a quiet gate as proof.
+  markers="$ROOT/.claude/.depth-pass-invocations.jsonl"
+  if [ -f "$markers" ]; then
+    if printf '%s' "$body" | grep -qE 'rigor_source:[[:space:]]*skill'; then
+      grep -q '"skill":"analytics-rigor"' "$markers" 2>/dev/null \
+        || warn "$brief: declares 'rigor_source: skill' but no analytics-rigor invocation marker exists in .claude/.depth-pass-invocations.jsonl — the claim is unsupported. Either the skill did not run, or the declaration is wrong."
+    fi
+    if printf '%s' "$body" | grep -qE 'decision_source:[[:space:]]*skill'; then
+      grep -q '"skill":"decision-analysis"' "$markers" 2>/dev/null \
+        || warn "$brief: declares 'decision_source: skill' but no decision-analysis invocation marker exists — the claim is unsupported."
+    fi
+  fi
 }
 
 # sh/dash word-splits unquoted $staged on newlines (design-brief filenames are

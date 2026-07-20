@@ -161,7 +161,17 @@ The rigor spec lands in the **brief §4d** (a surface-level section — it cover
 
 **Fallback (skill not available).** Apply the eight rigor moves by hand — lead with the read; no naked decision number; sensitivity to drivers; base rate; deciding field; trend magnitude + dispersion; rank by impact; missing-vs-weak — and populate the same fields. The skill is preferred because it makes the read sentence and per-number uncertainty mandatory outputs rather than skippable prose.
 
-Set `{has_decision_numbers}` and the `{rigor_*}` fields (all empty when `{has_decision_numbers}` is `false`).
+**PROVENANCE IS MANDATORY ON BOTH PATHS — set `{rigor_source}`.** The two paths above produce an *identical-looking* §4d, and every downstream consumer (`step-01c`, brief §4d, `design-review-pr` step-01 §7 → `{brief_rigor_map}`) treats a populated §4d as evidence the pass ran. Left undeclared, the fallback does not merely under-enforce — **it manufactures the evidence that the enforcement succeeded**, and `C-RIGOR-01` (which checks the *rendered surface against §4d*, taking §4d as ground truth) is then structurally incapable of catching it. The perverse result: the only §4d the gate can fail is an honest one, because an author who declares `data_gaps` and a `mixed` verdict hands the reviewer things to flag while a hand-waved block reads clean. So:
+
+- `{rigor_source}` = **`skill`** — the `analytics-rigor` skill was actually invoked this run. Record its version if it reports one.
+- `{rigor_source}` = **`inline-fallback`** — this fallback produced §4d. **Record the reason** (skill absent / older sync / invocation failed). This is a legitimate, sanctioned path — it is not a failure, and it must not be hidden.
+- `{rigor_source}` = **`not-applicable`** — `{has_decision_numbers}` is `false`; there is no §4d.
+
+Step-03 renders this as a **required** `rigor_source:` line inside brief §4d. A §4d with no `rigor_source` is malformed — the deterministic tier-6 gate (`.githooks/check-design-brief-completeness.sh`) warns on it at commit time, outside this workflow, whether or not `design-handoff` ran.
+
+**Honest ceiling — do not overclaim this.** `{rigor_source}` is **self-reported**: it makes the fallback path *visible*, it does not make a `skill` claim *true*. Only the tier-7 acknowledgment marker (a `PostToolUse` on `Skill` recording the invocation, cross-checked by the commit gate) turns "the skill ran" into proof — and even that proves *invocation*, never *quality*. Rigor itself (is the base rate apt, is the deciding field the real one) is irreducibly PROBABILISTIC and no gate will ever decide it.
+
+Set `{has_decision_numbers}`, `{rigor_source}`, and the `{rigor_*}` fields (all empty when `{has_decision_numbers}` is `false`, except `{rigor_source}` = `not-applicable`).
 
 ### 5c-3. Decision analysis — the executive layer (capital-commitment surfaces only)
 
@@ -192,7 +202,15 @@ The skill runs its procedure (frame the bet; model the outcome distribution; siz
 
 **Fallback (skill not available).** Apply the eight decision moves by hand — frame the bet; model the outcome distribution; size to the loss tail; breakeven driver; compute the reference class; weight the regime; value of information; asymmetry — and populate the same fields.
 
-Set `{is_capital_decision}` and the `{decision_*}` fields (all empty when `{is_capital_decision}` is `false`).
+**PROVENANCE IS MANDATORY ON BOTH PATHS — set `{decision_source}`.** Identical contract to §5c-2's `{rigor_source}`, and the stakes are higher here: §4e carries a modelled outcome distribution and a position size, so a hand-rolled block that reads confident is a *sizing* recommendation with no model behind it. `C-DECISION-01` checks the rendered surface against §4e and takes §4e as ground truth, so it cannot catch a fabricated model either.
+
+- `{decision_source}` = **`skill`** — the `decision-analysis` skill was actually invoked this run.
+- `{decision_source}` = **`inline-fallback`** — this fallback produced §4e. **Record the reason.** Sanctioned, but never hidden.
+- `{decision_source}` = **`not-applicable`** — `{is_capital_decision}` is `false`; there is no §4e.
+
+Step-03 renders this as a **required** `decision_source:` line inside brief §4e; the same tier-6 commit gate warns when §4e exists without it. The §5c-3 **model-honesty gate still outranks this**: an un-modellable decision is an honest `single-scenario` verdict plus a named VOI gap, never a fabricated distribution — and `decision_source: inline-fallback` does not license inventing one.
+
+Set `{is_capital_decision}`, `{decision_source}`, and the `{decision_*}` fields (all empty when `{is_capital_decision}` is `false`, except `{decision_source}` = `not-applicable`).
 
 
 ---
