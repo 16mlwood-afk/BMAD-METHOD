@@ -148,6 +148,34 @@ bmad_managed_dirty() {
   git -C "$project_root" status --porcelain --untracked-files=no -- "${BMAD_MANAGED_GIT_PATHS[@]}" 2>/dev/null || true
 }
 
+# LAYOUT-AGNOSTIC skip-if-dirty gate (fork-gap 2026-07-20). Returns 0 when the target must be
+# BLOCKED (message already printed), 1 when it may proceed.
+#
+# Why this is a function called once per target rather than inline in a write path: BOTH delivery
+# paths run a destructive `rsync -a --delete` over BMAD-managed paths — the old-layout fan-out AND
+# `deliver_skills_layout_project` (the v6.8 dual-layout addition). The guard was originally written
+# inline in the old-layout path only (fork-gap 2026-07-10), so when the skills-layout path was added
+# beside it, it silently inherited NO guard: the single skills-layout target could be clobbered while
+# every old-layout target was correctly refused, and `--check` advertised a guard that path did not
+# enforce. Observed live 2026-07-20 (cash-recovery synced with 17 dirty managed files; harmless only
+# because they happened to be byte-identical to the freshly-generated ports). Keeping the decision
+# HERE — before layout dispatch — is what stops a future THIRD delivery path from opting out by
+# omission. Do not re-inline it.
+#
+# --force remains the ONLY override, and it applies uniformly to both paths.
+bmad_target_blocked_dirty() {
+  local project_root="$1" project="$2" dirty_managed
+  $FORCE && return 1
+  dirty_managed="$(bmad_managed_dirty "$project_root")"
+  [[ -z "$dirty_managed" ]] && return 1
+  echo "BLOCK $project — uncommitted TRACKED changes in BMAD-managed paths (a peer session may be mid-edit; --delete would clobber them):"
+  echo "$dirty_managed" | sed 's/^/    /'
+  echo "  Resolve (pick one):"
+  echo "    • Commit them (often an uncommitted prior sync):  git -C $project_root commit -- ${BMAD_MANAGED_GIT_PATHS[*]}   (or re-run sync with --commit)"
+  echo "    • Override (DESTRUCTIVE — overwrites the edits):   $0 --force"
+  return 0
+}
+
 JQ_MERGE='
   input as $base | input as $template |
   ($template.hooks | [.. | .statusMessage? // empty]) as $bmad_msgs |
@@ -1357,8 +1385,19 @@ while IFS= read -r target || [[ -n "$target" ]]; do
     # migrated skills layer instead of skipping. Otherwise it's a stale/empty target — skip.
     sl_proot="${target%/_bmad/bmm/workflows}"
     if [[ "$sl_proot" != "$target" && -d "$sl_proot/.claude/skills" ]]; then
+      # Skip-if-dirty applies HERE too — deliver_skills_layout_project rsyncs --delete over
+      # BMAD-managed paths exactly as the old-layout fan-out does (fork-gap 2026-07-20).
+      # --check previews the SAME predicate the write path enforces, so the two can never
+      # disagree about whether a dirty skills-layout target is safe.
       if $CHECK_ONLY; then
         echo "CHECK $(basename "$sl_proot") (skills-layout — would deliver migrated ports + bmad-shared)"
+        sl_dirty_managed="$(bmad_managed_dirty "$sl_proot")"
+        if [[ -n "$sl_dirty_managed" ]] && ! $FORCE; then
+          echo "  ⛔ uncommitted BMAD-managed changes — sync would SKIP this target (commit, or --force):"
+          echo "$sl_dirty_managed" | sed 's/^/     /'
+        fi
+      elif bmad_target_blocked_dirty "$sl_proot" "$(basename "$sl_proot")"; then
+        blocked=$((blocked + 1))
       else
         deliver_skills_layout_project "$sl_proot"
         synced=$((synced + 1))
@@ -1571,17 +1610,11 @@ while IFS= read -r target || [[ -n "$target" ]]; do
     # SAFE-PARTIAL over REFUSE-ALL by design: this workspace is perpetually multi-session, so
     # refuse-all would never fan out. Over-block note: an uncommitted PRIOR sync (ran without
     # --commit) also trips this — the fix is `sync --commit` (leaves a clean tree) or --force.
-    if ! $FORCE; then
-      dirty_managed="$(bmad_managed_dirty "$project_root")"
-      if [[ -n "$dirty_managed" ]]; then
-        echo "BLOCK $project — uncommitted TRACKED changes in BMAD-managed paths (a peer session may be mid-edit; --delete would clobber them):"
-        echo "$dirty_managed" | sed 's/^/    /'
-        echo "  Resolve (pick one):"
-        echo "    • Commit them (often an uncommitted prior sync):  git -C $project_root commit -- ${BMAD_MANAGED_GIT_PATHS[*]}   (or re-run sync with --commit)"
-        echo "    • Override (DESTRUCTIVE — overwrites the edits):   $0 --force"
-        blocked=$((blocked + 1))
-        continue
-      fi
+    # Same layout-agnostic gate the skills-layout dispatch above calls — one predicate, one
+    # message, both paths (fork-gap 2026-07-20). --force is still the only override.
+    if bmad_target_blocked_dirty "$project_root" "$project"; then
+      blocked=$((blocked + 1))
+      continue
     fi
 
     # --- Pre-sync safety check: local-only content (manifest-aware) ---
