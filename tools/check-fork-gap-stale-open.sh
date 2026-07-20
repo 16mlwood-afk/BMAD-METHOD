@@ -67,10 +67,16 @@ flush() {
   for m in "${markers[@]}"; do
     for t in "${targets[@]}"; do
       local abs="$ROOT/$t"
-      if [[ -f "$abs" ]] && grep -qF -- "$m" "$abs" 2>/dev/null; then
-        emit "$heading" "$t" "$m" "$t"; found=true; break 2
-      elif [[ -d "$abs" ]] && grep -rqF -- "$m" "$abs" 2>/dev/null; then
-        emit "$heading" "$t" "$m" "$t"; found=true; break 2
+      # The register itself must NEVER count as evidence: fork-gaps.md lives under docs/, so a
+      # broad `docs/` target would otherwise self-match on the gap's own prose and report a
+      # phantom that does not exist (observed 2026-07-20 on the pasted-image entry).
+      if [[ -f "$abs" ]]; then
+        case "$(basename "$abs")" in fork-gaps.md|fork-gaps-archive.md) continue ;; esac
+        if grep -qF -- "$m" "$abs" 2>/dev/null; then emit "$heading" "$t" "$m" "$t"; found=true; break 2; fi
+      elif [[ -d "$abs" ]]; then
+        if grep -rqF --exclude='fork-gaps.md' --exclude='fork-gaps-archive.md' -- "$m" "$abs" 2>/dev/null; then
+          emit "$heading" "$t" "$m" "$t"; found=true; break 2
+        fi
       fi
     done
   done
