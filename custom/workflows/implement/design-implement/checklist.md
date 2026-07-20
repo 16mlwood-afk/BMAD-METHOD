@@ -7,8 +7,11 @@
 - [ ] Design bundle downloaded and extracted successfully
 - [ ] README read — target design file identified
 - [ ] Chat transcripts read (if referenced in README)
-- [ ] All `<script src="...">` imports from the HTML file traced and read
-- [ ] Design tokens extracted with resolved values (not just token names)
+- [ ] (URL path) `{bundle_shape}` resolved BEFORE any path is read (URL.1c) — `legacy_jsx` vs `dc_html`; a `.dc.html` target was not ingested down the legacy branch, and the shape is stated in the SHARED.2 summary
+- [ ] All `<script src="...">` imports from the HTML file traced and read (`legacy_jsx`) — or, on `dc_html`, the self-contained frame document read in full and its frame roots / named sections / `<x-import>` components cataloged (there are no module imports to trace; concluding "no components" from that is the silent no-op)
+- [ ] (`dc_html`) `{design_variants}` captured (URL.5a) — `data-props` parsed, EVERY `<sc-if>` branch enumerated (not just the prop defaults), every property row tagged `variant` alongside `state`; a non-default branch containing structure the default lacks flagged `hides_capability` and folded into `{design_components}`/`{design_frame_inventory}` so step-02b §2 sees it. "proposal"/"unbriefed" section labels carried as annotation, never as a deletion signal
+- [ ] (URL path) Near-empty-catalog guard evaluated (URL.6) — the run did NOT continue past a zero-modules AND zero-README AND zero-tokens ingest
+- [ ] Design tokens extracted with resolved values (not just token names) — from `theme/tokens.jsx` (`legacy_jsx`) or the `<helmet>`-linked `_ds/<ds-id>/tokens/*.css` + `styles.css` (`dc_html`); on `dc_html` the absent JSX theme was never read as "no tokens"
 - [ ] Every component's CSS properties cataloged with exact pixel/em/hex values
 - [ ] Asymmetric padding/margin recorded as separate values (not collapsed)
 - [ ] `{design_layout_constraints}` captured — from `docs/design-policy.md` (AUTHORITATIVE; the bundle README is generated from it), corroborated by the README + bundle wrapper width (both ingest paths populate it; `authoritative` flag set per source)
