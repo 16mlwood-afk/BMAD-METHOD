@@ -1004,10 +1004,43 @@ fi
 SKILLS_NATIVE="$SCRIPT_DIR/custom/skills-native"
 PORT_ENGINE="$SCRIPT_DIR/tools/port-workflows-to-skills.sh"
 _skills_native_built=false
+# Success MUST depend on the porter actually succeeding — never on a leftover directory.
+# Previously this ran the engine as `>/dev/null 2>&1 || true` and then inferred success from
+# `[[ -d "$SKILLS_NATIVE" ]]`, a tree that persists from any PRIOR successful port. So a failed
+# port + a stale tree reported OK and shipped stale ports to every skills-layout target
+# (fork-gap 2026-07-20, silent-failure). The porter itself is fine (`set -euo pipefail`); the
+# swallowing was here. Error-handling only — sync scope, target list, dirty-target guard and
+# commit behaviour are untouched.
 ensure_skills_native_built() {
   $_skills_native_built && return 0
-  [[ -x "$PORT_ENGINE" ]] && { "$PORT_ENGINE" "$SKILLS_NATIVE" >/dev/null 2>&1 || true; }
-  [[ -d "$SKILLS_NATIVE" ]] || return 1
+  if [[ ! -x "$PORT_ENGINE" ]]; then
+    echo "  FAIL  skills-native [phase: engine-check] — port engine missing or not executable: $PORT_ENGINE" >&2
+    return 1
+  fi
+  local _port_log _port_rc
+  _port_rc=0
+  _port_log="$(mktemp -t bmad-skills-native-port 2>/dev/null)" || _port_log=""
+  if [[ -n "$_port_log" ]]; then
+    "$PORT_ENGINE" "$SKILLS_NATIVE" >"$_port_log" 2>&1 || _port_rc=$?
+  else
+    "$PORT_ENGINE" "$SKILLS_NATIVE" >/dev/null 2>&1 || _port_rc=$?
+  fi
+  if (( _port_rc != 0 )); then
+    echo "  FAIL  skills-native [phase: generate-ports] — port engine exited $_port_rc; NO fresh ports were produced." >&2
+    echo "        A pre-existing $SKILLS_NATIVE tree is NOT accepted as success (stale ports must never ship as OK)." >&2
+    if [[ -n "$_port_log" ]]; then
+      sed 's/^/        | /' "$_port_log" >&2
+      rm -f "$_port_log"
+    fi
+    return 1
+  fi
+  if [[ -n "$_port_log" ]]; then
+    rm -f "$_port_log"
+  fi
+  if [[ ! -d "$SKILLS_NATIVE" ]]; then
+    echo "  FAIL  skills-native [phase: verify-output] — engine reported success but produced no tree at $SKILLS_NATIVE" >&2
+    return 1
+  fi
   _skills_native_built=true
   return 0
 }
