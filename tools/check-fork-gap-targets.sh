@@ -28,23 +28,12 @@ heading=""
 warn_count=0
 checked=0
 
-# A token is a checkable fork-tree path only if it points UNAMBIGUOUSLY inside this repo's
-# source-of-record tree and carries no placeholder/glob. Deliberately conservative — near-zero
-# false positives is the design goal. Skipped by intent: absolute/home globals; template
-# placeholders/{vars}/globs; `src/` (marketplace channel, not the edit surface); project-side
-# paths (`scripts/`, `.githooks/`); and bare filenames (`CLAUDE.md`, `STANDARDS.md`,
-# `deliver.md`) which are contextual/relative, not fork-root files.
-is_checkable() {
-  local t="$1"
-  case "$t" in
-    *"…"*|*"<"*|*">"*|*"*"*|*"{"*|*"}"*|*"~"*|*" "*) return 1 ;;
-    /*) return 1 ;;
-  esac
-  case "$t" in
-    custom/*|docs/*|tools/*) return 0 ;;
-  esac
-  return 1
-}
+# Path resolution is SHARED with tools/check-fork-gap-stale-open.sh via the library below —
+# one resolver so pointer-rot and stale-open detection stay consistent (a tightening applies
+# to both at once). Do not re-implement is_checkable here.
+# shellcheck source=lib/fork-gap-paths.sh
+. "$ROOT/tools/lib/fork-gap-paths.sh"
+is_checkable() { fg_is_checkable "$@"; }
 
 while IFS= read -r line; do
   case "$line" in
