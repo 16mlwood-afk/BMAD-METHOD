@@ -751,3 +751,56 @@ Every obvious reading of that message is WRONG, and each costs a diagnostic hop:
 So the suspicion in the entry above is CONFIRMED and is not confined to `analytics-rigor` — §5c-2 and §5c-3 are the *same* defect, side by side, and both name a downstream review gate (`C-RIGOR-01`, `C-DECISION-01`) that cannot fire because the producing skill was never written. Every other named skill resolves; the earlier "missing" readings for `enforcement-expert` / `tool-discovery` (global) and `finance-presentation` (workspace root) were resolution-root artifacts, not gaps — **a single-root presence check produces false positives, so any fix for (c) must check all four roots.**
 
 This narrows fix (a): these are **not** sync-manifest omissions. The standards assert contracts against skills that do not exist, so the choice is author them or demote the references from "mandatory pass / enforced gate" to "inline procedure". Leaving them as-is keeps two review gates performative.
+
+---
+
+## 2026-07-20 — `design-implement`'s supersede gate is correct but fires TOO LATE on the URL path: it runs at SHARED.1a, AFTER the entire bundle mirror + component catalog, even though the design document self-declares its source brief in its own header
+
+**Target file:** `custom/workflows/design-implement/step-01-ingest-design.md` (§SHARED.1a, and the URL.1b/URL.1d ordering ahead of it).
+
+**What happened.** Ran `design-implement` against a Claude Design `.dc.html` handoff (`Receive Station Handheld.dc.html`, cash-recovery, `target_slug: clerk-receive`). The supersede gate did its job perfectly — the design was built from `design-brief-clerk-receive-2026-07-19`, which is **four revisions superseded**; the active brief (`...unified-single-touch-exception-strip-2026-07-20`) describes a materially different surface (13 `process-station` frames, unified single-touch pass) and a *different design file already exists* in the same project for it. The run halted before step-02 and no code was touched. **The gate is not the problem — its POSITION is.**
+
+**Why it's structural.** SHARED.1a's own rationale says "Halting here (before the grid) also avoids wasting the mapping/grid work" — but on the URL path it sits *downstream of the expensive part*: URL.1b mirrors every file in the bundle to disk, and URL.3–URL.5 catalog every component, frame, token and variant, all before `{target_slug}` is derived from `{design_frame_inventory}` entry 0. The stated reason for the late position is that "the slug isn't knowable before the frame inventory" — **and on the `.dc.html` shape that premise is false.** These bundles carry the source brief filename *verbatim in the first ~2KB of the target document*, in the sub-caption under the `<h1>`:
+
+```
+… · brief design-brief-clerk-receive-2026-07-19 (supersedes 2026-07-18 desktop bench) · policy v8 §8.2a · 9 required frames …
+```
+
+and the successor design's header does the same, naming its own active revision. So the one fact the gate needs is available from the **first `get_file` of the target alone** — before the mirror, before the catalog, before URL.1d's size preflight. On this run the waste was small (~2 fetches); on a large bundle the mirror + inline catalog IS the context budget, so a superseded handoff can consume an entire ingest before the gate that exists to prevent exactly that gets to speak. The failure scales with bundle size, which is the inverse of what you want.
+
+**Second-order:** the same late position means URL.1d (the "route through design-ingest" size recommendation) also fires before the supersede check — so a user can be told to spend a whole `design-ingest` run on a design that is about to be refused.
+
+**Proposed fix.**
+- (a) **Add a cheap pre-mirror brief probe to URL.1b, between step 0 (resolve `{design_file}`) and step 3 (mirror).** After the target's single `get_file`, scan its first ~4KB for a `design-brief-*` token; if found, resolve supersede against `{implementation_artifacts}` immediately and run the SHARED.1a branch there. Cost: zero extra calls — the target fetch already happened.
+- (b) **Keep SHARED.1a as the fallback, not the primary.** When the probe finds no brief token (legacy JSX bundles, hand-authored designs), behaviour is unchanged — resolve from `{design_frame_inventory}` exactly as today. The probe is an early-exit optimisation, never a new refusal path.
+- (c) **Order the size preflight after the probe**, so a superseded handoff is refused before the user is advised to spend an ingest on it.
+- (d) **Worth checking whether `design-ingest` step-01 §5 has the same shape** — it stamps `supersede_status` into the manifest, and if it also derives the slug only after its per-frame fan-out, it is paying the fan-out cost to learn something the target header stated up front.
+
+**Priority: medium.** Nothing wrong shipped — the gate held and the halt was correct and well-explained. But the protection currently costs the most exactly where it is most needed, and the cheap signal is sitting unread in bytes the workflow has already fetched.
+
+## 2026-07-20 — the WIP register that exists to prevent collisions is itself an unsynchronised shared file: parallel sessions append to one YAML by read-modify-write with no lock, and its session identity key is provably non-unique
+
+**Class:** shared state / enforcement
+**Fix scope:** fork + per-project (the register pattern is spreading; cash-recovery has the only instance today)
+**Target file:** `.claude/wip-register.yaml` + `.claude/hooks/collision_guard.py` (cash-recovery); pattern candidate for `custom/` if promoted.
+
+**What fought us.** The register was introduced after five same-epic collisions in one day, to let parallel sessions claim a surface before building. Using it for a routine owner-authorised deploy surfaced two structural defects in the mechanism itself.
+
+**(1) The register races against itself.** Mid-session, the file acquired **two identical top-level `guard_events:` blocks** — two sessions appended the same event concurrently and both writes survived. This was benign *only by luck of position*: both blocks sat ABOVE `claims:`, so `parse_register()` still returned all 13 claims. The file's own header documents the fatal case — `parse_register()` treats any new top-level key as the END of the claims block, so **a duplicated or misplaced key BELOW `claims:` silently truncates every claim after it**, and the truncation is invisible: the parser returns a shorter list, not an error. A coordination file whose failure mode is *silently forgetting other sessions' claims* is worse than no file, because sessions trust it.
+
+The root cause is not the duplicate — it is that **appending to a shared YAML from N sessions is a read-modify-write with no lock**. Every session reads the whole file, edits in memory, writes it back. Two overlapping edits either duplicate (observed) or drop one side (not yet observed, equally available). Nothing in the design prevents either.
+
+**(2) The identity key is provably non-unique — and the guard cannot verify identity.** `claimed_by` is a timestamp-derived display label (`claude-session-YYYYMMDD-HHMMSS`). The header already flags it as non-authoritative after observing two sessions collide on it. **It happened again during this deploy:** the harness re-labelled the acting session to `claude-session-20260720-145201` — the *same label* already held by a different, concurrently-active session claiming migration 0022. Two live sessions, one label, in the register that arbitrates ownership.
+
+v3 introduced `claimed_by_session_id` as the authoritative field, correctly noting it must be **harness-stamped** because "an agent that writes its own identity can write someone else's". But an agent appending a claim by hand has no way to obtain its own harness `session_id` — so it either omits the field or self-reports a value, which by the schema's own rule is untrusted. Observed consequence: the collision guard continued emitting `[warn-missing-claim]` on **every** subsequent tool call *after* a valid claim had been written and verified as `held` by the guard's own parser. The claim existed; the guard could not attribute it. **A guard that cannot recognise a correctly-filed claim trains operators to ignore it** — which is precisely the failure the register was built to stop.
+
+**Why it's structural, not a one-off.** Both defects are properties of the design, not of a careless write. Any Nth session hits the same race, and any hand-filed claim hits the same identity gap. The register is currently PROBABILISTIC by explicit admission, with a documented decision to promote to a PreToolUse deny gate — **promotion on top of this substrate would harden a mechanism that can silently drop claims and cannot attribute the ones it keeps.**
+
+**Proposed fix (do NOT patch by convention — conventions are what just failed).**
+- (a) **Serialize writes through a mediated writer.** A small `claim.py --surface … --status …` that takes an OS-level lock (`fcntl.flock` on the register), re-reads, appends, writes, releases. No session ever hand-edits the YAML. This alone removes the race.
+- (b) **The writer stamps identity and time, never the agent.** The mediating script reads the harness `session_id` from the hook payload and writes both `claimed_by_session_id` and `claimed_at` itself — satisfying the v3 rule that these are harness-stamped, which hand-editing structurally cannot.
+- (c) **Make truncation loud.** `parse_register()` should assert exactly one `guard_events:` and one `claims:` key and raise on a duplicate, rather than silently returning a short list. A coordination file must fail closed on structural damage.
+- (d) **Do not promote warn→deny until (a)–(c) land.** The register's own rule 5 says promotion must rest on register evidence; the evidence currently shows the substrate is unsound.
+- (e) **One-entry-per-append shape.** Consider a JSONL append-only log instead of nested YAML — append is atomic for small writes under `O_APPEND`, and no reader has to rewrite the whole file to add a record.
+
+**Priority: high.** Nothing was lost this time, but the mechanism is being trusted for deploy coordination *today* and is queued for promotion to a hard gate. Both failure modes are silent.
