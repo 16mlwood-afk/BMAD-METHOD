@@ -30,7 +30,35 @@ if [ -d .husky ] && printf '%s' "$hookspath" | grep -q '\.husky'; then
   exit 0
 fi
 
-if [ "$hookspath" != ".githooks" ]; then
+# Decide whether core.hooksPath points at THIS repo's .githooks by comparing
+# RESOLVED ABSOLUTE PATHS, not the literal string. git honors an absolute
+# core.hooksPath verbatim, so a valid absolute path pointing at .githooks is a
+# fully-activated gate — a literal `== .githooks` test wrongly reported it OFF.
+#
+# WORKTREE-AWARE (do not regress this): core.hooksPath lives in the SHARED
+# common config, so one absolute path pins EVERY linked worktree at the parent's
+# .githooks. Resolve against the common dir's toplevel, NEVER the worktree-local
+# $PWD — a $PWD-relative assumption turns a valid absolute config into a
+# false-negative inside a worktree.
+common_git_dir="$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
+if [ -n "$common_git_dir" ]; then
+  common_toplevel="$(dirname -- "$common_git_dir")"
+else
+  # Older git without --path-format: fall back to this tree's toplevel.
+  common_toplevel="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+fi
+
+# canon: canonical absolute path of an existing dir, else the input verbatim.
+canon() { if [ -n "$1" ] && [ -d "$1" ]; then ( CDPATH= cd -- "$1" 2>/dev/null && pwd -P ); else printf '%s' "$1"; fi; }
+
+expected_hooks="$(canon "${common_toplevel}/.githooks")"
+case "$hookspath" in
+  /*) resolved_hookspath="$(canon "$hookspath")" ;;
+  "") resolved_hookspath="" ;;
+  *)  resolved_hookspath="$(canon "${common_toplevel}/${hookspath}")" ;;
+esac
+
+if [ "$resolved_hookspath" != "$expected_hooks" ]; then
   emit "HOOK ACTIVATION drift: this repo ships a git-hook gate (.githooks/) but core.hooksPath is '${hookspath:-unset}', so the gate is NOT firing — pushes/commits are not gated. Run scripts/activate-hooks.sh to wire it (STD-HOOKACTIVATE-001)."
   exit 0
 fi
