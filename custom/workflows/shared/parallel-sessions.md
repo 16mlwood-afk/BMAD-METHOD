@@ -213,6 +213,24 @@ The **hooks** (`wip-register.sh`, `check-wip-register.sh`, `wip-claim-on-worktre
 ### E5. The shared spec working-file (`tech-spec-wip.md`) — content-pin, not just claim awareness
 §E's register catches *feature-level* duplication. A distinct hazard sits one level down: `quick-spec` authors into a **generic** working path (`_bmad-output/implementation-artifacts/tech-spec-wip.md`) and only renames it to `tech-spec-{slug}.md` at finish — so two concurrent quick-spec runs, or a `quick-dev` Mode-A run pointed at the wip path, share one file and last-writer-wins (the spec-of-record can be swapped under a running session). `_bmad-output/` is shared and untracked, so worktrees don't isolate it. The mitigation is **content-pinning, not a lock**: `quick-dev` Mode-A captures the spec's `slug`/`title` at load (step-01) and HALTS at step-04 before stamping status if the frontmatter no longer matches — otherwise it would stamp a stranger's spec. The fixed wip path is load-bearing for quick-spec's resume-by-fixed-path detection (step-01 §0 looks the file up before the slug exists), so per-slug-from-the-start is a deliberate non-fix; the content-pin makes a swap fail loud instead of silently corrupting the lineage.
 
+### E6. Parked-decision record — the register's second record type (cross-repo)
+
+E1–E5 register *in-flight work* (a live worktree claim). A different artifact rots the same way: a **parked cross-repo decision** — one deferred rather than resolved, whose premise a later session must re-validate before resuming. The register carries it as a second record type. Motivating incident: a comms_dashboard ↔ inbound-flow runbook-frontmatter reconciliation was parked as OPEN across sessions, but inbound-flow PR #2697 had already migrated the runbook to the contract five days earlier — the premise ("inbound uses a different `name`/`description` header") was silently false, and a resuming session was set up to ship the redundant migration. The catch was a cold from-repo re-verify, not any mechanism.
+
+**Why in-flight-claim awareness (E1–E5) does not cover it.** A live claim is anchored to a worktree that still exists on disk; a parked decision has no worktree and no tool-call moment — it is a *fact about another repo's `main`* that an ordinary, unrelated PR can invalidate. So the failure mode is worse than a src collision: the resuming session is not blocked, it proceeds confidently on a false premise.
+
+**The record** — one entry, kept where the resuming session will actually look (the WIP register file, or the STATUS `## In-Flight Work` block):
+
+- `decision:` one line — what must be decided.
+- `repos-involved:` every repo whose state the decision depends on.
+- `load-bearing premise:` the one fact that must still be true for the decision to remain open (e.g. "inbound-flow runbook still uses a `name`/`description` header distinct from the comms_dashboard schema"). **Name the exact file(s) whose state the premise reads** — that is what the resume-time re-check opens.
+- `owner:` session/human responsible for resuming.
+- `parked-at:` ISO date.
+
+**Resume-time re-check (imperative).** Before acting on a parked-decision entry: for each repo in `repos-involved`, `git show <canonical-branch>:<file>` — the repo's canonical branch (`origin/main`, or the fork's `myfork/custom`), NOT the local working tree, NOT thread/STATUS prose — and re-evaluate the premise against live state. **If the premise no longer holds → HALT, restate the updated fact, close the entry `SUPERSEDED` naming the PR/commit that moved it, and do NOT execute the deferred action.** If it still holds → update the entry to current state, then proceed.
+
+**Enforcement honesty (mirrors E2/E4).** The resume-time re-check is **imperative prose the resuming session must choose to run — PROBABILISTIC, not a gate.** "A session is resuming a parked decision" has no deterministic trigger (it is not a tool call), so no PreToolUse block can enforce it — an attempt would be the indiscriminate-gate anti-pattern §E already warns against. The available DETERMINISTIC tier is *awareness, not action*: a parked-decision entry can be surfaced at SessionStart by the same `check-wip-register.sh` mechanism that prints live claims (E2), so a resuming session cannot be *unaware* one is open — but running the re-check stays the model's choice. Belt-and-suspenders, honestly labeled.
+
 ## Costs
 
 - A worktree per src-editing run — cheap, and the project `CLAUDE.md` already mandates it; §A1 just moves it from "the human remembered" into the workflow.

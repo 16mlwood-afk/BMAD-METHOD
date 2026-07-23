@@ -63,6 +63,10 @@ Track PRs or branches currently being worked on so the skill knows what's mid-ch
 
 - (none) / branch-name → short description → status
 
+**Parked cross-repo decisions.** A deferred cross-repo decision MUST name the exact file(s) in each repo whose current state its premise depends on. A resuming session opens those files from the canonical branch (`origin/main`, or the fork's `myfork/custom`) before proceeding — never from thread memory or STATUS prose. If the premise moved, close the item as SUPERSEDED; do not execute the deferred action. Record shape + resume-time re-check: `parallel-sessions.md` §E6.
+
+- (none) / decision → repos-involved → load-bearing premise (file[s]) → owner → parked-at
+
 ## Known Drift Across the 13 Projects
 
 If any consuming project is out of sync with the current fork, note it here so workflows aren't authored against assumptions that don't hold everywhere.
