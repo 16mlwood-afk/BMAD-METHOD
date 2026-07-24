@@ -25,11 +25,18 @@ npx --no-install lint-staged
 changed="$(git diff --cached --name-only)"
 non_fork="$(printf '%s\n' "$changed" | grep -cvE '^(custom/|docs/|\.githooks/|\.husky/|\.gitignore$|STATUS\.md$|STATUS-archive\.md$|onboarding-playbook\.version$|install-global-assets\.sh$|onboard-project\.sh$|check-[a-z-]*\.sh$|standards-drift-report\.sh$|.*\.md$)')"
 if [ -z "$changed" ] || [ "$non_fork" -gt 0 ]; then
-  npm test
+  npm test && npm run check:skillprov -- --added --strict
 else
   echo "pre-commit: fork-tooling-only diff → fast validators (skipping upstream install/urls/channels suites)"
-  npm run test:refs && npm run lint && npm run lint:md && npm run format:check && npm run validate:budget && npm run validate:close-out && npm run check:completion -- --strict
+  npm run test:refs && npm run lint && npm run lint:md && npm run format:check && npm run validate:budget && npm run validate:close-out && npm run check:completion -- --strict && npm run check:skillprov -- --added --strict
 fi
+
+# STD-SKILLPROV-001 gate (ARMED 2026-07-24, new-skills-only): the `check:skillprov -- --added --strict`
+# above scopes to SKILL.md files this commit ADDS (git --diff-filter=A) — a no-op unless a new skill is
+# being committed, so blast radius is the skill layer only. A newly-added skill without valid provenance
+# (or a logged origin_type: original + exemption_reason) BLOCKS the commit. Existing skills stay warn-only
+# (full-corpus `check:skillprov` in `npm test` is non-blocking) until the fork-wide hard gate + CI is a
+# separate, explicit decision. Escape hatch: add provenance, add a logged exemption, or --no-verify.
 
 # Validate hooks actually function (exit 0 + correct stdin contract) so a broken
 # hook can't ship silently — see docs/hooks-registry.md + fork-gaps "Hooks ship unvalidated".

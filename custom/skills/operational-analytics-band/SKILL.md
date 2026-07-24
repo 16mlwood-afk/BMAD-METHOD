@@ -3,7 +3,27 @@ name: operational-analytics-band
 description: Design and critique the supporting analytics band / evidence layer on operational or hybrid product pages — the compact row of coverage strips, microcharts, and counters that sits above or beside the primary table/worklist. Use when adding, revising, tightening, or auditing this band so it stays subordinate to the worklist and tied to user actions. Do NOT use for full BI/executive dashboards, any page where analytics is the primary surface, standalone analytical/reporting pages, schema/backend/data work, copy-only edits, or page redesigns that contain no analytics surface.
 metadata:
   short-description: Critique the analytics band on operational pages
+provenance:
+  id: operational-analytics-band
+  version: 1.0.0
+  created_at: 2026-07-24
+  author: Claude (with Mason)
+  source_research:
+    - https://tessl.io/registry/skills/github/secondsky/claude-skills/kpi-dashboard-design/quality  # general KPI-dashboard-design skill; covers full BI dashboards, not this narrow operational-page-subordinate band
+    - https://github.com/nickcrew/claude-cortex/blob/main/skills/dashboard-designer/SKILL.md  # general dashboard-designer skill; spec/critique for whole dashboards, not the specific worklist-subordinate band + archetype-defer pattern
+    - https://sstoitsev.medium.com/a-dashboard-design-ai-agent-skill-for-getting-past-pretty-screens-8747d20f09f9  # adjacent "dashboard design AI agent skill" writeup; same problem space (past-pretty-screens critique) but for dashboards-as-primary-surface, not this skill's operational/hybrid-band-as-secondary-surface job
+  origin_type: original
+  exemption_reason: "Searched for existing dashboard/analytics-band design-critique tools and skills (web + GitHub/npm/marketplace). Found several general-purpose dashboard-design skills (kpi-dashboard-design, dashboard-designer, a Medium-documented 'past pretty screens' agent skill) but all of them treat the dashboard/chart as the primary surface to spec or critique. This skill does the opposite job: it governs a narrow, secondary evidence band on operational/hybrid pages where the worklist stays primary, deferring shape selection to a sibling fork skill (analytics-surface-architect) and visual rules to this fork's own docs/design-policy.md. No external tool addresses that specific subordinate-band-on-operational-page constraint, so this is original to the fork rather than adopted/adapted from an external analog."
+  predecessor_id:
+  superseded_by:
+  last_reviewed_at: 2026-07-24
+  review_notes: "Backfill under STD-SKILLPROV-001. No external analog found for the subordinate-band-on-operational-page job; nearest matches are general dashboard-design skills that treat the dashboard as primary."
 ---
+
+## External research checked
+- Date: 2026-07-24 · Queries: "dashboard analytics band design linter subordinate to worklist table UI pattern tool" · "design critique agent skill \"analytics band\" OR \"evidence layer\" GitHub open source dashboard KPI strip"
+- Sources: https://tessl.io/registry/skills/github/secondsky/claude-skills/kpi-dashboard-design/quality · https://github.com/nickcrew/claude-cortex/blob/main/skills/dashboard-designer/SKILL.md · https://sstoitsev.medium.com/a-dashboard-design-ai-agent-skill-for-getting-past-pretty-screens-8747d20f09f9
+- Verdict: ORIGINAL — general dashboard-design skills exist but treat the dashboard as primary; none govern a compact evidence band kept subordinate to an operational worklist per this fork's design-policy.md.
 
 # Operational Analytics Band
 

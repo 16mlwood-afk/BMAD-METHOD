@@ -14,7 +14,26 @@ description: >
   finance-domain-pass, for OPERATOR ROLE instead of MONEY.
 metadata:
   short-description: Operator ROLE semantics of a cockpit for brief enrichment — not layout
+provenance:
+  id: operator-domain-pass
+  version: 1.0.0
+  created_at: 2026-07-24
+  author: Claude (with Mason)
+  source_research:
+    - https://github.com/bmad-code-org/BMAD-METHOD  # upstream fork base; has a design-handoff/UX two-spine contract (DESIGN.md/EXPERIENCE.md) but no operator-role-semantics extraction pass
+    - https://ixdf.org/literature/topics/personas  # closest general UX-persona methodology; covers user personas broadly, not cockpit decide-one operator trust-boundary/evidence-before-input extraction
+  origin_type: original
+  exemption_reason: "Searched for (1) general UI/UX persona-extraction tools and design-brief generators, and (2) GitHub/open-source persona-modeling and 'operator' agent projects. Results were either generic UX persona-creation guidance (IxDF, UXPin) or unrelated 'persona' concepts (dialogue-generation personas, AI-agent persona frameworks like OpenPersona, computer-use 'operator' agents). None extract operator ROLE semantics (trust boundary, must-not-infer, evidence-before-input ordering, forbidden-asks) from a project-local operational profile to enrich a design-handoff brief for a decide-one cockpit. Upstream BMAD-METHOD's design-handoff/UX two-spine contract (DESIGN.md/EXPERIENCE.md) covers visual identity and behavior/flow/IA, not this operator-domain semantic layer. This pass is specific to this fork's design-handoff pipeline (step-01-gather §3e, brief §4f, docs/<operator>-operational-profile.md schema) and its twin finance-domain-pass; no external analog does this job."
+  predecessor_id:
+  superseded_by:
+  last_reviewed_at: 2026-07-24
+  review_notes: "Backfill under STD-SKILLPROV-001. No external tool extracts operator-role semantics for a design-handoff brief; fork-specific to the design-handoff pipeline."
 ---
+
+## External research checked
+- Date: 2026-07-24 · Queries: "extract operator persona role requirements from UI for design brief tool" · "\"operator domain\" OR \"persona extraction\" design brief GitHub open source tool" · "BMAD-METHOD bmad-code-org github design-handoff operator domain workflow" · "\"finance-domain-pass\" OR \"operator-domain-pass\" BMAD"
+- Sources: https://github.com/bmad-code-org/BMAD-METHOD · https://ixdf.org/literature/topics/personas
+- Verdict: ORIGINAL — no external tool/workflow extracts decide-one operator role semantics (trust boundary, evidence-before-input, forbidden-asks) into a design brief; closest analogs (generic UX personas, upstream BMAD design-handoff two-spine contract) don't cover this job.
 
 # Operator Domain Pass
 

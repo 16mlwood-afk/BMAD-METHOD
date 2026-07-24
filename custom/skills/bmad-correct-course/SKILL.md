@@ -1,9 +1,29 @@
 ---
 name: bmad-correct-course
 description: 'Manage significant changes during sprint execution. Use when the user says "correct course" or "propose sprint change"'
+provenance:
+  id: bmad-correct-course
+  version: 1.0.0
+  created_at: 2026-07-24
+  author: Claude (with Mason)
+  source_research:
+    - https://github.com/bmad-code-org/BMAD-METHOD  # upstream BMAD-METHOD project this fork is based on
+    - https://github.com/bmad-code-org/BMAD-METHOD/blob/main/src/modules/bmm/docs/workflows-implementation.md  # upstream docs describing the correct-course workflow's implementation
+    - https://github.com/bmad-code-org/BMAD-METHOD/issues/1930  # upstream issue confirming correct-course exists as a workflow in bmad-code-org/BMAD-METHOD with the same sprint-change-proposal purpose
+  origin_type: adapted
+  exemption_reason: ""
+  predecessor_id:
+  superseded_by:
+  last_reviewed_at: 2026-07-24
+  review_notes: "Backfill under STD-SKILLPROV-001. Core method (sprint change analysis producing a Sprint Change Proposal) comes from upstream bmad-code-org/BMAD-METHOD's correct-course workflow, reworked here into this fork's skill format (customize.toml resolution, persistent facts, activation steps)."
 ---
 
 # Correct Course - Sprint Change Management Workflow
+
+## External research checked
+- Date: 2026-07-24 · Queries: "BMAD-METHOD correct-course workflow sprint change proposal github bmad-code-org" · ""correct course" sprint change management agile workflow tool GitHub open source"
+- Sources: https://github.com/bmad-code-org/BMAD-METHOD · https://github.com/bmad-code-org/BMAD-METHOD/blob/main/src/modules/bmm/docs/workflows-implementation.md · https://github.com/bmad-code-org/BMAD-METHOD/issues/1930
+- Verdict: ADAPTED — the upstream BMAD-METHOD project already ships a correct-course sprint-change workflow (confirmed via its own docs and issue tracker); this skill is that method reworked into the fork's skill/customize.toml format, not an independent invention.
 
 **Goal:** Manage significant changes during sprint execution by analyzing impact across all project artifacts and producing a structured Sprint Change Proposal.
 

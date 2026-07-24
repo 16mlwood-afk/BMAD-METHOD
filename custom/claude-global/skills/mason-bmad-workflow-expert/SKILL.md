@@ -5,7 +5,27 @@ metadata:
   audience: Mason-BMAD team (single team, ~13 projects)
   version: '1.10'
   last_verified_against_fork_commit: 'fd30ee7d'
+provenance:
+  id: mason-bmad-workflow-expert
+  version: 1.0.0
+  created_at: 2026-07-24
+  author: Claude (with Mason)
+  source_research:
+    - https://github.com/bmad-code-org/BMAD-METHOD  # upstream project this fork is customized from; the method this skill's subject matter (workflows, agents, phases) belongs to
+    - https://github.com/bmad-code-org/bmad-builder  # upstream's own "Builder and Validator" tool — closest adjacent thing to a workflow-authoring/validation expert, but validates the stock method, not a private fork's proprietary safety policies
+    - https://mcpmarket.com/tools/skills/bmad-workflow-help  # third-party "BMad Help - Workflow & Agent Guide" Claude Code skill — closest external analog for a BMAD-aware assistant skill, but generic-BMAD-usage help, not fork-specific maintenance
+  origin_type: adapted
+  exemption_reason: ""
+  predecessor_id:
+  superseded_by:
+  last_reviewed_at: 2026-07-24
+  review_notes: "Backfill under STD-SKILLPROV-001. Core subject matter (BMAD workflows/agents/phases) is adapted from upstream bmad-code-org/BMAD-METHOD; the skill itself is reworked for this fork's proprietary policies (grounding gate, brief provenance, autonomy scoping) with no external analog covering fork-specific maintenance."
 ---
+
+## External research checked
+- Date: 2026-07-24 · Queries: "BMAD-METHOD AI agent workflow fork maintenance expert Claude skill marketplace" · "bmad-code-org BMAD-METHOD GitHub workflow maintainer agent"
+- Sources: https://github.com/bmad-code-org/BMAD-METHOD · https://github.com/bmad-code-org/bmad-builder · https://mcpmarket.com/tools/skills/bmad-workflow-help
+- Verdict: ADAPTED — subject matter comes from upstream bmad-code-org/BMAD-METHOD, but this skill is reworked specifically to maintain this private fork's proprietary policies (grounding gate, provenance, autonomy scoping); no external tool does that job.
 
 # Mason-BMAD Workflow Expert
 
