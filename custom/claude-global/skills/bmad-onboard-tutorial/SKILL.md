@@ -6,7 +6,26 @@ description: >
   the gates", "do the onboarding tutorial", "run the first guided tasks", or when onboard-project.sh's
   closing output points here. Demonstrates the safety gates by DOING — a safe sync dry-run and a first
   feature-branch + tests + commit — so the repo is not just configured but exercised once under the rails.
+provenance:
+  id: bmad-onboard-tutorial
+  version: 1.0.0
+  created_at: 2026-07-24
+  author: Claude (with Mason)
+  source_research:
+    - https://github.com/bmad-code-org/BMAD-METHOD/blob/main/docs/tutorials/getting-started.md  # upstream BMAD's own getting-started tutorial doc — closest analog for a guided post-install walkthrough
+    - https://github.com/mtain04/git-tutor  # external open-source "teach by doing" interactive CLI tutorial pattern (hands-on exercises under real tool gates) — analog for the demonstrate-by-doing method
+  origin_type: adapted
+  exemption_reason: ""
+  predecessor_id:
+  superseded_by:
+  last_reviewed_at: 2026-07-24
+  review_notes: "Backfill under STD-SKILLPROV-001. Idea (guided first-run walkthrough that exercises real gates once) is adapted from upstream BMAD's getting-started tutorial + the general 'teach by doing' CLI-tutorial pattern; mechanics (sync-manifest hash gate, EnterWorktree, fork-of-upstream push guard) are fork-specific rework, not vendored."
 ---
+
+## External research checked
+- Date: 2026-07-24 · Queries: "interactive onboarding tutorial CLI tool \"teach by doing\" first commit walkthrough open source" · "BMAD-METHOD onboarding tutorial workflow github bmad-code-org"
+- Sources: <https://github.com/bmad-code-org/BMAD-METHOD/blob/main/docs/tutorials/getting-started.md> · <https://github.com/mtain04/git-tutor>
+- Verdict: ADAPTED — the guided-walkthrough-after-install idea traces to upstream BMAD's own getting-started doc and the general interactive-CLI-tutorial pattern, but this skill's gate mechanics (sync-manifest content-hash protection, EnterWorktree, fork-of-upstream push guard) are specific to this fork and materially reworked, not vendored from either source.
 
 # Onboarding tutorial — teach by doing
 
