@@ -1,7 +1,25 @@
 ---
 name: enforcement-expert
 description: 'Strategist for making a CONTEXT-FREE Claude agent actually comply with a required behavior — read a guide, run a gate, not skip a step, not deploy without a contract. Load BEFORE authoring, reviewing, or strengthening any enforcement mechanism: a hook (SessionStart/UserPromptSubmit/PreToolUse/PostToolUse/Stop), a CLAUDE.md guardrail, a workflow/skill halt, a CI/pre-commit gate, or an acknowledgment marker. Returns a recommended enforcement design classified on the one axis that matters — DETERMINISTIC (the harness/tooling enforces, the model cannot skip) vs PROBABILISTIC (depends on the model choosing to comply) — with the exact primitive, the dangerous-moment placement, composition, override, and false-positive cost. Use when someone says "make Claude always X", "enforce X", "agents keep skipping X", "how do I force the agent to read/run/not-do X", or when a rule that matters is currently only prose.'
+provenance:
+  id: enforcement-expert
+  version: 1.0.0
+  created_at: 2026-07-24
+  author: Claude (with Mason)
+  source_research:
+    - https://ranthebuilder.cloud/blog/agentic-coding-hooks-deterministic-ai-guardrails/  # deterministic AI guardrails via hooks
+    - https://github.com/topics/llm-guardrails  # LLM guardrail frameworks (probabilistic vs deterministic)
+    - https://dev.to/aws/ai-agent-guardrails-rules-that-llms-cannot-bypass-596d  # neurosymbolic: deterministic rules an LLM can't override
+  origin_type: adapted
+  exemption_reason: "The core DETERMINISTIC-vs-PROBABILISTIC axis is grounded in industry guardrail practice (sources). The Claude-Code-specific primitive ladder (SessionStart/PreToolUse/Stop/CI + the marker-proof pattern) and the three-jobs framing (awareness/gate/proof) are fork-original — no external guide maps guardrail theory onto Claude Code's exact hook primitives."
+  last_reviewed_at: 2026-07-24
+  review_notes: "Backfill under STD-SKILLPROV-001. Axis adapted from industry practice; Claude-Code ladder original."
 ---
+
+## External research checked
+- Date: 2026-07-24 · Queries: "LLM agent guardrail enforcement deterministic vs probabilistic hooks GitHub"
+- Sources: ranthebuilder deterministic-guardrails · GitHub llm-guardrails topic · AWS neurosymbolic guardrails
+- Verdict: ADAPTED — det-vs-prob axis from industry practice; the Claude-Code primitive ladder + three-jobs framing are original.
 
 # Enforcement Expert
 

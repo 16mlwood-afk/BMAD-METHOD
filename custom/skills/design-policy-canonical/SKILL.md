@@ -1,7 +1,28 @@
 ---
 name: design-policy-canonical
 description: Enforce the project's design policy (`docs/design-policy.md` in the project root) as the authoritative source for visual and compositional decisions. Use when designing or redesigning pages, drawers, or detail views; choosing layout composition; picking or proposing components; generating Claude Design briefs; interpreting Claude Design artifacts for implementation; iterating designs against a brief; or creating or revising design-system artifacts (policy, tokens, shared components, badge/button/filter patterns). Do not use for unrelated code refactors, copy edits, bug fixes, performance work, schema changes, or backend changes that have no visual impact.
+provenance:
+  id: design-policy-canonical
+  version: 1.0.0
+  created_at: 2026-07-24
+  author: Claude (with Mason)
+  source_research:
+    - https://github.com/bmad-code-org/BMAD-METHOD/releases  # upstream BMAD-METHOD's bmad-ux introduces a DESIGN.md/EXPERIENCE.md sealed-file contract — closest upstream analog to a canonical design-policy document gating design decisions
+    - https://github.com/bmad-code-org/BMAD-METHOD  # upstream project this skill's BMAD workflow integration (design-handoff, design-implement, design-tuning, design-review) is adapted from
+    - https://composio.dev/content/top-design-skills  # surveyed general "design skills for Claude Code" landscape; none implement per-project canonical-policy enforcement with refusal templates
+    - https://github.com/proyecto26/system-design-skills  # adjacent Claude Code marketplace skill for design, but scoped to system architecture, not visual/design-policy enforcement — rejected as non-match
+  origin_type: adapted
+  exemption_reason: ""
+  predecessor_id:
+  superseded_by:
+  last_reviewed_at: 2026-07-24
+  review_notes: "Backfill under STD-SKILLPROV-001. Core idea (a canonical policy document gating design decisions, cited by section) mirrors upstream BMAD-METHOD's bmad-ux DESIGN.md/EXPERIENCE.md contract; this fork reworks it into a trust-hierarchy + explicit-refusal enforcement skill tied to this repo's own docs/design-policy.md and BMAD workflows."
 ---
+
+## External research checked
+- Date: 2026-07-24 · Queries: "Claude Code skill enforce design policy design system agent marketplace" · "BMAD-METHOD design policy design-handoff design-tuning workflow github bmad-code-org"
+- Sources: https://github.com/bmad-code-org/BMAD-METHOD/releases · https://github.com/bmad-code-org/BMAD-METHOD · https://composio.dev/content/top-design-skills · https://github.com/proyecto26/system-design-skills
+- Verdict: ADAPTED — no external tool does canonical per-project design-policy enforcement with refusal templates, but upstream BMAD-METHOD's bmad-ux DESIGN.md/EXPERIENCE.md sealed-file contract is the closest analog and the source this fork's BMAD-workflow integration adapts from.
 
 # Design Policy — Canonical Enforcement
 

@@ -14,7 +14,28 @@ description: >
   account mappings, or valuation methods; never resolves an unknown — it flags it.
 metadata:
   short-description: Finance semantics of a surface for brief enrichment — not layout
+provenance:
+  id: finance-domain-pass
+  version: 1.0.0
+  created_at: 2026-07-24
+  author: Claude (with Mason)
+  source_research:
+    - https://github.com/bmad-code-org/BMAD-METHOD  # upstream fork origin; has domain-module compliance guidelines but no finance-semantics-for-design-brief pass
+    - https://www.llamaindex.ai/services/financial-data-extraction-tool  # extracts financial data from documents into schemas, not a design-brief semantics appendix
+    - https://github.com/formancehq/ledger  # open-source ledger core; backend money-movement, not UI-redesign semantic extraction
+    - https://github.com/blnkfinance/blnk  # open-source double-entry ledger; same gap as above
+  origin_type: original
+  exemption_reason: "Searched for (a) financial-data-extraction tools (LlamaIndex) which parse documents into schemas but do not produce a design-brief appendix distinguishing persisted vs derived figures or a must-not-infer list; (b) open-source ledger/reconciliation backends (Formance, Blnk, LedgerForge, ClawKeeper) which move and reconcile money but have no notion of a blank-canvas UI redesign brief; (c) upstream BMAD-METHOD, whose domain modules add regulatory/compliance guidance for fintech but do not extract finance semantics from a source artifact to feed a design-handoff step. No adjacent tool combines finance-semantics extraction with the design-handoff brief-appendix contract this skill produces."
+  predecessor_id:
+  superseded_by:
+  last_reviewed_at: 2026-07-24
+  review_notes: "Backfill under STD-SKILLPROV-001. No external or upstream analog found; fork-specific design-handoff enrichment pass."
 ---
+
+## External research checked
+- Date: 2026-07-24 · Queries: "extract finance semantics from data for UI redesign brief tool" · "finance domain semantics extraction agent GitHub open source ledger reconciliation UI" · "BMAD-METHOD bmad-code-org design-handoff finance domain skill"
+- Sources: https://github.com/bmad-code-org/BMAD-METHOD · https://www.llamaindex.ai/services/financial-data-extraction-tool · https://github.com/formancehq/ledger · https://github.com/blnkfinance/blnk
+- Verdict: ORIGINAL — no external or upstream tool extracts finance semantics from a source artifact into a design-handoff brief appendix (persisted-vs-derived, must-not-infer, unresolved assumptions); closest matches are document-extraction tools and ledger backends, neither of which touch design-brief generation.
 
 # Finance Domain Pass
 

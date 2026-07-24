@@ -3,7 +3,26 @@ name: operational-cockpit
 description: Design, audit, or refine an operational COCKPIT — a decide-one-at-a-time operator surface whose job is to make one consequential decision fully, visibly, and continuously on one screen (a grading bench, a claim-filing station, an approval queue, a per-unit review/pricing/publish gate, a mapping/triage queue). Use when composing or auditing a per-item decision surface, when deciding whether a surface should be a cockpit vs a scan-many worklist, or when the user says "is this a cockpit", "should this be a cockpit", "this decision surface feels wrong/slow", or "the operator is clicking too much / working blind". Applies the mandatory floor (classify-first, queue+workspace co-present, per-item momentum, keyboard-first, consequence-visibility before an irreversible commit, no working blind) over a heuristic layer (confidence-scaling, geometry, one-viewport, reversibility calibration). Do NOT use for scan-many operational worklists/tables (that is `design-policy-canonical`, §F operational mode), analytics/BI surfaces (`operational-analytics-band` / `analytics-surface-architect`), pure visual treatment / tokens / status colors (the project design policy), or backend/schema/data work.
 metadata:
   short-description: Design/audit decide-one operator decision cockpits
+provenance:
+  id: operational-cockpit
+  version: 1.0.0
+  created_at: 2026-07-24
+  author: Claude (with Mason)
+  source_research:
+    - https://ui-patterns.com/patterns/dashboard  # closest named UX pattern ("dashboard, aka cockpit") but covers multi-metric monitoring, not decide-one per-item commit flow
+    - https://github.com/Surething-io/cockpit  # unrelated namesake — a Claude Code dev-tooling GUI called "cockpit", not an operator decision-surface doctrine
+  origin_type: original
+  exemption_reason: "Searched (1) general UX/product literature for an existing 'operational cockpit' or queue+workspace decide-one pattern — found only the generic 'dashboard aka cockpit' monitoring pattern (ui-patterns.com) and aircraft/C2/satellite cockpit-display literature, none of which address a decide-one, keyboard-first, consequence-visible per-item commit surface; (2) GitHub/npm/MCP for 'operational cockpit' tooling — found only unrelated projects literally named 'cockpit' (a Claude Code dev GUI, a Linux sysadmin web console) with no doctrinal overlap. This skill's specific floor (M1-M6: classify-first, queue+workspace co-presence, per-item momentum, keyboard-first commit, consequence-visibility, no-working-blind) is stated in the body to be a source-agnostic promotion of a pattern first written for one internal Bison surface after auditing six shipped cockpit-shaped surfaces — it is in-house design doctrine with no external analog found."
+  predecessor_id:
+  superseded_by:
+  last_reviewed_at: 2026-07-24
+  review_notes: "Backfill under STD-SKILLPROV-001. No external analog found for the decide-one cockpit floor; classified original."
 ---
+
+## External research checked
+- Date: 2026-07-24 · Queries: "\"operational cockpit\" UI design pattern per-item decision queue workspace operator" · "Claude Code skill \"design cockpit\" OR \"operational cockpit\" github marketplace"
+- Sources: https://ui-patterns.com/patterns/dashboard · https://github.com/Surething-io/cockpit
+- Verdict: ORIGINAL — no external pattern library or tool covers a decide-one, keyboard-first, consequence-visible per-item commit surface; closest hits were a generic monitoring-dashboard pattern and unrelated dev-tooling projects sharing only the word "cockpit".
 
 # Operational Cockpit
 
