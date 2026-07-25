@@ -242,11 +242,15 @@ function walk(dir, out = []) {
 }
 
 function adoptionScan() {
-  if (!fs.existsSync(WF_DIR)) {
-    console.error(`check:scoperegister: workflow dir not found: ${WF_DIR}`);
+  // Scan BOTH layouts. The primary producer (bmad-correct-course) lives under
+  // custom/skills/, not custom/workflows/ — a workflows-only walk cannot see it,
+  // which would make this scan structurally blind to the one file that matters most.
+  const dirs = [WF_DIR, path.join(ROOT, 'custom', 'skills')].filter((d) => fs.existsSync(d));
+  if (dirs.length === 0) {
+    console.error(`check:scoperegister: no workflow/skill dir found under ${path.join(ROOT, 'custom')}`);
     return { files: 0, adopters: 0 };
   }
-  const files = walk(WF_DIR);
+  const files = dirs.flatMap((d) => walk(d));
   const TOUCHES_SCOPE = /scope-register|scope_register|scope-lineage/i;
   const ADOPTS = /scope-register-routing\.md|STD-SCOPEREG-001/;
   let adopters = 0;
