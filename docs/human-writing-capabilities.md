@@ -6,7 +6,7 @@
 
 **Status:** CANONICAL. Treat this as the single source of truth for these 7 capabilities. In any future thread evaluating humanizer/human-writing/voice/tone/email skills, consult this ledger FIRST, reuse its verdicts and default actions **subject to the freshness rule below**, and UPDATE this file if a new decision is made (e.g. a house-owned outreach skill is added).
 
-### Freshness rule — a verdict is only as live as its evidence (added 2026-07-25)
+## Freshness rule — a verdict is only as live as its evidence (added 2026-07-25)
 
 The old staleness condition was *"unless the installed skill set has changed."* **That keys on the wrong variable.** It detects change inside this machine and is structurally blind to change outside it — and a better external tool appearing is precisely the event that should invalidate a *Do not install*. It was an outside human, not this ledger, who surfaced that the canonical humanizer was single-sourced while a 50-source alternative existed. Three rules replace it:
 

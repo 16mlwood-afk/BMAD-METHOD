@@ -1485,6 +1485,67 @@ owner: fork-maintenance
 
 ---
 
+## 2026-07-25 — the design-brief gate covers EDITS but structurally misses NEW briefs, because `_bmad-output/` is ignored in every project the hook ships to
+
+```yaml
+id: FG-2026-07-25-10
+class: enforcement
+scope: fork
+target: custom/githooks/check-design-brief-completeness.sh
+marker: "new-brief gate coverage"
+state: partly
+owner: fork-maintenance
+distribution: "sync-bmad-workflows.sh (all 14 targets)"
+```
+
+### Incident
+
+**Found by trying to PROVE a deployed hook fires, rather than assuming it.** After deploying the B7
+clause into cash-recovery's `.githooks/`, a self-test staged a fresh brief and the gate emitted
+**nothing**. Cause: `check-design-brief-completeness.sh` only ever inspects **staged** files
+(`git diff --cached --name-only | grep design-brief-*.md`), and cash-recovery's `.gitignore` carries
+`/_bmad-output/*`. The 44 existing briefs were tracked — force-added once, long ago — so *edits* to
+them stage normally and reach the gate. But a **brand-new brief is ignored**, cannot be staged
+without `git add -f`, and therefore **never reaches the gate at all**.
+
+**Why that is the worst possible coverage shape.** A brand-new brief is exactly what a fresh
+`design-handoff` emits — the highest-risk artifact, produced by the workflow the gate exists to
+backstop. So the check covers the low-risk path (touching an old brief) and misses the high-risk one,
+while reporting as armed. It is the same failure as FG-2026-07-25-09 one layer down: **the mechanism
+reads as live while the path that matters is uncovered.** The 2026-07-25 measurement of "6 true fires
+/ 0 false positives across 44 briefs" was real as *logic* and would not have fired on a single new
+brief in practice.
+
+**Why this is fork-scope, not a cash-recovery quirk.** The hook ships to all 14 targets via
+`sync_githooks_for_project`, and the `/_bmad-output/*` ignore is the standard shape the fork's own
+onboarding establishes. Every project that receives this gate very likely has the same hole. Nothing
+in the sync checks that the artifact class a delivered gate reads is actually stageable in the target
+— a gate can be delivered, activated, and structurally inert.
+
+### Work
+
+**Done in cash-recovery (`origin/main`, PR #389):** `.gitignore` now un-ignores
+`_bmad-output/implementation-artifacts/`, re-ignores its contents, then negates
+`design-brief-*.md`. Verified three ways: a new brief stages **without** `-f`; an untracked non-brief
+artifact is still ignored (no artifact leak); the 87 already-tracked files are unaffected. Gate
+re-tested live afterwards: B7 WARN fires on a staged table-first brief, `exit 0`.
+
+**Owed (the reason this is `partly`):**
+
+1. **The other 13 projects.** Same one-line `.gitignore` shape, unverified in each. Needs a sweep, not
+   an assumption — some may already track briefs, some may not have briefs at all.
+2. **Make the hook say so instead of failing silent.** When `design-brief-*.md` files exist on disk
+   under a path the gate scans but **none are stageable**, emit a one-line WARN — *"N brief(s) on disk
+   are gitignored; this gate cannot see new briefs in this repo."* A gate that no-ops because its
+   input is invisible must announce that, or its silence reads as a pass. This is the durable fix; the
+   per-project `.gitignore` edits are the cleanup.
+
+**Watch:** the general form is *"a delivered gate whose input class is unreachable in the target."*
+If a third instance appears, the sync itself should assert reachability at delivery time rather than
+each gate re-discovering it.
+
+---
+
 ## 2026-07-25 — a fork-side `custom/githooks/` edit makes the contract's DETERMINISTIC tier read as live while it fires in zero projects, and the "prose consumers" table that exists to catch exactly this drift is itself unverified
 
 ```yaml
@@ -1596,3 +1657,45 @@ owner: fork-maintenance
 **Target file:** `custom/workflows/shared/scope-register-routing.md` (the append contract) and `tools/check-scope-register.js` (a `--new-row` authoring mode alongside the existing `--audit`).
 
 **Priority: medium.** Nothing was lost — the row landed and audits clean. But this is a compliance-cost gap on a standard whose whole purpose is to get rows written by sessions that are about to stop working, and those sessions are the ones least able to afford six reads.
+
+---
+
+## 2026-07-25 — design-implement's URL path never asks "is there already an ingest manifest for this surface?", so a re-run silently forks from the prior passes' apply ledger and can re-decide what they deliberately left alone
+
+```yaml
+id: FG-2026-07-25-11
+class: provenance-gap
+scope: fork
+target: custom/workflows/implement/design-implement/steps/step-01-ingest-design.md
+marker: "SHARED.1a-iii"
+state: open
+owner: fork-maintenance
+```
+
+### Incident
+
+`design-implement` was invoked from Claude Design's paste-prompt for `templates/clerk-grading-workspace/ClerkGradingWorkspace.html` (cash-recovery, `/clerk`). That resolves `{input_kind} = claude_design_url`. A `design-ingest-clerk-grading-workspace.md` manifest for the SAME `target_slug` already existed in the repo, carrying **three prior apply passes** — including items previous passes had explicitly examined and **deliberately NOT applied** (a write-off-block-vs-route-footer fold flagged as an owner call; a box-contents deepening deferred to a wiring story; three logged forced deviations).
+
+Nothing in the workflow surfaced that manifest. I found it by chance — an unrelated `ls | grep -i grading` while looking for the brief. Had I not, this pass would have had no idea those decisions existed, and both plausible outcomes are bad: write a Pass 4 ledger into a file I never opened, or silently re-apply an intent item a prior session had consciously declined.
+
+### Why structural, not a one-off
+
+The asymmetry is baked into the step-01 branch. The **manifest path** has a full provenance apparatus: a supersede stamp read at intake, a `{resume_prior_dispositions}` read, and an explicit **freshness reconciliation** section that warns when the manifest predates a material brief revision. The **URL path** has none of it — it resolves `{target_slug}` in §SHARED.1a purely to match a *brief*, and never asks whether a *manifest* already exists on that same key. Yet `{target_slug}` is exactly the join key that would answer it, and it is already computed two lines earlier.
+
+It bites hardest on the normal case, which is the tell: a paste straight from Claude Design's "Send to local coding agent" panel *always* lands on the URL path, and a surface being re-designed is precisely a surface that has been implemented before — so the run most likely to have prior passes is the run structurally guaranteed not to look for them. The existing safety layer doesn't cover it either: the supersede gate compares handoff-to-handoff, and the §2b/§4c halts compare handoff-to-production. Neither compares **this run against the prior runs' decisions**, which is where "we already thought about that and said no" lives.
+
+The cost is invisible by construction. A URL re-run produces a clean, plausible, all-green pass; the evidence that it silently overrode a prior judgement sits in a file it never read.
+
+### Fix direction
+
+Add a **`SHARED.1a-iii. Prior-manifest check`** to step-01, immediately after `{target_slug}` is resolved in §SHARED.1a (it costs one glob):
+
+- (a) Glob `{implementation_artifacts}` for `design-ingest-*{target_slug}*.md`. On a hit, READ its apply ledger before step-02 and surface: passes already applied, frames still `⊘ deferred`, and — the load-bearing part — every **"Flagged — NOT applied (intent, not treatment)"** item. Those are prior *decisions*; this run must not re-open one without saying so.
+- (b) Compare the manifest's `ingest.source` + recorded `source_run_date` against the current bundle. When the bundle has been REGENERATED since (as here — the template header had moved to a newer brief plus a new composition contract), state that the manifest's section inventory is stale and that this run is re-ingesting rather than resuming. Symmetric with the manifest path's existing freshness warn; soft, never a halt.
+- (c) Route the ledger write: a URL re-run on a slug that already has a manifest should append its pass to **that** manifest under the multi-writer contract, not mint a parallel `design-implement-grid-*` artifact — otherwise the surface accumulates two ledgers that each look complete.
+
+All three are warn/disclose, not gates. The gap is that the URL path is *blind*, not that it is permissive.
+
+**Both lanes need the fix.** The same step file exists twice — `custom/workflows/implement/design-implement/steps/step-01-ingest-design.md` (canonical, the `target:` above) and `custom/skills-native/bmad-design-implement/step-01-ingest-design.md` (the v6.8 skills-layout lane). cash-recovery is the skills-layout pilot and executes the **skills-native** copy, so a fix applied only to the workflows lane would leave the project where this was observed unchanged.
+
+**Priority: high.** Nothing was lost this session, but only because a stray `ls` caught it. The failure mode — a fresh pass silently reversing a prior session's deliberate "not applied, needs an owner call" — is exactly the class of harm the apply ledger exists to prevent, and the URL path is both the default entry point and the one route that cannot see it.
