@@ -41,6 +41,21 @@ Owns **only** what is true for this one repo:
 | Worktrees / parallel | project-specific hook config | **STD-WORKTREE-001** / **STD-PARALLEL-001** |
 | CLAUDE.md shape itself | — | **STD-CLAUDE-001** (this doc) |
 
+## Reference-not-restate is surface-agnostic
+
+The values-vs-contracts rule above is one instance of a single method — **reference-not-restate** — that governs *every* budgeted, always-loaded context file, not just CLAUDE.md. Wherever a file is loaded into context on every turn and competes for a char/token budget, the same discipline applies:
+
+- **Keep firing triggers and guardrails inline** — they must act without the referenced doc loaded — and **move procedure, rationale, and examples behind a named pointer.** (This is the operational form of "don't hide guardrails behind pointers.")
+- **One registry defines each pointer once** (`[[Name]]` / `STD-<AREA>-NNN` / path); everything else references by name. When a target moves, fix the registry line, not the scattered references — the logical anchor is decoupled from the physical location, so the file is rename-safe.
+- **Never restate what a pointer already holds.** A copied body is drift waiting to happen.
+
+**Sibling instances of this same method**, each canonical in its own domain:
+- **STANDARDS.md** — shared standards live once at their Home, referenced BY PATH via `STD-<AREA>-NNN`, never restated.
+- **MEMORY.md** — a `[[name]]` index over one-fact backing files (`memory-library-discipline`).
+- **This standard (STD-CLAUDE-001)** — CLAUDE.md's global-doctrine vs thin-pointer-project split.
+
+The mechanical **operation** for shrinking an over-budget file to this shape — measure against budget → cut inline-vs-pointer → build/extend the registry → convert references → verify budget — is the **`context-compaction` skill**, which cites this standard for doctrine and does not redefine it. Applies to CLAUDE.md, SKILL.md, MEMORY.md-as-a-file, and external always-loaded instruction surfaces (e.g. a Perplexity Space instruction field).
+
 ## Canonical project CLAUDE.md shape
 
 A good project CLAUDE.md is short and pointer-based. Recommended sections:
