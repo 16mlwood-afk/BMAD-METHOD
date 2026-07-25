@@ -227,6 +227,25 @@ For each screen in `{screens}`:
     Any additive verification render appears below, subordinate; it is a check, not a co-equal design.
   </p>
 
+  <!-- ARTIFACT COMPOSITION — handheld-first surfaces (brief §4g Handheld-First Declaration present).
+       Contract: shared/operator-artifact-contract.md B1-B6. Three generator rules, non-negotiable:
+       (1) Synthesize the CANONICAL PHONE SURFACE FIRST and structure the whole bundle around it —
+           it is the deliverable; everything else is subordinate to it. Emit it first in the
+           document, largest, alone above the fold.
+       (2) Do NOT emit a symmetric row of phone/tablet/desktop comps. A comp board is the wrong
+           shape here even when the phone is leftmost and correctly labelled — it is the REVIEW
+           BOARD failure shape, and it is what a generator defaults to when composition is left
+           unspecified.
+       (3) Do NOT let variant states become separate mini-products. Emit each state as a degraded
+           state OF the canonical surface — same skeleton, same chrome, same primary-action
+           position, ONE changed region — in a subordinate "States of this surface" strip beneath
+           the canonical render, never beside it and never at equal size.
+       Order of the emitted document: canonical surface -> states strip -> additive viewports ->
+       notes/rationale LAST. Rationale never opens the artifact and never splits the canonical
+       render from its states. Inside the canonical render the primary action + next-step loop
+       outrank every heading and caption (the squint test), and on-surface copy stays operator
+       register — short, imperative; long-form explanation goes to the notes block. -->
+
   <!-- Page shell width follows the CANONICAL viewport, not a habitual 1440.
        Handheld-first surface => the canonical frame is a phone frame (max-width ~375px); a 1440px
        shell on a phone-primary brief is the desktop premise re-entering through the wrapper. -->

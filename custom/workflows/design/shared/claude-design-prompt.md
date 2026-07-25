@@ -22,6 +22,11 @@ A Claude Design enhancement prompt is a **focused, brief-descended** paste promp
 4. **The change** — the precise interaction being deepened, grounded in the real surface (never an invented affordance), and the core-job facet it serves.
 5. **Sibling pattern to borrow (optional, when one exists)** — name the sibling surface and the part to mirror (the coherence lens). Pair it with a **grounding caveat**: borrow the *layout / interaction grammar*, not mismatched *data semantics* — copying a sibling's content model when the data differs is the failure this caveat prevents.
 6. **Policy constraints** — the hard constraints from `docs/design-policy.md` that apply (pill shape / 4-tone, drawer pattern, accent/mono rules, named anti-defaults), so Claude Design stays conformant.
+7. **Artifact shape — REQUIRED when the surface's class is handheld-first / mobile-primary / phone-canonical.** Composition is not the generator's to choose; leaving it unspecified is what produces a **review board**. Carry these three verbatim in spirit (contract + golden cases: `operator-artifact-contract.md` B1–B6):
+   - **Generate the canonical phone surface FIRST and structure the whole artifact around it** — first, largest, alone above the fold. It is the deliverable; everything else is subordinate.
+   - **Do NOT default to a symmetric row of comps.** A phone/tablet/desktop board is the wrong shape here even when the phone is leftmost and correctly labelled. Additive renders go under one "Additive verification viewports" heading, after and smaller.
+   - **Do NOT let variant states become separate mini-products.** Draw each as a degraded state OF the canonical surface — same skeleton, same chrome, same primary-action position, one changed region — in a strip beneath it.
+   Plus: rationale and specs come LAST (never opening the artifact, never interleaved comp-by-comp), the primary action and next-step loop outrank every heading and caption inside the canonical render, and on-surface copy stays short and imperative with long-form explanation relocated to the notes block. On a desktop-only or ambition-OPEN surface, omit this item entirely — it does not apply.
 
 ## Save + emit rules
 

@@ -1,6 +1,7 @@
 ---
 status: current
-version: 3
+version: 4
+v4_addition: "Gate class (f) — the ARTIFACT-COMPOSITION half (rows 15–20). v3's rows 8–14 test whether the deliverable is DRAWN AND READ at the canonical viewport; they structurally cannot catch an artifact that labels the phone canonical, groups the additive renders correctly, preserves the interaction model — and is still a REVIEW BOARD (rationale opening/interleaving the artifact, state variants as peer mini-products, explanatory prose outranking the primary action). Row 17 is the regression row: it fails on composition alone with every viewport field correct. Rows 15–20 are SPECIFIED, NOT YET RUN — do not cite a '20/20 PASS'. Contract: shared/operator-artifact-contract.md (B1–B6, C1–C4). Project binding: cash-recovery docs/design-policy.md §8.2d + §5 #14 (v11, 2026-07-25)."
 v3_addition: "Gate class (e) — the ARTIFACT-LABELING half (rows 8–14). v2's rows 1–7 test whether the viewport POSTURE is recorded in brief §4g; they structurally cannot catch an artifact that records the posture correctly and still renders/reads desktop-first, because an unlabelled multi-viewport comp set contradicts no §4g field. Rows 8–14 are SPECIFIED, NOT YET RUN — do not cite a '14/14 PASS'. Policy baseline for the new rows: cash-recovery docs/design-policy.md §8.2c + §5 #13 (v10, 2026-07-25)."
 supersedes: "v1 — the pre-#293 '4/4 PASS' verdict (verified against design-policy §8 v7, with pass ba3188a1 which hardcoded clerk=desktop). SUPERSEDED: v1 did not cover the handheld-first receiving class introduced by #293 / §8 v8, and its matrix row 1 ('clerk marked mobile = FAIL') is wrong for a mobile-first-decided clerk class. Do NOT treat the v1 4/4 as current."
 pass_commit: 23f60c20
@@ -98,6 +99,40 @@ or `/inbound` handoff after this lands is the pilot.
 > Live re-delivery: the fix (`23f60c20`) reaches the cash-recovery checkout on the next porter + sync;
 > until then the pilot checkout still carries the pre-fix pass. This v2 verdict is verified against the
 > fixed pass logic + the real §8 v8 policy; the live cash-recovery re-render confirms it on delivery.
+
+---
+
+## v4 addition — gate class (f): the ARTIFACT-COMPOSITION half
+
+Rows 8–14 test whether the deliverable will be **drawn and read at** the canonical viewport. They
+cannot catch the defect below, and that is the point: an artifact can label the phone canonical,
+group tablet/desktop after it, and preserve the interaction model — and still be a **review board**,
+because *which render wins* and *what shape the artifact is* are different questions. Class (f)
+(step-01 §3f.4c + gate step 5) adds the third: *is this an operator surface, or a presentation about
+one?*
+
+Contract, rules B1–B6, the four review-board tells, and checks C1–C4:
+**`shared/operator-artifact-contract.md`**. Project binding for the pilot: cash-recovery
+`docs/design-policy.md` §8.2d + §5 #14, v11 / 2026-07-25.
+
+| # | Input artifact & state | Gate class | Expected outcome |
+|---|---|---|---|
+| 15 | Clerk **receiving** handoff: five-field Handheld-First Declaration complete in §4g; §7 carries the composition sequence; artifact opens with ONE phone render (first, largest, above the fold, labelled), then a subordinate "States of this surface" strip, then "Additive verification viewports", then a notes/rationale block LAST | — (clean) | **PASS** — the only shape that passes. Deliverable. (Golden case **G1**.) |
+| 16 | Clerk **receiving** artifact: phone/tablet/desktop side-by-side at equal size, phone leftmost, no in-page canonical label | **(e)** + **(f)** | **FAIL** — fires on BOTH halves (A1/A2 and B2/C1/C2). Kept in the matrix under (f) as well because the co-equal board is tell #1 of the review-board shape, not only a labeling miss. (**G2**; overlaps row 10 deliberately.) |
+| 17 | Clerk **receiving** artifact: canonical phone render present, correctly labelled and first — but the artifact opens with three paragraphs of IA rationale and a principles list, each comp is followed by two paragraphs of explanation, and the primary action is smaller than the surrounding section headings | **(f)** | **FAIL** — B1/B4/B5, C3+C4. **The regression row for (f).** Rows 8–14 pass it cleanly: the viewport contract is flawless. Correct labeling does not rescue a document-with-figures; the squint test resolves to a heading, not the action. (**G3**.) |
+| 18 | Clerk **receiving** artifact: one canonical phone render, then `--offline-queued` / `--stale` / `--tracking-unavailable` / `--exception` as a subordinate strip — same skeleton, same chrome, same primary-action position, one changed region each, captioned with the producing condition and what the operator can still do; no variant has its own nav or hero | — (clean) | **PASS** — B3 satisfied. The false-positive guard for state variants: a handheld-first artifact SHOULD show degraded states; (f) must never read "several frames" as "peer designs." (**G4**.) |
+| 19 | Clerk **receiving** artifact: phone correctly canonical and first — but the desktop additive render becomes a wide multi-column table with hover-revealed row actions and a persistent filter rail with no phone equivalent | **(e)** + **(f)** | **FAIL** — A3/B2, C2. The desktop premise returns *under a compliant label*, and downstream implementation treats the richer render as the real design. A handheld-first desktop render is *a wider phone*. (**G5**; overlaps row 12 deliberately — row 12 judges it as a viewport violation, row 19 as a composition one.) |
+| 20 | Clerk **grading** (`/clerk`, §8.2b desktop-only) or an **owner** surface with an OPEN §8.3 ambition | — / (d) | **(f) does NOT fire.** The false-positive guard, same shape as row 14: (f) binds handheld-first DECIDED classes only. An over-firing (f) on desktop-only or owner work would freeze exactly what (d) keeps moving. |
+
+**Rows 16, 17, 19 are the new blocking set; 15, 18, 20 are the false-positive guards.** Row 17 is the
+one that matters most — it is the only row in the whole matrix that fails on composition alone, with
+every viewport field and label correct. A class (f) that cannot fail row 17 has not been implemented;
+a class (f) that fires on 18 or 20 is over-firing and must be fixed before it is trusted.
+
+**Status: SPECIFIED, NOT YET RUN.** Rows 15–20 are the authored contract for class (f); they have not
+been executed against a real handoff. Do **not** cite a "20/20 PASS" — rows 1–7 were verified against
+§8 v8; rows 8–20 are unverified. The first handheld-first `design-handoff` after this lands is the
+pilot for both (e) and (f).
 
 ## Notes
 

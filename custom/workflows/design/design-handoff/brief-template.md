@@ -634,6 +634,30 @@ Three rules, all of which `design-review-pr` checks:
 3. **Additive renders preserve the interaction model, never re-premise it** — describe what the extra (or reduced) width does with the SAME model: reflow, more rows visible, a persistent rather than overlaid drawer. Do NOT convert a phone-primary scan-first single column into a wide multi-column table premise, add hover-dependent affordances, or introduce controls the canonical render lacks. On a handheld-first surface the desktop render is **a wider phone**, not a desktop app.
 
 > **Why this is spelled out.** An unlabelled three-viewport comp set contradicts no field in the table above, so it passes every viewport check — while a cold reader (a fresh design session, a PR reviewer) resolves the ambiguity with the industry default: *desktop is the design, phone is the shrink*. On a handheld-first surface that silently reinstates the desktop-only premise the policy forbids.
+{endif}
+
+{if `{primary_viewport_class}` is `mobile-first`/handheld-first — omit this whole block otherwise; it does NOT apply to a desktop-only class or an OPEN owner ambition:}
+
+**Handheld-First Declaration — what this surface IS, and what shape the artifact must take.** The block above settles *which* render is the design. This settles *what shape* the deliverable is. Both are required; neither substitutes for the other.
+
+| # | Field | Value |
+|---|---|---|
+| 1 | Surface class | {viewport_surface_class} |
+| 2 | Canonical viewport | {canonical_viewport} |
+| 3 | Additive viewports | {additive_viewports} |
+| 4 | Scan / next-step loop | {the primary operator loop as a LOOP — trigger → feedback → next; never a feature list} |
+| 5 | Offline / degraded state treatment | {which degraded states are first-class, and the statement that each is drawn as a state OF this surface} |
+
+**Composition rules for your deliverable — all six are checked at review (`operator-artifact-contract.md` B1–B6):**
+
+1. **B1 — one canonical operational surface, first and dominant.** The artifact opens with ONE render: this surface at {canonical_viewport} in its resting state — first in reading order, largest, the only thing above the fold. A reader who stops after the first screenful must have seen the surface the operator actually uses.
+2. **B2 — additive renders stay subordinate** (as rule 2 of the block above).
+3. **B3 — state variants are DEGRADED STATES of this surface, never peer designs.** Same frame-name stem (`{primary}--{state}`), same chrome, same skeleton, same primary-action position; ONE legible region differs; presented as a strip beneath the canonical render under a single "States of this surface" heading, in operator-encounter order. A variant with its own nav or hero has become a second product — which means the state was mis-modelled.
+4. **B4 — rationale comes AFTER the operational surface.** IA rationale, component specs, interaction notes and open questions live in a labelled block BELOW the canonical render and its state strip. Prose must not open the artifact, must not sit between the canonical render and its state/additive groups, and must not be interleaved paragraph-by-comp. This is an operator surface with an appendix, not a document with figures.
+5. **B5 — the primary action and the next-step loop outrank explanatory text, measurably.** Largest type, strongest contrast, most reachable position (thumb zone). The squint test: squint at the canonical render — if a heading, paragraph, legend, or caption reads first instead of the action and its loop, this fails.
+6. **B6 — main-surface copy is operator register.** Short, imperative, scannable at arm's length by someone holding a phone in an aisle. Long-form explanation is RELOCATED to the notes block, not deleted.
+
+> **The failure shape these prevent has a name: REVIEW BOARD** — co-equal comps plus explanatory prose presented AS the deliverable, instead of one operational surface with everything subordinate to it. It is the default shape a generator produces whenever composition is left unspecified, and it contradicts no field in this brief — which is exactly why these rules are written down.
 
 {if `{viewport_pending_policy}`:}
 > **⚠ PENDING POLICY — owner mobile ambition not set.** The owner has not chosen the mobile ambition for this surface-class in `docs/design-policy.md §8.3` (tablet-down desktop-primary · mobile-first · desktop-only). This brief is **unverified / pending-policy**; the viewport fields above are `pending` and must NOT be designed against a guessed posture. Set the ambition in §8.3, then re-run to fill them. (Work continues — this is a warn, not a freeze.)
@@ -839,6 +863,19 @@ For **every** frame in the Surface Inventory above, deliver:
 2. **Component specs** for new UI patterns
 3. **Interaction notes** — hover states, transitions, empty states, loading states; for drawers, the open/close/return-up-the-stack behaviour (§13 round-trip)
 4. **Information architecture rationale** — why you grouped and prioritized information this way
+
+{if `{primary_viewport_class}` is `mobile-first`/handheld-first:}
+**Artifact composition — how these outputs are ARRANGED (handheld-first only; `operator-artifact-contract.md` B1–B6, checked at review).** The list above is what to produce; this is the order and prominence it must be produced in. Deliver the artifact in exactly this sequence:
+
+1. **The canonical operational surface** — one render at {canonical_viewport}, resting state, first and largest, the only thing above the fold, labelled in-page (B1).
+2. **"States of this surface"** — the state-variant frames as a subordinate strip beneath it: same skeleton, same primary-action position, one changed region each, in operator-encounter order (B3). Not a gallery of headline comps; not separate mini-products.
+3. **"Additive verification viewports"** — {additive_viewports}, grouped, after, smaller, same interaction model (B2 / §4g rule 3).
+4. **Notes & spec block, LAST** — items 2–4 above (component specs, interaction notes, IA rationale) plus open questions (B4). Rationale never opens the artifact, never splits the canonical render from its state/additive groups, and is never interleaved paragraph-by-comp.
+
+Inside the canonical render: the primary action and the next-step loop are the most prominent elements — they must survive the squint test against every heading and caption on the surface (B5) — and on-surface copy is operator register, short and imperative, with long-form explanation relocated to the notes block (B6).
+
+**Do NOT deliver a symmetric row of phone/tablet/desktop comps.** That shape is a **review board**, not an operator surface, and it fails review even when the phone is leftmost and correctly labelled.
+{endif}
 
 ---
 
