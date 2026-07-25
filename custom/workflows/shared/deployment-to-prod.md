@@ -134,6 +134,25 @@ A project declares its irrelevant globs in `deploy.deploy_irrelevant_paths`. The
 
 This is the rule that lets `bmad-deploy.sh` run successfully even when the BMAD sync has left the parent checkout dirty — those paths are universally irrelevant to the build.
 
+**Matching depth (fixed 2026-07-25, fork-gap 2026-07-23).** An **unanchored** glob — one with no internal `/`, i.e. `.claude/`, `_bmad-output/`, `docs/` — names a directory *kind* and matches **at any depth**, so a sibling package's `mcp-avask/.claude/` no longer hard-blocks a deploy it has nothing to do with. An **anchored** glob — one containing an internal `/`, e.g. `src/generated/` — keeps strict top-level prefix semantics; anchoring is how a project says *this exact location, nowhere else*. Before the fix the match was top-level-only, which is a guaranteed miss in any monorepo-ish tree, and the blocking dirt is planted by *other* sessions, so the deploying session can neither predict nor safely clean it.
+
+### 3a-shared. When the shared main checkout is dirty or diverged — deploy from a fresh worktree
+
+**This is the sanctioned route, not a workaround.** In a checkout shared by many concurrent sessions, the two escapes the scripts offer can both be unsafe:
+
+- `git stash --include-untracked` (the hotfix path's dirty-tree branch) sweeps **every** session's in-flight files, not yours. Observed 2026-07-23: 146 untracked files across 31 sessions would have gone into one stash+pop. Do not run it in a shared checkout.
+- Cleaning the dirt is not yours to do — you cannot tell an abandoned file from another session's live work.
+
+Instead, **create a fresh worktree off `origin/<default-branch>` and deploy from there.** It is clean by construction, it provably contains the merge you are shipping, and it touches no other session's state:
+
+```bash
+git fetch origin
+git worktree add /tmp/deploy-<slug> origin/<default-branch>
+cd /tmp/deploy-<slug> && <dep install> && <build> && <deploy>
+```
+
+Then remove the worktree. The stale-checkout guard below still applies — the worktree is created *from the fetched remote tip*, which is what makes it both clean and current. A local `HEAD` that is detached or diverged is a reason to take this route, never a reason to force the deploy from the shared tree.
+
 ### 3a-stale. Stale-checkout guard (deploy from `origin/<default-branch>` HEAD)
 
 A deploy ships **the build of the current checkout**. If that checkout is behind `origin/<default-branch>`, the build is missing whatever commits landed on the branch since the checkout was taken — and deploying it **silently reverts those commits in production**. This is the parallel-session hazard: a feature worktree branched before another session's PR merged, built, and deployed, rolls back the other PR. (Observed in accounting-tools on 2026-05-30: a deploy from a stale feature worktree rolled back a just-merged worklist redesign; the repo was fine, production served stale code until a redeploy from the branch tip.)

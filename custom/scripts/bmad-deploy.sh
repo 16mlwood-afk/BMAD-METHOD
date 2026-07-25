@@ -165,6 +165,27 @@ if [[ ${#dirty_paths[@]} -gt 0 ]]; then
       case "$path" in
         "$glob"*|"$glob") is_irrelevant=true; break ;;
       esac
+      # NESTED match for an UNANCHORED directory glob (fork-gap 2026-07-23).
+      # A glob with no internal '/' — `.claude/`, `_bmad-output/`, `docs/` — names a
+      # directory KIND, not a location. Matching it at top level only means a sibling
+      # package's `mcp-avask/.claude/`, planted by some parallel session, hard-blocks a
+      # deploy it has nothing to do with — in a tree where the deploying session can
+      # neither predict nor safely clean another session's dirt. So an unanchored glob
+      # matches at any depth. A glob that IS anchored (contains an internal '/', e.g.
+      # `src/generated/`) keeps strict top-level prefix semantics — anchoring it is how
+      # the operator says "this exact location, nowhere else."
+      case "$glob" in
+        */*/*) : ;;                       # clearly anchored — no nested matching
+        */)                               # single trailing slash → unanchored dir kind
+          case "$path" in
+            */"$glob"*) is_irrelevant=true; break ;;
+          esac ;;
+        */*) : ;;                         # internal slash → anchored
+        *)                                # bare name, no slash at all
+          case "$path" in
+            */"$glob"*) is_irrelevant=true; break ;;
+          esac ;;
+      esac
     done
     # A fork-synced script (exact basename in the manifest) is deploy-irrelevant too.
     if ! $is_irrelevant && [[ -n "${synced_scripts[$path]:-}" ]]; then
