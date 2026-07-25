@@ -48,8 +48,9 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const ROOT = path.resolve(__dirname, '..');
-const WF_DIR = path.join(ROOT, 'custom', 'workflows');
+// Corpus comes from the shared helper — do NOT hard-code a root here.
+// See tools/lib/standards-corpus.js (fork-gaps 2026-07-25, archived RESOLVED).
+const { collectStandardsCorpus, ROOT } = require('./lib/standards-corpus');
 
 const argv = process.argv.slice(2);
 const STRICT = argv.includes('--strict');
@@ -232,25 +233,16 @@ function lintRegister(file) {
 // ---------------------------------------------------------------------------
 // MODE 1 — fork adoption scan
 // ---------------------------------------------------------------------------
-function walk(dir, out = []) {
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    const p = path.join(dir, entry.name);
-    if (entry.isDirectory()) walk(p, out);
-    else if (entry.isFile() && entry.name.endsWith('.md')) out.push(p);
-  }
-  return out;
-}
-
 function adoptionScan() {
-  // Scan BOTH layouts. The primary producer (bmad-correct-course) lives under
-  // custom/skills/, not custom/workflows/ — a workflows-only walk cannot see it,
-  // which would make this scan structurally blind to the one file that matters most.
-  const dirs = [WF_DIR, path.join(ROOT, 'custom', 'skills')].filter((d) => fs.existsSync(d));
-  if (dirs.length === 0) {
-    console.error(`check:scoperegister: no workflow/skill dir found under ${path.join(ROOT, 'custom')}`);
+  // Corpus comes from the shared helper — see tools/lib/standards-corpus.js. Its
+  // MANDATE applies to this scanner too: never hard-code a root. (The primary
+  // producer, bmad-correct-course, lives under custom/skills/, so a workflows-only
+  // walk would be blind to the one file that matters most.)
+  const { files, roots } = collectStandardsCorpus();
+  if (roots.length === 0) {
+    console.error('check:scoperegister: no corpus roots found');
     return { files: 0, adopters: 0 };
   }
-  const files = dirs.flatMap((d) => walk(d));
   const TOUCHES_SCOPE = /scope-register|scope_register|scope-lineage/i;
   const ADOPTS = /scope-register-routing\.md|STD-SCOPEREG-001/;
   let adopters = 0;
