@@ -1,13 +1,17 @@
 ---
-title: fork-gaps schema v1 (DRAFT — awaiting owner approval)
-description: A typed entry schema for docs/fork-gaps.md that separates incident record, backlog item, and doctrine source; makes the header block mandatory and machine-checked; and fires the existing validators at write time instead of on a manual sweep.
+title: fork-gaps schema v1 (ACCEPTED — landed 2026-07-25)
+description: The typed entry schema for docs/fork-gaps.md — separates incident record, backlog item, and doctrine source; makes the header block mandatory and machine-checked; and fires the validators at write time instead of on a manual sweep.
 ---
 
-# fork-gaps schema v1 — DRAFT
+# fork-gaps schema v1
 
-**Status: ACCEPTED and LANDED 2026-07-25 (`935395f8`).** Owner approved; the single-typed-ledger option was taken. 47 entries are migrated and the write-time gate is armed. This document is now the schema's reference description — the enforced definition lives in `tools/lib/fork_gap_lint.py`, and where the two disagree the code wins. Approve, amend, or reject before any bulk
-migration. The one decision this proposal defers to Mason is at the bottom: **single typed ledger
-vs split ledgers**.
+**Status: ACCEPTED and LANDED 2026-07-25 (`935395f8`).** Owner approved, and the **single typed
+ledger** option was taken (§6) — non-fork scopes stay in one file behind a mandatory `scope` field.
+47 entries are migrated and the write-time gate is armed.
+
+This document is the schema's **reference description**. The *enforced* definition lives in
+`tools/lib/fork_gap_lint.py`, and where the two disagree **the code wins** — amend this doc to match
+rather than the reverse.
 
 **Problem this fixes** (evidence, 2026-07-25 fork-maintenance session): 5 of 6 entries opened were
 already fixed and never closed; 1 entry claimed RESOLVED naming two artifacts that do not exist on
