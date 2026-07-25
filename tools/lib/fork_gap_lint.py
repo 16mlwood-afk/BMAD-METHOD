@@ -2,7 +2,7 @@
 """fork_gap_lint.py — the ONE parser + the three checks for docs/fork-gaps.md.
 
 Single source of truth for reading the typed ledger (schema v1,
-docs/proposals/fork-gaps-schema-v1-DRAFT.md). Three shell entry points delegate here so
+docs/proposals/fork-gaps-schema-v1.md). Three shell entry points delegate here so
 that a tightening applies to all of them at once — the same reason the previous
 `fork-gap-paths.sh` existed:
 
