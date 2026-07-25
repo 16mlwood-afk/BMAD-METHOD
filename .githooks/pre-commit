@@ -13,8 +13,37 @@ if [ -x "$(git rev-parse --show-toplevel)/tools/check-stash-health.sh" ]; then
   "$(git rev-parse --show-toplevel)/tools/check-stash-health.sh" || exit 1
 fi
 
-# Auto-fix changed files and stage them
-npx --no-install lint-staged
+# Foreign-dirty preflight (WARN-only, never blocks) — this checkout is shared by many
+# concurrent sessions, and a commit here is never only about this commit's files.
+# Two hazards it surfaces, both logged as fork-gaps (2026-07-25):
+#   - the shared INDEX: a bare `git commit` sweeps whatever else is staged;
+#   - the shared TREE: anything dirty outside the staged set is another session's live work.
+# It only prints. The commit is legitimate; the point is that the operator knows.
+_top="$(git rev-parse --show-toplevel)"
+_staged="$(git diff --cached --name-only)"
+_foreign="$(git status --porcelain | awk '{ $1=""; sub(/^ +/,""); print }' | while IFS= read -r f; do
+  [ -n "$f" ] || continue
+  printf '%s\n' "$_staged" | grep -qxF "$f" || printf '%s\n' "$f"
+done)"
+_foreign_n="$(printf '%s' "$_foreign" | grep -c . || true)"
+if [ "${_foreign_n:-0}" -gt 0 ]; then
+  echo "foreign-dirty: ${_foreign_n} path(s) dirty OUTSIDE this commit's staged set."
+  echo "  A parallel session may be mid-edit. Do NOT diagnose from those paths while this"
+  echo "  commit runs, and prefer 'git commit <path>' over a bare commit over a shared index."
+  printf '%s\n' "$_foreign" | sed 's/^/    /' | head -10
+fi
+
+# Auto-fix changed files and stage them.
+# --no-stash is DELIBERATE (fork-gap 2026-07-25). lint-staged's default flow backs up the whole
+# working tree and hides unstaged changes by checking out the staged state — which reverts and
+# replays EVERY dirty file in this shared checkout, not just the ones being committed. Three
+# separate failures came out of that window: a corrupt stash blocking all commits (2026-07-20),
+# a foreign commit sweeping a staged set (2026-07-25), and a parallel session's files reading as
+# reverted mid-commit so a verification run returned confident FALSE state (2026-07-25).
+# --no-stash leaves the tree alone. The cost it buys back: tasks see unstaged content in a
+# partially-staged file, and a failing task is not auto-reverted — acceptable here, because
+# every configured task is an idempotent lint/format fix.
+npx --no-install lint-staged --no-stash
 
 # Validate.
 # Fast path for fork-tooling-only commits (custom/, docs/, *.md, *.sh, the onboarding/global-asset

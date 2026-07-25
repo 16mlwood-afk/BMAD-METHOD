@@ -118,17 +118,51 @@ A **current-editor marker** — one lock file per manifest:
   `Z`, or a clock beyond ~2 minutes of skew, is a FORMAT ERROR — warn and treat the manifest as
   possibly held. The forbidden failure mode, by name: **"youngest claim wins."**
 
-### 4. Commit hygiene: no sweep may scoop another session's manifest
+### 4. Shared-checkout hygiene: the index and the tree, not just the manifest
+
+The manifest is the loudest instance, not the boundary. **One working checkout has ONE index and
+ONE tree, shared by every session in it** — so the same three rules protect workflow files,
+`docs/fork-gaps.md`, `STATUS.md`, and anything else under contention. Rules 4a–4c are general;
+the manifest is simply the file where getting them wrong is most expensive.
+
+**4a. Stage and commit by explicit path.**
 
 - **A manifest is committed or explicitly left out — never swept.** Before any broad
   `git add -A` / `git add .` / `git commit -a` / `git stash` / `sync-bmad-workflows.sh`, a dirty
   manifest must be either staged **explicitly by path** (`git add -f <manifest>` — it lives under
   gitignored `_bmad-output/`) if this session owns it, or left out of the commit entirely.
+- **The same applies to every file, not only manifests.** `git add <explicit path>` and
+  `git commit <explicit path>`; never `-A`, never `.`, never a bare directory. A path-scoped
+  commit bypasses the shared index for those paths, which is the only way to be sure a foreign
+  `git commit` in the same second cannot carry your work under its message.
+- **Never `git reset --soft` in this checkout.** It deliberately *leaves* changes staged, widening
+  the window where another session's bare commit sweeps them. Use `git restore --staged <path>`
+  (or `git reset --mixed <path>`) and re-add by path. Observed 2026-07-25: an un-scoop via
+  `reset --soft` was itself swept, twice, inside one window — every change survived on HEAD, but
+  under two unrelated sessions' commit messages.
 - **Un-ID'd dirty pass records block nothing but must be surfaced**: if the working tree holds
   manifest changes whose authorship cannot be established, a sweep that includes them is a scoop.
   Establish authorship (stamp the identity block) or exclude the file.
 - **The sync's skip-if-dirty guard is not this guard.** It protects the *sync target*; this
   protects the *other writer*.
+
+**4b. Do not diagnose from a file you did not stage while your own commit is in flight.**
+
+A commit in this checkout runs the pre-commit chain, and hook tooling may rewrite the tree
+underneath every other session (this is why the fork now runs `lint-staged --no-stash`). Inside
+such a window a foreign file can read as an *earlier* version of itself: syntactically valid, at
+the right path, with a plausible bug — and nothing signals that you are reading a restored backup.
+Observed 2026-07-25: a source file and the gate that requires it both read as broken for ~40s
+during the reading session's own commit, and the conclusion "the armed gates do not parse" was one
+step from being reported. **Retry the read before forming any claim about a file you did not
+stage**, and never close or open a gap on a single such observation.
+
+**4c. Expect the tree to be dirty with work that is not yours.**
+
+The fork's pre-commit prints a `foreign-dirty` line naming how many paths are dirty outside the
+staged set. It is warn-only and never blocks — its whole job is to make the shared-tree assumption
+visible at the moment it matters. A non-zero count is normal, not an error; it means *those paths
+belong to someone else right now*.
 
 ## Enforcement — honest tiers
 
