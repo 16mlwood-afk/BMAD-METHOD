@@ -1364,41 +1364,6 @@ owner: project:cash-recovery
 
 ---
 
-## 2026-07-25 — lint-staged's stash/restore mutates the WHOLE shared checkout on every commit, so a parallel session's uncommitted files transiently READ as reverted — and a verification run inside that window returns confident FALSE state
-
-```yaml
-id: FG-2026-07-25-03
-class: shared-state
-scope: fork
-target: .githooks/pre-commit
-marker: "foreign-dirty"
-state: closed
-owner: fork-maintenance
-```
-
-### Incident
-**Friction (real this session — routine fork maintenance while a parallel session refactored the standards-adoption tooling).** I committed a scoped path set (`git add custom/workflows/implement/…`, nothing else). lint-staged did what it always does: `Backed up original state in git stash (4ede836d)` → ran tasks → restored. A second session was concurrently editing `tools/lib/standards-corpus.js` and the three gates that require it. Inside that window I read `standards-corpus.js` and ran `node --check` + `node tools/check-completion-disposition.js --strict`: **both failed**, the file's header block comment appearing to be terminated early by a literal `*/` inside it, the gate crashing on require. I formed — and was one step from reporting — a hard conclusion: *the armed standards-adoption gates do not parse.* Re-checked ~40 seconds later: parses clean, gate runs, file never broken. What I had read was the **pre-edit state my own commit transiently restored over theirs.**
-
-**Why structural, not a one-off.** The stash is not scoped to the commit. `git add` was path-scoped; the stash/restore is not — it reverts and replays **every** dirty file in the checkout, including files belonging to sessions that have no idea a commit is running. In a single-session repo that window is invisible. In this repo — one working tree, ~20+ concurrent sessions, all fork edits made in the main checkout because worktrees are for project repos — the window is open constantly and its contents are other sessions' live work. Three consequences, increasing in severity:
-
-1. **A read inside the window is indistinguishable from real breakage.** The restored file is syntactically valid, on disk, at the right path, with a plausible-looking bug. Nothing signals "you are reading a backup."
-2. **It inverts the diagnostics-gate rule.** The house rule (`diagnostics-gate-prove-dont-assert`) is that a fresh re-run in the current checkout is proof. Here the checkout itself was lying — so the sanctioned verification method produced a wrong answer *with evidence attached*, which is the most expensive kind of wrong and the kind most likely to be written into a report or a gap entry.
-3. **The write case is worse than the read case.** A foreign write landing between stash and restore is overwritten by the restore: no conflict, no error, no trace. This session observed only the benign half; nothing in the mechanism prevents the other.
-
-**Relationship to the two existing entries — one tree, three distinct mechanisms.** The 2026-07-20 entry is a *corrupt stash blocking* commits (availability). The 2026-07-25 shared-index entry is a foreign `git commit` *sweeping* staged work (attribution). This is the *stash window itself* rewriting files under a concurrent reader (integrity of observation). Same root — one checkout, many writers — but the first two concern what happens to MY commit; this one concerns what happens to THEIR files, and to any conclusion drawn by reading them mid-commit. Fix (b) already proposed on the 2026-07-20 entry — `lint-staged --no-stash` — would close all three stash-side failures at once, which is new evidence for taking it.
-
-### Work
-
-**Status (migrated 2026-07-25):** no closure note existed on this entry at migration; state derived as `open`.
-
-**Candidate fixes (logging only).**
-
-1. **Take `lint-staged --no-stash` for this repo** (v14+). The stash exists to keep unstaged work out of the lint run; in a shared checkout that benefit is small and the coupling is the liability. Cost: tasks may see unstaged content. Now backed by three separate incidents on the same step, not one.
-2. **Foreign-dirty preflight (warn-only, honest tier).** Before lint-staged runs, compare the staged pathset against `git status --porcelain`; if dirty files exist OUTSIDE the staged set, print `foreign-dirty: N file(s) outside this commit will be stashed and restored — a parallel session may be mid-edit; do not read those paths until this commit completes.` Deterministic to detect (pure git state); warn-only, because the commit itself is legitimate.
-3. **Doctrine line in `docs/manifest-contract.md`:** never diagnose from a file you did not stage while your own commit is in flight, and never conclude "broken" from a single read taken during another session's commit — retry the read before forming the claim.
-
-**Priority: medium.** No data loss, and the false read self-corrected within a minute. But the failure mode is a *confidently wrong, apparently-verified claim* about the health of the fork's own armed gates, produced by following the correct verification procedure — and mitigation (1) is a one-flag change already proposed on a sibling entry, now with three incidents behind it.
-
 ## 2026-07-25 — STD-SCOPEREG-001 §9 prescribes the inert-scope sweep at three trigger points and NOTHING invokes it, so register rows stay `pending` after the code ships
 
 ```yaml
@@ -1528,10 +1493,13 @@ class: enforcement
 scope: fork
 target: custom/githooks/check-design-brief-completeness.sh
 marker: "githook distribution legibility"
-state: open
+state: partly
 owner: fork-maintenance
 distribution: "sync-bmad-workflows.sh (all 14 targets)"
 ```
+
+> **[partly resolved: 2026-07-25 — both fixes BUILT; one finding in the original write-up was
+> WRONG and is corrected below. Owed: the fleet sync that actually deploys the B7 hook clause.]**
 
 ### Incident
 
@@ -1551,6 +1519,49 @@ Two small deterministic checks, both cheap, neither requiring a sync to be usefu
 2. **Prose-consumer binding check.** A validator over any doctrine file carrying a "Prose consumers" table: for each row naming a workflow path, assert the workflow tree actually contains a reference to the doctrine file. Fail-loud on a listed-but-unbound consumer. Fixes the `design-artifact-loop` row as its first output — either wire the reference or drop the row, but never leave the table asserting a binding that isn't there.
 
 **Watch:** if a third "authored but fires nowhere / listed but not bound" instance appears before either check lands, stop adding tiering-table rows for mechanisms whose deployment state nothing verifies — the honest tiering table becomes the vector rather than the guard.
+
+### Resolution — 2026-07-25, same session
+
+**CORRECTION to fix (1) as originally written — the entry overstated the gap.**
+`sync-bmad-workflows.sh --check` **already** diffs `custom/githooks/` against each target's
+`.githooks/` and prints `↳ githooks (N entrypoint(s) missing/outdated)` (line ~1577,
+`sync_githooks_for_project "$project_root" "check"`). Detection was never missing, and the proposed
+"teach --check to diff hooks" work was **already done**. Recording this because the original claim
+would have sent a future session to build a check that exists.
+
+**The real gap is narrower and survives the correction: the detection is PULL-based.** It answers
+only if you think to ask, and the dangerous moment is precisely the one where you don't — you have
+just authored the hook, measured its behaviour against real files, and are about to describe it as a
+live deterministic tier. The push-side signal is what was missing.
+
+**Built:**
+
+1. **`tools/warn-githook-distribution.sh`** — fork `pre-commit`, WARN-only, always exit 0. Fires when
+   a `custom/githooks/*.sh` change is staged and states the one thing nothing else says: *this fires
+   in ZERO projects until sync; a measurement against real files proves the LOGIC, never the
+   DEPLOYMENT.* Deliberately not a gate — authoring and distribution are separate tracks by design
+   and the fleet re-sync is owner-gated, so blocking the commit would be wrong. It makes the claim
+   honest at the moment the claim is made.
+2. **`tools/validate-prose-consumers.mjs`** — wired into `npm test` + the pre-commit fast path. For
+   every row of a "Prose consumers" table, resolves the named consumer paths and asserts the tree
+   contains a reference to the doctrine file. **Found TWO unbound rows on first run, not one:**
+   `design-artifact-loop` *and* `design-ingest`/`design-implement` were both listed as bound while
+   neither referenced `operator-artifact-contract.md`. Both now genuinely wired —
+   `design-artifact-loop` step-03 gate 4a (carries A1–A3 / B1–B7 into the emitted handoff) and
+   `design-implement` step-03 §2d-bis (B3 frame identity, **with B7 explicitly CEDED to
+   `design-review-pr` C5** — that workflow diffs against the bundle, so a hero-plus-chip-wall bundle
+   reproduced faithfully scores ✓ by construction and it must not pretend otherwise). Validator now
+   green: 6 rows, 1 table.
+
+**Honest cede on (2):** it proves REFERENCE, never COMPLIANCE. A consumer that name-drops the
+doctrine in a comment passes. That is deliberate — reference is mechanically decidable, compliance is
+not, and a check pretending otherwise would be the same class of false assurance this entry exists to
+catch.
+
+**Still open — the reason this is `partly` and not resolved:** the B7 clause in
+`custom/githooks/check-design-brief-completeness.sh` remains **authored, not deployed**. Every
+project's `.githooks/` copy is still byte-stale, so the clause fires nowhere. Closing this needs the
+owner-gated fleet sync (or a single-project `--only` sync), not more tooling.
 
 ---
 

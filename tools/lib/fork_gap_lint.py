@@ -145,11 +145,19 @@ def check_schema(entries) -> int:
 
     unknowns = sum(1 for e in entries for f in ("class", "scope", "target", "owner")
                    if e.header.get(f) == "unknown")
+    # The register is open-only by construction — a plain heading grep should equal the open
+    # set. Terminal entries left in the live file erode that quietly, so NOTICE them here.
+    # WARN, never error: archiving MUTATES, and this tooling does not mutate the register.
+    terminal = [e.id for e in entries if e.header.get("state") in ("closed", "superseded")]
     for msg in errors:
         print(f"  ✗ {msg}")
     print(f"check-fork-gap-schema: {len(errors)} error(s) across {len(entries)} entry/entries.")
     if unknowns:
         print(f"  ⚠ {unknowns} field(s) still `unknown` — declared debt, not a blocker. Fill when known.")
+    if terminal:
+        print(f"  ⚠ {len(terminal)} terminal entry/entries still in the live register "
+              f"({', '.join(terminal[:4])}{'…' if len(terminal) > 4 else ''}).")
+        print("    Run: python3 tools/archive-fork-gaps.py --write   (explicit, never automatic)")
     return 1 if errors else 0
 
 

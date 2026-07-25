@@ -1301,3 +1301,38 @@ Four collisions on one artifact. **"No data lost yet" was never a property of th
 **Distribution — OWED, and the two halves travel separately.** The workflow prose (`manifest-schema.md`, `design-implement/steps/step-04-apply-and-deliver.md`) rides `sync-bmad-workflows.sh` and is invisible to the 13 projects until the fleet re-sync gate opens. The **hook does not sync at all** — it lives in `~/.claude/hooks/` + `~/.claude/settings.json`, machine-local. Authoring the contract did not ship the enforcement.
 
 **Mitigation that DID work, worth generalising:** this session avoided all file-level collision by reading the WIP register first and deliberately picking a frame outside every other session's declared scope — a new file depending only on already-merged exports (frames 11/12 were skipped precisely because they live inside `ReceiveStation.tsx`, which another session was editing). That is frame-level coordination performed by hand, and it is what the proposed `§5a Concurrent-run check` would make systematic. The register carried the information needed; nothing in `design-implement` told the session to go read it.
+
+## 2026-07-25 — lint-staged's stash/restore mutates the WHOLE shared checkout on every commit, so a parallel session's uncommitted files transiently READ as reverted — and a verification run inside that window returns confident FALSE state
+
+```yaml
+id: FG-2026-07-25-03
+class: shared-state
+scope: fork
+target: .githooks/pre-commit
+marker: "foreign-dirty"
+state: closed
+owner: fork-maintenance
+```
+
+### Incident
+**Friction (real this session — routine fork maintenance while a parallel session refactored the standards-adoption tooling).** I committed a scoped path set (`git add custom/workflows/implement/…`, nothing else). lint-staged did what it always does: `Backed up original state in git stash (4ede836d)` → ran tasks → restored. A second session was concurrently editing `tools/lib/standards-corpus.js` and the three gates that require it. Inside that window I read `standards-corpus.js` and ran `node --check` + `node tools/check-completion-disposition.js --strict`: **both failed**, the file's header block comment appearing to be terminated early by a literal `*/` inside it, the gate crashing on require. I formed — and was one step from reporting — a hard conclusion: *the armed standards-adoption gates do not parse.* Re-checked ~40 seconds later: parses clean, gate runs, file never broken. What I had read was the **pre-edit state my own commit transiently restored over theirs.**
+
+**Why structural, not a one-off.** The stash is not scoped to the commit. `git add` was path-scoped; the stash/restore is not — it reverts and replays **every** dirty file in the checkout, including files belonging to sessions that have no idea a commit is running. In a single-session repo that window is invisible. In this repo — one working tree, ~20+ concurrent sessions, all fork edits made in the main checkout because worktrees are for project repos — the window is open constantly and its contents are other sessions' live work. Three consequences, increasing in severity:
+
+1. **A read inside the window is indistinguishable from real breakage.** The restored file is syntactically valid, on disk, at the right path, with a plausible-looking bug. Nothing signals "you are reading a backup."
+2. **It inverts the diagnostics-gate rule.** The house rule (`diagnostics-gate-prove-dont-assert`) is that a fresh re-run in the current checkout is proof. Here the checkout itself was lying — so the sanctioned verification method produced a wrong answer *with evidence attached*, which is the most expensive kind of wrong and the kind most likely to be written into a report or a gap entry.
+3. **The write case is worse than the read case.** A foreign write landing between stash and restore is overwritten by the restore: no conflict, no error, no trace. This session observed only the benign half; nothing in the mechanism prevents the other.
+
+**Relationship to the two existing entries — one tree, three distinct mechanisms.** The 2026-07-20 entry is a *corrupt stash blocking* commits (availability). The 2026-07-25 shared-index entry is a foreign `git commit` *sweeping* staged work (attribution). This is the *stash window itself* rewriting files under a concurrent reader (integrity of observation). Same root — one checkout, many writers — but the first two concern what happens to MY commit; this one concerns what happens to THEIR files, and to any conclusion drawn by reading them mid-commit. Fix (b) already proposed on the 2026-07-20 entry — `lint-staged --no-stash` — would close all three stash-side failures at once, which is new evidence for taking it.
+
+### Work
+
+**Status (migrated 2026-07-25):** no closure note existed on this entry at migration; state derived as `open`.
+
+**Candidate fixes (logging only).**
+
+1. **Take `lint-staged --no-stash` for this repo** (v14+). The stash exists to keep unstaged work out of the lint run; in a shared checkout that benefit is small and the coupling is the liability. Cost: tasks may see unstaged content. Now backed by three separate incidents on the same step, not one.
+2. **Foreign-dirty preflight (warn-only, honest tier).** Before lint-staged runs, compare the staged pathset against `git status --porcelain`; if dirty files exist OUTSIDE the staged set, print `foreign-dirty: N file(s) outside this commit will be stashed and restored — a parallel session may be mid-edit; do not read those paths until this commit completes.` Deterministic to detect (pure git state); warn-only, because the commit itself is legitimate.
+3. **Doctrine line in `docs/manifest-contract.md`:** never diagnose from a file you did not stage while your own commit is in flight, and never conclude "broken" from a single read taken during another session's commit — retry the read before forming the claim.
+
+**Priority: medium.** No data loss, and the false read self-corrected within a minute. But the failure mode is a *confidently wrong, apparently-verified claim* about the health of the fork's own armed gates, produced by following the correct verification procedure — and mitigation (1) is a one-flag change already proposed on a sibling entry, now with three incidents behind it.

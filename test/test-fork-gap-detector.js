@@ -1,7 +1,7 @@
 // Golden-case regression lock for the fork-gap register tooling (fork-gap 2026-07-20).
 //
-// THREE STRUCTURAL INVARIANTS are locked here. I1 and I2 predate schema v1 and are carried
-// forward unchanged in meaning; I3 arrives with the write-time gate (2026-07-25).
+// FOUR STRUCTURAL INVARIANTS are locked here. I1 and I2 predate schema v1 and are carried
+// forward unchanged in meaning; I3 and I4 arrive with the write-time gate (2026-07-25).
 //
 //   I1. THE REGISTER MUST NEVER COUNT ITSELF AS EVIDENCE.
 //       fork-gaps.md lives under docs/, so an entry whose target is the broad `docs/`
@@ -22,6 +22,13 @@
 //       mode degrades to advisory rather than blocking — a detector that cannot see must not
 //       block.
 //
+//   I4. ARCHIVING IS THE ONLY MUTATION, AND IT IS NEVER IN THE GATE.
+//       Terminal entries (`closed` / `superseded`) must leave the live file or the register's
+//       open-only property decays — but moving them MUTATES, and the checks do not mutate.
+//       So the archiver is an explicit human-invoked command with a dry run by default, and
+//       the gate's only role is to notice and say so. `partly` / `blocked` /
+//       `fork-fixed-distribution-owed` all name owed work and stay live.
+//
 // Hermetic: builds a throwaway fork-shaped tree and points the REAL linter at it via
 // FORK_GAP_ROOT, so no assertion depends on live fork content. Also binds to the real source
 // so a future edit that weakens an invariant fails here.
@@ -34,6 +41,7 @@ const path = require('node:path');
 const FORK = path.join(__dirname, '..');
 const LINT = path.join(FORK, 'tools', 'lib', 'fork_gap_lint.py');
 const DETECTOR = path.join(FORK, 'tools', 'check-fork-gap-stale-open.sh');
+const ARCHIVER = path.join(FORK, 'tools', 'archive-fork-gaps.py');
 
 let passed = 0;
 let failed = 0;
@@ -163,6 +171,43 @@ try {
 
   const wrapper = fs.readFileSync(DETECTOR, 'utf8');
   ok('wrapper delegates to the shared parser (logic not re-implemented)', /fork_gap_lint\.py" stale-open/.test(wrapper));
+
+  // ---- I4: the archiver is the ONLY mutating tool, and it is never in the gate ----
+  // Terminal entries must leave the live file or the open-only property decays, but archiving
+  // MUTATES — so it is explicit and human-invoked, and the gate only notices.
+  fs.mkdirSync(path.join(root, 'tools'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'docs', 'fork-gaps-archive.md'), '# Archive\n');
+  fs.writeFileSync(
+    register,
+    header +
+      entry({ id: 'FG-2026-01-01-08', target: 'custom/workflows/thing.md', marker: 'wide-enough', state: 'closed' }) +
+      entry({ id: 'FG-2026-01-01-09', target: 'custom/workflows/thing.md', marker: 'wide-enough', state: 'partly' }),
+  );
+  const liveBefore = fs.readFileSync(register, 'utf8');
+  execFileSync('python3', [ARCHIVER], { stdio: 'pipe', env: { ...process.env, FORK_GAP_ROOT: root } });
+  ok('I4 archiver dry run writes nothing', fs.readFileSync(register, 'utf8') === liveBefore);
+
+  execFileSync('python3', [ARCHIVER, '--write'], { stdio: 'pipe', env: { ...process.env, FORK_GAP_ROOT: root } });
+  const liveAfter = fs.readFileSync(register, 'utf8');
+  const archived = fs.readFileSync(path.join(root, 'docs', 'fork-gaps-archive.md'), 'utf8');
+  ok(
+    'I4 archiver moves a closed entry out of the live file',
+    !liveAfter.includes('FG-2026-01-01-08') && archived.includes('FG-2026-01-01-08'),
+  );
+  ok(
+    'I4 archiver leaves a partly entry live (it names owed work)',
+    liveAfter.includes('FG-2026-01-01-09') && !archived.includes('FG-2026-01-01-09'),
+  );
+  ok(
+    'I4 no content lost across the move',
+    liveBefore
+      .split('\n')
+      .filter((l) => l.trim())
+      .every((l) => liveAfter.includes(l) || archived.includes(l)),
+  );
+
+  const hook = fs.readFileSync(path.join(FORK, '.githooks', 'pre-commit'), 'utf8');
+  ok('I4 bound: the mutating archiver is NOT wired into the commit gate', !/archive-fork-gaps/.test(hook));
 
   console.log(`\n  ${passed} passed, ${failed} failed`);
   if (failed) process.exit(1);
