@@ -617,6 +617,24 @@ The per-surface viewport contract, sourced from `docs/design-policy.md §8` — 
 | `overflow_rules` | {viewport_overflow_rules} |
 | `device_exclusions` | {viewport_device_exclusions} |
 
+{if `{canonical_viewport}` is set (a DECIDED class — omit this whole block on an OPEN owner ambition):}
+
+**Canonical vs additive viewports — how to render and label this surface.** The table above says which viewport this surface is DESIGNED FOR. This block says how your deliverable must MARK it, so no reader has to infer it:
+
+| | Viewport | Status |
+|---|---|---|
+| **Canonical** | {canonical_viewport} | The interaction model is designed here and judged here. Draw this first, largest, and label it. |
+| **Additive** | {additive_viewports} | Verification renders — proof the canonical model survives a different container. A check on the design, not a design. |
+| **Not rendered** | {viewport_device_exclusions} | Excluded by policy. Do not produce a comp at these widths at all. |
+
+Three rules, all of which `design-review-pr` checks:
+
+1. **Label the canonical viewport in-page** — a visible heading or caption on the artifact itself, not a manifest field, not a code comment. Form: *"Canonical viewport: {canonical_viewport}. Tablet/desktop below are additive verification renders, not co-equal designs."*
+2. **Group additive renders after it, subordinate** — under a single **"Additive verification viewports"** heading, placed after the canonical render, never side-by-side at equal prominence, never larger, never first in reading order. Equal-weight phone/tablet/desktop columns FAIL even when the phone column is leftmost.
+3. **Additive renders preserve the interaction model, never re-premise it** — describe what the extra (or reduced) width does with the SAME model: reflow, more rows visible, a persistent rather than overlaid drawer. Do NOT convert a phone-primary scan-first single column into a wide multi-column table premise, add hover-dependent affordances, or introduce controls the canonical render lacks. On a handheld-first surface the desktop render is **a wider phone**, not a desktop app.
+
+> **Why this is spelled out.** An unlabelled three-viewport comp set contradicts no field in the table above, so it passes every viewport check — while a cold reader (a fresh design session, a PR reviewer) resolves the ambiguity with the industry default: *desktop is the design, phone is the shrink*. On a handheld-first surface that silently reinstates the desktop-only premise the policy forbids.
+
 {if `{viewport_pending_policy}`:}
 > **⚠ PENDING POLICY — owner mobile ambition not set.** The owner has not chosen the mobile ambition for this surface-class in `docs/design-policy.md §8.3` (tablet-down desktop-primary · mobile-first · desktop-only). This brief is **unverified / pending-policy**; the viewport fields above are `pending` and must NOT be designed against a guessed posture. Set the ambition in §8.3, then re-run to fill them. (Work continues — this is a warn, not a freeze.)
 {endif}
@@ -815,7 +833,9 @@ This page spawns secondary surfaces at runtime — the detail drawer the operato
 
 For **every** frame in the Surface Inventory above, deliver:
 
-1. **Visual designs** at desktop width (1280px) — including each drawer rendered **open over its parent frame**, not as a standalone page.
+1. **Visual designs at the CANONICAL viewport — `{canonical_viewport}` — as the primary render**, with `{additive_viewports}` shown after it, grouped under an "Additive verification viewports" heading and visually subordinate (§4g rules 1–3). Each drawer is rendered **open over its parent frame**, never as a standalone page. Label the canonical viewport in-page so no reader has to infer which render is the design.
+   {if `{canonical_viewport}` is unset — an owner class whose §8.3 mobile ambition is still OPEN:} *Viewport posture is `pending-policy`; render at desktop width (1280px) as a working default and mark the deliverable pending the owner's ambition decision — do NOT treat that default as a decided posture.*
+   {— never emit a bare "at desktop width (1280px)" instruction on a DECIDED class: on a handheld-first surface that single line is what reinstates the desktop premise the policy forbids, and it is the exact defect gate class (e) exists to catch.}
 2. **Component specs** for new UI patterns
 3. **Interaction notes** — hover states, transitions, empty states, loading states; for drawers, the open/close/return-up-the-stack behaviour (§13 round-trip)
 4. **Information architecture rationale** — why you grouped and prioritized information this way

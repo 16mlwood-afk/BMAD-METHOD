@@ -218,6 +218,18 @@ For each screen in `{screens}`:
   <!-- All visual values below are inline style="..." or var(--*) references.
        NO config-dependent Tailwind classes. Structural utilities (flex, grid, hidden) are fine. -->
 
+  <!-- CANONICAL-VIEWPORT LABEL — REQUIRED whenever the brief §4g declares one.
+       Emit it as VISIBLE page text, not a comment: a reader of the rendered artifact must be able
+       to see which viewport is the design without opening the manifest or the brief. Omit only on
+       an owner surface whose mobile ambition is still OPEN (no decided posture to declare). -->
+  <p style="font: 12px/1.4 ui-monospace, monospace; color: var(--fg-faint, #6b7280); margin: 0 0 12px;">
+    Canonical viewport: {canonical_viewport} — the interaction model is designed and judged here.
+    Any additive verification render appears below, subordinate; it is a check, not a co-equal design.
+  </p>
+
+  <!-- Page shell width follows the CANONICAL viewport, not a habitual 1440.
+       Handheld-first surface => the canonical frame is a phone frame (max-width ~375px); a 1440px
+       shell on a phone-primary brief is the desktop premise re-entering through the wrapper. -->
   <main style="max-width: 1440px; margin: 0 auto; padding: 24px;">
     {synthesized content per the plan, with inline styles for every visual decision}
   </main>

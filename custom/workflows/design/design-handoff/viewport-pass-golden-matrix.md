@@ -1,6 +1,7 @@
 ---
 status: current
-version: 2
+version: 3
+v3_addition: "Gate class (e) — the ARTIFACT-LABELING half (rows 8–14). v2's rows 1–7 test whether the viewport POSTURE is recorded in brief §4g; they structurally cannot catch an artifact that records the posture correctly and still renders/reads desktop-first, because an unlabelled multi-viewport comp set contradicts no §4g field. Rows 8–14 are SPECIFIED, NOT YET RUN — do not cite a '14/14 PASS'. Policy baseline for the new rows: cash-recovery docs/design-policy.md §8.2c + §5 #13 (v10, 2026-07-25)."
 supersedes: "v1 — the pre-#293 '4/4 PASS' verdict (verified against design-policy §8 v7, with pass ba3188a1 which hardcoded clerk=desktop). SUPERSEDED: v1 did not cover the handheld-first receiving class introduced by #293 / §8 v8, and its matrix row 1 ('clerk marked mobile = FAIL') is wrong for a mobile-first-decided clerk class. Do NOT treat the v1 4/4 as current."
 pass_commit: 23f60c20
 policy_baseline: "docs/design-policy.md §8 v8 (#293 — clerk RECEIVING handheld-first, grading desktop-only)"
@@ -61,6 +62,38 @@ per-class-posture pass (`23f60c20`).
 | 7 | owner ambition OPEN | WARN | ✅ | §3f step 3 → WARN, §4g PENDING banner |
 
 **Verdict: 7 / 7 PASS under the current handheld-first policy (§8 v8 / #293).**
+
+---
+
+## v3 addition — gate class (e): the ARTIFACT-LABELING half
+
+Rows 1–7 test whether the viewport **posture is recorded** (the §4g contract). They cannot catch the
+defect below, and that is the point: an artifact showing phone / tablet / desktop as co-equal comps
+**contradicts no §4g field**, so rows 1–7 all pass while the deliverable reads desktop-first. Class
+(e) (step-01 §3f.4b + gate step 5) adds the second question — *will the deliverable be **drawn and
+read** at the recorded posture?*
+
+Policy baseline for these rows: cash-recovery `docs/design-policy.md` **§8.2c** (canonical-vs-additive
+labeling contract) + **§5 #13** (the matching hard failure), v10 / 2026-07-25.
+
+| # | Input artifact & state | Gate class | Expected outcome |
+|---|---|---|---|
+| 8 | Clerk **receiving** handoff: `{canonical_viewport}` = phone 375×812, §4g renders the canonical/additive block, §7 item 1 names the phone render primary; the artifact labels the phone comp canonical in-page, groups tablet+desktop under "Additive verification viewports" **after** it, and the desktop render keeps the scan-first single-column model (reflowed, no new controls) | — (clean) | **PASS** — the only shape that passes. Deliverable. |
+| 9 | Clerk **receiving** handoff: §4g contract complete and correct, but §7 item 1 still says *"Visual designs at desktop width (1280px)"* (the pre-v3 hardcoded template line) | **(e)** | **FAIL** — hard, brief NOT deliverable. **The regression row.** Rows 1–7 pass it (§4g is flawless); the designer acts on §7 and renders desktop-first. This is the exact defect the class exists for. |
+| 10 | Clerk **receiving** artifact: phone / tablet / desktop rendered side-by-side at equal prominence, no canonical label anywhere in-page (posture discoverable only from the brief's §4g table) | **(e)** | **FAIL** — §8.2c A1 + A2, §5 #13. Contradicts no contract field; a cold reader defaults to "desktop is the design, phone is the shrink." **Still FAILS when the phone column is leftmost** — reading order is not a label. |
+| 11 | Clerk **receiving** artifact with **no phone frame at all** — desktop + tablet only | **(e)** | **FAIL** — a missing canonical render is not a partial deliverable, it is a desktop-premised one (§5 #13, fourth bullet). Requires revision, never "ship it and add phone later." |
+| 12 | Clerk **receiving** artifact: phone correctly labelled canonical, but the desktop additive render becomes a wide multi-column table with hover-revealed row actions absent from the phone render | **(e)** | **FAIL** — §8.2c A3. Labeling alone is not compliance: an additive render that re-premises the interaction model reintroduces the desktop premise **under a correct label**, which is worse than an honest omission. A handheld-first desktop render is *a wider phone*. |
+| 13 | Clerk **grading** (`/clerk`, §8.2b desktop-only): desktop 1440×900 labelled canonical, no phone comp produced | — (clean) | **PASS** — canonical is desktop **for this class**; phone sits in `device_exclusions` so it is neither canonical nor additive and is correctly **not rendered**. Guards against reading (e) as "always want a phone frame." |
+| 14 | **Owner** surface, §8.3 ambition still OPEN, no canonical viewport declared | (d) only | **WARN — (e) does NOT fire.** No decided posture ⇒ nothing to declare. The false-positive guard: (e) must never become a back door that hard-fails owner work the warn-only (d) path deliberately lets continue. |
+
+**Rows 9–12 are the new blocking set; 8, 13, 14 are the false-positive guards.** A class (e) that
+fires on 13 or 14 is over-firing and must be fixed before it is trusted — an over-firing gate on
+owner surfaces would freeze exactly the work (d) was designed to keep moving.
+
+**Status: SPECIFIED, NOT YET RUN.** Rows 8–14 are the authored contract for class (e); they have not
+been executed against a real handoff. Do **not** cite a "14/14 PASS" — rows 1–7 were verified against
+§8 v8, rows 8–14 are unverified until a clerk-receiving handoff runs under v3. The first `/receive`
+or `/inbound` handoff after this lands is the pilot.
 
 > Live re-delivery: the fix (`23f60c20`) reaches the cash-recovery checkout on the next porter + sync;
 > until then the pilot checkout still carries the pre-fix pass. This v2 verdict is verified against the

@@ -59,14 +59,15 @@ Do not attempt to install Playwright automatically — `npm install` is forbidde
 
 ### 3. Resolve the viewport
 
-Default: `1440 × 900` at DPR 2 (matches the project's primary desktop target).
+**Read the brief's §4g CANONICAL viewport FIRST — the desktop default is a fallback, not a premise.** Resolution order:
 
-Override from brief if present. Look in `{brief_frontmatter}` for:
+1. **Brief §4g canonical viewport (authoritative when present).** If the brief declares a canonical viewport (`mobile-first`/handheld-first ⇒ **375 × 812 portrait**; `desktop-only`/`desktop-primary` ⇒ **1440 × 900**; `tablet-down` ⇒ the brief's named tablet reference), render THAT as the primary screenshot — `screenshot-<screen>.png`, unsuffixed. This is the canonical render, and it is the one `design-implement` pixel-matches against.
+2. `responsive.viewport` / `responsive.dpr` in `{brief_frontmatter}`, if §4g is absent.
+3. **Fallback only: `1440 × 900` at DPR 2.** Historically this default was described as "the project's primary desktop target" — that framing is wrong on any handheld-first surface and is exactly how a phone-primary brief acquired a desktop-premised bundle. Treat it as *no viewport was declared*, not as *desktop is correct*.
 
-- `responsive.viewport` — e.g., `{width: 1280, height: 720}`.
-- `responsive.dpr` — e.g., `1.5`.
+**Additive viewports render SECOND and are named as such.** Every non-canonical breakpoint the brief lists goes into a suffixed file (`screenshot-<screen>-additive-tablet.png`, `screenshot-<screen>-additive-desktop.png`) — the `additive-` prefix in the filename is deliberate: a bare `-desktop` suffix beside an unsuffixed phone render reads as two peers. **Never render a viewport listed in the brief's `device_exclusions`.**
 
-If the brief specifies multiple viewports for responsive design (e.g., `[desktop: 1440x900, tablet: 768x1024]`), render each into a suffixed file: `screenshot-<screen>-desktop.png`, `screenshot-<screen>-tablet.png`. The manifest's `screens` array records which screenshots correspond to which viewport.
+The manifest's `screens` array records, per entry, `viewport`, `dpr`, and a **`role`** of `canonical` | `additive`. Exactly one entry per screen carries `canonical`. A screens array with no canonical entry, or two, is a synthesis failure — return to step 4 rather than emitting an unlabelled multi-viewport bundle.
 
 ### 4. Write the Playwright runner script
 
@@ -94,7 +95,10 @@ try {
     const page = await context.newPage();
     await page.goto(`file://${path.join(__dirname, s.file)}`, { waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(200); // settle
-    const outPath = path.join(__dirname, `screenshot-${s.name}.png`);
+    // role: 'canonical' -> unsuffixed; 'additive' -> `-additive-<label>` (never a bare `-desktop`,
+    // which reads as a peer of the canonical render). Exactly one canonical entry per screen.
+    const suffix = s.role === 'additive' ? `-additive-${s.label}` : '';
+    const outPath = path.join(__dirname, `screenshot-${s.name}${suffix}.png`);
     await page.screenshot({ path: outPath, fullPage: true });
     console.log(`✓ rendered ${outPath}`);
     await context.close();
