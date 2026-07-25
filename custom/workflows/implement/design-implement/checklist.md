@@ -4,6 +4,7 @@
 
 - [ ] (ingest_manifest path) `ingest.supersede_status` read — if `superseded`, the supersede surfaced to the user BEFORE apply; a no-delta run self-explained the no-op (named `superseded_by`), a with-deltas run HALTED for explicit confirmation (never auto-applied a superseded handoff). `brief-revision-policy.md` §8
 - [ ] (URL / bundle path) `{handoff_supersede_status}` resolved independently in step-01 §SHARED.1a (no stamp on these paths) — if `superseded`, SURFACED and HALTED for explicit confirmation before the apply pipeline; never silently built a superseded handoff. `brief-revision-policy.md` §8
+- [ ] (URL / bundle path) `{prior_ingest_manifest}` resolved in step-01 §SHARED.1a-iii — `{implementation_artifacts}` globbed for `design-ingest-*{target_slug}*.md` BEFORE step-02; on a hit the manifest's apply ledger was READ and its prior passes / still-deferred frames / **"Flagged — NOT applied (intent, not treatment)"** items surfaced, no prior DECISION was re-opened without saying so, staleness of the section inventory was disclosed, and this run's ledger was routed to that manifest rather than a parallel grid artifact. `docs/manifest-contract.md`
 - [ ] Design bundle downloaded and extracted successfully
 - [ ] README read — target design file identified
 - [ ] Chat transcripts read (if referenced in README)

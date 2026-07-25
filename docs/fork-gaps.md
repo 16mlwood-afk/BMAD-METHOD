@@ -1668,8 +1668,9 @@ class: provenance-gap
 scope: fork
 target: custom/workflows/implement/design-implement/steps/step-01-ingest-design.md
 marker: "SHARED.1a-iii"
-state: open
+state: fork-fixed-distribution-owed
 owner: fork-maintenance
+distribution: "custom/skills-native/ re-port (GENERATED tree — tools/port-workflows-to-skills.sh) + sync-bmad-workflows.sh to 14 targets; both owner-gated, neither run"
 ```
 
 ### Incident
@@ -1699,3 +1700,14 @@ All three are warn/disclose, not gates. The gap is that the URL path is *blind*,
 **Both lanes need the fix.** The same step file exists twice — `custom/workflows/implement/design-implement/steps/step-01-ingest-design.md` (canonical, the `target:` above) and `custom/skills-native/bmad-design-implement/step-01-ingest-design.md` (the v6.8 skills-layout lane). cash-recovery is the skills-layout pilot and executes the **skills-native** copy, so a fix applied only to the workflows lane would leave the project where this was observed unchanged.
 
 **Priority: high.** Nothing was lost this session, but only because a stray `ls` caught it. The failure mode — a fresh pass silently reversing a prior session's deliberate "not applied, needs an owner call" — is exactly the class of harm the apply ledger exists to prevent, and the URL path is both the default entry point and the one route that cannot see it.
+
+### Resolution — 2026-07-25 (AUTHORED in the fork; NOT distributed)
+
+**Built, all three parts, as warn/disclose exactly as specified** — `custom/workflows/implement/design-implement/`:
+
+- **`steps/step-01-ingest-design.md` §SHARED.1a-iii** — sits immediately after §SHARED.1a-ii, so it reuses the `{target_slug}` already resolved for the supersede check (one glob, no new resolution). Skipped on the manifest path. Sets `{prior_ingest_manifest}`, and on a hit reads the apply ledger BEFORE step-02, surfacing prior passes, still-`⊘ deferred` frames, and every **"Flagged — NOT applied (intent, not treatment)"** item, plus a source/`source_run_date` freshness line that says *re-ingesting, not resuming* when the bundle was regenerated. A summary block is carried into §SHARED.2.
+- **`workflow.md`** — `{prior_ingest_manifest}` declared alongside `{handoff_supersede_status}`; **`steps/step-04-apply-and-deliver.md` §5** — ledger ROUTING clause: a URL/bundle re-run on a slug that already has a manifest appends its pass to THAT manifest under `docs/manifest-contract.md` (marker, stamped pass identity, append-only, commit by explicit path) rather than minting a parallel `design-implement-grid-*`. Auto-*resume* stays manifest-path-only — this changes where the durable record LANDS, not what work is skipped. **`checklist.md`** + step-01 SUCCESS METRICS carry the matching rows (`none` is an explicit, valid outcome).
+
+**Correction to the "Both lanes need the fix" note above.** `custom/skills-native/` is a **GENERATED artifact**, not a second source of record — `tools/port-workflows-to-skills.sh` opens with `rm -rf "$OUT"` and regenerates the whole tree from `custom/workflows/`. So the fix must NOT be hand-written there; hand edits are destroyed on the next port. The lane is nonetheless **already stale independently of this fix** — `URL.1b-i` (the early supersede probe) exists in `custom/workflows/` and is absent from `custom/skills-native/`, i.e. the porter has not been re-run since that edit. That staleness is the distribution job below, not a second authoring job.
+
+**Owed (why `fork-fixed-distribution-owed`, not `closed`):** (1) re-run the porter to refresh `custom/skills-native/` — it is a `rm -rf` + regenerate over 28 workflows and will also sweep in every other in-flight `custom/workflows/` edit, so it belongs in a quiet window, not a contended one; (2) `sync-bmad-workflows.sh` to the 14 targets, which is owner-gated and currently HELD per `STATUS.md`. **Until both run, this clause fires in ZERO projects — including cash-recovery, the skills-layout pilot where the gap was observed.** Authoring is not deployment (`FG-2026-07-25-09`).

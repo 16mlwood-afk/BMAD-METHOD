@@ -632,6 +632,31 @@ Follow `design-ingest` step-01 §5a verbatim (do not duplicate the logic — sam
 - **Concurrent session detected** → SURFACE and HALT before step-02, same posture as a `superseded` handoff above: applying now would race another session's in-flight edits to the same surface, and that is intent, not decision autonomy.
 - **Anything unreadable or ambiguous** → UNKNOWN, warn in one line, continue. Fails open by construction.
 
+### SHARED.1a-iii. Prior-manifest check on `{target_slug}` (what earlier passes already DECIDED) → `{prior_ingest_manifest}`
+
+**Skip on the manifest path** — an `ingest_manifest` run IS the manifest, and it read its dispositions at intake (`{resume_prior_dispositions}`). On the URL and bundle paths this is the ONLY place the question gets asked, and it is asked with a key already in hand: `{target_slug}`, resolved two sections above. Cost: one glob.
+
+**Why this exists.** The manifest path carries a full provenance apparatus — supersede stamp at intake, `{resume_prior_dispositions}`, an explicit freshness reconciliation. The URL path had none of it: it resolved `{target_slug}` only to match a *brief*, and never asked whether a *manifest* already existed on the same key. It bites hardest on the normal case, which is the tell — a paste from Claude Design's "Send to local coding agent" panel ALWAYS lands on the URL path, and a surface being re-designed is precisely one that has been implemented before, so the run most likely to have prior passes was the run structurally guaranteed not to look for them. The existing safety layer does not cover it either: the supersede gate compares handoff-to-handoff, and the §2b/§4c halts compare handoff-to-production. **Neither compares this run against the prior RUNS' decisions** — which is where "we already thought about that and said no" lives. (Observed 2026-07-25, cash-recovery `/clerk`: a three-pass `design-ingest-clerk-grading-workspace.md` for the same slug was found only by an unrelated `ls`.)
+
+1. **Glob** `{implementation_artifacts}` for `design-ingest-*{target_slug}*.md`. No hit → set `{prior_ingest_manifest} = none` and continue. That is the ordinary first-implementation case and is never a warning.
+2. **On a hit, READ its apply ledger BEFORE step-02** — not after the grid is built — and surface all three of:
+   - **passes already applied** (`pass_id` / `started_at` / frames, from the identity stamps);
+   - **frames still `⊘ deferred`**;
+   - **every "Flagged — NOT applied (intent, not treatment)" item.** This is the load-bearing part. Those rows are prior DECISIONS, not unfinished work — items an earlier session examined and deliberately declined, often as an explicit owner call. **This run must not re-open one without saying so.** Silently re-applying one is precisely the harm the apply ledger exists to prevent.
+3. **Freshness — disclose, never halt.** Compare the manifest's `ingest.source` and recorded `source_run_date` against the bundle in hand. If the bundle has been REGENERATED since (newer brief, new composition contract), state plainly that the manifest's section inventory is STALE and that this run is **re-ingesting, not resuming**. Symmetric with the manifest path's own freshness warn; soft by construction.
+4. **Route this run's ledger write.** When `{prior_ingest_manifest} != none`, step-04 §5 appends this pass to **that manifest** under the multi-writer contract (`docs/manifest-contract.md`: take the marker, stamp the pass identity, append-only, commit by explicit path) instead of minting a parallel `design-implement-grid-*` artifact. Two ledgers for one surface each read as complete — that is the failure mode, not the fix.
+
+**All four are warn/disclose; none is a gate.** The URL path's defect is that it is BLIND, not that it is permissive. Carry this block into the SHARED.2 summary:
+
+```
+Prior manifest for {target_slug}: {prior_ingest_manifest}
+  passes already applied:    {n} ({pass_ids})
+  frames still deferred:     {list | none}
+  flagged NOT applied:       {list | none}   ← prior DECISIONS — do not silently re-open
+  bundle regenerated since:  {yes → inventory STALE, re-ingesting (not resuming) | no}
+  this run's ledger:         appends to the above manifest (multi-writer contract)
+```
+
 ### SHARED.1b. Bundle → brief conformance gate (the design proposal is not yet a contract)
 
 **The bundle is a PROPOSAL; the brief is the contract. This gate refuses to implement a proposal that silently under-delivers the contract** — the receive-station failure (a strong "station, not dashboard" brief produced a centered hero card with minimal frame coverage, which `design-implement` then faithfully shipped because nothing compared the two). It runs on EVERY path, AFTER SHARED.1a has resolved the brief via `{target_slug}`, and BEFORE step-02/03/04 — a non-conformant proposal is bounced before any mapping or grid work is spent on it.
@@ -759,6 +784,7 @@ URL-path-only:
 - **`{design_linked_record_rows}` populated AND reconciled (URL.3a source 5)** — the detail drawer's rendered "Linked records" rows enumerated (the AUTHORITATIVE lookup denominator), and every row confirmed to map to a `§13-lookup` frame in `{design_frame_inventory}`. Any row that sources 1–4 failed to declare was re-traced or added as an under-enumerated lookup frame, never silently dropped. The harvested §13-lookup count ≥ the Linked-records row count.
 - `{handoff_supersede_status}` resolved on this run (manifest path: from the stamp at intake; URL/bundle paths: independently in §SHARED.1a). A `superseded` URL/bundle run SURFACED and HALTED for explicit confirmation before the apply pipeline — it never silently built the superseded design.
 - The §SHARED.1a-ii concurrent-run check RAN on `{target_slug}` before step-02, with a recorded verdict. A detected concurrent session HALTED the run before any mapping/grid spend.
+- **The §SHARED.1a-iii prior-manifest check RAN on `{target_slug}` before step-02** and `{prior_ingest_manifest}` is set (`none` is a valid, explicit outcome). On a hit, the manifest's apply ledger was READ and its prior passes, still-deferred frames, and **"Flagged — NOT applied (intent, not treatment)"** items were surfaced before any mapping/grid spend — no prior DECISION was re-opened without saying so, and this run's ledger was routed to that manifest rather than a parallel grid artifact.
 
 Bundle-path-only:
 - No curl invocation occurred.
