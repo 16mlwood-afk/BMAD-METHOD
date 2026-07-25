@@ -98,6 +98,23 @@ This URL is a design-system project read through the **DesignSync** (`claude_des
 
 The fetch mechanism is mechanism-agnostic from here — URL.2 (README) through URL.7 run identically once `{design_dir}` holds the files. What is NOT agnostic is the bundle's **shape**; resolve that next (URL.1c) before anything reads a path.
 
+### URL.1b-i. Early supersede probe — refuse a dead design BEFORE spending the catalog
+
+**The supersede gate at §SHARED.1a is correct but, on the URL path, it fires LAST — after URL.2–URL.5 have mirrored, shape-branched, size-checked and re-catalogued the entire bundle.** So the run pays its most expensive phase to learn something the target file states in its first few hundred bytes, and the second-order cost is worse: URL.1d can advise a full `design-ingest` run on a design that is about to be refused. Probe here instead. It costs **zero extra calls** — the target fetch already happened.
+
+Applies to both fetch mechanisms (URL.1a tar and URL.1b DesignSync) as soon as the target file exists under `{design_dir}`, and runs BEFORE URL.1c shape detection and URL.1d size preflight.
+
+1. **Scan the target's first ~4KB for a `design-brief-*` token** (the handoff filename Claude Design carries into the bundle header/README front-matter):
+
+   ```bash
+   head -c 4096 "{design_dir}/{design_file}" | grep -o 'design-brief-[a-z0-9-]*' | head -1
+   ```
+
+2. **Token found** → resolve `{target_slug}` from it and run the §SHARED.1a supersede branch **right here**, with its exact semantics and its exact halt wording (`active` → continue · `superseded` → surface `{superseded_by}` and HALT before any catalog work · `no_brief` / `ambiguous` → warn and continue). Record that the resolution happened early so §SHARED.1a does not redo it.
+3. **No token** → **behaviour is unchanged.** Legacy JSX bundles and hand-authored designs carry no brief token; fall through and let §SHARED.1a resolve from `{design_frame_inventory}` exactly as today.
+
+**This probe is an early exit, never a new refusal path.** It can only halt a run that §SHARED.1a would have halted anyway — it just halts it before the spend instead of after. A probe that finds nothing must never escalate to a refusal; absence of a token is `no_brief`, not a failure. (Sibling checked 2026-07-25: `design-ingest` step-01 already resolves `{handoff_supersede_status}` in step-01, before its per-frame fan-out, so it does not have this inversion.)
+
 ### URL.1c. Bundle SHAPE branch — legacy JSX vs `.dc.html` (`{bundle_shape}`)
 
 **The fetch mechanism is not the only difference — the bundle SHAPE is, and getting it wrong makes every downstream ingest instruction silently no-op.** URL.2–URL.5 were written against the legacy Claude Design bundle: a root `README.md`, `<script type="text/babel" src="components/*.jsx">` module imports, `theme/tokens.jsx`, and `/* ==== frame ==== */` banners inside those modules. Claude Design's current "Send to local coding agent" panel emits a **different, self-contained shape** — a `<name>.dc.html` frame document plus a `_ds/<design-system-id>/` directory — in which **none of those paths exist**. Run the legacy instructions against it and each one finds nothing: no README, no traced modules, no `tokens.jsx`, no banners. The catalog comes back near-empty but *plausible*, and the grid then proceeds against a denominator missing whole frames and whole variants. Detect the shape FIRST — before the size preflight, which counts `<script src>` groups and would read zero on a `.dc.html` bundle of any size.
@@ -732,6 +749,7 @@ Both paths must populate the same normalized state:
 
 URL-path-only:
 - Design bundle downloaded and extracted successfully.
+- **The URL.1b-i early supersede probe RAN before URL.1c/URL.1d** — the target's first ~4KB scanned for a `design-brief-*` token, and a `superseded` handoff HALTED there, before the shape branch, the size preflight, and the whole URL.2–URL.5 catalog. A no-token bundle fell through to §SHARED.1a unchanged (absence of a token is `no_brief`, never a refusal).
 - `{bundle_shape}` resolved (URL.1c) and reported in the SHARED.2 summary. A `.dc.html` target was NOT ingested down the `legacy_jsx` branch.
 - README read and chat transcripts consulted (if referenced) — from the root `README.md` (`legacy_jsx`) or `_ds/<ds-id>/readme.md` (`dc_html`); its absence was never treated as "no layout constraint."
 - All imported files traced and read (`legacy_jsx`), or the self-contained frame document read in full and its frame roots / named sections / `<x-import>` components cataloged (`dc_html`).

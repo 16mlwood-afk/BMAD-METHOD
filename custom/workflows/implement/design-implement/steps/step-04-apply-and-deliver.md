@@ -104,6 +104,7 @@ Rules:
 The manifest's grid scaffold is the durable ledger (workflow.md Critical Rule "Resumable apply on an ingest manifest"). Execute the apply as a sequence of frames, not one undifferentiated walk:
 
 1. **Pre-dispose carried rows (no work).** Rows in `{resume_prior_dispositions}` already `✓ applied` → write `✓ applied (prior pass)`; rows outside `{frame_scope}` (if set) → `⊘ deferred(out-of-scope: not in {frame_scope})`. These are already terminal — do not read their component files.
+   - **A row that arrives already stamped `⊘ deferred(<reason>)` — from `design-ingest`'s scaffold or an earlier pass — is equally terminal and is NEVER auto-selected.** Carry it forward verbatim, reason intact; do not re-open it, do not silently reclassify it to `UNVERIFIED`, and do not count it as remaining work. A deferral is usually an owner ruling or a policy boundary (`manifest-schema.md` → `status` vocabulary), so re-enabling it must be a deliberate edit of the status cell by someone who knows the ruling changed — never a side effect of a resume. **Surface it rather than swallow it:** name the deferred frames and their reasons in the opening resume summary, so the run states its scope up front instead of leaving it to be reconstructed from the manifest body. (fork-gap 2026-07-25)
 2. **Apply one frame at a time.** For each in-scope frame with UNVERIFIED rows: apply every section's deltas (the §2–§5 ledger discipline, unchanged), re-verify by re-reading, then **write that frame's dispositions back into the manifest file on disk immediately** (`Edit`/`Write` the scaffold rows from `UNVERIFIED` → `✓ applied` / `⊘ deferred(reason)` / `✗ dropped(reason)`). Durable progress lands at each frame boundary, BEFORE any auto-summarization can drop it — this is the whole point.
 3. **Checkpoint decision (after each completed frame).** Ask: can I apply AND re-verify another full frame without my recall of earlier frames' exact values degrading? Soft budget (per the context-budget principle — thresholds, not cliffs): do not attempt more than ~one heavy frame or ~10–12 sections in a pass; checkpoint sooner the moment recall feels lossy. If continuing is safe, take the next frame. If not, **checkpoint**: set `{run_completion_mode} = checkpointed`, stop taking new frames (never mid-frame), and proceed to deliver what you built. Otherwise, when no in-scope UNVERIFIED rows remain, set `{run_completion_mode} = complete`.
 4. **A checkpointed pass still delivers.** The frames you DID apply are real code changes — commit → push → PR → merge them in §6/§7 as normal, AND include the updated manifest in the commit (force-add; it lives under gitignored `_bmad-output/`) so the persisted progress travels to main and a fresh session/worktree resumes from it. Then report per §9 with the resume command.
@@ -230,6 +231,14 @@ Remaining (still UNVERIFIED in the manifest): {comma-separated remaining frame i
 {else:}
 Design implementation complete.
 {/if}
+
+Scope: {frames_in_scope} of {frames_total} frames in scope.
+Deferred (terminal — NOT remaining work): {deferred frame ids with their reasons, e.g.
+"4–7 (policy §8.2b: clerk grading stays desktop-only), 8–9 (no offline backend)"; or "none"}
+<!-- Enumerating deferred frames here is mandatory. "Remaining" and "deferred" are different
+     states and must never be collapsed: remaining is work waiting, deferred is work ruled out.
+     Stating scope up front stops a later session re-deriving it by reading the manifest body,
+     which is exactly the discretionary protection that failed. (fork-gap 2026-07-25) -->
 
 Baseline: {baseline_commit}
 Implementation strategy (step-02b): {implementation_strategy}

@@ -80,6 +80,18 @@ ingest:
      STRUCTURE-DELTA / MISSING) in its grid + apply steps. A section with no
      row here is a section design-implement is structurally blind to — which is
      exactly the gap this scaffold closes. -->
+
+### `status` vocabulary — three values, and a scope decision MUST use the third
+
+| value | meaning | resume behaviour |
+|---|---|---|
+| `UNVERIFIED` | not yet dispositioned — the walkable set | selected by the resume walk |
+| `✓ applied` | dispositioned by a prior pass | terminal — never re-applied |
+| `⊘ deferred(<reason>)` | deliberately out of scope (owner ruling, policy, missing backend) | **terminal — never auto-selected** |
+
+**A scope decision written only as prose in the manifest body does not bind the resume walk.** The one mechanism that decides what to build next reads *row statuses*, not narrative — so an owner ruling or policy deferral recorded in a `### OWNER DECISION` table while the rows stay `UNVERIFIED` leaves a frame that must NOT be built reading as the frame that SHOULD be built next. That is the dangerous direction of failure, and it is discretionary protection: it holds only while every future session re-reads the whole file.
+
+So: **when a frame or section is out of scope, stamp `⊘ deferred(<reason>)` into its status cells at scaffold time**, in the same pass that writes the prose. The prose explains; the cell binds. Keep the reason inline and specific (`⊘ deferred(policy §8.2b: clerk grading stays desktop-only)`, `⊘ deferred(no offline backend)`) — a reason that can lapse needs to say what would un-defer it. Re-enabling a deferred row is then a deliberate edit of the cell, not the default. (fork-gap 2026-07-25)
 | frame | section | design copy/structure (verbatim) | data fields read | component×property rows | status |
 |---|---|---|---|---|---|
 | supply-order-detail-drawer | Reconciliation | recon-lead 3 branches ("Not gathered yet." / "Reconciled clean." / gap); recon-grid 4 fixed tiles | quantity, amazonDeliveredQty, amazonHeldQty, amazonReturnedQty, varianceResolution | .recon-lead{12px,subtle-fg} · .recon-grid{grid 4×1fr,gap8} · .rc-cell{border,radius7,inset-bg} · .rc-n{15px,600} · .rc-l{10px,muted} | UNVERIFIED |

@@ -695,7 +695,7 @@ This narrows fix (a): these are **not** sync-manifest omissions. The standards a
 
 ---
 
-## 2026-07-20 — `design-implement`'s supersede gate is correct but fires TOO LATE on the URL path: it runs at SHARED.1a, AFTER the entire bundle mirror + component catalog, even though the design document self-declares its source brief in its own header
+## 2026-07-20 — `design-implement`'s supersede gate is correct but fires TOO LATE on the URL path: it runs at SHARED.1a, AFTER the entire bundle mirror + component catalog, even though the design document self-declares its source brief in its own header  `[RESOLVED: 2026-07-25 — fork fix DONE in custom/workflows (marker `URL.1b-i`): step-01 gained §URL.1b-i, an early supersede probe that scans the target's first ~4KB for a `design-brief-*` token as soon as the file lands in {design_dir} — BEFORE URL.1c shape detection and URL.1d's size preflight — and runs the §SHARED.1a branch there, so a superseded handoff halts before the catalog spend and before the user is advised to spend a design-ingest run on it. Zero extra calls (the target fetch already happened). No-token bundles fall through to §SHARED.1a unchanged: absence of a token is `no_brief`, never a new refusal path. Candidate fixes (a)+(b)+(c) taken. (d) CHECKED — design-ingest step-01 already resolves supersede_status before its per-frame fan-out, so it does not have the inversion. SUCCESS METRICS updated. Distribution to the 13 synced projects OWED.]`
 
 **Target file:** `custom/workflows/implement/design-implement/steps/step-01-ingest-design.md` (§SHARED.1a, and the URL.1b/URL.1d ordering ahead of it).
 
@@ -973,7 +973,7 @@ The STD-HOOKACTIVATE-001 SessionStart probe (`check-hook-activation.sh`) exists 
 
 ---
 
-## 2026-07-25 — design-implement's resume/scope model has only `✓ applied` vs `UNVERIFIED`, no machine-readable `⊘ deferred(reason)` row state — so a policy-DEFERRED frame is indistinguishable from next-in-scope work, and the auto-resume walks straight into it
+## 2026-07-25 — design-implement's resume/scope model has only `✓ applied` vs `UNVERIFIED`, no machine-readable `⊘ deferred(reason)` row state — so a policy-DEFERRED frame is indistinguishable from next-in-scope work, and the auto-resume walks straight into it  `[RESOLVED: 2026-07-25 — fork fix DONE in custom/workflows (marker `⊘ deferred(<reason>)`): manifest-schema.md gained an explicit three-value `status` vocabulary table (UNVERIFIED walkable / `✓ applied` terminal / `⊘ deferred(<reason>)` terminal-never-auto-selected) plus the rule that a scope decision written only as prose does NOT bind the resume walk. design-ingest step-03 now stamps `⊘ deferred(<reason>)` into the scaffold cells in the same pass that writes the scope prose, reason inline and specific. design-implement step-04 §5a carries an already-deferred row forward verbatim — never re-opened, never reclassified, never counted as remaining — and §9's report now enumerates deferred frames separately from remaining ones, since remaining is work waiting and deferred is work ruled out. Candidate fixes (a)+(b)+(c) all taken. Distribution to the 13 synced projects OWED.]`
 
 **Target file:** `custom/workflows/implement/design-implement/steps/step-04-apply-and-deliver.md` (§5 resume contract + the grid-scaffold status vocabulary) and `custom/workflows/implement/design-ingest/manifest-schema.md` (the grid-scaffold `status` field). The gap is the disposition *vocabulary*, not the write-contract (that is the separate line-896 multi-writer entry, already being migrated).
 
