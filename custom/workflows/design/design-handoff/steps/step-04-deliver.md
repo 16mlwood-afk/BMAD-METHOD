@@ -38,6 +38,34 @@ From config:
 
 ## EXECUTION SEQUENCE
 
+### 0. Live-Apply Check — a brief regen during an active apply is a BLOCKED operation
+
+**Before writing or delivering a brief for surface S, read `<main-checkout>/.claude/wip-register.yaml`
+and check for an ACTIVE `design-implement` / `design-ingest` / apply claim on S.** If one exists and
+is held by another `claimed_by_session_id`, **HALT** — do not write the brief, do not deliver it.
+
+**Why this is a halt and not a caution.** Regenerating a brief mid-apply *forks the design*: the
+applying session is implementing bundle A while the brief that justifies it silently becomes bundle
+B's. The loss is real, already-built work, and it surfaces late. On **2026-07-20** this exact
+collision binned **two full build → verify → PR cycles** in this project. On **2026-07-25** it was
+caught only because the session happened to read the register first — judgment, not a system.
+
+**Correct sequence:** let the apply land (merged or explicitly abandoned), confirm no active claim
+remains on S *or its sibling surfaces*, then regenerate. Sequencing is the **owner's** call — a
+handoff may not resolve it by proceeding.
+
+**What to do instead of halting silently:** report the conflicting claim (surface, `claimed_by`,
+`claimed_by_session_id`), and message the holding session via the agent mailbox with anything that
+changes their in-flight work — e.g. a policy version that moved under them. Then stop and let the
+owner sequence it.
+
+> **Enforcement honesty.** The deterministic tier is a `PreToolUse` **ASK** on `Edit|Write` of
+> `design-brief-*.md` (`.claude/hooks/brief_regen_guard.py`, 12-case golden suite, fails OPEN on an
+> unreadable register, conservative surface matching). It is **machine-local — it does NOT ship with
+> the fork**, so in any project without it this section is the only tier. That is exactly the
+> prose-consumer blind spot: a gate constrains a tool call, never the instruction that tells the model
+> to make it. Treat this step as load-bearing, not as a restatement of the hook.
+
 ### 1. Delivery Skip Check
 
 Determine whether to run the delivery sequence at all.
