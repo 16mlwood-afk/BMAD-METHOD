@@ -219,3 +219,71 @@ exists to hold.
 
 **Open decision for Mason:** single typed ledger (recommended above) vs split ledgers by scope or
 lifecycle. Everything else in this proposal is independent of that choice.
+
+---
+
+## 8. Migration implementation — PREPARED, not run, not committed
+
+One script, dry-run by default, held in the **session scratchpad** rather than the fork tree so it
+cannot be executed by accident: `migrate_fork_gaps_PREPARED.py`. There is no implicit write path —
+`--write` is inert in the prepared build and gets enabled only on approval.
+
+**What it does, per entry:** split the state blob off the heading → assign `FG-<date>-NN` (date read
+from the title, ordinal within that date) → normalize the existing `**Class/Fix scope/Target
+file/Marker**` lines into the header block → derive `state` from the blob, `scope` from the target
+path, `owner` from scope → emit heading / header / `### Incident` (body verbatim, minus only the
+four relocated field lines) / `### Work` (leading `**Status (date):**` carrying the blob **quoted,
+not reworded**).
+
+**Handling of the three named hard cases:**
+
+| Case | Behaviour |
+|---|---|
+| Unknown `owner` / `class` / `scope` | Written literally as `unknown` and appended to the migration report with its entry id. **Never inferred from prose.** Owner is derived *only* from an unambiguous scope (`fork`→fork-maintenance, `machine-local`→mason, `harness`→harness-vendor); a `project` scope always yields `unknown`, because which project owns it is a human call. |
+| Existing superseded chains | `state: superseded` triggers a scan of the blob for a named successor; found → `superseded_by`, not found → `superseded_by: unknown` **plus** a `superseded-without-target` report line. The chain is never invented. |
+| `scope: harness` | `marker: n/a` is written automatically — the one sanctioned exemption, applied by the script rather than left to a human to remember. |
+
+**The invariant that makes it safe.** Per entry, every non-blank pre-migration line must appear in
+the post-migration output, except the heading and the four relocated field lines. Any other loss
+**raises and aborts the whole run** — no partial write. Same line-conservation check used for the
+archive moves on 2026-07-25.
+
+**One deliberate asymmetry, called out because it is the risky part.** `derive_state()` maps a
+`RESOLVED` blob to `closed` — which is only legitimate *because* every such entry in the current
+file was verified by reading its implementing section during the 2026-07-25 pass. A future run over
+unverified closures must not trust the blob. That is precisely how the canonical-case-home entry
+came to claim two delivered artifacts that do not exist on disk.
+
+## 9. Hook activation plan — placement decided, wiring NOT done
+
+`.githooks/pre-commit` already ends with a docs-conditional block:
+
+```sh
+if git diff --cached --name-only | grep -Eq '^docs/'; then
+  npm run docs:validate-links
+  npm run docs:validate-sidebar
+fi
+```
+
+The register validators go **immediately after it**, in their own narrower conditional, so they fire
+only on commits that actually touch the ledger:
+
+```sh
+# Register gate — only when the ledger itself is staged.
+if git diff --cached --name-only | grep -qx 'docs/fork-gaps.md'; then
+  bash tools/check-fork-gap-schema.sh      || exit 1   # ERRORs: schema + fields
+  bash tools/check-fork-gap-targets.sh     || exit 1   # ERROR only on scope:fork rot
+  bash tools/check-fork-gap-stale-open.sh --creation-mode || exit 1   # ERROR: marker already present on a NEW entry
+fi
+```
+
+Placement rationale: after the existing docs block (so link/sidebar failures surface first and the
+register gate never masks them), before the hook ends, and gated on an exact-match path so an
+unrelated `docs/` edit pays nothing. Sweep mode (`--sweep`, warn-only) stays where it is today — on
+the SessionStart surfacer, which is the right place for "these N entries look stale," a judgement
+that must never block a commit.
+
+**Once migration lands, these three become non-optional for any future edit to the file.** That is
+the whole point: the schema is only real if it is checked at write time. Until then the block is
+documented here and **not wired** — wiring it against unmigrated entries would fail every commit
+that touches the register.
