@@ -131,10 +131,18 @@ the manifest is simply the file where getting them wrong is most expensive.
   `git add -A` / `git add .` / `git commit -a` / `git stash` / `sync-bmad-workflows.sh`, a dirty
   manifest must be either staged **explicitly by path** (`git add -f <manifest>` — it lives under
   gitignored `_bmad-output/`) if this session owns it, or left out of the commit entirely.
-- **The same applies to every file, not only manifests.** `git add <explicit path>` and
-  `git commit <explicit path>`; never `-A`, never `.`, never a bare directory. A path-scoped
-  commit bypasses the shared index for those paths, which is the only way to be sure a foreign
-  `git commit` in the same second cannot carry your work under its message.
+- **The same applies to every file, not only manifests.** Never `-A`, never `.`, never a bare
+  directory.
+- **Commit in ONE step: `git commit -- <explicit paths> -m …`. Do not `git add` and then commit.**
+  The gap between the two commands *is* the sweep window: your files sit in the shared index, and
+  any session that runs a bare `git commit` in that interval carries them under its own message.
+  A path-scoped commit ignores the rest of the index entirely, so it is safe in both directions —
+  it cannot scoop a foreign staged file, and a foreign bare commit cannot scoop yours after it.
+  **Evidence (2026-07-25, third firing):** the commit that introduced *this very rule* was written
+  as `git add … && git commit …` and was swept mid-window into another session's
+  `docs(status): record the viewport artifact-labeling wave`. Nothing was lost — both files are
+  intact on HEAD — but the fix for index-sweeping is recorded in the history as somebody else's
+  STATUS.md update. Two-step staging is the whole of the exposure.
 - **Never `git reset --soft` in this checkout.** It deliberately *leaves* changes staged, widening
   the window where another session's bare commit sweeps them. Use `git restore --staged <path>`
   (or `git reset --mixed <path>`) and re-add by path. Observed 2026-07-25: an un-scoop via
