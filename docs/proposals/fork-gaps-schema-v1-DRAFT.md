@@ -5,7 +5,7 @@ description: A typed entry schema for docs/fork-gaps.md that separates incident 
 
 # fork-gaps schema v1 — DRAFT
 
-**Status: PROPOSAL. Not canon. No entries migrated.** Approve, amend, or reject before any bulk
+**Status: ACCEPTED and LANDED 2026-07-25 (`935395f8`).** Owner approved; the single-typed-ledger option was taken. 47 entries are migrated and the write-time gate is armed. This document is now the schema's reference description — the enforced definition lives in `tools/lib/fork_gap_lint.py`, and where the two disagree the code wins. Approve, amend, or reject before any bulk
 migration. The one decision this proposal defers to Mason is at the bottom: **single typed ledger
 vs split ledgers**.
 
