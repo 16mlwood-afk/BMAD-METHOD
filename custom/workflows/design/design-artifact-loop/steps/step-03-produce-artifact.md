@@ -137,6 +137,7 @@ Before staging a `design-handoff` output, confirm all five:
 - Route / component targets are named where possible — at least one component file path or route path.
 - No IA redesign leaked into `refine-screen` (cross-check against the Mode Scope matrix in step 4).
 - The "Skill routing used" block is non-empty if the output carries any UI-facing guidance.
+- **On a handheld-first / mobile-primary DECIDED class, the artifact contract is carried, not assumed** — `../shared/operator-artifact-contract.md` (rules **A1–A3** viewport, **B1–B7** composition). The emitted handoff must name: the canonical viewport (in-page label, never a manifest field only); the composition sequence (canonical surface → states strip → additive group → rationale LAST); and, when the surface is **table-first** (list/table/queue/worklist), the **B7 in-surface composition** — compact header block reading as the top of the list, count + primary action loud but **inline in the worklist header**, secondary counts/filters collapsed at label weight, ≥1 real data row visible at rest. Omitting the last one commissions a **DASHBOARD OPENER**, which passes every other check on this list. Not applicable to a desktop-only class or an OPEN owner ambition.
 
 If any check fails, rewind to step 2 evidence assembly OR to section 2 of this step (re-invoke missing skills). Do NOT emit a partial handoff.
 
