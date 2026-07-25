@@ -25,6 +25,10 @@ From Step 1 you have:
 
 ## SEQUENCE OF INSTRUCTIONS
 
+### 0. Worktree precondition — Enter the worktree BEFORE mapping
+
+**If the project mandates worktrees (CLAUDE.md "ALWAYS Use Worktrees" or equivalent), enter the worktree NOW — before reading a single implementation file.** step-02 reads `{impl_page}` and every component file; step-04 applies to those same files. When the apply happens in a worktree, `EnterWorktree` gives every file a *different absolute path*, and the harness's read-before-write guard tracks read-state per path — so a file mapped in the main checkout is treated as **unread** at its worktree path, and the first `Write` in step-04 is refused ("File has not been read yet") on a file you already read in full. Working around that by `rm`-then-`Write` disarms the very guard that stops blind overwrites — so don't get into that position: **map and apply in the SAME path space.** The `{baseline_commit}` capture in §6 must likewise be recorded in the tree the apply will run in. (Projects that do NOT mandate worktrees: skip this — map in place.)
+
 ### 1. Identify the Implementation Page
 
 Find the page in the codebase that corresponds to `{design_file}`:
