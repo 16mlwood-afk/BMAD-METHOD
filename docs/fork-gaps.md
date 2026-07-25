@@ -1520,6 +1520,40 @@ owner: fork-maintenance
 
 ---
 
+## 2026-07-25 — a fork-side `custom/githooks/` edit makes the contract's DETERMINISTIC tier read as live while it fires in zero projects, and the "prose consumers" table that exists to catch exactly this drift is itself unverified
+
+```yaml
+id: FG-2026-07-25-09
+class: enforcement
+scope: fork
+target: custom/githooks/check-design-brief-completeness.sh
+marker: "githook distribution legibility"
+state: open
+owner: fork-maintenance
+distribution: "sync-bmad-workflows.sh (all 14 targets)"
+```
+
+### Incident
+
+**What fought us (cash-recovery, authoring rule B7 / check C5 into `operator-artifact-contract.md`).** The wave added a WARN-only B7 clause to the fork's `custom/githooks/check-design-brief-completeness.sh`, then measured it against all 44 project briefs: 6 true fires, 0 false positives. Everything about that reads like a shipped deterministic tier — and the contract's own **honest-tiering table** now lists a row for it. But the file that actually runs at commit time in cash-recovery is the **project's** `.githooks/check-design-brief-completeness.sh`, which is byte-stale until a sync. `grep -c "compressed operational stack"` → **fork 1, project 0.** The clause fires in **zero** projects today.
+
+**Why this is worse than ordinary sync lag.** Stale *workflow prose* degrades gracefully — a session that doesn't read the new sentence behaves like last week. A stale *githook* is different in kind: the fork file, the contract's tiering table, and the wave's own measurement all assert a deterministic detection tier exists, and the enforcement-honesty doctrine explicitly forbids describing a tier as live when it is not. So the artifact most likely to be cited as proof ("measured, 6/0") is the one furthest from the running gate. **The measurement was real; the deployment was zero, and nothing in the loop said so.** The near-miss here was reporting it to the owner as an operative commit-time warn — caught only by an explicit post-hoc check, not by any signal the tooling produced.
+
+**Sibling finding, same act, different file — the prose-consumer table is unverified.** `custom/workflows/design/shared/operator-artifact-contract.md` carries a "Prose consumers — the drift surfaces" table whose own instruction is *"when this contract changes, walk this table."* Walking it found `design-artifact-loop` listed as bound (*"A + B by reference"*) while `grep -rn "operator-artifact-contract" custom/workflows/design/` returns **no hit anywhere in `design-artifact-loop/`**. The row is a claim, not a binding. That is the same failure the table was built to prevent, one level up: the anti-drift mechanism has undetected drift in itself, because a hand-maintained list of consumers has nothing checking that the named consumers actually reference the contract.
+
+**Common root.** Both are *asserted* wiring with no verifier. One asserts a hook is deployed; the other asserts a workflow is bound. Neither claim is expensive to check mechanically, and both were checkable in seconds once suspected — the gap is that nothing prompts the suspicion.
+
+### Work
+
+Two small deterministic checks, both cheap, neither requiring a sync to be useful:
+
+1. **Githook drift signal.** Teach `sync-bmad-workflows.sh --check` (which already reports per-project staleness) to diff `custom/githooks/*.sh` against each target's `.githooks/*.sh` and name any hook whose fork copy is ahead — so "authored" vs "firing" is legible at the moment the claim gets made. Minimum viable version: a one-line warn at fork-commit time when a `custom/githooks/` file is staged, reading *"this hook fires in 0 projects until sync."*
+2. **Prose-consumer binding check.** A validator over any doctrine file carrying a "Prose consumers" table: for each row naming a workflow path, assert the workflow tree actually contains a reference to the doctrine file. Fail-loud on a listed-but-unbound consumer. Fixes the `design-artifact-loop` row as its first output — either wire the reference or drop the row, but never leave the table asserting a binding that isn't there.
+
+**Watch:** if a third "authored but fires nowhere / listed but not bound" instance appears before either check lands, stop adding tiering-table rows for mechanisms whose deployment state nothing verifies — the honest tiering table becomes the vector rather than the guard.
+
+---
+
 ## 2026-07-25 — the scope register MANDATES an append from any shaping session but ships no writable schema, so a cold session reverse-engineers an 11-column format from 400-char rows across two hand-synced tables
 
 ```yaml
