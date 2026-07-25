@@ -114,6 +114,30 @@ The named gate `design-implement` adds (step-03): **every (frame, section) row i
 
 This is deliberately weaker than the §5 consumer *refuse* contract: a cataloguer that pauses for review only needs to tell the truth loudly, not block.
 
+### Multi-writer contract — who may write this file, when, and what a second writer must do
+
+**The manifest is a SHARED, multi-writer artifact, and multi-writer is its DESIGNED operating mode** — the resumable-apply rule exists precisely because a large surface needs many passes across many sessions. This schema defines the artifact's *fields*; the authorship rules are in **`docs/manifest-contract.md`** (fork docs) and are binding on every writer. The short form, because the silence here is what let two sessions each believe they were the only writer:
+
+- **A pass is identified by a stamped `pass_id` (`<session_id>-<UTC compact>`), never by reading the file and adding one to the highest `Pass N`.** That derivation is a read-modify-write race; on 2026-07-20 it produced two `Pass 4`s and, an hour later, two `Pass 5`s in this exact artifact. `session_id` is the only field a reader or gate compares — the `claude-session-<timestamp>` header is a display label and is provably non-unique under concurrency.
+- **Pass records are append-only.** Never renumber, reorder in place, or re-identify an existing record. A retained pass number is a **derived** `seq` (position when sorted by `started_at`), regenerable, not identity. When file order cannot equal run order, the out-of-order record says so explicitly.
+- **The `(frame, section)` grid rows stay mutable** — that is resume state, owned by whichever pass applies the section. Only the pass narrative is append-only. Keeping those two roles apart is what stops a benign concurrent append from becoming data loss.
+- **Take the current-editor marker before the first write, release it at handoff.** `<main-checkout>/.claude/manifest-locks/<manifest>.lock.json`, resolved via `git rev-parse --git-common-dir` so it is visible from every worktree immediately with no commit. A live marker held by another session forces **explicit reconciliation, never a silent merge**; no session may clear another's marker.
+- **Commit the manifest explicitly by path (`git add -f`) or leave it out.** A broad `git add -A` / `git stash` / sync sweep is how one session's uncommitted manifest work gets scooped into another's commit.
+
+Detection is deterministic (`~/.claude/hooks/manifest-contract-gate.py`, PreToolUse, WARN-only); taking the marker and reconciling a real concurrent edit are probabilistic. See the contract's Enforcement section for the honest split and the WARN→DENY promotion criteria.
+
+### Path invariant — every dereferenced path is repo-relative and durable
+
+**Any path this manifest records that a downstream workflow will DEREFERENCE must be repo-relative and point at a committed, durable location. A session-scoped path in a durable artifact is always a bug.**
+
+This covers `ingest.source` when it is a local directory, and any evidence pointer a run chooses to record — e.g. an optional `ingest.frame_catalogs_dir` naming where step-02's per-frame catalogs were persisted. Such a field is **not required**, but if it is present it is load-bearing, and the rule is absolute:
+
+- **Repo-relative, from the repo root** (`_bmad-output/implementation-artifacts/…`), never absolute, and never a harness scratchpad path (`/private/tmp/…/<session-uuid>/scratchpad/…`, `/tmp/…`).
+- **The referent must be tracked** — force-added and verified with `git ls-files --error-unmatch`, exactly as the manifest itself is (step-03 §1). An untracked referent is the same silent-empty-emit failure the force-add rule exists to stop.
+- **The name recorded must be the name on disk.** Recording one path while the durable copies land under a different name produces a manifest that *looks* complete and dereferences to nothing.
+
+**Why (2026-07-20, cash-recovery).** A delivered manifest stamped `frame_catalogs_dir` as the emitting session's own `/private/tmp/.../<session-uuid>/scratchpad/...` directory — reaped when that session ended — while the durable catalogs were force-added into the repo under a different name. The manifest shipped a latent dangling pointer to its own evidence, and nothing in the schema or the emit step objected. `design-implement` would have dereferenced it into a void, on a path it had no way to distinguish from a good one.
+
 ### Completeness invariant
 
 `ingest.completeness.frames_with_empty_section_list` MUST be empty in a delivered manifest. A non-empty list means step-02's per-frame completeness gate did not halt as it should have — the manifest is malformed and `design-implement` should refuse it (the same bounce-back shape as the synthesize-bundle gates).
