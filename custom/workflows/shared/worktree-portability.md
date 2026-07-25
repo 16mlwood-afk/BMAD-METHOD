@@ -136,3 +136,24 @@ A fresh worktree shares the repo's tracked files but **not** generated or instal
 - **Sub-packages have their own `node_modules`.** A sub-package with its own `package.json`/`tsconfig` (e.g. `mcp-avask/`, any MCP-server dir) has **no `node_modules` in the worktree**, so `tsc` / `npm run build` there fails wall-to-wall on `@types/node`/SDK resolution. Until you `npm ci` in that dir, the only available check is vitest (esbuild transform — no full typecheck). Do NOT misread that wall of module-resolution errors as your own change breaking; name it, and verify via the transform-level test.
 
 **The trap this closes:** in a worktree the fastest correct instinct — trust the editor's red — is the WRONG move until bootstrap, and an agent either chases phantoms or learns to ignore ALL diagnostics (defeating the point on exactly the change where they matter). Bootstrap the worktree's verifiability before verifying. The deterministic companion — a PostToolUse `EnterWorktree` framework-detect that runs the sync automatically — is the still-open hook-track half of this gap.
+
+## 10. Refresh the base ref before trusting local verification
+
+A new worktree branches from the **local** `origin/<default-branch>` ref, which is only as fresh as the last `git fetch` in this checkout. Two ways that bites, both producing a *false green*:
+
+- **A worktree created right after a PR merge is based on a STALE `origin/main`.** The merge you just made is on the remote; your local ref predates it. Local `tsc -b` / `npm run build` then verifies a tree CI will never see, and diverges from CI's merge-commit result — you ship on a green that was measured against the wrong base.
+- **Sequential multi-slice delivery compounds it.** Slice N+1's fresh worktree branches from the same stale ref, so it silently starts *before* slice N — the work you just merged is missing from the base of the work that depends on it, and the conflict surfaces at PR time or, worse, as a silent revert.
+
+**The rule: fetch first, then branch; and re-confirm the base before any local check is treated as the merge gate.**
+
+```bash
+git fetch origin                                   # BEFORE creating the worktree
+git worktree add <path> origin/<default-branch>    # now provably current
+
+# and inside the worktree, before trusting tsc/build as the gate:
+git rev-parse HEAD                     # base of this worktree
+git rev-parse origin/<default-branch>  # current remote tip (after a fetch)
+# not equal → fetch + merge/rebase onto the tip BEFORE believing a local green
+```
+
+**Why this is a doc rule and not a hook.** The trigger is the harness's `EnterWorktree` base-ref behaviour, which the fork does not control — so the guard is the practice around it. The cheap CI-parity habit is the second block above: whenever a local `tsc -b`/build is about to stand in for CI, confirm the worktree's base equals the current remote tip. A base mismatch is not an error to work around; it means the check you are about to run answers a different question than the one CI will ask. (fork-gaps 2026-07-11, 2026-07-18)

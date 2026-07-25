@@ -231,6 +231,21 @@ E1–E5 register *in-flight work* (a live worktree claim). A different artifact 
 
 **Enforcement honesty (mirrors E2/E4).** The resume-time re-check is **imperative prose the resuming session must choose to run — PROBABILISTIC, not a gate.** "A session is resuming a parked decision" has no deterministic trigger (it is not a tool call), so no PreToolUse block can enforce it — an attempt would be the indiscriminate-gate anti-pattern §E already warns against. The available DETERMINISTIC tier is *awareness, not action*: a parked-decision entry can be surfaced at SessionStart by the same `check-wip-register.sh` mechanism that prints live claims (E2), so a resuming session cannot be *unaware* one is open — but running the re-check stays the model's choice. Belt-and-suspenders, honestly labeled.
 
+## §F — Delegating to a worktree-isolated sub-agent: name the artifact's sink
+
+`isolation: "worktree"` gives a sub-agent its own copy of the repo, and that worktree is **auto-removed when the agent completes**. So an agent that PRODUCES an artifact — a brief, a manifest, a report — and is told *"don't commit"* has been told, without anyone meaning it, to **destroy its own output**. The instruction reads as caution; it is deletion. The orchestrator gets a summary of work whose artifact no longer exists.
+
+**The contract, binding on the orchestrator, not the agent:**
+
+1. **Never say "don't commit" to an artifact-producing isolated agent without naming an alternate sink in the same breath.** "Don't commit" is only safe for an agent whose output is its *reply*.
+2. **An isolated agent that produces a keepable artifact MUST do one of two things, and the prompt must say which:**
+   - **commit + push it** to its own branch (durable, reviewable, survives the reap); or
+   - **write it OUTSIDE the worktree** — the session scratchpad, or a caller-passed absolute path in the main checkout. A path relative to the agent's cwd is inside the worktree and dies with it.
+3. **Artifact-producing workflows should accept a durable output path** rather than defaulting to a repo-relative one, so a delegating caller can point them at a sink that outlives the agent. Same discipline as the manifest path invariant: *a durable artifact never points at a location that gets reaped.*
+4. **Verify the artifact exists after the agent returns.** An agent's "done" describes what it did, not what survived. `ls` the sink before reporting the work delivered — the same operations-are-not-evidence rule that applies everywhere else.
+
+(fork-gap 2026-07-11. Secondary target: artifact-writing design workflows should take a caller-supplied durable sink for exactly this reason.)
+
 ## Costs
 
 - A worktree per src-editing run — cheap, and the project `CLAUDE.md` already mandates it; §A1 just moves it from "the human remembered" into the workflow.
