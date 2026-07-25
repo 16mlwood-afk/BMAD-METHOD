@@ -246,6 +246,30 @@ For each screen in `{screens}`:
        outrank every heading and caption (the squint test), and on-surface copy stays operator
        register — short, imperative; long-form explanation goes to the notes block. -->
 
+  <!-- IN-SURFACE COMPOSITION — table-first surfaces (primary content is a list/table/queue/worklist).
+       Contract: shared/operator-artifact-contract.md B7. Checked at review as C5. This is SEPARATE
+       from the block above: that one arranges the ARTIFACT, this one composes the SURFACE, and a
+       bundle can pass every rule above and still emit a generic app hero. Rule (4), non-negotiable:
+       (4) Emit the canonical render as a COMPRESSED OPERATIONAL STACK — a compact header block,
+           then data, immediately. Specifically:
+           - The header is ONE compact operational block on the worklist's own grid and vertical
+             rhythm; it reads as the TOP OF THE LIST, not a band above it. Never a banner, hero,
+             opener card, or summary card. If the header could be lifted onto an unrelated page
+             unchanged, it is a banner - re-compose it.
+           - The loud count and the primary action MAY dominate, but only INLINE in the worklist
+             header row. Forbidden: a large empty half opposite them, a full-bleed/billboard CTA
+             row of their own, or a distinct background/border/elevation making the header its own
+             card. Exactly ONE element carries display weight - count + action as a single unit.
+           - Secondary counts, caveats, filters and sort controls collapse into the same vertical
+             rhythm at label/body weight. NO CHIP WALL - no wrapping grid of pills, status chips,
+             or metric tiles as an opener band.
+           - At least ONE real data row must be visible at rest, without scrolling, at the
+             canonical viewport. Emit real sample rows, not an empty table shell.
+       "Make the action loud" means loud WITHIN the header, never "give the action its own
+       billboard." A billboard CTA satisfies the squint test by construction - loudness was never
+       the question, shape is. The failure shape is named DASHBOARD OPENER. Omit this block on a
+       single-record cockpit with no list. -->
+
   <!-- Page shell width follows the CANONICAL viewport, not a habitual 1440.
        Handheld-first surface => the canonical frame is a phone frame (max-width ~375px); a 1440px
        shell on a phone-primary brief is the desktop premise re-entering through the wrapper. -->

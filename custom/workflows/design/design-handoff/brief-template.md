@@ -648,7 +648,7 @@ Three rules, all of which `design-review-pr` checks:
 | 4 | Scan / next-step loop | {the primary operator loop as a LOOP — trigger → feedback → next; never a feature list} |
 | 5 | Offline / degraded state treatment | {which degraded states are first-class, and the statement that each is drawn as a state OF this surface} |
 
-**Composition rules for your deliverable — all six are checked at review (`operator-artifact-contract.md` B1–B6):**
+**Composition rules for your deliverable — all seven are checked at review (`operator-artifact-contract.md` B1–B7):**
 
 1. **B1 — one canonical operational surface, first and dominant.** The artifact opens with ONE render: this surface at {canonical_viewport} in its resting state — first in reading order, largest, the only thing above the fold. A reader who stops after the first screenful must have seen the surface the operator actually uses.
 2. **B2 — additive renders stay subordinate** (as rule 2 of the block above).
@@ -656,6 +656,9 @@ Three rules, all of which `design-review-pr` checks:
 4. **B4 — rationale comes AFTER the operational surface.** IA rationale, component specs, interaction notes and open questions live in a labelled block BELOW the canonical render and its state strip. Prose must not open the artifact, must not sit between the canonical render and its state/additive groups, and must not be interleaved paragraph-by-comp. This is an operator surface with an appendix, not a document with figures.
 5. **B5 — the primary action and the next-step loop outrank explanatory text, measurably.** Largest type, strongest contrast, most reachable position (thumb zone). The squint test: squint at the canonical render — if a heading, paragraph, legend, or caption reads first instead of the action and its loop, this fails.
 6. **B6 — main-surface copy is operator register.** Short, imperative, scannable at arm's length by someone holding a phone in an aisle. Long-form explanation is RELOCATED to the notes block, not deleted.
+7. **B7 — the canonical surface is a COMPRESSED OPERATIONAL STACK, not a dashboard opener** (table-first surfaces — list/table/queue/worklist). A compact header block that reads as the top of the list, then data immediately: the count and primary action loud but **inline in the worklist header** (no hero band, no billboard CTA row, no large empty half, no separate summary card); secondary counts, caveats, filters and sorts collapsed into the same vertical rhythm at label weight (**no chip wall**); **at least one real data row visible at rest**. Full rules and the §7 composition spec below.
+
+> **B7 is why rules 1–6 are not sufficient.** Rules 1–6 govern the artifact; B7 governs the inside of the canonical render. B5 is satisfied *by construction* by a billboard CTA — the action really is the loudest thing on the page. Loudness was never the question; **shape** is. Review runs this as its own pass (C5) and rejects a dashboard opener even when every required element is present.
 
 > **The failure shape these prevent has a name: REVIEW BOARD** — co-equal comps plus explanatory prose presented AS the deliverable, instead of one operational surface with everything subordinate to it. It is the default shape a generator produces whenever composition is left unspecified, and it contradicts no field in this brief — which is exactly why these rules are written down.
 
@@ -865,7 +868,7 @@ For **every** frame in the Surface Inventory above, deliver:
 4. **Information architecture rationale** — why you grouped and prioritized information this way
 
 {if `{primary_viewport_class}` is `mobile-first`/handheld-first:}
-**Artifact composition — how these outputs are ARRANGED (handheld-first only; `operator-artifact-contract.md` B1–B6, checked at review).** The list above is what to produce; this is the order and prominence it must be produced in. Deliver the artifact in exactly this sequence:
+**Artifact composition — how these outputs are ARRANGED (handheld-first only; `operator-artifact-contract.md` B1–B7, checked at review).** The list above is what to produce; this is the order and prominence it must be produced in. Deliver the artifact in exactly this sequence:
 
 1. **The canonical operational surface** — one render at {canonical_viewport}, resting state, first and largest, the only thing above the fold, labelled in-page (B1).
 2. **"States of this surface"** — the state-variant frames as a subordinate strip beneath it: same skeleton, same primary-action position, one changed region each, in operator-encounter order (B3). Not a gallery of headline comps; not separate mini-products.
@@ -875,6 +878,17 @@ For **every** frame in the Surface Inventory above, deliver:
 Inside the canonical render: the primary action and the next-step loop are the most prominent elements — they must survive the squint test against every heading and caption on the surface (B5) — and on-surface copy is operator register, short and imperative, with long-form explanation relocated to the notes block (B6).
 
 **Do NOT deliver a symmetric row of phone/tablet/desktop comps.** That shape is a **review board**, not an operator surface, and it fails review even when the phone is leftmost and correctly labelled.
+
+{if this surface is table-first — its primary content is a list, table, queue, or worklist:}
+**In-surface composition — the canonical render is a COMPRESSED OPERATIONAL STACK, not a dashboard opener (B7, checked at review as C5).** The rules above settle how the ARTIFACT is arranged. This settles how the SURFACE itself is composed, and it is a separate requirement: a render can satisfy every rule above — first, dominant, correctly labelled, primary action unmistakably loudest — and still open with a hero band and a wall of chips. Compose it as a compact header block, then data, immediately:
+
+1. **Keep the header as ONE compact operational block** — not a banner, hero, opener card, or summary card above the list. It shares the worklist's horizontal grid and vertical rhythm and reads as the **top of the list, not a thing before the list**. If the header could be lifted onto an unrelated page unchanged, it is a banner and it fails.
+2. **The loud count and the primary action ({the surface's primary action, e.g. "Go receive"}) may dominate — but only INLINE within the worklist header.** No large empty right half. No billboard CTA row of its own. No separate summary-card feel: no distinct background, border, or elevation separating the header from the list. Exactly ONE element carries display weight — the count and its action read as a single unit.
+3. **Secondary counts, caveats, filters and sort controls collapse into the same vertical rhythm** at label/body weight, and must not visually compete with the primary action. **No chip wall** — no wrapping grid of pills, status chips, or metric tiles as an opener band. If secondary status needs more room than one collapsed line, it belongs in a filter control or in the rows themselves.
+4. **At least one real data row is visible at rest** on {canonical_viewport} without scrolling, with the header block occupying no more than roughly a third of the viewport height. This is the measurable form of 1–3: *count the rows visible in your canonical render — zero rows means the composition is wrong.*
+
+> **"Make the action loud" means loud WITHIN the header — never "give the action its own billboard."** The correction for a dashboard opener is always **compression, never deletion**: the count, the action, and the secondary status all stay, collapsed into the header block. The failure shape has a name — **DASHBOARD OPENER** — and review rejects it even when every required element is present and every other composition rule passes.
+{endif}
 {endif}
 
 ---

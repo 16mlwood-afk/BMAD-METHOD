@@ -111,7 +111,7 @@ because *which render wins* and *what shape the artifact is* are different quest
 (step-01 §3f.4c + gate step 5) adds the third: *is this an operator surface, or a presentation about
 one?*
 
-Contract, rules B1–B6, the four review-board tells, and checks C1–C4:
+Contract, rules B1–B7, the review-board and dashboard-opener tells, and checks C1–C5:
 **`shared/operator-artifact-contract.md`**. Project binding for the pilot: cash-recovery
 `docs/design-policy.md` §8.2d + §5 #14, v11 / 2026-07-25.
 
@@ -123,6 +123,25 @@ Contract, rules B1–B6, the four review-board tells, and checks C1–C4:
 | 18 | Clerk **receiving** artifact: one canonical phone render, then `--offline-queued` / `--stale` / `--tracking-unavailable` / `--exception` as a subordinate strip — same skeleton, same chrome, same primary-action position, one changed region each, captioned with the producing condition and what the operator can still do; no variant has its own nav or hero | — (clean) | **PASS** — B3 satisfied. The false-positive guard for state variants: a handheld-first artifact SHOULD show degraded states; (f) must never read "several frames" as "peer designs." (**G4**.) |
 | 19 | Clerk **receiving** artifact: phone correctly canonical and first — but the desktop additive render becomes a wide multi-column table with hover-revealed row actions and a persistent filter rail with no phone equivalent | **(e)** + **(f)** | **FAIL** — A3/B2, C2. The desktop premise returns *under a compliant label*, and downstream implementation treats the richer render as the real design. A handheld-first desktop render is *a wider phone*. (**G5**; overlaps row 12 deliberately — row 12 judges it as a viewport violation, row 19 as a composition one.) |
 | 20 | Clerk **grading** (`/clerk`, §8.2b desktop-only) or an **owner** surface with an OPEN §8.3 ambition | — / (d) | **(f) does NOT fire.** The false-positive guard, same shape as row 14: (f) binds handheld-first DECIDED classes only. An over-firing (f) on desktop-only or owner work would freeze exactly what (d) keeps moving. |
+
+## v5 addition — rule B7 / check C5: the IN-SURFACE COMPOSITION half
+
+Rows 15–20 test the shape of the **artifact**. They cannot catch the defect below, and again that is
+the point: a canonical render can be first, largest, correctly labelled, with its state strip and
+additive group perfectly arranged and the primary action unmistakably the loudest element — passing
+**every** (e) and (f) check — and still be a **DASHBOARD OPENER**: a hero row plus a chip wall above
+a table-first worklist. B5 is satisfied *by construction* by a billboard CTA, because B5 measures
+hierarchy and only B7 measures compression. Rules **B7**, the five dashboard-opener tells, and check
+**C5**: `shared/operator-artifact-contract.md`.
+
+**B7/C5 bind by CONTENT SHAPE, not viewport class** — any DECIDED class whose primary content is a
+list/table/queue/worklist, desktop included, measured at that class's own canonical viewport.
+
+| # | Input artifact & state | Gate class | Expected outcome |
+|---|---|---|---|
+| 21 | Clerk **receiving** artifact: every (e) and (f) requirement satisfied — canonical phone render first/largest/labelled, states as a subordinate strip, additive group after, rationale last — but INSIDE the canonical render the surface opens with a full-width hero band (huge parcel count left, large "Go receive" button, right half empty), then a wrapping grid of eight status chips, then a filter row, with the first worklist row below the fold | **(f)** via **B7** | **FAIL** — B7.1/.2/.3/.4, **C5** tells 1, 2, 3, 5. **The regression row for B7.** Rows 15–20 pass it cleanly and so does the whole viewport contract; the *artifact* is impeccable and the *surface* is a dashboard. Note the trap: C4/B5 **passes** — the action is the loudest thing on the page. The objective sub-check settles it without judgment: **zero worklist rows visible at rest ⇒ FAIL**. (Golden case **G6**.) |
+| 22 | Same surface, same data, same priorities, re-composed: one header block on the worklist's grid — parcel count + "Go receive" on a single line as one display-weight unit; beneath it one collapsed line of secondary status (`142 in transit · 17 delivered · 3 exceptions`) at label weight, filter as a control not a chip grid; then rows. Three worklist rows visible at rest on 375×812; header under ⅓ of viewport height | — (clean) | **PASS** — B7 satisfied, C5 clean. The false-positive guard for B7: a compact header carrying a loud count and a loud primary action is **required**, not a violation. Nothing was deleted — count, action and secondary status all survive, compressed rather than banded. **A C5 finding that says "remove the counts" has mis-read the rule.** (**G7**.) |
+| 23 | A **single-record cockpit** with no list (one item, one workspace), or a table-first surface on an **OPEN** owner ambition | — / (d) | **B7/C5 do NOT fire.** The scope guard: B7 binds table-first content only, and the OPEN-ambition guard carries from (e)/(f). No list ⇒ nothing to compress; no decided posture ⇒ no canonical surface to measure at. |
 
 **Rows 16, 17, 19 are the new blocking set; 15, 18, 20 are the false-positive guards.** Row 17 is the
 one that matters most — it is the only row in the whole matrix that fails on composition alone, with

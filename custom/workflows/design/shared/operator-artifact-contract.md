@@ -1,6 +1,6 @@
 ---
 name: operator-artifact-contract
-description: 'Canonical fork doctrine for the SHAPE of a design artifact on a handheld-first / mobile-primary / phone-canonical operator surface. Owns the COMPOSITION axis (B1-B6): canonical operational surface first, state variants as degraded states of that surface, rationale after the surface, action hierarchy over explanatory prose, operator copy compression. Sibling of the VIEWPORT axis (canonical-vs-additive labeling) which the project design policy owns. Consumed by design-handoff (gate class (f)), design-synthesize, design-review-pr, design-review, design-artifact-loop, and the claude-design-prompt paste route.'
+description: 'Canonical fork doctrine for the SHAPE of a design artifact on a handheld-first / mobile-primary / phone-canonical operator surface. Owns the COMPOSITION axis (B1-B7): canonical operational surface first, state variants as degraded states of that surface, rationale after the surface, action hierarchy over explanatory prose, operator copy compression, and (B7) the canonical surface itself composed as a compressed operational stack rather than a DASHBOARD OPENER (hero/billboard row + chip wall above a table-first worklist). Sibling of the VIEWPORT axis (canonical-vs-additive labeling) which the project design policy owns. Consumed by design-handoff (gate class (f)), design-synthesize, design-review-pr, design-review, design-artifact-loop, and the claude-design-prompt paste route.'
 ---
 
 # Operator-Artifact Contract — handheld-first surfaces
@@ -36,12 +36,35 @@ that the handoff *requires* and the review *checks* makes the next handheld-firs
 | Axis | Question | Home | Rules |
 |---|---|---|---|
 | **Viewport** | *Which* render is the design, and which are checks? | project design policy's canonical-vs-additive subsection (cash-recovery `docs/design-policy.md` §8.2c) | A1 in-page canonical label · A2 additive grouped + subordinate · A3 additive preserves the interaction model · A4 missing label ⇒ UNVERIFIED |
-| **Composition** | *What shape* is the artifact at that viewport? | **this file** (project binding: cash-recovery §8.2d) | **B1–B6 below** |
+| **Composition** | *What shape* is the artifact at that viewport? | **this file** (project binding: cash-recovery §8.2d) | **B1–B7 below** |
 
 An artifact can satisfy every A-rule — phone labelled canonical, tablet/desktop grouped after it,
 interaction model preserved — and still be a review board: three correctly-labelled comps floating in
 a sea of rationale, with the operator's next action smaller than the paragraph explaining it. **A
 governs which render wins; B governs whether the artifact is an operator surface at all.**
+
+### Two levels inside B — they fail independently
+
+**B1–B6 govern the ARTIFACT** — which render dominates, where rationale sits, whether the action
+outranks the prose *around* it. **B7 governs the composition INSIDE the canonical render** — whether
+the operator's surface is a compressed operational stack or a generic app dashboard.
+
+They are not the same check and one does not imply the other. A canonical render can be first,
+dominant, correctly labelled, with the primary action unmistakably the loudest element on the page —
+**passing B1–B6 outright** — and still open with a hero band and a wall of status chips above the
+worklist. Every required element is present; the shape is wrong.
+
+**B1–B6 ask whether the action wins. B7 asks what shape the winning was delivered in.** The specific
+trap: B5 says the action must outrank explanatory text, and a billboard CTA row satisfies B5 *by
+construction* — the action is enormous. B5 measures hierarchy; only B7 measures compression.
+
+This is the third silence in one family, each invisible to the layer above it:
+
+| Layer | Question | Passes the layer above while failing |
+|---|---|---|
+| Viewport (A) | which render is the design? | — |
+| Artifact (B1–B6) | what shape is the artifact? | a correctly-labelled REVIEW BOARD |
+| Surface (**B7**) | what shape is the canonical render? | a fully-compliant artifact whose canonical render is a **DASHBOARD OPENER** |
 
 ## Trigger — which surfaces this binds
 
@@ -51,6 +74,13 @@ Binds any surface whose class is DECIDED as **handheld-first**, **mobile-primary
 - a **desktop-only** DECIDED class — its canonical viewport is desktop; A-rules and B1/B3/B4/B5 still
   apply, but B6's one-handed operator-copy compression is calibrated for a phone in an aisle and is
   advisory there;
+
+**B7 is the one rule that binds by CONTENT SHAPE rather than by viewport class.** Wherever the
+canonical surface is table-first — a list, table, queue, or worklist — in **any DECIDED class,
+handheld or desktop, B7 and C5 apply**, with the row-count sub-check measured at that class's own
+canonical viewport. A desktop worklist with a hero band and a chip grid above the table is the same
+defect as a phone one, and scoping B7 to handheld would have re-created the exact silence it exists to
+close, one class over. The OPEN-ambition guard below still holds.
 - an **owner / content surface whose viewport ambition is still OPEN** — nothing is decided, so there
   is no canonical surface to compose around. Never use a B-rule as a back door to hard-fail work the
   viewport pass deliberately lets continue as `pending-policy`.
@@ -127,6 +157,53 @@ not deleted**.
 If a piece of copy exists to explain the design to a *reviewer*, it belongs in the notes block. If it
 exists to tell the *operator* what to do next, it belongs on the surface — short.
 
+### B7 — The canonical surface is a COMPRESSED OPERATIONAL STACK, not a dashboard opener
+
+B1–B6 governed the artifact. B7 governs the **inside of the canonical render**, and it is the rule
+that stops "make the action loud" being read as permission to build a generic app hero.
+
+**The required shape.** On a table-first / worklist surface, the canonical render is a single
+continuous operational stack: a compact header block, then data, immediately. The header is **the top
+of the list — not a thing that sits before the list.**
+
+Four binding rules:
+
+1. **The header is ONE compact operational block.** Not a banner, not a hero, not an opener card, not
+   a summary card above the worklist. It shares the worklist's horizontal grid and vertical rhythm and
+   reads as continuous with it. If the header could be lifted out and dropped on a different page
+   unchanged, it is a banner — it fails.
+2. **The loud element may dominate, but only INLINE in the worklist header.** The primary count and
+   the primary action (e.g. a queue count and *"Go receive"*) are allowed — required, even — to be the
+   loudest thing on the surface. They earn that by being *in the header row*, not by being given their
+   own band. Forbidden: a large empty half opposite them, a full-bleed CTA row, a distinct
+   background/border/elevation making the header its own card, or a centred announcement composition.
+3. **Secondary counts, caveats, filters and sort controls collapse into the same vertical rhythm.**
+   They sit at label/body weight, on the header's own lines, and must not visually compete with the
+   primary action. Forbidden: a wrapping grid of pills, chips, or metric tiles as an opener band. If
+   secondary status needs more room than one collapsed line, it belongs in a filter control or the
+   rows themselves — not in a chip wall.
+4. **Data is visible at rest.** On the canonical viewport, at the resting state, **at least one real
+   worklist row is on screen without scrolling**, and the header block consumes no more than roughly a
+   third of the viewport height above it. This is the measurable form of rules 1–3 and the one a
+   reviewer can settle without taste: *screenshot the canonical render at its declared reference size;
+   count the visible rows. Zero rows ⇒ B7 fails.*
+
+**One display weight.** Inside the header, exactly one element carries display weight — the count and
+its action read as a single unit. Everything else is label or body register. Two competing large
+things is a dashboard, by definition.
+
+**Scope.** B7 binds surfaces whose primary content is a **list, table, queue, or worklist** — the
+table-first operational mode. It does not bind a genuine single-record cockpit (one item, no list),
+where the "worklist" is a single workspace; there, B1–B6 and the cockpit doctrine govern. When a
+surface is a queue **plus** a workspace, B7 binds the queue side.
+
+**Why this is a rule and not a taste note.** "Hero sections on internal pages" and "dashboard metric
+card grids as page openers" have long existed as *AI-fingerprint bullets* in the brief template's
+hard-constraints list — generic prose, in one template branch, bound to no surface class and checked
+by no review lane. That placement is why it kept slipping: a fingerprint bullet is advice about
+flavour, and it is invisible to a reviewer who is checking whether the required elements are present.
+B7 makes it a composition rule on the operator contract, with C5 as its check.
+
 ---
 
 ## The named failure shape: REVIEW BOARD
@@ -141,6 +218,33 @@ operational surface with everything else subordinate to it. Four tells, any one 
 
 "Review board" is the diagnosis to name in a finding — a shape defect, not a formatting nit, and the
 shape a generator defaults to whenever the handoff leaves composition unspecified.
+
+---
+
+## The second named failure shape: DASHBOARD OPENER
+
+A canonical render that opens with a **hero/billboard row plus a chip wall above a table-first
+worklist**, instead of a compressed operational stack. Where REVIEW BOARD is the wrong shape for the
+*artifact*, DASHBOARD OPENER is the wrong shape for the *surface* — and it survives every REVIEW
+BOARD check, because the artifact around it can be perfectly composed.
+
+Five tells, any one of which is a finding:
+
+1. **Hero / banner row** — a full-width opener block whose job is to announce rather than to act:
+   large empty region, centred composition, its own background, border, or elevation (B7.1).
+2. **Billboard CTA** — the primary action given its own dedicated row or band rather than sitting
+   inline in the worklist header (B7.2). *This tell passes B5 — the action is the loudest thing on the
+   page. Loudness was never the question.*
+3. **Chip wall** — secondary counts, statuses, or filters rendered as a wrapping grid of pills or
+   metric tiles at competing visual weight (B7.3).
+4. **Summary-card feel** — the header sits in its own card, separated from the worklist by a gap and a
+   border, reading as a different component than the list rather than the top of it (B7.1).
+5. **No data above the fold** — zero worklist rows visible at rest on the canonical viewport (B7.4).
+   The objective tell; when in doubt, count rows.
+
+**The diagnosis to name is "dashboard opener," and the correction is compression, never deletion.**
+The count, the action, and the secondary status all stay — they collapse into the header block. A
+finding that says "remove the counts" has mis-read the rule.
 
 ---
 
@@ -182,10 +286,32 @@ declaration must name **one** canonical viewport and mark the rest additive.
 | **C2 no peers** | tablet/desktop read as peers of the canonical render (equal size, equal prominence, ungrouped, or placed before it) |
 | **C3 not a review board** | the artifact reads as a review board rather than an operator surface — any tell from the four above |
 | **C4 action outranks prose** | explanatory prose outranks the action hierarchy in the canonical render (the squint test, B5), or state variants are drawn as peer designs (B3) |
+| **C5 no dashboard opener** | the canonical render opens with a hero/billboard/chip-grid band above a table-first worklist (B7) — **REJECT even when every required element is present, every field is declared, and C1–C4 all pass** |
 
-Each finding names the rule id (A1–A3 / B1–B6) and the artifact location. **C3 is a judgment-lane
-check and must cite at least one of the four concrete tells** — "feels like a review board" with no
-tell is not a finding.
+Each finding names the rule id (A1–A3 / B1–B7) and the artifact location. **C3 and C5 are
+judgment-lane checks and must each cite at least one concrete tell** — "feels like a review board" or
+"feels like a dashboard" with no tell is not a finding.
+
+**C5 exists because presence-checking cannot catch shape.** C1–C4 and gate (f) all ask *is the
+required thing there, declared, and dominant?* A dashboard opener answers yes to all of it. Run C5 as
+its own pass, against the rendered canonical surface, after C1–C4 have passed — not as a tiebreak
+when something already looks wrong.
+
+**The C5 procedure, in order** (stop at the first tell; it is a finding, not a score):
+
+1. Take the canonical render at its declared reference size (e.g. 375×812).
+2. **Count the worklist rows visible at rest.** Zero ⇒ **FAIL C5**, tell 5, no further judgment
+   needed. This is the objective gate and it settles most cases.
+3. Ask whether the header block could be lifted onto an unrelated page unchanged. Yes ⇒ tell 1.
+4. Ask whether the primary action occupies its own row/band rather than the header line ⇒ tell 2.
+5. Ask whether secondary status wraps into a grid of pills/tiles ⇒ tell 3.
+6. Ask whether a card boundary separates header from list ⇒ tell 4.
+
+A C5 finding is written as: *"DASHBOARD OPENER — {tell}, {location}. B7.{n}. Compress into the
+worklist header; do not delete the {count/action/status}."*
+
+**C5 never fires on an OPEN owner ambition or a desktop-only class** — the same false-positive guard
+(e)/(f) carry. No decided handheld posture ⇒ no canonical surface ⇒ nothing to compress.
 
 ### Layer C — the generator rule (Claude Design / `design-synthesize`)
 
@@ -197,6 +323,13 @@ Any instruction that commissions a handheld-first artifact carries these three, 
    here even when the phone is leftmost and correctly labelled.
 3. **Do NOT let variant states become separate mini-products.** Draw them as degraded states of the
    one canonical surface — same skeleton, one changed region — beneath it, not beside it.
+4. **Compose the canonical surface as a COMPRESSED OPERATIONAL STACK — a compact header block, then
+   data immediately.** The header is the top of the worklist, not a band above it. The count and the
+   primary action may dominate, but **inline in the worklist header only**: no hero row, no billboard
+   CTA band, no large empty half, no separate summary card, no wrapping wall of chips or metric tiles.
+   Secondary counts, caveats, filters and sort controls collapse into the same vertical rhythm at
+   label weight. **At least one real data row must be visible without scrolling.** "Make the action
+   loud" means *loud within the header*, never *give it its own billboard*.
 
 ### Honest tiering
 
@@ -205,6 +338,7 @@ Any instruction that commissions a handheld-first artifact carries these three, 
 | Workflow halt | `design-handoff` §3f gate class (f) | **PROBABILISTIC** | The brief cannot silently commission a review board — *if the workflow runs*. Skipping the workflow skips the gate. |
 | Artifact gate (commit-time) | `custom/githooks/check-design-brief-completeness.sh` declaration check | **DETERMINISTIC detection, WARN-only phase** | Fires on the staged brief file outside the agent, whether or not the workflow ran. Today it reports; it does **not** block. Promotion follows the standing warn-then-gate rule. |
 | Review | `design-review-pr` C1–C4 | **PROBABILISTIC** | Catches a wrong-shaped artifact at PR time; depends on the reviewer running it. |
+| Review (surface shape) | `design-review-pr` **C5** | **PROBABILISTIC, with one objective sub-check** | Catches a dashboard opener that C1–C4 pass. Tell 5 (count the rows visible at rest) is objectively decidable from the render; tells 1–4 are judgment. Still depends on the reviewer running it — **no hook can measure a comp.** |
 | Generator instruction | brief §7 · `claude-design-prompt.md` · `design-synthesize` | **PROBABILISTIC** | Steers the generator at the moment it composes. This is where the shape is actually decided. |
 | Prose | this file + the project policy binding | **PROBABILISTIC** | Awareness. Prose alone is not enforcement. |
 
@@ -235,8 +369,8 @@ surfaces** — enumerate them when the rule is written, not after.
 
 ## Golden cases
 
-Five reference shapes. The matrix rows with gate classes live in
-`design-handoff/viewport-pass-golden-matrix.md` **v4, rows 15–19**; this is the readable version.
+Seven reference shapes. The matrix rows with gate classes live in
+`design-handoff/viewport-pass-golden-matrix.md` **v5, rows 15–22**; this is the readable version.
 
 **G1 — CORRECT: canonical phone + additive siblings.**
 Artifact opens with one phone 375×812 portrait render of the resting operational surface, labelled
@@ -272,9 +406,31 @@ render has no equivalent of. → **FAIL A3/B2 · C2.** Worse than an honest omis
 returns *under a compliant label*, and downstream implementation treats the richer render as the real
 design. On a handheld-first surface the desktop render is **a wider phone**.
 
-**Status of the suite: SPECIFIED, NOT YET RUN.** G1–G5 are the authored contract for gate class (f)
-and checks C1–C4; they have not been executed against a real handoff. **Do not cite a pass rate.** The
-first handheld-first `design-handoff` after this lands is the pilot.
+**G6 — INCORRECT: dashboard opener above a table-first worklist (the C5 regression case).**
+Everything the artifact layer asks for is right: one phone 375×812 render, first, dominant, labelled
+*"Canonical viewport: phone-primary clerk receiving"*; states drawn as a strip beneath it; additive
+renders grouped after; rationale last. Inside the canonical render, the surface opens with a
+full-width hero band — a huge parcel count on the left, a large *"Go receive"* button, the right half
+empty — then a wrapping grid of eight status chips (`In transit`, `Delivered`, `Exception`,
+`Unmatched`, …), then a filter row, and the first worklist row lands below the fold. → **PASS A1–A3,
+PASS B1–B6, PASS C1–C4 · FAIL B7 · C5** (tells 1, 2, 3, 5). The action is the loudest thing on the
+page, so B5 is satisfied *by construction* — which is exactly why C5 must run as its own pass. **This
+is the regression row: it fails on in-surface composition alone, with every viewport field, every
+declaration field, and every artifact-shape rule correct.**
+
+**G7 — CORRECT: the same content as a compressed operational stack.**
+Same surface, same data, same priorities. One header block on the worklist's grid: the parcel count
+and *"Go receive"* on a single line, reading as one unit at display weight; beneath it one collapsed
+line of secondary status (`142 in transit · 17 delivered · 3 exceptions`) at label weight, with the
+filter as a control rather than a chip grid; then rows. Three worklist rows visible at rest on
+375×812; the header occupies under a third of the viewport. → **PASS B7 · C5.** Nothing was deleted —
+the count, the action, and the secondary status all survive, compressed into the header instead of
+banded above it.
+
+**Status of the suite: SPECIFIED, NOT YET RUN.** G1–G7 are the authored contract for gate class (f)
+and checks C1–C5; they have not been executed against a real handoff. **Do not cite a pass rate.** The
+first handheld-first `design-handoff` after this lands is the pilot, and **G6 is the row that proves
+C5 earns its keep** — if G6 passes review, the check is not wired.
 
 ---
 
@@ -291,11 +447,11 @@ form-factor change still requires the project's own policy amendment plus a fres
 | Layer | Owns | Example |
 |---|---|---|
 | **Project design policy** | *declares the surface class* — which routes, which posture, which canonical viewport | cash-recovery `docs/design-policy.md` §8.1 route table, §8.2a/b posture, §8.2c viewport labeling, §8.2d the binding to this file |
-| **Shared handoff / review doctrine (the fork)** | *defines the artifact contract for that class* — B1–B6, gate (f), C1–C4, the golden suite | **this file**, plus its wiring in `design-handoff`, `design-synthesize`, `design-review-pr` |
+| **Shared handoff / review doctrine (the fork)** | *defines the artifact contract for that class* — B1–B7, gate (f), C1–C5, the golden suite | **this file**, plus its wiring in `design-handoff`, `design-synthesize`, `design-review-pr` |
 | **Claude / generator instructions** | *implements it* — the sentence the generator acts on at compose time | brief §7 per-frame outputs · `claude-design-prompt.md` · `design-synthesize` step-04/06 |
 
 The class declaration is project-specific and belongs in the project. The artifact contract is
 generic — any handheld-first operator surface in any project needs the same shape — and belongs in the
-fork so it fans out. **Never re-derive B1–B6 in a project policy**; bind to this file and add only the
+fork so it fans out. **Never re-derive B1–B7 in a project policy**; bind to this file and add only the
 project-specific values (routes, canonical viewport reference size, which degraded states are
 first-class).

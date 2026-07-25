@@ -28,6 +28,13 @@ A Claude Design enhancement prompt is a **focused, brief-descended** paste promp
    - **Do NOT let variant states become separate mini-products.** Draw each as a degraded state OF the canonical surface — same skeleton, same chrome, same primary-action position, one changed region — in a strip beneath it.
    Plus: rationale and specs come LAST (never opening the artifact, never interleaved comp-by-comp), the primary action and next-step loop outrank every heading and caption inside the canonical render, and on-surface copy stays short and imperative with long-form explanation relocated to the notes block. On a desktop-only or ambition-OPEN surface, omit this item entirely — it does not apply.
 
+8. **In-surface composition — REQUIRED when the surface is table-first (its primary content is a list, table, queue, or worklist).** Item 7 governs how the ARTIFACT is arranged; this governs how the SURFACE itself is composed, and it is a separate instruction because a bundle can satisfy every rule in item 7 and still open with a generic app hero (contract: `operator-artifact-contract.md` **B7**, checked at review as **C5**). Carry verbatim in spirit:
+   - **Compose the canonical render as a COMPRESSED OPERATIONAL STACK — a compact header block, then data, immediately.** The header shares the worklist's grid and vertical rhythm and reads as the **top of the list, not a band above it**. Not a banner, hero, opener card, or summary card.
+   - **The loud count and the primary action may dominate — but only INLINE within the worklist header.** No large empty half opposite them, no billboard CTA row of their own, no distinct background/border/elevation making the header its own card. Exactly ONE element carries display weight: the count and its action read as a single unit.
+   - **Collapse secondary counts, caveats, filters and sort controls into the same vertical rhythm** at label weight. **No chip wall** — no wrapping grid of pills, status chips, or metric tiles as an opener band.
+   - **At least one real data row must be visible at rest**, without scrolling, at the canonical viewport.
+   **"Make the action loud" means loud WITHIN the header — never "give the action its own billboard."** The failure shape is named **DASHBOARD OPENER**, and it is rejected at review even when every required element is present. On a single-record cockpit with no list, or a desktop-only/ambition-OPEN surface, omit this item.
+
 ## Save + emit rules
 
 - **Save** the prompt body to `{implementation_artifacts}/claude-design-prompt-{surface-slug}-{enhancement-slug}.md` so it is copy-pasteable, and surface it inline in the calling workflow's summary.

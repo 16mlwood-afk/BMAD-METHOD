@@ -144,6 +144,37 @@ EOF
     # which is the unspecified slot a generator fills with a review board.
     printf '%s' "$body" | grep -qiE 'states of this surface|canonical operational surface|artifact composition' \
       || warn "$brief: handheld-first brief whose §7 carries no artifact-composition instruction (canonical surface first → states strip → additive group → rationale LAST) — gate class (f). A frame list without a composition order commissions a review board."
+
+    # --- B7 in-surface composition (gate class (f), v12) ----------------------
+    # The check above asks whether the ARTIFACT's arrangement is specified. This asks
+    # whether the composition INSIDE the canonical render is — a separate slot, and a
+    # brief can fill the first and leave this one empty. When it does, the generator
+    # fills it with its default: a hero row plus a chip wall above the worklist. That
+    # output passes every artifact-level rule AND the squint test, because a billboard
+    # CTA is genuinely the loudest thing on the page. B5 measures hierarchy; only B7
+    # measures compression.
+    #
+    # FALSE-POSITIVE DISCIPLINE (same shape as the primary_viewport_class fix above):
+    # B7 binds TABLE-FIRST surfaces, and this hook cannot read a rendered comp — so it
+    # fires only when the brief itself gives a table-first signal AND carries none of
+    # the B7 markers. A handheld brief for a single-record cockpit has no list signal
+    # and is never warned. Prose that merely mentions the words is not a signal: the
+    # match is anchored to worklist/table/queue/list *frame or content* language.
+    #
+    # MARKER DISCIPLINE — measured 2026-07-25, and the first cut was WRONG. Matching
+    # on 'dashboard opener' or 'chip wall' silently PASSED all five /inbound briefs,
+    # because they already carry an analytics-band rule banning "the generic
+    # enterprise-dashboard opener". That rule is real but it is NOT the B7 spec: it is
+    # scoped to analytics bands and phrased as a ban on "three summary cards", which a
+    # hero row plus a chip wall does not literally match — and those briefs are exactly
+    # the ones that produced the defect. A marker that matches a PROHIBITION rather than
+    # the SPECIFICATION manufactures a false negative on the highest-risk population.
+    # So the match requires the affirmative B7 phrasing the template emits, and nothing
+    # a generic anti-dashboard sentence would trip.
+    if printf '%s' "$body" | grep -qiE 'worklist|primary content is a (list|table|queue)|table-first'; then
+      printf '%s' "$body" | grep -qiE 'compressed operational stack|inline (in|within) the worklist header' \
+        || warn "$brief: table-first handheld-first brief whose §7 carries no IN-SURFACE composition instruction (B7) — gate class (f). Required: compact header block reading as the TOP of the list · count + primary action loud but INLINE in the worklist header (no hero/banner, no billboard CTA row, no large empty half, no separate summary card) · secondary counts/caveats/filters/sorts collapsed at label weight (no chip wall) · at least one real data row visible at rest. Without it the brief commissions a DASHBOARD OPENER, which passes every artifact-composition rule and the squint test. See shared/operator-artifact-contract.md B7 / check C5."
+    fi
   }
   check_handheld_declaration
 
