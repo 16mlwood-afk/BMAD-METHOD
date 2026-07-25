@@ -138,6 +138,8 @@ the manifest is simply the file where getting them wrong is most expensive.
   any session that runs a bare `git commit` in that interval carries them under its own message.
   A path-scoped commit ignores the rest of the index entirely, so it is safe in both directions —
   it cannot scoop a foreign staged file, and a foreign bare commit cannot scoop yours after it.
+- **Caveat, same day: the path-scoped form is currently UNRELIABLE in the fork repo.** `git commit -m … -- <paths>` failed **four consecutive times** with the intermittent `invalid object … Error building trees` naming an unrelated untracked path (`.claude/skills/bmad-example/SKILL.md`), including after a `git read-tree HEAD` ruled out a stale index cache-tree — the object is absent from HEAD, the index, the working tree and the stash list, and `git fsck --connectivity-only` reports no missing reachable object. The plain staged form (`git add <explicit paths>` then `git commit`) succeeded immediately. So in THIS repo, until that failure is root-caused (fork-gaps 2026-07-20, explicitly not root-caused), the working order is: **`git add <explicit paths>` and commit in the very next command, with nothing else staged.** That keeps the sweep window to a second or two instead of eliminating it. Still never `-A`, never `.`, never a bare directory — the narrowing is what matters most, and the one-step form remains correct wherever it works.
+
   **Evidence (2026-07-25, third firing):** the commit that introduced *this very rule* was written
   as `git add … && git commit …` and was swept mid-window into another session's
   `docs(status): record the viewport artifact-labeling wave`. Nothing was lost — both files are
