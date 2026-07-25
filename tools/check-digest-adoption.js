@@ -37,8 +37,9 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const ROOT = path.resolve(__dirname, '..');
-const WF_DIR = path.join(ROOT, 'custom', 'workflows');
+// Corpus comes from the shared helper — do NOT hard-code a root here.
+// See tools/lib/standards-corpus.js (fork-gaps 2026-07-25).
+const { collectStandardsCorpus, ROOT } = require('./lib/standards-corpus');
 
 const STRICT = process.argv.includes('--strict');
 
@@ -53,22 +54,11 @@ const AUDIT_SIGNAL =
 // /emit step, or a single-step workflow's only step.
 const TERMINAL_FILENAME = /(route|classify|audit|suggest-ui|emit-tech-specs|generate-prompts|step-0?1-audit)/i;
 
-function walk(dir, out = []) {
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    const p = path.join(dir, entry.name);
-    if (entry.isDirectory()) walk(p, out);
-    else if (entry.isFile() && entry.name.endsWith('.md')) out.push(p);
-  }
-  return out;
-}
 const rel = (p) => path.relative(ROOT, p);
 
-if (!fs.existsSync(WF_DIR)) {
-  console.error(`check:digest: workflow dir not found: ${rel(WF_DIR)}`);
-  process.exit(0); // warn-only: never block, even on a missing dir
-}
-
-const files = walk(WF_DIR);
+const { files, roots, missingRoots } = collectStandardsCorpus();
+for (const m of missingRoots) console.error(`check:digest: corpus root not found: ${rel(m)}`);
+if (roots.length === 0) process.exit(0); // warn-only: never block, even on a missing corpus
 
 let adopters = 0; // files referencing STD-DIGEST-001
 const likelyGaps = []; // audit-lane terminal signals, but NO digest reference → the gap we care about

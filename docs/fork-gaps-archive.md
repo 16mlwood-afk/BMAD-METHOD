@@ -903,3 +903,53 @@ Three compounding factors:
 
 **Class:** read-write-key-mismatch (+ doc-drift-misroutes, stale-local-main) · **Fix scope:** project-local (comms_dashboard) + global memory · **Marker:** `externalRefId` in the `GET /deadlines` row shape.
 
+## 2026-07-25 — the three standards-adoption gates scan `custom/workflows/` ONLY, so they under-report against the post-v6.8 skills layout — and two of them are ARMED  `[RESOLVED: 2026-07-25 — collectStandardsCorpus landed in tools/lib/; all three gates now walk custom/workflows/ + custom/skills/, generated skills-native port excluded by recorded decision; warn-only delta showed 0 new violations, armed gates re-verified green]`
+
+**What fought us.** Authoring STD-SCOPEREG-001 I wrote an adoption scanner in the house shape, copying `check-completion-disposition.js`. It reported **"253 files, 3 adopters, 0 gaps — clean"** while being structurally blind to `custom/skills/bmad-correct-course/SKILL.md` — the single most important file in the standard, its designated primary producer. The scan walked `custom/workflows/` only. Fixed in mine (`7e454cc8`, now 265 files / 4 adopters); the blind shape was inherited from the siblings.
+
+**Why it's structural, not my bug.** All three existing gates hard-code the same root:
+
+- `tools/check-completion-disposition.js:45` — `const WF_DIR = path.join(ROOT, 'custom', 'workflows')`
+- `tools/check-digest-adoption.js:41` — same
+- `tools/validate-close-out-contract.js:50` — same
+
+**SCALE CORRECTION (2026-07-25, same session, measured during the fix — the original count here was misleading and is left visible rather than quietly edited).** The first version of this entry said "261 `.md` files live under the `custom/skills` trees, and 22 of them already reference `STD-CLOSEOUT-001` / `STD-COMPLETION-001` / `STD-DIGEST-001`." That conflated two very different populations. Measured precisely:
+
+- `custom/skills/` (hand-authored source of record): **12 files, of which exactly 1** references those standards — `bmad-correct-course/SKILL.md`, and only because this session added the references to it.
+- `custom/skills-native/` (**generated, gitignored port**): 21 referencing files — but these are *ports of `custom/workflows/` files the gates already scan*. Counting them was double-counting; they are correctly excluded.
+
+So: **the blind spot was real and structural, but the live exposure was 1 file, not 22.** The gates genuinely could not see `custom/skills/` at all — an armed gate with a whole source-of-record root outside its walk — and widening the corpus surfaced **0 new violations**. The value here is closing a structural hole before it matters, not repairing a large existing one. Stated plainly so a future session doesn't action this expecting to find 22 broken files.
+
+The v6.8 skills migration moved part of the corpus; the gates did not follow.
+
+The sharp edge: **`check:completion -- --strict` and `validate:close-out` are ARMED** in `npm test` and the `.githooks/pre-commit` fast-path. They are blocking gates making a pass/fail claim over a corpus they only partly read — so a real coverage gap in a skills-layout file passes green, and "0 likely gaps" reads as proof when it is an artifact of where the tool looked. This is the `contract-dimension-gap` shape at the *tooling* layer: the missing axis is the corpus root, not a property.
+
+
+Note the honest asymmetry — `custom/skills-native/` is a **gitignored, sync-regenerated port**, so scanning it would flag ports rather than sources and is arguably correct to skip. `custom/skills/` is **hand-authored source of record** (10 policy skills incl. `bmad-correct-course`) and is not defensibly excluded.
+
+**Target file:** `tools/check-completion-disposition.js` (+ the identical roots in `tools/check-digest-adoption.js` and `tools/validate-close-out-contract.js`).
+
+**Proposed investigation.**
+
+1. Extract the corpus walk into one shared helper (`tools/lib/`) returning `custom/workflows/` **+ `custom/skills/`**, explicitly excluding the generated `custom/skills-native/` port with a one-line comment saying why — so the exclusion is a decision on the record, not an accident of a hard-coded path.
+2. Re-run all three **warn-only first** against the widened corpus and read the delta before re-arming. If widening surfaces real gaps in the 22 skills files, those are pre-existing coverage holes the armed gates have been silently passing — fix them, then re-arm.
+3. Do NOT widen and keep `--strict` armed in the same change: that is a hard gate meeting a new corpus with an unproven false-positive rate — the exact warn-then-gate violation the completion-contract's own arming note flags about itself.
+
+**Class:** `contract-dimension-gap`
+**Fix scope:** `fork-only`
+**Marker:** `` `collectStandardsCorpus` ``
+**Watch:** if a fourth adoption gate is authored before this lands, it will copy the same blind root — the shared helper should land before the next standard, not after.
+
+**Priority: medium-high.** Nothing is broken today and no data is at risk, but two armed pre-commit gates are certifying a partial corpus, and "a green gate that looked everywhere it should" is the entire value proposition. Cheap fix; the risk lives in the re-arming order, not the walk.
+
+---
+
+**CLOSE-OUT (2026-07-25).** Fixed exactly as proposed, in the mandated order.
+
+- **Helper:** `tools/lib/standards-corpus.js` exporting `collectStandardsCorpus()`. Returns `{files, roots, missingRoots}` and never throws or exits — each gate keeps its own missing-root policy (close-out exits 2 because it is armed; the two warn-only siblings exit 0). Carries a MANDATE header: every future standards-adoption scanner MUST call it and MUST NOT hard-code a root.
+- **Roots:** `custom/workflows/` + `custom/skills/` included as hand-authored source of record. `custom/skills-native/` excluded as a **generated, gitignored port** — the exclusion is now a recorded decision with its rationale in the helper header, not an accident of a hard-coded path. That distinction is the actual fix; the widened walk is just its consequence.
+- **Refactor:** all three gates now call the helper (`check-completion-disposition.js`, `check-digest-adoption.js`, `validate-close-out-contract.js`). Corpus went 253 → **265** files.
+- **Arming order honoured.** Warn-only first, delta read before re-arming: `check:completion` 265 files / 11 close-out adopters / 19 dispositions, **0 delivering close-outs missing a disposition**; `check:digest` 10 adopters, **0 audit-lane gaps**; `validate:close-out` 14 adopters, **0 unwired narration**. Zero new violations, so there was nothing to fix before re-arming. `--strict` re-verified green on the widened corpus for all three (exit 0).
+- **A bug found on the way in:** the helper's own header contained the literal `custom/skills*/`, whose `*/` closed the block comment and made the module unparseable. Caught by running it, not by reading it.
+
+**Honest residue:** the widening surfaced no violations, so this closes a *structural* hole rather than repairing damage — see the SCALE CORRECTION above. The `Watch` condition is now guarded by the helper's MANDATE comment rather than by memory.

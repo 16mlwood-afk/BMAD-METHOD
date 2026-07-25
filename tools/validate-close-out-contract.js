@@ -46,8 +46,9 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const ROOT = path.resolve(__dirname, '..');
-const WF_DIR = path.join(ROOT, 'custom', 'workflows');
+// Corpus comes from the shared helper — do NOT hard-code a root here.
+// See tools/lib/standards-corpus.js (fork-gaps 2026-07-25).
+const { collectStandardsCorpus, ROOT } = require('./lib/standards-corpus');
 
 // A file that mentions the contract has adopted it — exempt from the phrase gate.
 const CONTRACT_REF = /close-out-contract\.md|STD-CLOSEOUT-001/;
@@ -67,22 +68,14 @@ const BANNED_NARRATION = [
 ];
 
 // --- helpers ----------------------------------------------------------------
-function walk(dir, out = []) {
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    const p = path.join(dir, entry.name);
-    if (entry.isDirectory()) walk(p, out);
-    else if (entry.isFile() && entry.name.endsWith('.md')) out.push(p);
-  }
-  return out;
-}
 const rel = (p) => path.relative(ROOT, p);
 
 // --- gather -----------------------------------------------------------------
-if (!fs.existsSync(WF_DIR)) {
-  console.error(`close-out: workflow dir not found: ${rel(WF_DIR)}`);
-  process.exit(2);
-}
-const files = walk(WF_DIR);
+// This gate is ARMED, so a missing corpus stays a hard error (exit 2) — unlike its
+// warn-only siblings, it must not silently pass on an empty scan.
+const { files, roots, missingRoots } = collectStandardsCorpus();
+for (const m of missingRoots) console.error(`close-out: corpus root not found: ${rel(m)}`);
+if (roots.length === 0) process.exit(2);
 
 const failures = [];
 let adopters = 0;

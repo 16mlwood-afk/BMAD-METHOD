@@ -1110,34 +1110,3 @@ The STD-HOOKACTIVATE-001 SessionStart probe (`check-hook-activation.sh`) exists 
 3. **Correct the deny message** so it stops naming an unreachable option first. If (1) ships, the message should lead with the in-band route; until then it should say plainly that `BMAD_ALLOW_MAIN_EDIT=1` is reachable only from a Bash invocation.
 
 **Priority: medium-high.** No data loss, and the workaround is safe — but the gate protects the highest-blast-radius surface in the repo (main-checkout edits under 20+ parallel sessions), and this session's honest outcome was that **the guard was satisfied by changing tools, not by changing behaviour.** Every such round-trip trains the reflex the guard exists to prevent, and the inconsistency in (2) accelerates it.
-
-## 2026-07-25 — the three standards-adoption gates scan `custom/workflows/` ONLY, so they under-report against the post-v6.8 skills layout — and two of them are ARMED
-
-**What fought us.** Authoring STD-SCOPEREG-001 I wrote an adoption scanner in the house shape, copying `check-completion-disposition.js`. It reported **"253 files, 3 adopters, 0 gaps — clean"** while being structurally blind to `custom/skills/bmad-correct-course/SKILL.md` — the single most important file in the standard, its designated primary producer. The scan walked `custom/workflows/` only. Fixed in mine (`7e454cc8`, now 265 files / 4 adopters); the blind shape was inherited from the siblings.
-
-**Why it's structural, not my bug.** All three existing gates hard-code the same root:
-
-- `tools/check-completion-disposition.js:45` — `const WF_DIR = path.join(ROOT, 'custom', 'workflows')`
-- `tools/check-digest-adoption.js:41` — same
-- `tools/validate-close-out-contract.js:50` — same
-
-Measured this session: **261 `.md` files live under `custom/skills/` + `custom/skills-native/`, and 22 of them already reference `STD-CLOSEOUT-001` / `STD-COMPLETION-001` / `STD-DIGEST-001`** — the exact standards those three gates enforce. So the gates are provably reading a partial corpus of the thing they certify. The v6.8 skills migration moved the corpus; the gates did not follow.
-
-The sharp edge: **`check:completion -- --strict` and `validate:close-out` are ARMED** in `npm test` and the `.githooks/pre-commit` fast-path. They are blocking gates making a pass/fail claim over a corpus they only partly read — so a real coverage gap in a skills-layout file passes green, and "0 likely gaps" reads as proof when it is an artifact of where the tool looked. This is the `contract-dimension-gap` shape at the *tooling* layer: the missing axis is the corpus root, not a property.
-
-Note the honest asymmetry — `custom/skills-native/` is a **gitignored, sync-regenerated port**, so scanning it would flag ports rather than sources and is arguably correct to skip. `custom/skills/` is **hand-authored source of record** (10 policy skills incl. `bmad-correct-course`) and is not defensibly excluded.
-
-**Target file:** `tools/check-completion-disposition.js` (+ the identical roots in `tools/check-digest-adoption.js` and `tools/validate-close-out-contract.js`).
-
-**Proposed investigation.**
-
-1. Extract the corpus walk into one shared helper (`tools/lib/`) returning `custom/workflows/` **+ `custom/skills/`**, explicitly excluding the generated `custom/skills-native/` port with a one-line comment saying why — so the exclusion is a decision on the record, not an accident of a hard-coded path.
-2. Re-run all three **warn-only first** against the widened corpus and read the delta before re-arming. If widening surfaces real gaps in the 22 skills files, those are pre-existing coverage holes the armed gates have been silently passing — fix them, then re-arm.
-3. Do NOT widen and keep `--strict` armed in the same change: that is a hard gate meeting a new corpus with an unproven false-positive rate — the exact warn-then-gate violation the completion-contract's own arming note flags about itself.
-
-**Class:** `contract-dimension-gap`
-**Fix scope:** `fork-only`
-**Marker:** `` `collectStandardsCorpus` ``
-**Watch:** if a fourth adoption gate is authored before this lands, it will copy the same blind root — the shared helper should land before the next standard, not after.
-
-**Priority: medium-high.** Nothing is broken today and no data is at risk, but two armed pre-commit gates are certifying a partial corpus, and "a green gate that looked everywhere it should" is the entire value proposition. Cheap fix; the risk lives in the re-arming order, not the walk.

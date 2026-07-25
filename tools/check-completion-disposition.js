@@ -41,8 +41,11 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const ROOT = path.resolve(__dirname, '..');
-const WF_DIR = path.join(ROOT, 'custom', 'workflows');
+// Corpus comes from the shared helper — do NOT hard-code a root here. See
+// tools/lib/standards-corpus.js (fork-gaps 2026-07-25): this gate previously walked
+// custom/workflows/ only and was blind to the hand-authored custom/skills/ corpus
+// while ARMED in npm test + pre-commit.
+const { collectStandardsCorpus, ROOT } = require('./lib/standards-corpus');
 
 // Phase-2 promotion flag (pre-staged, NOT armed in the gate). With --strict a likely
 // gap exits 1; without it the detector is warn-only (exit 0). See the header.
@@ -57,22 +60,11 @@ const COMPLETION_REF = /completion-contract\.md|STD-COMPLETION-001/;
 const DELIVERY_SIGNAL = /delivery-to-main\.md|STD-DELIVERY-001/;
 const DELIVERY_FILENAME = /(deliver|handoff|apply-and-deliver)/i;
 
-function walk(dir, out = []) {
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    const p = path.join(dir, entry.name);
-    if (entry.isDirectory()) walk(p, out);
-    else if (entry.isFile() && entry.name.endsWith('.md')) out.push(p);
-  }
-  return out;
-}
 const rel = (p) => path.relative(ROOT, p);
 
-if (!fs.existsSync(WF_DIR)) {
-  console.error(`check:completion: workflow dir not found: ${rel(WF_DIR)}`);
-  process.exit(0); // warn-only: never block, even on a missing dir
-}
-
-const files = walk(WF_DIR);
+const { files, roots, missingRoots } = collectStandardsCorpus();
+for (const m of missingRoots) console.error(`check:completion: corpus root not found: ${rel(m)}`);
+if (roots.length === 0) process.exit(0); // warn-only: never block, even on a missing corpus
 
 let adopters = 0; // close-out adopters
 let withDisposition = 0; // close-out adopters that also declare the disposition
