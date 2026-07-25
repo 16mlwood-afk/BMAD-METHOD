@@ -102,7 +102,15 @@ while IFS= read -r line; do
       done < <(fg_backticked_tokens "$line") ;;
     *"Marker:"*)
       while IFS= read -r tok; do
-        [[ -n "$tok" ]] && markers+=("$tok")
+        # Reject a BLANK or trivially-short marker rather than accepting it.
+        # A whitespace-only token passes `[[ -n ]]` and then grep -F matches EVERY file,
+        # so the entry reports a stale-open candidate on no evidence at all — the
+        # register-matches-itself failure this tool is explicitly built not to commit.
+        # Seen in the wild from the double-backtick form ``` **Marker:** `` `x` `` ```,
+        # whose outer pair tokenizes to a single space. (fork-gaps 2026-07-25)
+        trimmed="${tok#"${tok%%[![:space:]]*}"}"
+        trimmed="${trimmed%"${trimmed##*[![:space:]]}"}"
+        [[ ${#trimmed} -ge 3 ]] && markers+=("$trimmed")
       done < <(fg_backticked_tokens "$line") ;;
   esac
 done < "$GAPS"
