@@ -606,6 +606,15 @@ Then gate — symmetric with the manifest path, but a direct URL/bundle run has 
 - **`superseded`** → SURFACE it now ("this handoff is superseded by `{superseded_by}`; that newer brief is the current truth") and **HALT before the apply pipeline (steps 2–4) for explicit confirmation** — proceeding would build the surface toward the superseded design, which is intent, not decision autonomy, so autonomous mode does NOT proceed unasked. Halting here (before the grid) also avoids wasting the mapping/grid work. On explicit confirmation — or after the user re-points at `{superseded_by}` — continue. **Never** silently apply a superseded handoff.
 - **`ambiguous`** → warn (two briefs claim `active` for this slug; `brief-revision-policy.md` §2.6) and continue — the design source itself is fine.
 
+### SHARED.1a-ii. Concurrent-run check on `{target_slug}` (same key, same moment)
+
+`{target_slug}` was just resolved above, and it is a **canonical collision key** — two sessions working the same surface compute the same slug. Run the same check `design-ingest` step-01 §5a runs, here, for the same reason: the mapping + grid + apply pipeline (steps 02–04) is the expensive part, and it starts immediately after this step.
+
+Follow `design-ingest` step-01 §5a verbatim (do not duplicate the logic — same two probes, same fail-open discipline, same "never hand-write a claim"), with one substitution: the artifact probed is **this run's apply target**, not an ingest manifest. Probe (1) tests whether another session has, *since `{run_started_at}`*, written or staged changes to the implementation files this run is about to touch (`git status --porcelain` on `{impl_files}` plus `git log origin/main --since` on the same paths); probe (2) tests the register for a live `design-implement:{target_slug}` claim held by a different `claimed_by_session_id`.
+
+- **Concurrent session detected** → SURFACE and HALT before step-02, same posture as a `superseded` handoff above: applying now would race another session's in-flight edits to the same surface, and that is intent, not decision autonomy.
+- **Anything unreadable or ambiguous** → UNKNOWN, warn in one line, continue. Fails open by construction.
+
 ### SHARED.1b. Bundle → brief conformance gate (the design proposal is not yet a contract)
 
 **The bundle is a PROPOSAL; the brief is the contract. This gate refuses to implement a proposal that silently under-delivers the contract** — the receive-station failure (a strong "station, not dashboard" brief produced a centered hero card with minimal frame coverage, which `design-implement` then faithfully shipped because nothing compared the two). It runs on EVERY path, AFTER SHARED.1a has resolved the brief via `{target_slug}`, and BEFORE step-02/03/04 — a non-conformant proposal is bounced before any mapping or grid work is spent on it.
@@ -731,6 +740,7 @@ URL-path-only:
 - `{design_frame_inventory}` populated (URL.3a) — the primary frame plus every drilled drawer and §13 lookup the target declares (via `<script src>` modules + comments, per-frame banners, lookup→target maps, sibling standalone `<frame>.html`). Each linked standalone frame opened and its components folded into `{design_components}`. This is step-03 §2f's frame-coverage denominator on a no-brief run.
 - **`{design_linked_record_rows}` populated AND reconciled (URL.3a source 5)** — the detail drawer's rendered "Linked records" rows enumerated (the AUTHORITATIVE lookup denominator), and every row confirmed to map to a `§13-lookup` frame in `{design_frame_inventory}`. Any row that sources 1–4 failed to declare was re-traced or added as an under-enumerated lookup frame, never silently dropped. The harvested §13-lookup count ≥ the Linked-records row count.
 - `{handoff_supersede_status}` resolved on this run (manifest path: from the stamp at intake; URL/bundle paths: independently in §SHARED.1a). A `superseded` URL/bundle run SURFACED and HALTED for explicit confirmation before the apply pipeline — it never silently built the superseded design.
+- The §SHARED.1a-ii concurrent-run check RAN on `{target_slug}` before step-02, with a recorded verdict. A detected concurrent session HALTED the run before any mapping/grid spend.
 
 Bundle-path-only:
 - No curl invocation occurred.

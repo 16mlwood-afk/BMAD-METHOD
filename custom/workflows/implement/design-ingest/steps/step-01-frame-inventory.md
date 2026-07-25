@@ -61,6 +61,31 @@ Then resolve the handoff's supersede status against the briefs on disk — the "
 
 **Do NOT refuse on any value.** This step records the status; step-03 stamps it into the manifest and leads the pause with it. Tolerance is the whole point — the hard refuse belongs to brief *consumers*, not to this non-destructive cataloguer.
 
+## 5a. Concurrent-run check — fail BEFORE the fan-out, never after it
+
+`{target_slug}` is a **canonical collision key**: two sessions ingesting the same surface provably compute the same slug and therefore the same output path (`{implementation_artifacts}/design-ingest-<target_slug>.md`). The slug is in hand HERE, one step before the most expensive phase in the workflow. Run the check now — the entire point is to fail *before* the spend, not to discover the duplicate at the manifest write.
+
+**Why this exists (2026-07-20, cash-recovery).** Two sessions ran a full ~13-frame fan-out on the same design in parallel, ~1M output tokens each, to produce two versions of one manifest. The duplicate surfaced ONLY because the Write tool happened to refuse ("File has not been read yet") after the other session had already written and staged the identical path. That was an accidental save, not a designed one — without it the later write silently clobbers another session's staged, in-flight work. The cost curve is inverted against the operator: this workflow is deliberately routed the LARGEST surfaces (the size preflight sends anything >=5 frames / >=60KB here), so the bigger the job, the wider the collision window and the larger the loss.
+
+Two probes, cheapest first. Neither writes shared state; neither blocks on failure.
+
+**1. Output-path probe (no shared state, always run).** Record `{run_started_at}` (UTC, from the harness clock) at the top of this step. Then:
+
+```bash
+test -e "{implementation_artifacts}/design-ingest-{target_slug}.md" && \
+  stat -f '%m %N' "{implementation_artifacts}/design-ingest-{target_slug}.md"
+```
+
+- **Absent** → no concurrent run detectable by this probe. Continue.
+- **Present and OLDER than `{run_started_at}`** → a prior completed ingest, not a concurrent one. This is a **re-ingest**, which is legitimate. Note it for the step-03 pause ("this supersedes an earlier manifest from `<date>`") and continue.
+- **Present and NEWER than `{run_started_at}`** → the file appeared *during* this run. That is proof of a concurrent session on the same slug. **STOP before step-02.** Surface it plainly: another session is ingesting this same surface and has already written `design-ingest-{target_slug}.md`; running the fan-out now would spend a full multi-agent pass to produce a duplicate and then race that session's write. Ask whether to abandon this run (default), or to continue deliberately under a distinct slug.
+
+**2. Register probe (advisory, run when the register exists).** Resolve the canonical register at `$(git rev-parse --git-common-dir)/../.claude/wip-register.yaml` — the **main checkout** copy, never the worktree copy, so a claim takes effect with no commit/push. If it exists and parses, look for a **live** claim on surface `design-ingest:{target_slug}` held by a different `claimed_by_session_id`. If found, SURFACE it and stop, same as probe 1.
+
+**Fail OPEN on every ambiguity.** An unreadable register, an unparseable claim, a missing `git rev-parse`, or an ambiguous own-identity is **UNKNOWN, not clear** — warn in one line and continue. Never auto-release another session's claim, and never treat a future-dated or malformed `claimed_at` as young (the "youngest claim wins" failure mode named in the register's own design v3). This probe adds awareness; it is not a gate, and it must never become the reason a legitimate solo run cannot start.
+
+**Do NOT hand-write a claim into the register from here.** Claim writes are harness-stamped by contract (`claimed_by_session_id` and `claimed_at` are written by the mediating writer, never self-reported) — an agent appending a claim by hand produces exactly the unattributable claim the register cannot honour. Read-only here is deliberate.
+
 ## 6. Tell the user what you found, then hand to step-02
 
 Say it conversationally — lead with a sentence a colleague would say, not a table. Name the screens plainly (the worklist, the order drawer, the lookups), how many there are, and which are actually drawn vs. only referenced. If a screen that should be there looks missing, or something seems off, say so and tell them you'll keep an eye on it. **If `{handoff_supersede_status} == superseded`, flag it here too** — a quick "heads up, this handoff looks superseded by `{superseded_by}`; I'll still build the manifest but I'll walk you through that at the end" — so it isn't a surprise at the pause. Then say you're about to go through each screen in turn to list its sections.
@@ -86,4 +111,5 @@ Read fully and follow: `{project-root}/_bmad/bmm/workflows/implement/design-inge
 - `{design_layout_constraints}` populated (authoritative from policy where readable).
 - `{design_tokens}` non-empty with resolved values.
 - `{target_slug}` derived and `{handoff_supersede_status}` resolved to one of `active | superseded | no_brief | ambiguous` (with `{superseded_by}` / `{source_brief}` captured) — never left unset, never refused.
+- The §5a concurrent-run check RAN before handing to step-02, and its verdict is recorded (`no-collision | prior-manifest (re-ingest) | concurrent-detected | unknown (probe failed, failed open)`). A `concurrent-detected` verdict STOPPED the run before the fan-out — the spend is the thing being protected, so detecting the collision after step-02 is a failure even if the manifest is later correct.
 - NO section enumeration attempted in this step (that is step-02's fan-out — keeping the whole bundle out of one context is the point).

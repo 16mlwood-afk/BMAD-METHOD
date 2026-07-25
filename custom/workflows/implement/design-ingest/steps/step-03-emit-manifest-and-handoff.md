@@ -33,6 +33,24 @@ git add -f {manifest_path}
 git ls-files --error-unmatch {manifest_path} >/dev/null || { echo "manifest not tracked — force-add failed; deliver would ship an empty branch"; exit 1; }
 ```
 
+## 1a. Assert the path invariant — no scratchpad paths in a durable artifact
+
+Before the completeness checks, verify every path the manifest records that a downstream workflow will DEREFERENCE (`ingest.source` when local; any evidence pointer such as an optional `ingest.frame_catalogs_dir`). The rule is `manifest-schema.md` → "Path invariant": **repo-relative, tracked, and named as it actually is on disk.** A session-scoped path in a durable artifact is always a bug — the emitting session's scratchpad is reaped when that session ends, so the manifest ships a dangling pointer to its own evidence that nobody can distinguish from a good path.
+
+For each such field:
+
+```bash
+case "{path}" in
+  /*|*/scratchpad/*|/tmp/*|/private/tmp/*)
+    echo "manifest path '{path}' is absolute or session-scoped — must be repo-relative and durable"; exit 1;;
+esac
+git ls-files --error-unmatch "{path}" >/dev/null 2>&1 || \
+  git ls-files --error-unmatch "{path}"/* >/dev/null 2>&1 || \
+  { echo "manifest references '{path}' but it is not tracked — force-add it (git add -f) or drop the field"; exit 1; }
+```
+
+If the evidence genuinely lives only in a scratchpad and you do not intend to persist it, **omit the field entirely** — an absent pointer is honest, a dangling one is not. Do not "fix" this by rewriting the path string to a location the files were never copied to; move the files, force-add them, then record the tracked path.
+
 ## 2. Re-assert the completeness invariant
 
 Before declaring done, verify and stamp:
@@ -70,6 +88,7 @@ Then stop and wait. If something has genuinely failed (an empty manifest, a brok
 ## SUCCESS METRICS
 
 - `{manifest_path}` written to `{implementation_artifacts}`, readable on `main`.
+- Every dereferenced path recorded in the manifest is repo-relative, tracked, and matches the name on disk (§1a) — no absolute or scratchpad path shipped in a durable artifact.
 - `completeness.frames_with_empty_section_list` empty; `sections_total` == grid-scaffold row count.
 - Every drawn frame present in both the section inventory and the grid scaffold.
 - The `ingest.supersede_status` stamp is present on the manifest (one of `active | superseded | no_brief | ambiguous`), with `superseded_by` set iff `superseded`. If `superseded`, the pause LED with the heads-up — it was not buried under the section list.
@@ -80,3 +99,5 @@ Then stop and wait. If something has genuinely failed (an empty manifest, a brok
 - **Auto-chaining into design-implement** — defeats the reviewable handoff. Step-03 stops.
 - **Emitting a manifest with an empty section list on a drawn frame** — a malformed manifest `design-implement` must refuse; the invariant check exists to prevent it.
 - **Grid scaffold missing a row that the section inventory lists** — the scaffold is the grid skeleton; a missing row is a section design-implement will be blind to.
+- **Recording a scratchpad path as a durable evidence pointer** — the referent is reaped with the session, so the manifest dereferences to nothing while looking complete. §1a exists to stop this; omitting the field is always better than a dangling one.
+- **Discovering a concurrent session at THIS step** — by the time the manifest is written, the fan-out is already spent and the other session's staged work is one clobbering write away. The collision check belongs in step-01 §5a, before the spend; reaching step-03 and finding a duplicate means §5a did not run.
