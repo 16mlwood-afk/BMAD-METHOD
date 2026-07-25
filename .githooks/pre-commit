@@ -76,3 +76,13 @@ if git diff --cached --name-only | grep -Eq '^docs/'; then
   npm run docs:validate-links
   npm run docs:validate-sidebar
 fi
+
+# Register gate — fires ONLY when the typed ledger itself is staged, so an unrelated docs/
+# edit pays nothing. fork-gaps.md is a database (46 typed entries, a state machine, two
+# queries); the schema is only real if it is checked at write time rather than on a manual
+# sweep nobody schedules. Schema v1: docs/proposals/fork-gaps-schema-v1-DRAFT.md.
+if git diff --cached --name-only | grep -qx 'docs/fork-gaps.md'; then
+  bash tools/check-fork-gap-schema.sh                     || exit 1
+  bash tools/check-fork-gap-targets.sh                    || exit 1
+  bash tools/check-fork-gap-stale-open.sh --creation-mode || exit 1
+fi

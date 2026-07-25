@@ -48,7 +48,12 @@ entries = []  # [title, body_lines]
 cur = None
 started = False
 for ln in text.splitlines():
-    m = re.match(r"^#{2,3} (.+)$", ln)
+    # LEVEL-2 ONLY (schema v1, 2026-07-25). An entry is a `## ` block; `### Incident` /
+    # `### Work` / `### Doctrine` are its INTERNAL structure. Matching `###` too counted
+    # every block as its own gap — 47 entries surfaced as 141 "open gaps" whose titles
+    # read "Incident · Work ·". The `## Open` section marker is still level 2, so the
+    # start detection below is unaffected.
+    m = re.match(r"^## (.+)$", ln)
     if m:
         title = m.group(1).strip()
         if title == "Open":
@@ -63,12 +68,17 @@ for ln in text.splitlines():
         cur[1].append(ln)
 
 def is_open(title, body_lines):
-    # HEADING-ONLY (gap 874): closure is the heading tag `[RESOLVED …]`/`[CLOSED …]`
-    # and a resolved entry MOVES to fork-gaps-archive.md, so the live file is
-    # open-only by construction. The old body-scan for **RESOLVED/**CLOSED was
-    # dropped — it false-hid an OPEN entry whose prose merely QUOTED those marker
-    # strings (the 874 entry itself). `[partly resolved …]`/`[partial …]` lack the
-    # bare `[resolved`/`[closed` substring, so they correctly stay open.
+    # STATE FIELD (schema v1, 2026-07-25). Closure now lives in the typed header's
+    # `state:` — headings carry id + title only, so the old heading-tag scan would
+    # report every entry as open forever. Only `closed` and `superseded` are done;
+    # `partly` / `blocked` / `fork-fixed-distribution-owed` all name owed work and
+    # stay surfaced. An entry with no readable state is treated as OPEN — an
+    # unparseable entry must never disappear from the backlog.
+    for ln in body_lines:
+        m = re.match(r"^state:\s*(\S+)", ln.strip())
+        if m:
+            return m.group(1) not in ("closed", "superseded")
+    # legacy fallback for any entry not yet migrated
     t = title.lower()
     return "[resolved" not in t and "[closed" not in t
 
