@@ -28,6 +28,7 @@
     "bmad:uninstall": "node tools/installer/bmad-cli.js uninstall",
     "check:completion": "node tools/check-completion-disposition.js",
     "check:digest": "node tools/check-digest-adoption.js",
+    "check:scoperegister": "node tools/check-scope-register.js",
     "docs:build": "node tools/build-docs.mjs",
     "docs:dev": "astro dev --root website",
     "docs:fix-links": "node tools/fix-doc-links.js",

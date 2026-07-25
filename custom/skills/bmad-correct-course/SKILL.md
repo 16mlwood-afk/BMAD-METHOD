@@ -260,6 +260,45 @@ sprint_apply_marker: dropped | NOT_DROPPED — no tracker files | BLOCKED — sl
 <ask>Review complete proposal. Continue [c] or Edit [e]?</ask>
 </step>
 
+<step n="4.5" goal="Record Scope Provenance — write the scope-register row(s)">
+
+> **This step is what stops a change from becoming registered-but-inert scope.** Governed by
+> `shared/scope-register-routing.md` (STD-SCOPEREG-001). This workflow is the fork's scope-change
+> front door and is therefore the PRIMARY PRODUCER of scope-register rows — a proposal that names
+> impacted artifacts in prose but leaves no routed row hands the next session a decision with no
+> owner and no next artifact.
+
+<action>For EVERY scope item this proposal introduces, expands, or re-dispositions, append or update a row in `{planning_artifacts}/scope-register.md`.</action>
+
+<action>Set the three routing fields on each row (STD-SCOPEREG-001 §2):</action>
+
+- **`route`** — one of `R1-capability` · `R2-bounded-local` · `R3-design` · `R4-operational-milestone` · `R5-parked`, decided by the §3 procedure **in order**:
+  - **R0 first:** does this change an existing direction, policy, or accepted decision? Then THIS workflow leads and supersedes it on the record — then re-enter the procedure to route the *work*. This workflow is a **gateway, not a terminal**; a row whose only artifact is this proposal is not routed, it is *awaiting* routing (`route: TBD` + the named decision that unblocks it).
+  - **R1** — new table · new external source · schema-level/structural model change · new PRD FR · epic-level capability. Guardrails: MATERIALITY (a small clerk-writable field or a single enum value is **R2**) and PREMISE-CHECK (verify we don't already ingest a claimed "new source" — if we do, it is **R3**).
+  - **R2** — bounded to an existing surface/module; no new table, source, or schema change.
+  - **R3** — the data and capability already exist; what changes is what the operator sees.
+  - **R4** — **nothing to build**: running, verifying, proving, or physically executing with already-shipped code.
+  - **R5** — genuinely deferred.
+  - **Mixed** → name both, set `route` to the one that **LEADS**, and record the follower as its own cross-referenced row. Never two routes in one row (it has no checkable next artifact).
+- **`next_artifact`** — the ONE artifact that makes this scope actionable, with its intended path. **Route-appropriate, per §3/§4:** R1 = the first **story file** at `ready-for-dev` (NOT the epic, NOT its story list) · R2 = the **quick-spec** path · R3 = the **active, provenance-valid design brief** (produced by `design-handoff` — a row whose next artifact is "hand-edit the brief" is invalid by construction) · R4 = the **milestone-block key** in `sprint-status.yaml` per §7 · R5 = `—` is legal here and ONLY here.
+- **`activation`** — mandatory **and only** on `R5-parked`, and complete: `owner:` (a named human/role who re-evaluates) · `trigger:` (an **observable** condition, never "when we get to it") · `why-not-now:` (the real blocker, or the cheaper alternative that won). A parked row missing any of the three is not legally parked.
+
+<action>On `route: R4-operational-milestone`, do NOT manufacture build stories. Emit the milestone block shape from STD-SCOPEREG-001 §7 into the proposal's Section 4 (status enum `blocked` | `in-progress` | `done`; EVERY item carries `owner: operator` | `agent` | `external`), and list `sprint-status.yaml` in `files_to_change` so the executor can apply it. An operational proof item converted into stories manufactures code for a problem that is a config check or a physical action.</action>
+
+<action>Rows are APPEND-ONLY. Re-disposition a superseded row in place with a dated note; never delete or renumber (scope ids are cited from stories, briefs, and PRs — a renumber is a read-modify-write race, same discipline as `docs/manifest-contract.md`).</action>
+
+<action>Record the row ids + their routes in the proposal's Section 5 (Implementation Handoff) so the handoff names WHAT becomes actionable and by WHICH workflow, not just who receives it.</action>
+
+<check if="a scope item cannot be routed">
+  Write the row with `route: TBD` and name the exact decision that unblocks it. Do NOT omit the field, and do NOT default it to `R5-parked` — parking is a positive decision that owes an owner, a trigger, and a why-not-now, not a place to put items nobody classified.
+</check>
+
+<check if="this proposal introduces no scope item (a pure re-plan of already-registered scope)">
+  Append no row. State that explicitly in Section 5 and name the existing row ids this proposal re-plans — silence is indistinguishable from a forgotten append.
+</check>
+
+</step>
+
 <step n="5" goal="Finalize and Route for Implementation">
 <action>Get explicit user approval for complete proposal</action>
 <ask>Do you approve this Sprint Change Proposal for implementation? (yes/no/revise)</ask>
@@ -340,6 +379,7 @@ hooks, not this skill). It bounds any later apply to the exact `files_to_change`
 `APPROVE: APPLY_SPRINT_PROPOSAL::<proposal_id>` from the user clears the gate for those files only. If the hook
 is not installed, this marker is inert (no effect on the workflow).
 
+<action>Declare scope disposition per `shared/scope-register-routing.md` (STD-SCOPEREG-001 §5) — for EACH row added or changed in Step 4.5, state its `route`, its `next_artifact`, and (if `R5-parked`) its owner + trigger + why-not-now. **"Recorded in the scope register" is NOT a completion** — that is the REGISTERED state, and reporting it as done is the scope-level form of the commentator exit STD-COMPLETION-001 §3 forbids. Equally, do not report this workflow's own success as work being ready to START: a finished correct-course means a DECISION is ready to be made (the PROPOSED state, §4). A run that registered scope and shaped none of it is `owner_gated_residue` with each unrouted row NAMED, never a bare success.</action>
 <action>Report workflow completion to user with personalized message: "Correct Course workflow complete, {user_name}!"</action>
 <action>Remind user of success criteria and next steps for Developer agent</action>
 <action>Run: `python3 {project-root}/_bmad/scripts/resolve_customization.py --skill {skill-root} --key workflow.on_complete` — if the resolved value is non-empty, follow it as the final terminal instruction before exiting.</action>
