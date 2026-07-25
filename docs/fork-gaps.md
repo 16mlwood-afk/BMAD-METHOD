@@ -904,3 +904,31 @@ The asymmetry that makes it durable: rows move to `pending` **automatically** (a
 **Watch:** a third exemplar from a third direction means (3) is the right answer rather than (1)+(2) — stop adding lanes and split the field.
 
 **Priority: medium.** The warnings are honest and harmless today (WARN-ONLY, and both rows are annotated) — but every session that meets them must re-derive "is this a bad row or a narrow standard?", and the standing risk is that someone eventually "fixes" a correct row to clear a warning.
+
+## 2026-07-25 — nothing asks "is this rule project residue or fork doctrine?", so generic design doctrine lands in a project's residue-only policy file and has to be hoisted later
+
+**What fought us.** `docs/design-policy.md` in every project declares itself residue-only — "This file states only cash-recovery's project residue (overlay §Z) … anything not stated here is inherited." Yet on 2026-07-24 the **canonical-vs-additive artifact labeling contract** (§8.2c, rules A1–A4) was authored straight into it. Nothing in that contract is project residue: A1–A4 are generic — *any* project with a DECIDED viewport class needs them verbatim, and the fork wiring that consumes them (`design-handoff` gate class (e), `brief-template` §4g/§7, `design-review-pr`) is fork-canonical and reads the project file for values it could own outright. One day later, authoring the sibling **composition** contract, this session had to make the placement call by hand: the artifact contract went to `custom/workflows/design/shared/operator-artifact-contract.md` (fork, fans out) and the project policy got a thin **binding** (§8.2d) that explicitly forbids re-deriving the rules locally. So the two siblings now sit in **different homes under different conventions**, and §8.2c is the mis-placed one.
+
+**Why it is structural, not a one-off.** The placement question is never asked by any mechanism:
+
+- `create-design-policy` / `modify-design-policy` have no step that classifies a proposed rule as *project residue* vs *family overlay* vs *fork doctrine* — every rule they help author lands in the project file by construction.
+- The design-policy template's own preamble states the residue-only contract but nothing checks a new section against it.
+- The **incentive runs the wrong way**: authoring in the project file is one edit that ships in one PR with no sync and no fan-out gate; authoring in the fork is a second repo, a second commit, a push to `myfork/custom`, and an owner-gated 12-project sync. Under time pressure the cheap path is always the wrong home.
+- There is a *precedent* for the right shape — `shared/brief-revision-policy.md`, `shared/design-standards.md`, `shared/manifest-contract.md` are all fork-owned doctrine the projects bind to — but no rule that says when to use it.
+
+**Cost already visible.** §8.2c's A1–A4 are today enforceable in **one** project. The other 12 get the gate-(e) prose via sync but have no policy subsection for it to read, so `{canonical_viewport}` derivation falls back to the step's inline defaults instead of a policy the project owns. Hoisting it later means either a 13-project edit or a second home that drifts — exactly the failure the `always-on-vs-pointer-rules` / one-place-per-rule doctrine exists to prevent.
+
+**Target file:** `custom/workflows/design/create-design-policy/` + `custom/workflows/design/modify-design-policy/` (a placement classification step), and the design-policy template preamble that states the residue-only contract without checking it.
+
+**Proposed investigation** (doctrine-owner call, NOT a session's):
+
+1. Add a **placement gate** to both policy-authoring workflows: for each new/changed section, classify `project-residue` (names this project's routes, tokens, domain, exemplar content) vs `family-overlay` vs `fork-doctrine` (generic — would read identically in another project with the same surface class). Fork-doctrine HALTS with "author in `custom/workflows/design/shared/`, bind here."
+2. Decide the **binding shape** once, so bindings look the same everywhere: a project subsection carries the pointer + the project-specific values table only (§8.2d is the worked exemplar).
+3. Decide whether §8.2c is **hoisted** to the shared file (leaving a binding behind, matching §8.2d) or deliberately left as a documented exception — the two siblings disagreeing is the part that will confuse the next reader.
+
+**Class:** `contract-dimension-gap` (the policy-authoring contract has no *placement* axis)
+**Fix scope:** `fork-only`
+**Marker:** `policy-placement-residue-vs-doctrine`
+**Watch:** a third generic rule landing in a project design policy means (1) is overdue rather than nice-to-have; and if §8.2c is still project-local when a second project needs a handheld-first surface, (3) has been answered by default in the worst way.
+
+**Priority: medium.** Nothing is broken today — §8.2c is correct where it sits, just not reusable. The risk is quiet duplication: the next project needing it copies rather than binds, and then the two copies drift.
