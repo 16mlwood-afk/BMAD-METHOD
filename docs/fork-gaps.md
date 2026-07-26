@@ -1499,9 +1499,9 @@ owner: fork-maintenance
 id: FG-2026-07-26-01
 class: worktree-sync-drift
 scope: fork
-target: test/test-sync-skip-if-dirty.js
+target: test/lib/clean-git-env.js
 marker: "GIT_ENV_TO_STRIP"
-state: partly
+state: closed
 owner: fork-maintenance
 ```
 
@@ -1579,6 +1579,37 @@ either.
 **Watch:** this is the third commit-time outage in the shared checkout whose only escape is
 `--no-verify` (corrupt stash 2026-07-20; foreign staged set 2026-07-25; this). If a fourth appears,
 the pattern is the shared checkout itself, not the individual causes.
+
+### Resolution — 2026-07-26, `66440307` (the in-flight fix this entry saw uncommitted is now landed)
+
+This entry and `FG-2026-07-25-12` owed-item (1) are **the same finding reached by two sessions in
+parallel**; the corrected cause above is right. Landed:
+
+- **`test/lib/clean-git-env.js`** — one shared helper stripping `GIT_INDEX_FILE`, `GIT_DIR`,
+  `GIT_WORK_TREE`, `GIT_OBJECT_DIRECTORY`, `GIT_ALTERNATE_OBJECT_DIRECTORIES`, `GIT_COMMON_DIR`,
+  `GIT_PREFIX`. One home, because this recurs per-test: a **second** instance was found while fixing
+  the first — `test/test-stash-health.js`, fixture `tracked.txt`, identical failure. Both now use the
+  helper.
+- **§4a of `docs/manifest-contract.md`** no longer calls the failure "never root-caused" and no longer
+  routes sessions to the two-step form. The one-step rule stands with no caveat.
+
+**Disposition of the three Work items, against the CORRECTED cause:**
+
+1. *"The test must never touch the checkout's real index"* — it never did. `makeProject()` builds
+   throwaway repos under a temp `HOME`; the entries reached the real (temp) index purely through
+   inherited env. The intent is satisfied and is now enforced at the spawn site.
+2. *"Clean up on failure"* — moot for the same reason: there is no in-repo fixture to clean up.
+3. *"Triage the 2 failing assertions — UNVERIFIED whether pre-existing or a symptom"* — **ANSWERED:
+   symptom.** `node test/test-sync-skip-if-dirty.js` → 13/13; with `GIT_INDEX_FILE` set → 11/13
+   pre-fix, 13/13 post-fix. The two "failures" were the pollution making a sandbox misread as clean.
+   The skip-if-dirty guard was never actually red.
+
+**Proof, not assertion:** commit `66440307` was made with the **one-step path-scoped form** — the same
+command that had failed three times that session, twice naming a sandbox fixture path.
+
+**One real limitation found while proving it, now recorded in §4a:** `git commit -- <paths>` cannot
+carry an **untracked** file (`error: pathspec … did not match any file(s) known to git`), so a NEW
+file still needs a `git add` first. The doctrine had not said so.
 
 ---
 
@@ -1886,7 +1917,37 @@ target: check-fork-authoring-collision.sh
 marker: "fork-gaps entry-id collision key"
 state: open
 owner: fork-maintenance
+routing: routed
+routing_note: "The entry-id-keyed nudge proposed here is IMPLEMENTED — `check-fork-authoring-collision.sh` gained a `docs/fork-gaps.md` branch keyed on ENTRY ID (`4bbe52a7`), and it is CONFIRMED WORKING: it fired correctly on 2026-07-26 when session 984e3219 edited FG-2026-07-25-14 while another session held uncommitted changes to the same entry. Do NOT re-implement. The state stays `open` because a SECOND, DISTINCT failure mode in the same register is still uncovered — see below."
 ```
+
+> **CORRECTION, logged rather than quietly overwritten (2026-07-26).** An earlier pass of this note
+> asserted the id-keyed nudge did not exist and marked the entry `not-routed`. **That was wrong** —
+> the fix had shipped (`4bbe52a7`) between the reading session's last look and its write, and the
+> nudge then fired *on that very edit*. Caught by the fork's own rule: *code wins over narrative
+> docs — verify before asserting* (`global-bmad-workflow.md`). Recorded because it is the same class
+> of error this register keeps documenting: a narrative claim about a mechanism, made without
+> checking the mechanism.
+>
+> **WHAT REMAINS UNCOVERED — the COMMIT-SWEEP variant, and the nudge structurally cannot see it.**
+> On 2026-07-26 a parallel fork session's commit **`e4e2935e`** swept session `984e3219`'s
+> uncommitted, in-progress `FG-2026-07-25-14` entry into its OWN commit — one titled for
+> `FG-2026-07-26-01` and never mentioning `-14`. So the entry landed under another session's
+> authorship.
+>
+> The shipped nudge warns the *editor* that someone else is in the same entry. It says nothing to
+> the *committer* about sweeping a file another session is mid-edit on — a different actor at a
+> different moment. This is the `git add -A` hazard the manifest contract already forbids for design
+> manifests (`manifest-schema.md` → Multi-writer contract: *"Commit the manifest explicitly by
+> path… A broad `git add -A` / `git stash` / sync sweep is how one session's uncommitted manifest
+> work gets scooped into another's commit"*). **The register is the fork's highest-contention
+> artifact and that rule plainly applies to it — but it is written down only for design manifests,
+> where a fork-maintenance session will never read it.**
+>
+> Nothing was lost this time (the swept entry was complete and correct), so this is evidence, not an
+> incident. Cheapest mitigation when routed: put the same "commit explicitly by path" sentence in
+> `global-bmad-workflow.md` beside the autonomous-maintenance rules — one prose line, zero
+> false-positive cost, and it would have prevented the sweep.
 
 ### Incident
 
@@ -1917,10 +1978,24 @@ id: FG-2026-07-25-14
 class: workflow-contract
 scope: fork
 target: custom/workflows/implement/design-ingest/manifest-schema.md
-marker: "ingest manifest carries value-exact property rows"
-state: open
+marker: "Grain invariant"
+state: fork-fixed-distribution-owed
 owner: fork-maintenance
+routing: routed
+routed_by: "Mason (direct in-thread directive to claude-session-20260725-205653, 2026-07-26)"
+routed_at: "2026-07-26T10:05:00Z"
+implemented_by: "session 984e3219-553a-42cb-befc-30d49a420241 (display header claude-session-20260725-205653)"
+implemented_at: "2026-07-26T10:14:00Z"
+routing_note: "PROPERLY ROUTED BEFORE IMPLEMENTATION — this is NOT the FG-11 retro-routed case. The directive named a concrete id AND a target AND the specific schema changes ('Treat FG-2026-07-25-14 as a high-priority structural gap with target: manifest-schema.md' + 'Required schema changes: … require the component×property rows … add a manifest_grain field'), which clears the grounding bar in global-bmad-workflow.md §Autonomous-maintenance ('a concrete id AND a target'; the rejected form is 'fix the recent fork gaps'). Logging this gap earlier in the same session was NOT the authorisation — the owner's explicit directive was. Recorded because the routing gate landed (fd455e96) in the same window as this fix, so the two must not be read as in conflict."
+distribution: "custom/skills-native/ re-port DONE on disk (GENERATED tree, gitignored — tools/port-workflows-to-skills.sh) + sync-bmad-workflows.sh to the fleet NOT RUN and owner-gated: the ⛔ fleet re-sync STOP is explicitly reaffirmed by the owner (2026-07-26). Fork and fleet are INTENTIONALLY DIVERGENT until a separate 'deploy manifest-grain contract to fleet' directive."
 ```
+
+> **FLEET STATUS — read before relying on this contract downstream.** `fork: FIXED` (`aa62f02d`,
+> `manifest_grain` live in the fork) · `fleet: OPEN` (all 13 projects still carry the OLD contract).
+> **Any downstream behaviour that assumes a fleet manifest is honest at `value-exact` is UNVERIFIED**
+> until the re-sync lands — a project-side manifest can still claim nothing and mean nothing, because
+> the grain field does not exist there yet. Treat a fleet manifest as `summary` regardless of what it
+> says.
 
 ### Incident
 
