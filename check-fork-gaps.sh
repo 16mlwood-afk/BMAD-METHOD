@@ -82,23 +82,61 @@ def is_open(title, body_lines):
     t = title.lower()
     return "[resolved" not in t and "[closed" not in t
 
-open_titles = [t for t, b in entries if is_open(t, b)]
+def field(body_lines, name):
+    for ln in body_lines:
+        m = re.match(r"^%s:\s*(.+)$" % name, ln.strip())
+        if m:
+            return m.group(1).strip().strip('"')
+    return None
+
 
 def short(t):
     # drop any trailing `[…]` closure/status tag and clip for the list line
     t = re.split(r"\s*`?\[", t, 1)[0].strip()
     return t[:80]
 
+
+# TWO STATUS AXES, SURFACED SEPARATELY (FG-2026-07-10-01 fix (a)).
+# `## Open` used to be one undifferentiated list, but it holds two kinds of item with
+# OPPOSITE handling: an open INVESTIGATION (what should we do?) and a DELIVERY
+# OBLIGATION (the fork fix is written, pushed, and simply not distributed yet). Lumping
+# them together is why four fully-engineered fixes once sat undelivered — the owed action
+# had no owner and no count, so nobody revisited it. A distribution-owed entry does not
+# need an investment decision; it needs a sync. Say so, separately, with the owed command.
+owed, investigations = [], []
+for t, b in entries:
+    if not is_open(t, b):
+        continue
+    (owed if field(b, "state") == "fork-fixed-distribution-owed" else investigations).append((t, b))
+
 parts = []
-if open_titles:
-    listed = " · ".join(short(t) for t in open_titles)
+if investigations:
+    listed = " · ".join(short(t) for t, _ in investigations)
     parts.append(
         "⚠ %d open fork-gap(s) in ~/bmad-method-v6/docs/fork-gaps.md "
         "(open-only file; resolved history in fork-gaps-archive.md). "
-        "Open: %s. If the user asks what to work on, or you're doing fork "
-        "maintenance, surface these; route a chosen one via the "
-        "mason-bmad-workflow-expert skill (it does not auto-action — the "
-        "investment decision is the user's)." % (len(open_titles), listed)
+        "Open: %s. If the user asks what to work on, or you're doing fork maintenance, "
+        "surface these. ROUTING (owner-ratified 2026-07-26, global-bmad-workflow.md "
+        "§ Autonomous maintenance): a clear owner maintenance instruction — \"fix the "
+        "fork gaps\", \"do the fork maintenance\" — IS routing for MAINTENANCE-lane work "
+        "(execution defects, safety + coherence), so log AND fix in the same pass. A "
+        "per-entry routing marker is still required for NEW DESIGN / DOCTRINE / POLICY "
+        "changes (changing what a rule IS) — propose those, don't ship them."
+        % (len(investigations), listed)
+    )
+if owed:
+    rows = []
+    for t, b in owed:
+        gid = field(b, "id") or short(t)
+        act = field(b, "distribution") or "distribution action NOT RECORDED — add a `distribution:` field"
+        rows.append("%s → %s" % (gid, act[:120]))
+    parts.append(
+        "📦 %d fork-gap(s) are FORK-FIXED, DISTRIBUTION OWED — the code is written and "
+        "pushed to myfork/custom, and it fires in ZERO projects until a sync runs. This is "
+        "a DELIVERY obligation, not an open investigation: it needs the owed command, not an "
+        "investment decision. %s. Distribution is a Tier-3 blast-radius action (cross-project "
+        "rsync --delete over possibly-dirty trees) — surface it and get an explicit go; never "
+        "fan out unasked." % (len(owed), " · ".join(rows))
     )
 
 THIRTY_DAYS = 30 * 24 * 3600

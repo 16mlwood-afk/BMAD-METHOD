@@ -11,14 +11,16 @@ This doc is **fork-local** (like `global-bmad-workflow.md` / `parallel-work-and-
 
 ## How this works
 - **Owner:** fork maintenance is carried in this repo by Mason via the fork-maintenance lane — `maintenance-triage` + `orchestrate-workflows` + the `mason-bmad-workflow-expert` skill; the investment decision on any gap is Mason's. Gaps logged here are re-surfaced by `check-fork-gaps.sh` at SessionStart (and a >30-day-stale stamp nudges the ~monthly trend scan). There is no separate persona and no GitHub Issues/Projects mirror — this file + that surfacer *is* the lane.
-- **AN ENTRY IS A BACKLOG ITEM, NOT A WORK ORDER.** Logging is autonomous; **implementing is not.** An entry records *that a gap exists and what the fix would look like* — it never, by existing, authorises anyone to write the fix.
-  - **Only a ROUTED entry may be implemented by a maintenance session.** Routing is Mason's call (or a delegate he names in-thread). Once routed, implementation may be freely delegated — the gate is on the decision to *start*, not on the work.
-  - **A vague standing prompt is not routing.** *"fix the recent fork gaps"*, *"action the backlog"*, *"clear the register"* name a **file**, not a piece of work, and fail the grounding gate for the same reason `quick-dev`'s does — you cannot state verb + target from the input alone. The bar is a concrete id AND a target: *"Implement FG-2026-07-25-11 in design-implement for inbound-flow."*
-  - **Proposing is always in scope.** Diagnose an entry, sharpen its target, draft the patch, report *"FG-N is ready to route, here is what I would write."* Writing the fork code is what waits.
+- **AN ENTRY IS AN AUDIT RECORD, NOT A GATE** (owner ruling 2026-07-26 — this replaced a stricter rule; see the History note in the doctrine home). **Maintenance sessions are allowed to both log and fix gaps under Mason's maintenance instructions. FG entries help with audit; they are not the only way maintenance is authorised.**
+  - **MAINTENANCE lane — an owner maintenance instruction IS routing.** *"fix the fork gaps"*, *"do the fork maintenance"*, *"action the backlog"* authorise fixing **execution defects**: a broken recipe, a gate that no-ops, a detector nothing invokes, drifted prose, a missing affordance a standard already mandates — safety and coherence repairs. Log the gap **and** fix it in the same pass. **Do not freeze fixes waiting for a per-entry routing line**, and do not halt to ask which id — pick what you can finish and say which you picked.
+  - **NEW DESIGN / DOCTRINE / POLICY lane — still needs a routing marker from Mason** (or a delegate he names in-thread): a new standard, a taxonomy/enum change, a lane redefinition, a scope decision, or an entry whose own text reserves the call for the owner. The test is *am I fixing execution, or deciding policy?* — implementing a policy change is deciding **for** him. Propose it; don't ship it.
+  - **Two stops in BOTH lanes** (blast radius, not authorisation): **distribution** — a sync/fan-out, `upgrade-bmad`, a skills-native re-port, promoting an agent (authoring is not deployment); and **irreversible / outward-facing** — prod mutation, force-push, overwriting another session's work, the archiver mid-contention.
+  - **Never log-and-leave what you could fix.** A gap parked for a future session creates a session whose only job is to re-read it. Write the entry as *found + fixed*, with the run that proves it — that is better provenance than a bare backlog line, because a reader can check it. **Be strict about evidence, not about permission:** a fix claimed without a run is UNVERIFIED.
+  - **`fork-fixed-distribution-owed` is a DELIVERY obligation, not an open investigation.** It does not need an investment decision — it needs the owed command, recorded in the entry's `distribution:` field. The SessionStart surfacer lists these separately from open investigations for exactly that reason (`FG-2026-07-10-01`): four fully-engineered fixes once sat undelivered because the owed action had no count and no owner.
   - Doctrine home for the session-behaviour half: `docs/global-bmad-workflow.md` § Autonomous maintenance.
-- **Two independent lifecycles — do NOT conflate them.** `state:` answers *is the gap fixed?* (`open` → `closed`); **`routing:` answers *is anyone allowed to work on it?*** (`recorded` → `routed` → `in-progress` → `shipped`). A fresh entry is `state: open, routing: recorded` and is **inert by construction**. Optional companions on a routed entry: `routed_by:` and `routed_at:` (UTC ISO-8601 with `Z`) — who authorised it and when.
+- **Two independent lifecycles — do NOT conflate them.** `state:` answers *is the gap fixed?* (`open` → `closed`); **`routing:` answers *who asked for this?*** (`recorded` → `routed` → `retro-routed` → `in-progress` → `shipped`). A fresh entry is `state: open, routing: recorded` — which, since the 2026-07-26 ruling, is **fixable in the maintenance lane**, not inert; `retro-routed` records work done under a standing maintenance instruction, with the sentence in `routing_note:`. Optional companions on a routed entry: `routed_by:` and `routed_at:` (UTC ISO-8601 with `Z`) — who authorised it and when.
   - **Why `routing:` and not `status:`** (the obvious name, deliberately rejected): a field called `status` sitting beside `state` is two near-synonyms for different axes in one block, and this register has logged that exact failure three times under other names — `actor` vs `author_provenance`, `claimed_by` vs `claimed_by_session_id`, `claimed_at` vs a local-time twin. A field that *looks* like the one next to it will eventually be read as it. `routing:` cannot be misread as `state:`.
-  - Absent `routing:` on a pre-existing entry reads as **`recorded`** — backward-compatible, and the safe default (unrouted, so not implementable).
+  - Absent `routing:` on a pre-existing entry reads as **`recorded`** — backward-compatible. Since the 2026-07-26 ruling that no longer means "not implementable": it means nobody named this entry specifically, which is fine for maintenance-lane work under a standing instruction and is still a blocker for a design/doctrine/policy change.
 - **Claude logs here proactively** when the method / fork / infra fights an agent — per the global `workflow-friction-and-process-issues` policy. The user shouldn't have to notice the gap or drag it out; catching yourself working *around* the method is the signal to log.
 - **Free-form prose, plus up to three optional one-liners.** Each entry is prose: *what fought us · the specific target file/workflow it points at · why it's structural · proposed investigation · rough priority in words.* No mandatory schema — but where they're cheap to state, add:
   - `**Class:**` — a short kebab-case flavour tag (open vocabulary, not an enum). Reuse a `mason-bmad-workflow-expert` root-cause class where one fits (`contract-dimension-gap`, `context-budget-overflow`, …); otherwise coin one (`live-process`, `routing-contract`, `enforcement`, `memory`). Lets the trend scan grep by axis without rereading the file.
@@ -281,10 +283,12 @@ owner: mason
 id: FG-2026-07-10-01
 class: delivery-ownership / lane-status-model
 scope: fork
-target: check-fork-gaps.sh (the SessionStart surfacer) + this file's status convention (## Open vs a new distributi...
-marker: "## Distribution owed"
-state: open
+target: check-fork-gaps.sh
+marker: "DISTRIBUTION OWED"
+state: partly
 owner: fork-maintenance
+routing: retro-routed
+routing_note: "Fixes (a)+(c) implemented under standing 'continue fixing the fork gaps' maintenance instruction from Mason; (b) remains owner-gated Tier-3."
 ```
 
 ### Incident
@@ -318,6 +322,30 @@ The mechanism turned out sharper than "a command nobody runs." The sync's skip-i
   2. `inbound-flow` + any repo with real local edits → isolate those edits from sync output, surface for review; never let `rsync --delete` overwrite unreviewed local work.
   3. Run the fan-out only when session count is low AND Mason has said proceed.
 - This is fix (a)'s "distribution-owed is a do-this, not an investment decision" — with the refinement that when the *doing* is Tier-3, the owner-gate is correct and the parking is a **blast-radius decision, not the camouflage this entry warns against**. The camouflage failure was a *mechanical* owed step (one safe command) hiding among investigations; here the owed step is genuinely cross-project-unsafe, so surfacing it as "yours to authorise" is right, provided it stays TRACKED (this update is that tracking) rather than silently dropping.
+
+### Resolution — 2026-07-26: (a) and (c) SHIPPED; (b) stays owner-gated
+
+**(a) Distribution-owed now has its own SURFACE.** `check-fork-gaps.sh` split the single `## Open`
+list into the two axes it was always conflating: **open investigations** (what should we do?) and
+**delivery obligations** (the fix is written and pushed; it fires in zero projects until a sync). The
+second line is emitted separately, names each entry's **owed command** read from its `distribution:`
+field, and says plainly that this needs the command, not an investment decision. Live output today:
+**47 investigations · 4 distribution-owed**, each with its sync/re-port action spelled out. An entry
+in that state with no `distribution:` field is called out as *"distribution action NOT RECORDED"*
+rather than silently listed — otherwise the new surface would reproduce the old invisibility.
+
+**(c) The doctrine line landed in this file's own "How this works"** — `fork-fixed-distribution-owed`
+is a DELIVERY obligation, not an open investigation. Same pass corrected a *stale* rule in that
+section and in the surfacer's own message text: both still asserted the pre-2026-07-26 routing gate
+("a vague standing prompt is not routing"), which the owner has since replaced with the
+maintenance-vs-new-design split. A SessionStart surfacer repeating an overruled rule at every session
+is the worst possible place for that drift to sit.
+
+**(b) NOT done, deliberately.** An auto-attempted fan-out is a Tier-3 blast-radius action
+(`rsync --delete` across possibly-dirty trees) and the entry itself parks the 12-project frontier on
+those grounds. That parking is unchanged and correct: making the debt VISIBLE is this pass; DRAINING
+it needs Mason's explicit go in a low-contention window. State stays `partly` for exactly that reason.
+
 
 ## 2026-07-10 — two same-repo sessions independently built the SAME fix; the collision was invisible until one merged, and neither the mailbox nor a live-close could resolve it
 
