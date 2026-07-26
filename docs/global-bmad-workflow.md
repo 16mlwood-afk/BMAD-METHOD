@@ -116,19 +116,45 @@ You are responsible for keeping the BMAD fork and project workflows in a healthy
 
 **Log structural method/infra gaps yourself → `docs/fork-gaps.md`.** When the fork/infra/method *fights* an agent — not a one-off bug, but the wiring making normal work painful (a deploy path that isn't legible, a hook with nowhere to redirect, sync drift, a workflow step that overruns) — record it in the fork-gaps backlog proactively, pointing at the specific target file. You are the noticer; don't wait for the user to ask "why is this so awkward?". This is the global `workflow-friction-and-process-issues` policy made concrete with a write target. The backlog is the fork-driven sibling of the `maintenance-triage` (production-driven) front door.
 
-**Fixing a gap you found is the DEFAULT, not an escalation. "Fix the fork gaps" IS routing.** Same boundary as the paragraph above — blast radius, not topic. An FG entry is not a special class of work that needs its own permission slip; it is a defect report about this repo, and repairing this repo is what fork maintenance *is*.
+### The routing rule — MAINTENANCE vs NEW DESIGN
 
-- **Standing authorisation: fork-local and reversible → implement it now.** Workflow prose, `tools/`, `test/`, `custom/githooks/`, fork docs, the register itself. "Fix the fork gaps", "action the backlog", "clear the register" all authorise this lane. Do not halt to ask which id; pick the ones you can actually finish and say which you picked.
-- **Three things still stop you, and only these three:**
-  1. **Distribution.** The 14-project fan-out sync, `upgrade-bmad.sh`, a `port-workflows-to-skills.sh` regeneration in a contended window, promoting an agent into `custom/agents/`. Authoring is not deployment; that split is deliberate and unchanged.
-  2. **Irreversible or outward-facing.** A prod mutation, a force-push, deleting or overwriting another session's work, running the register archiver while others are editing it.
-  3. **An entry whose own text says the call is the OWNER's** — a doctrine ruling, a taxonomy change, a scope decision, "not actioned deliberately". Implementing one of those is *deciding for him*, not fixing a defect. Propose it; don't ship it.
-- **Log-only is for those three cases**, or for a gap you cannot yet prove a fix for. **Never log-only merely because it is a gap.** A gap logged and left creates a second session whose entire job is to re-read it and re-derive the fix — pure overhead, and the register grows faster than it drains.
-- **Write the entry as found + fixed, in the same pass.** The audit value lives in the record and the evidence, not in the delay. A same-session entry that says *"found this, here is the cause, here is the fix, here is the run that proves it"* is strictly better provenance than a bare backlog line — the reader can check it.
-- **Prove it, don't assert it** (unchanged, and the real guardrail): a fix claimed without a run is UNVERIFIED. State what you ran and what it said. This is the thing worth being strict about — not who authorised the work.
-- **The `routing:` field stays** as a useful marker for *"Mason asked for this one specifically"*. Its **absence no longer blocks anything.**
+**The rule, in Mason's words (ratified 2026-07-26):**
 
-**History, corrected (2026-07-26).** A 2026-07-25 session wrote a hard rule here that a vague standing prompt was NOT routing and that unrouted entries must never be implemented. **Mason overruled it the next day**: he trusts fork maintenance, and the rule manufactured a loop where a session logs a gap, stops, and a new session has to be opened to say "fix that." The register was becoming a queue that only grew. What survives from the original incident is narrower and still right: **do not implement an entry whose own header says the investment decision is the owner's**, and never confuse authoring with distributing. [Scope: FORK CANON — fork-local doc, does not sync to the 13 projects]
+> For **NEW DESIGN WORK**, do not implement any FG entry unless it carries a routing marker from Mason (or a named delegate). For **ROUTINE FORK MAINTENANCE** under a clear owner instruction (e.g. *"fix the fork gaps"*, *"do the fork maintenance"*), you may both:
+>
+> - log gaps in `fork-gaps.md`, **AND**
+> - fix safety and coherence issues directly.
+
+**A maintenance instruction IS pointing.** *"Fix the fork gaps"*, *"do the fork maintenance"*, *"action the backlog"*, *"clear the register"* — these are owner-scope instructions and they authorise the maintenance lane. They must **not** be classified as "not routing", and you must not halt to ask which id: pick the ones you can actually finish, and say which you picked.
+
+**Which lane is this?** Ask what the change *is*, not how big it feels.
+
+| Lane | What it covers | Authorisation |
+|---|---|---|
+| **MAINTENANCE** — fix it now | A defect in how the fork EXECUTES: a broken recipe, a gate that no-ops, a detector nothing invokes, a test polluting the shared index, drifted prose, a missing affordance the standard already mandates. Safety and coherence repairs. | A clear owner maintenance instruction is enough. |
+| **NEW DESIGN / DOCTRINE / POLICY** — needs a routing marker | Changing what the rule IS, not whether it works: a new standard, a taxonomy or enum change, a route/lane redefinition, a scope decision, a policy shift, an entry whose own text says *"doctrine-owner call"* / *"not actioned deliberately"*. | Per-entry routing from Mason. Propose it; don't ship it. |
+
+The test that separates them: **am I fixing execution, or deciding policy?** Implementing a doctrine change is deciding *for* him. Repairing a mechanism that already exists and doesn't work is the job.
+
+**Two things still stop you regardless of lane** — these are blast radius, not authorisation:
+
+1. **Distribution.** The 14-project fan-out sync, `upgrade-bmad.sh`, a `port-workflows-to-skills.sh` regeneration in a contended window, promoting an agent into `custom/agents/`. Authoring is not deployment; that split is deliberate and unchanged.
+2. **Irreversible or outward-facing.** A prod mutation, a force-push, deleting or overwriting another session's work, running the register archiver while others are editing it.
+
+**FG entries are an AUDIT tool, not a gate.** Maintenance sessions are allowed to both log and fix gaps under Mason's maintenance instructions. FG entries help with audit; **they are not the only way maintenance is authorised.** Concretely:
+
+- **Logging a real gap you discover is good practice** — keep doing it, proactively, per the paragraph above.
+- **It is NOT required to freeze all fixes until each FG has a specific routing line.** A missing `routing:` field blocks nothing in the maintenance lane.
+- **Never log-only merely because it is a gap.** A gap logged and left creates a second session whose entire job is to re-read it and re-derive the fix — pure overhead, and the register grows faster than it drains.
+- **Write the entry as found + fixed, in the same pass.** The audit value lives in the record and the evidence, not in the delay. *"Found this, here is the cause, here is the fix, here is the run that proves it"* is strictly better provenance than a bare backlog line, because a reader can check it.
+- **Prove it, don't assert it — this is the real guardrail.** A fix claimed without a run is UNVERIFIED. State what you ran and what it said. Be strict here, not about who authorised the work.
+- **`routing:` values:** `recorded` (or absent) · `routed` (Mason named it) · `retro-routed` (done under a standing maintenance instruction, noted in `routing_note`) · `in-progress` · `shipped`. `fork-fixed-distribution-owed` remains a valid `state:` for authored-but-undistributed work.
+
+**History, corrected (2026-07-26).** A 2026-07-25 session wrote a hard rule here that a vague standing prompt was NOT routing and that unrouted entries must never be implemented. **Mason overruled it the next day, twice** — first in substance ("if I tell you to fix the fork gaps, that is absolutely pointing… I really trust you to do the fork maintenance"), then by dictating the maintenance-vs-new-design split quoted above. His reason is the one that matters: the rule manufactured a loop where a session logs a gap, stops, and a new session has to be opened to say "fix that", so the register only ever grew. The old rule also contradicted this section's own opening principle — it gated on TOPIC (is this an FG entry) rather than on blast radius.
+
+What survives from the original incident, narrowed to what is actually right: **do not implement an entry whose own header reserves the decision for the owner**, keep the strict marker requirement for design/doctrine/policy changes, and never confuse authoring with distributing.
+
+**Retro-authorised under this rule (2026-07-26):** `FG-2026-07-25-04`, `-08`, `-10(2)` and `-12` were implemented earlier the same day under the standing *"fix the recent fork gaps"* instruction, before this text existed. Each now carries `routing: retro-routed` plus a `routing_note` recording that. They are **not** to be reverted. `FG-2026-07-25-11` and `-13` already carried routing and were left untouched. [Scope: FORK CANON — fork-local doc, does not sync to the 13 projects]
 
 **Code wins over narrative docs — verify before any destructive action (fork-gap #7).** The fork's hand-maintained narrative docs (`STATUS.md`, this file, the `~/.bmad-reference` header, migration plans, project memories) **lag the sync code** — they are decision aids, not ground truth. When such a doc says a capability is *unsupported / orphaned / cut-off / complete* and you're about to act on it — **especially before anything destructive or irreversible (a revert, a `--delete`, dropping a pilot, "rolling back X")** — first confirm the claim against the actual code (`sync-bmad-workflows.sh`, the installer, the relevant script) and the live state. If the doc and the code disagree, **the code wins**: act on the code, then fix the stale doc in the same pass. This rule exists because stale "skills-layout is unsupported / cash-recovery is orphaned" guidance once nearly drove a revert of a *working* pilot that the sync code already supported. Treat a capability claim as CHECKED (does the code path exist?), never merely asserted (see the STATUS `built: <commit|NO>` integrity rule).
 

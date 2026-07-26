@@ -1380,8 +1380,11 @@ class: routing-contract
 scope: fork
 target: custom/workflows/4-implementation/sprint-planning/
 marker: "delivered-but-pending"
-state: open
+state: fork-fixed-distribution-owed
 owner: fork-maintenance
+routing: retro-routed
+routing_note: "Implemented under standing 'fix the recent fork gaps' maintenance instruction from Mason."
+distribution: "sync-bmad-workflows.sh (all 14 targets) — sprint-planning/instructions.md carries the trigger"
 ```
 
 ### Incident
@@ -1722,6 +1725,8 @@ target: custom/githooks/check-design-brief-completeness.sh
 marker: "new-brief gate coverage"
 state: partly
 owner: fork-maintenance
+routing: retro-routed
+routing_note: "Implemented under standing 'fix the recent fork gaps' maintenance instruction from Mason."
 distribution: "sync-bmad-workflows.sh (all 14 targets)"
 ```
 
@@ -1885,8 +1890,11 @@ class: write-path-gap
 scope: fork
 target: custom/workflows/shared/scope-register-routing.md
 marker: "register append affordance"
-state: open
+state: fork-fixed-distribution-owed
 owner: fork-maintenance
+routing: retro-routed
+routing_note: "Implemented under standing 'fix the recent fork gaps' maintenance instruction from Mason."
+distribution: "sync-bmad-workflows.sh (all 14 targets) — scope-register-routing.md §0; tools/ is fork-local"
 ```
 
 ### Incident
@@ -1981,6 +1989,8 @@ target: docs/manifest-contract.md
 marker: "recipe argument order"
 state: closed
 owner: fork-maintenance
+routing: retro-routed
+routing_note: "Implemented under standing 'fix the recent fork gaps' maintenance instruction from Mason."
 ```
 
 ### Incident
@@ -2031,7 +2041,7 @@ three were quotations* — this entry's own write-up, `FG-2026-07-25-01`'s third
 corrected §4a bullet. So exemption is explicit and visible: `recipe-lint:ignore` anywhere on the line
 (an HTML comment, invisible in rendered prose). No heuristic guessing at "this line sounds like a
 counter-example". All three annotated → **0 errors across 483 docs**, and a probe file carrying
-`git commit -- src/a.ts -m "msg"` is caught (exit 1), so it is proven in both directions.
+`git commit -- src/a.ts -m "msg"` is caught (exit 1), so it is proven in both directions. <!-- recipe-lint:ignore — quoted probe command, not a prescription -->
 
 **Watch:** a second unrunnable prescribed command anywhere in the fork docs makes (2) overdue rather than optional.
 
