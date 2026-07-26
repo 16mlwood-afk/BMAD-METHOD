@@ -1493,17 +1493,45 @@ owner: fork-maintenance
 
 ---
 
-## 2026-07-26 — a test stages a fixture into the SHARED REAL index during pre-commit, then removes the blob, so EVERY commit to the fork dies on "Error building trees"
+## 2026-07-26 — `[CORRECTED — mis-attributed on first write; real cause already diagnosed and being fixed in-flight]` a PATH-SCOPED commit hands hooks a temp `GIT_INDEX_FILE`, and the test sandbox inherits it
 
 ```yaml
 id: FG-2026-07-26-01
 class: worktree-sync-drift
 scope: fork
 target: test/test-sync-skip-if-dirty.js
-marker: "bmad-example fixture"
-state: open
+marker: "GIT_ENV_TO_STRIP"
+state: partly
 owner: fork-maintenance
 ```
+
+> **[CORRECTION 2026-07-26 — read this before the incident below.]** The original write-up blamed the
+> test for *staging a fixture into the shared real index*. **That attribution is WRONG.** The real
+> mechanism was already diagnosed — in this very file's own header comment, by a parallel session
+> whose fix (`GIT_ENV_TO_STRIP`) is **in the working tree, uncommitted**, and is recorded in
+> `docs/manifest-contract.md` §4a as the "intermittent, never root-caused" failure.
+>
+> **Real cause:** on a **PATH-SCOPED** commit (`git commit -m … -- <paths>`) git builds a TEMPORARY
+> index and exports it to hooks as `GIT_INDEX_FILE`. `git -C` / `cwd` do **not** override that env
+> var — it wins over the working directory — so the test's sandbox `git add -A` writes entries into
+> the *real commit's* temp index, referencing blobs that live only in the sandbox object store. The
+> commit then dies building trees. **Proven by that session: 13/13 standalone, 11/13 with
+> `GIT_INDEX_FILE` set** — which is exactly the "11 passed, 2 failed" I observed and misread as an
+> unrelated test failure.
+>
+> **Why I hit it and most sessions don't:** I used path-scoped commits throughout
+> (`git commit <paths> -m …`), which is the ONLY form that hands hooks a temp index. A normal
+> `git add` + `git commit` never triggers it. My own choice of commit form was the trigger.
+>
+> **Corrected owner + target:** the fix is authored and in-flight (uncommitted) by that session —
+> do **not** re-fix it, and do not "clean up" the test. What remains owed is only that the fix gets
+> **committed**, and that `manifest-contract.md` §4a be updated to say the cause is now known rather
+> than "never root-caused."
+>
+> **Corrected lesson (the durable one):** the recommended two-step `git add` + commit form was pushed
+> on sessions *as a workaround for this bug*, which reintroduced the shared-index sweep hazard the
+> one-step form exists to eliminate. A workaround adopted before root-causing traded one hazard for
+> another for weeks.
 
 ### Incident
 
@@ -1800,7 +1828,7 @@ id: FG-2026-07-25-12
 class: enforcement
 scope: fork
 target: docs/manifest-contract.md
-marker: "Error building trees — ROOT-CAUSED"
+marker: "recipe argument order"
 state: partly
 owner: fork-maintenance
 ```
@@ -1822,7 +1850,25 @@ owner: fork-maintenance
 1. **Root-cause or retire the `Error building trees` caveat.** It is the only thing still pushing sessions to the two-step form, it has never been root-caused (`2026-07-20`), and it did not reproduce today. Leaving it in place unexamined means the hazard-reopening advice stays live on the strength of one unexplained afternoon.
 2. **Nothing verifies a prescribed command.** The general form is *"doctrine ships an executable recipe that no test executes."* Cheapest honest tier: a validator that extracts fenced/inline `git …` recipes from `docs/*.md` and at minimum parses them for option-after-`--` ordering. A full behavioural test is not worth it; an argument-order lint would have caught this one exactly.
 
-**Marker note:** `Error building trees — ROOT-CAUSED` is a FIX SENTINEL for owed item (1) — it does not exist yet and appears in `docs/manifest-contract.md` only when that caveat is explained or retired. The syntax half is already corrected (see Done above).
+**UPDATE — owed item (1) is DONE, same session; root cause found and fixed at source.** The
+`Error building trees` caveat is retired, not merely re-worded. It was never git corruption: a
+path-scoped commit is a PARTIAL commit, so git builds a **temporary index** and exports it to hooks
+as `GIT_INDEX_FILE`; the fork's pre-commit runs `npm test` → `test/test-sync-skip-if-dirty.js`,
+which built throwaway git repos and ran `git add -A` in them **with the parent env inherited**
+(`cwd` / `git -C` do NOT override `GIT_INDEX_FILE`). The sandbox's adds therefore landed in the real
+commit's temp index, naming blobs that live only in the sandbox object store — so git correctly
+refused to build a tree from an object it could not read. Every earlier finding was true *and*
+consistent with this: the object is absent from HEAD, the index, the worktree, the stash and `fsck`
+because **it was never in this repo.** Only the one-step form was ever affected — it is the only form
+that hands hooks a temp index — which is exactly why "use `git add` first" appeared to fix it and why
+it looked intermittent. Fixed by stripping the seven git env vars from every sandbox call in that
+test: **13/13 standalone, 13/13 with `GIT_INDEX_FILE` set** (11/13 leaked, pre-fix — the two
+"failures" were the pollution making a sandbox misread as clean). `docs/manifest-contract.md` §4a now
+states the one-step form with no caveat. *A never-root-caused caveat had been sending every session
+back into the hazard the rule exists to remove.*
+
+**Marker note:** `recipe argument order` is a FIX SENTINEL for the remaining owed item (2) — the lint
+that would have caught the original option-after-`--` bug. It does not exist yet.
 
 **Watch:** a second unrunnable prescribed command anywhere in the fork docs makes (2) overdue rather than optional.
 
