@@ -1943,3 +1943,44 @@ value evidence is the manifest's own prose.
 **Priority: high.** The manifest path is the recommended route for exactly the large surfaces where
 nobody will re-read the source, and it is the route the `design-handoff` hook steers large bundles
 into.
+
+### Resolution — FIX AUTHORED IN THE FORK, DISTRIBUTION OWED (2026-07-25, owner-directed)
+
+Owner directed both halves (require the property rows **and** add the grain field), so the fix is
+not either/or as originally proposed — they compose: the rows become required *at* `value-exact`,
+and the grain field is what makes any other honest.
+
+**Shipped (fork authoring only):**
+
+- `design-ingest/manifest-schema.md` — REQUIRED `ingest.manifest_grain` (`value-exact | partial |
+  summary`, **absent ⇒ `summary`**); `completeness.sections_with_property_rows` +
+  `sections_missing_property_rows`; a **"Grain invariant"** section with the per-value consumer
+  contract; a **"Restated source facts"** section (source-reference-or-omit · no unverified
+  exhaustive negatives · never reason downstream from a copy); the `component×property rows` cell
+  declared load-bearing with an explicit `PROPERTY-ROWS-MISSING(<reason>)` sentinel replacing the
+  `…` placeholder the schema had been *modelling as acceptable*.
+- `design-ingest/steps/step-03-emit-manifest-and-handoff.md` — **§2a** classifies each property cell,
+  stamps the counters + grain, and **HALTS on `value-exact` + non-empty missing-list** (the precise
+  lie the field exists to prevent); **§2b** strips restated facts before emit.
+- `design-implement/steps/step-01-ingest-design.md` — **MANIFEST.1a** reads the grain BEFORE
+  MANIFEST.2 and makes the source re-read a *required step* on `partial`/`summary`;
+  **MANIFEST.1b** demotes the manifest's restated facts (source wins, corrections written back,
+  exhaustive negatives are hypotheses); **SHARED.1** is explicitly "necessary, not sufficient" and
+  gained the grain assertions; SHARED.2 reports grain + whether a re-read ran.
+
+**Deliberately NOT done:** no fan-out. The `## Now` ⛔ fleet re-sync STOP stands (11 blocked
+projects, dedicated thread), so the 13 projects still carry the old contract — **the gap is fixed in
+the fork and NOT yet true anywhere downstream.** Do not read this Resolution as "closed".
+
+**Verification:** markdownlint 0 errors across the 3 files; `validate-context-budget` 0 blocking.
+Regenerated `custom/skills-native/` ports (gitignored build artifact) carry the new text.
+
+**Follow-up owed, named rather than left as a landmine:** the edit pushed
+`design-implement/steps/step-01-ingest-design.md` from 90,081 → 94,071 bytes — **929 bytes under the
+95,000 hard ceiling**, so the *next* addition to that step will block the pre-commit gate. It wants a
+one-job-per-step split (the URL path and the MANIFEST path are the natural seam). Compression was
+already applied once here (the grain detail lives in `manifest-schema.md` and step-01 points at it);
+the next editor should split, not compress further.
+
+**State stays `open`** until the fan-out lands — per the distribution-owed rule, authoring is not
+delivery.

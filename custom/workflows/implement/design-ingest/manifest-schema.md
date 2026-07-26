@@ -30,12 +30,15 @@ ingest:
     assertion: {verbatim framing rule}
     resolved: { width: {full-bleed | <px>}, centered: {bool}, padding: {value} }
     authoritative: {bool}               # true only when read from docs/design-policy.md
+  manifest_grain: {value-exact | partial | summary}   # REQUIRED. What this manifest may be TRUSTED FOR. Consumers branch on it — see "Grain invariant". ABSENT ⇒ a consumer MUST read it as `summary` (conservative default), NEVER as value-exact.
   completeness:
     frames_total: {int}
     frames_drawn: {int}
     sections_total: {int}               # sum of frame_sections across all drawn frames
     frames_with_empty_section_list: []  # MUST be empty for a clean manifest — a non-empty list is a frame-completeness defect (step-02 should have halted)
-  tokens:
+    sections_with_property_rows: {int}      # of sections_total, how many carry a VALUE-EXACT component×property cell
+    sections_missing_property_rows: []      # "<frame> / <section>" per section whose property cell is prose-only, elided (`…`), or empty. MUST be empty iff manifest_grain == value-exact.
+  tokens:                               # SUMMARY ONLY, and NOT a substitute for reading the design source — see "Restated source facts".
     radii: { ... }
     type_scale: { ... }
     colors: { ... }
@@ -95,8 +98,18 @@ So: **when a frame or section is out of scope, stamp `⊘ deferred(<reason>)` in
 | frame | section | design copy/structure (verbatim) | data fields read | component×property rows | status |
 |---|---|---|---|---|---|
 | supply-order-detail-drawer | Reconciliation | recon-lead 3 branches ("Not gathered yet." / "Reconciled clean." / gap); recon-grid 4 fixed tiles | quantity, amazonDeliveredQty, amazonHeldQty, amazonReturnedQty, varianceResolution | .recon-lead{12px,subtle-fg} · .recon-grid{grid 4×1fr,gap8} · .rc-cell{border,radius7,inset-bg} · .rc-n{15px,600} · .rc-l{10px,muted} | UNVERIFIED |
-| supply-order-detail-drawer | SellerSmart dispatch | "SellerSmart dispatch" h4 + dispatch pill + §13 link | (dispatch fields — see data-availability note) | … | UNVERIFIED |
+| supply-order-detail-drawer | SellerSmart dispatch | "SellerSmart dispatch" h4 + dispatch pill + §13 link | (dispatch fields — see data-availability note) | `PROPERTY-ROWS-MISSING(no impl view-model fields)` | UNVERIFIED |
 | … one row per (frame, section) … | | | | | |
+
+**The `component×property rows` cell is LOAD-BEARING, and an elision in it is a defect, not a
+shorthand.** It is the only place a resolved CSS value survives ingest, so a cell reading `…` or
+carrying prose (`"46px, white, hairline base"`) instead of value-exact declarations silently
+converts a value-exact manifest into a summary one — while every other field still looks complete.
+When the values genuinely cannot be resolved, write the explicit sentinel
+**`PROPERTY-ROWS-MISSING(<reason>)`** and list that section in
+`completeness.sections_missing_property_rows`. Never leave the cell bare, and never let `…` stand in
+a delivered manifest: an honest sentinel is greppable and forces `manifest_grain: partial`, whereas
+an ellipsis reads as "omitted for brevity" to every future reader.
 
 ## Data-availability notes
 <!-- For any section whose fields are NOT present on the impl view-model, record
@@ -153,3 +166,32 @@ This covers `ingest.source` when it is a local directory, and any evidence point
 ### Completeness invariant
 
 `ingest.completeness.frames_with_empty_section_list` MUST be empty in a delivered manifest. A non-empty list means step-02's per-frame completeness gate did not halt as it should have — the manifest is malformed and `design-implement` should refuse it (the same bounce-back shape as the synthesize-bundle gates).
+
+### Grain invariant — a manifest must declare what it can be trusted for
+
+**Section coverage and VALUE coverage are two different completeness questions, and this schema used to answer only the first.** `frames_with_empty_section_list` proves every drawn frame was enumerated; it says nothing about whether any section's `component×property rows` cell holds resolved values. So a manifest could pass every gate here, be fully compliant, and still carry prose anchors — while `design-implement` step-01 **MANIFEST.2** is told to build its CSS property catalog from exactly those cells. Producer-compliant and consumer-contract-unmeetable at the same time, with nothing in between to object.
+
+`ingest.manifest_grain` closes that by making the manifest state its own trust level:
+
+| value | means | `design-implement` must |
+|---|---|---|
+| `value-exact` | EVERY drawn section carries value-exact `component×property rows`. `sections_missing_property_rows` is empty. | Build the property catalog from the scaffold. No source re-read needed. |
+| `partial` | Some sections carry values; the rest are sentinelled and listed in `sections_missing_property_rows`. | Use the scaffold where present; **re-read the design source for every listed section.** |
+| `summary` | Section inventory + completeness gate only. Property cells are prose/absent throughout. | Treat the manifest as the *section denominator only* and **re-read the design source for values.** |
+
+**`summary` is a legitimate, useful manifest — not a failure.** The section inventory and the frame-completeness gate are most of this artifact's value, and they are exactly what a fresh context cannot cheaply reconstruct. Declaring `summary` costs a source re-read; *undeclared* summary costs correctness. The point of the field is to stop a consumer inferring value-exactness from a manifest that never claimed it.
+
+**Absent field ⇒ `summary`.** Older manifests predate this field; the conservative default keeps them consumable and makes the failure direction safe (an unnecessary re-read, never a wrong value).
+
+### Restated source facts — the manifest must not assert what it cannot keep true
+
+**The manifest is a DERIVED artifact. Every source fact it restates in prose is a copy that can drift from the design, and the manifest is precisely the thing a fresh context trusts *instead of* the source.** An incomplete manifest degrades safely (the consumer notices and re-reads); a **lossy but confident** one is worse than absent, because it is authoritative-by-position for a reader who will never open the design file.
+
+So, for the `tokens:` block, the section-inventory copy column, and any `## Findings` prose:
+
+- **Prefer structure over values.** Record *that* a section exists, *what* it is called, *which* fields it reads. Let the design source own exact px/hex/label values, and let `manifest_grain` say whether the property cells can be trusted for them.
+- **A restated value carries a source reference** (`<file>:<line>` or the frame + banner it came from) or it does not go in.
+- **A finding must not assert a negative it did not exhaustively check.** "No `<img>` exists anywhere in the component" is an exhaustive-search claim. State the search that was actually run and its scope, or record the observation narrowly ("the row's 40×40 box is a placeholder div in the default branch").
+- **Never reason downstream from a restated fact.** A finding that concludes *"…so `design-implement` would have to infer the resolved treatment"* has built an inference-hazard warning on top of a copy. If the premise drifts, the warning becomes the hazard.
+
+**Why (2026-07-25, cash-recovery, `FG-2026-07-25-14`).** A delivered, completeness-passing manifest for the Clerk Inbound Board carried three restated facts that were wrong against its own source: finding **F2** asserted no `<img>` existed anywhere and that the resolved-thumbnail treatment was never drawn (the source draws one in **three** places inside `<sc-if value="{{ r.img }}">`, and F2 then reasoned from that false premise to an inference warning); `tokens.type_scale.primary_numeral` said `30px` where the source said **26px**; and the section-8 prose named a filter chip *"Can't vouch"* where the source's `filters` array said **`Gaps`**. All three were caught only because that run re-read the design source **contrary to** the manifest path's own "no re-ingest" shortcut. A session that honoured MANIFEST.2 as written would have shipped the wrong numeral, the wrong label, and a fabricated thumbnail treatment, with every gate green.

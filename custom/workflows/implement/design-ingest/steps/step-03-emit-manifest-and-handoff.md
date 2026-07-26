@@ -62,6 +62,35 @@ Before declaring done, verify and stamp:
 
 Stamp `ingest.date` and `completeness.*` now (the orchestrator has the clock; scripts do not).
 
+### 2a. Classify the GRAIN — and never let it default silently
+
+Section coverage (above) and VALUE coverage are different questions. This step used to answer only the first, which let a prose-only manifest satisfy every gate while `design-implement` MANIFEST.2 was told to build its CSS catalog from the property cells (`manifest-schema.md` → "Grain invariant"; fork-gap `FG-2026-07-25-14`).
+
+Walk the grid scaffold and classify each row's `component×property rows` cell:
+
+- **value-exact** — resolved declarations (`.rc-n{15px,600}`), not prose, not `…`.
+- **missing** — prose (`"46px, white, hairline base"`), an ellipsis, empty, or an explicit `PROPERTY-ROWS-MISSING(<reason>)` sentinel.
+
+Then stamp, and HALT on the one inconsistency that matters:
+
+- `completeness.sections_with_property_rows` = the value-exact count.
+- `completeness.sections_missing_property_rows` = `"<frame> / <section>"` for every missing one.
+- `ingest.manifest_grain` = `value-exact` if the missing list is empty · `summary` if NO section carries values · `partial` otherwise.
+- **HALT if `manifest_grain: value-exact` and `sections_missing_property_rows` is non-empty** — that combination is the exact lie the field exists to prevent. Fix the grain or fill the cells; never emit both.
+- **Replace every bare `…` with the sentinel before emitting.** An ellipsis reads as "omitted for brevity" to every future reader; the sentinel is greppable and forces an honest grain.
+
+**Declaring `summary` is not a failure and must not be treated as one.** The section inventory + frame-completeness gate are most of this manifest's value and are exactly what a fresh context cannot cheaply rebuild. The cost of an honest `summary` is one source re-read downstream; the cost of an *undeclared* summary is a wrong value shipped with every gate green.
+
+### 2b. Strip restated source facts you cannot keep true
+
+Before emitting, re-read your own `## Findings`, `tokens:`, and section-copy prose against the design source and apply `manifest-schema.md` → "Restated source facts":
+
+- A restated value carries a source reference, or it comes out.
+- A finding must not assert an exhaustive negative ("no `<img>` exists anywhere") unless that search was actually run — state the scope that WAS checked.
+- No finding may reason downstream from a restated fact (an inference-hazard warning built on a copy becomes the hazard when the copy drifts).
+
+This is the half that bit hardest in `FG-2026-07-25-14`: three restated facts in a completeness-passing manifest were wrong against its own source, and only a run that re-read the source *contrary to* the no-re-ingest shortcut caught them.
+
 ## 3. PAUSE — hand back to the user as a conversation, then STOP
 
 This is the moment the whole workflow exists for, so don't end it with a status box — **talk to the user.** Write the manifest, then have a real handoff conversation. Do NOT proceed to any implementation.

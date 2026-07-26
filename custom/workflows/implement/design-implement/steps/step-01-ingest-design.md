@@ -564,6 +564,25 @@ No download, no extract, no per-component re-catalog. `design-ingest` already di
 - `{design_frame_inventory}` ← the manifest's **Frame inventory** table verbatim (skip URL.3a re-derivation). Each `drawn: false` frame carries into §2f as FRAME NOT DRAWN, exactly as on the URL path.
 - `{design_file}` ← `{ingest_manifest}.ingest.target_file`.
 
+### MANIFEST.1a. Read `ingest.manifest_grain` FIRST — it decides whether MANIFEST.2 is sufficient
+
+**Do not enter MANIFEST.2 without reading the grain.** MANIFEST.2 builds the CSS catalog from the scaffold's `component×property rows`, which is sound ONLY when those cells hold resolved values — and a manifest can be fully compliant and completeness-passing with prose in them. Contract + rationale: `manifest-schema.md` → "Grain invariant" (fork-gap `FG-2026-07-25-14`). Set `{manifest_grain}`; **absent ⇒ `summary`**, never inferred value-exact.
+
+- `value-exact` → build from the scaffold; the "no re-ingest" promise holds.
+- `partial` → scaffold where exact; **re-read the source** for every section in `completeness.sections_missing_property_rows`.
+- `summary` → manifest is the **section denominator only** (frames/sections/copy/fields/resume); **re-read the source for values.**
+
+**On `partial`/`summary` the re-read is a REQUIRED step of this path, not a fallback** — resolve the source and read values as URL.5 does, mirroring to `{design_dir}`. A `summary` manifest still saves the expensive half (the gated section enumeration), not the value read. Report grain + re-read in SHARED.2. A `summary` manifest is **not** a defect; proceeding to a treatment verdict on prose is.
+
+### MANIFEST.1b. Do not trust the manifest's restated source facts
+
+`tokens:`, section-copy prose and `## Findings` are **derived copies** that drift (`manifest-schema.md` → "Restated source facts"). Authority for *structure*, never for a *value* or an exhaustive negative.
+
+- **Source vs manifest disagreement → THE SOURCE WINS**, and the correction is written back into the manifest (append-only pass record) so the next pass cannot re-inherit it.
+- An exhaustive negative ("no `<img>` exists anywhere", "never drawn") is a **hypothesis to verify** — never a licence to skip or infer. A disproved premise is a manifest **defect**: correct it explicitly.
+
+Instance (`FG-2026-07-25-14`): a passing manifest claimed no `<img>` existed and the resolved thumbnail was never drawn (source drew it in three places), said `30px` for a `26px` numeral, and labelled a chip "Can't vouch" where the source said `Gaps` — caught only by re-reading the source against this path's own shortcut.
+
 ### MANIFEST.2. Build `{design_components}` + catalog from the grid scaffold
 
 The manifest's **Grid scaffold** has one row per `(frame, section)` — already the unit step-03 grids over. Map each scaffold row into `{design_components}` and the flat `{css_property_catalog}`:
@@ -590,7 +609,11 @@ Both paths converge here. `{design_components}` (with embedded `.properties` per
 
 **The two stores must agree.** The same property rows appear in BOTH `{design_components}[name].properties` AND `{css_property_catalog}` — they are different shapes of the same data, not parallel writes that could drift. Step-03 reads via `{design_components}[name].properties` (component-by-component for the comparison grid); the flat catalog exists for SHARED's counts and as a defensive sanity store. If the two ever disagree, the per-component embedding is canonical.
 
-### SHARED.1. Verify the catalog is non-empty
+### SHARED.1. Verify the catalog is non-empty — necessary, NOT sufficient
+
+**Non-empty is a floor, not a grain check.** A prose-only manifest yields a non-empty `{css_property_catalog}` — every section still produces a row, the rows just carry prose — so this check passes on exactly the input MANIFEST.1a exists to catch. The two are a pair: **SHARED.1 proves rows exist; `{manifest_grain}` proves they carry values.** Never read a green SHARED.1 as "value-exact."
+
+On the manifest path, also assert before leaving this step: `{manifest_grain}` is set (absent ⇒ `summary`); if it claims `value-exact` then `completeness.sections_missing_property_rows` is **empty** — if not, the manifest is internally inconsistent (`design-ingest` step-03 §2a should have halted), so downgrade to `partial`, re-read the listed sections, and disclose it in SHARED.2; and on `partial`/`summary` the required re-read has actually happened *here*, not deferred to step-03 where no source remains in context.
 
 If `{css_property_catalog}` is empty, that is a step-1 failure regardless of input kind. Halt with:
 
@@ -703,6 +726,13 @@ Design ingested ({input_kind}):
   source:                 {design_url or design_dir}
   primary file:           {design_file}
   bundle conformance:     {bundle_conformance}   ← SHARED.1b: pass | UNVERIFIED(reason) | warn(composition). A hard HALT (frame/shell miss) exits BEFORE this summary.
+{if input_kind == "ingest_manifest":}
+  manifest grain:         {manifest_grain}   ← MANIFEST.1a: value-exact | partial | summary (absent field ⇒ summary). Says which half of this path actually ran.
+  source re-read:         {none (value-exact) | "REQUIRED + done — N section(s): <list>"}   ← on partial/summary the value read is a required step, not a fallback; a run reporting `summary` with NO re-read has not verified treatment
+{if completeness.sections_missing_property_rows and manifest_grain == "value-exact":}
+  ⚠ manifest inconsistent: grain claims value-exact but {n} section(s) are listed missing property rows → DOWNGRADED to partial and re-read (design-ingest step-03 §2a should have halted on this)
+{end if}
+{end if}
 {if input_kind == "synthesize_bundle":}
   page_mode:              {bundle_manifest.page_mode}
   screens:                {comma-separated bundle_manifest.screens}
