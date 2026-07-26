@@ -1501,8 +1501,8 @@ class: routing-contract
 scope: fork
 target: custom/workflows/implement/design-implement/steps/step-04-apply-and-deliver.md
 marker: "run_completion_mode"
-state: open
-routing: recorded
+state: partly
+routing: in-progress
 owner: fork-maintenance
 distribution: "sync-bmad-workflows.sh (all 14 targets)"
 ```
@@ -1549,6 +1549,16 @@ green rows that were never really compared**. The `~10–12 sections` count sitt
 objective and checkable; the feeling is not.
 
 ### Work
+
+> **[partly resolved 2026-07-26 — items 1, 3 and 4 SHIPPED in the fork; item 2 shipped machine-local only.]**
+> `step-04` §5a.3 now makes the section COUNT the primary trigger with the self-assessment demoted to an
+> early-stop, adds `{checkpoint_reason}`, and adds §5a.5 making a checkpointed pass with unapplied rows
+> OWNER-VISIBLE residue — explicitly a THIRD state, not relabelled `owner_gated_residue`. The §9 report
+> now leads with `⚠ NOT FINISHED … NOTHING WILL RESUME THEM ON ITS OWN` instead of burying it after the
+> merge line. **The surfacer (item 2, the load-bearing half) is `.claude/scripts/find-pending-checkpoints.sh`
+> wired at SessionStart in cash-recovery — it found the real `/inbound` 17/28 case on first run, but it is
+> MACHINE-LOCAL and does NOT ship.** Owed: distribute the scanner (or a fork equivalent), and re-check
+> whether the prose tier alone holds in the 13 projects that will not have it.
 
 **OWNER DECISION TAKEN 2026-07-26 (Mason, "y"):** a checkpointed pass holding unapplied rows **stops
 being classified `agent-resumable` and becomes owner-visible residue.** *"An agent will get to it"* was
