@@ -301,3 +301,5 @@ This is a **soft warn, not a halt** (symmetric with the `ambiguous` case) — th
 ## EXECUTION
 
 Read fully and follow: `{project-root}/_bmad/bmm/workflows/implement/design-implement/steps/step-01-ingest-design.md` to begin.
+
+**Step 01 is a ROUTER — read it, then ONE path file, then return to it.** The three ingestion paths live in their own files so a run loads only the one it executes: `step-01a-ingest-url.md` (`URL.*`) · `step-01b-ingest-bundle.md` (`BUNDLE.*`) · `step-01c-ingest-manifest.md` (`MANIFEST.*`). `§SHARED` and the success/failure criteria stay in `step-01-ingest-design.md`, which is where every path converges and where the gates run. **Citations above are unchanged by the split** — the section ids were not renamed, so `step-01 §SHARED.1a` is still in step-01, and `step-01 URL.1b` / `URL.3a` / `URL.4` now resolve inside `step-01a`; step-01 carries a citation legend mapping each prefix to its file.
