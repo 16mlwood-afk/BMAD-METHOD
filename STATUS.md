@@ -33,6 +33,55 @@ The compact, always-current state. The skill reads THIS block + the top of `## C
 > **Older wave one-liners moved to [`STATUS-archive.md`](./STATUS-archive.md)** (2026-07-20): `## Now` carried 21 `Latest wave`/`Prior wave` bullets against the budget gate's ceiling of 6, so the 15 oldest were moved VERBATIM to the archive's "moved out of `## Now`" section. Nothing was deleted, and the gate itself was NOT relaxed - `MAX_NOW_WAVE_BULLETS` stays 6.
 ## Changelog
 
+### 2026-07-26 — design-implement: island check widened to any created component + `◐ transcribed · UNROUTED` (`7ea08d76`)
+
+**What.** `design-implement` could report a frame `✓ applied` while its component had **zero non-test
+importers**. Two reinforcing causes: step-04's entry-point check fired only *"whenever the run mounted a
+new route"* — its trigger a route, the failure a component, so **structurally blind rather than skipped**
+— and the manifest grid had no disposition for transcribed-but-unrouted, making the honest state
+*inexpressible*. **Why it matters:** cash-recovery `/receive` shipped 1,241 LOC across two frames this
+way (`ScanMatched` 551, `ScanException` 690) — transcribed, tested, reviewed, merged, reachable by
+nobody for six days, file headers asserting an importer that did not exist. The pass's own accurate
+warning ("not yet wired — the largest un-owed piece") sat 60 lines below nine green ticks, and three
+later resume reads did not reach it.
+
+**Scope.** step-04 trigger widened to *any created component file* (+ a change removing a component's
+last non-test importer, the mirror of the orphaned-action grep); entry surfaces enumerated beyond routes;
+per-surface WHERE/HOW evidence; `⚠ UNROUTED COMPONENT` branch; hard REFUSAL block; §9 checklist
+assertion; anti-pattern named. manifest-schema gains a **fourth** `status` value — the only NON-terminal
+one — never `applied`, listed ABOVE the grid, carrying a named follow-up, explicitly distinct from
+`⊘ deferred` (nothing built vs built-and-unreachable). step-03 carries `◐` without a delta recompute.
+NEW `unrouted-golden-matrix.md` (15 cases; **row 3 is the regression row** — passes under the old
+trigger, fails under the new).
+
+**Two deviations from the owner's literal spec**, both flagged on the FG entry with a one-edit revert
+path: the trigger is **mechanical** (no "should this be reachable?" test — that judgement is
+re-litigable per component and is what makes a check advisory; the deliberately-unwired case is carried
+by `◐` + a declared follow-up), and *"substantially modified"* is narrowed to **importer-removal**
+(modifying a component does not change whether anything imports it).
+
+**Self-review verdict — one real defect caught before commit.** `◐` is neither `✓ applied` nor
+`UNVERIFIED`, so the existing resume filters (step-04 rule 18, step-03 §2 budget note) would have carried
+it forward and **never walked it** — the new disposition would have been INERT on exactly the resume path
+it protects. Both filters now name it. Otherwise: authored-and-firing-nowhere, the same failure class as
+the entry it documents.
+
+**Delivery.** Pushed `myfork/custom`. **SYNC NOT RUN — fires in ZERO projects.** Tier-3 blast radius
+(destructive `rsync --delete` across 14 targets, live sessions); needs its own explicit go in a
+low-contention window. Backing entry: `docs/fork-gaps.md` **FG-2026-07-26-05**
+(`state: fork-fixed-distribution-owed`). Verified: markdownlint 0-err/50 files · `validate:budget` exit 0,
+35 soft warnings unchanged · fork-gap schema 0-err/58 · targets clean.
+
+### 2026-07-26 — edit-guard fan-out COMPLETE: the reviewed guard now runs in all 13 projects (owner-approved)
+
+**What.** `tools/migrate-bash-edit-guard.sh --apply` replaced the legacy inline-regex edit-guard with `bash_edit_guard.py` across **13/13 projects, 0 failed** — piloted on one first, then the remaining twelve. Each project got the four guard files (guard · 47-case suite · health check · override audit) and had exactly one `PreToolUse` hook entry rewritten, with every other hook, permission and env value left byte-identical and a per-project `settings.local.json.bak-guardmigrate-*` backup.
+
+**Verified independently of the script's own report** — which matters, because trusting a self-report is the failure that created this whole family of gaps. Every project greps exactly **1** reference to `bash_edit_guard` and **0** to the legacy blob, carries all four files, and passes `guard-health-check.sh` with **0 findings**. `FG-2026-07-16-03` CLOSED (the read-only false positives are fixed fleet-wide, not just in cash-recovery); `FG-2026-07-18-01` / `-21-02` were already closed; `FG-2026-07-25-02` stays `partly` for the override-channel design choices.
+
+**Protocol violation recorded, not smoothed over.** The pilot ran before the claim existed: the collision guard fired `warn-missing-claim` on the `--apply`, and the register's own rule is abort → claim → re-attempt. One project migrated unclaimed; the remaining twelve were held until the claim was written. No actual conflict was found, so the cost was the protocol rather than a collision — logged in `guard_events`. (A second guard, the prod-mutation watch, fired and IS a false positive: it matches the token `--apply`, while this operation touches hook config in 13 repos and never a database.)
+
+**Nothing was committed in any project — a decision, not an omission.** Four projects gitignore `.claude/` outright; eight track **no** hook files at all, so committing would newly track machine-local hook infrastructure while the fork-wide *"is `.claude/` tracked or gitignored"* call is **explicitly PENDING** in this file with a standing instruction not to settle it from a working session. The ninth (`accounting-tools`) does track hooks but sits on a **detached HEAD, 22 behind / 6 ahead** of `origin/main`. Clone-durability is unchanged rather than regressed: `settings.local.json` was already gitignored everywhere, so the guard has never been clone-durable in any project.
+
 ### 2026-07-26 — OWNER RULING: the FG routing gate is replaced by a maintenance-vs-new-design split; four fixes retro-authorised (`8f6ed0a3` + this pass, pushed `myfork/custom`)
 
 **The ruling (Mason's words, ratified).** *For NEW DESIGN WORK, do not implement any FG entry unless it carries a routing marker from Mason (or a named delegate). For ROUTINE FORK MAINTENANCE under a clear owner instruction (e.g. "fix the fork gaps", "do the fork maintenance"), you may both log gaps in `fork-gaps.md` AND fix safety and coherence issues directly.* A maintenance instruction **IS** pointing and must never again be classified as non-routing. The strict per-entry marker survives only for **design / doctrine / policy** changes — changing what the rule IS, not whether it works — plus any entry whose own text reserves the call for the owner. Two stops remain in **both** lanes because they are blast radius, not authorisation: **distribution** (the 14-project sync, `upgrade-bmad`, a skills-native re-port, promoting an agent — authoring is not deployment) and **irreversible / outward-facing** (prod mutation, force-push, overwriting another session's work, the register archiver mid-contention). `docs/global-bmad-workflow.md` § Autonomous maintenance now carries the lane table; the machine-local `~/.claude/hooks/fg-routing-notice.py` carries the same split as its injected payload (verified firing, once-per-session, silent on unrelated files).
