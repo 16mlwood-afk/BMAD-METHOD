@@ -1493,6 +1493,95 @@ owner: fork-maintenance
 
 ---
 
+## 2026-07-26 — a checkpointed design-implement pass declares itself unfinished into a ledger NOTHING reads, so the remainder is owned by no one and silently never resumes
+
+```yaml
+id: FG-2026-07-26-02
+class: routing-contract
+scope: fork
+target: custom/workflows/implement/design-implement/steps/step-04-apply-and-deliver.md
+marker: "run_completion_mode"
+state: open
+routing: recorded
+owner: fork-maintenance
+distribution: "sync-bmad-workflows.sh (all 14 targets)"
+```
+
+### Incident
+
+**Observed end-to-end, on a real bundle.** `/inbound` (Claude Design `a85e0da5`, *Clerk Inbound
+Board*) was applied as **pass 1 of 2**: 17 of 28 rows applied and verified, PR #395 merged, rows
+16–27 (both §13 drawers) deferred at a frame boundary with `run_completion_mode: checkpointed` and an
+exact resume command written into the grid. Everything the workflow requires, it did.
+
+**A full day later nothing had resumed it, and the owner did not know it had stopped.** He asked
+directly: *"I don't know what sessions stopped. I don't know why they didn't prompt me."*
+
+**The session was FORBIDDEN from prompting him.** Two rules combine:
+
+- step-04 §1: *"A checkpointed pass is a CLEAN exit that still delivers the slice it built — it is not
+  a failure and **not a wait-for-input halt**."*
+- step-04 §9 / STD-COMPLETION-001: remaining frames are *"**agent-resumable** via the command above (a
+  budget checkpoint, **NOT** `owner_gated_residue`); name `owner_gated_residue` only for blockers the
+  owner alone can clear (a credential, a prod mutation)."*
+
+Both are individually reasonable. Together they say: *don't stop, don't ask, an agent will pick it
+up.* **`grep -rn run_completion_mode custom/` returns matches in design-implement's own files and
+NOWHERE else** — no hook, no SessionStart surfacer, no `sprint-status`, no scope register, no desk
+banner reads it. So "agent-resumable" names no owner, no trigger, and no surface. The pass wrote *"I
+am not finished"* into a ledger nothing watches.
+
+**The classification is true and its outcome is false.** It is genuinely not owner-gated — the owner
+has nothing to clear, the drawers are *"fully buildable, no backend work required"*. But
+`agent-resumable` is not a state anything acts on; in practice it means **unowned**. Same shape as the
+"distribution owed has no OWNER" gap: work classified as somebody's, belonging to nobody.
+
+**Aggravating — the stop REASON is not recorded either.** The grid stores `checkpointed` and *"stopping
+at a frame boundary with the primary board delivered"*, i.e. WHAT, never WHY. Reconstructing the
+trigger required reading the workflow's budget rule and inferring from the section count. A reader of
+the ledger alone cannot tell a budget checkpoint from a blocked one.
+
+**Secondary finding — the checkpoint trigger is a self-assessment of one's own degradation.** §5a.3
+asks: *"can I apply AND re-verify another full frame without my recall of earlier frames' exact values
+degrading?"* That is the single judgment a degrading context makes worst, and the failure it guards is
+silent by construction: a degraded pass does not error, it **misremembers exact values and reports
+green rows that were never really compared**. The `~10–12 sections` count sitting beside it is
+objective and checkable; the feeling is not.
+
+### Work
+
+**OWNER DECISION TAKEN 2026-07-26 (Mason, "y"):** a checkpointed pass holding unapplied rows **stops
+being classified `agent-resumable` and becomes owner-visible residue.** *"An agent will get to it"* was
+false for a full day.
+
+1. **Reclassify (the decision above).** `run_completion_mode: checkpointed` + `rows_deferred > 0` ⇒
+   surface it to the owner in the run report and in the completion disposition. Keep it distinct from
+   `owner_gated_residue` — the owner has nothing to *clear* — so it likely wants a third value
+   (`agent_resumable_unowned` / `owner_visible_residue`) rather than being forced into the existing
+   binary. **Do not simply relabel it `owner_gated_residue`**: that would make every budget checkpoint
+   look like a credential blocker and destroy the distinction that field exists for.
+2. **Build the surfacer (the cheap half, and the one that actually closes the silence).** Scan
+   design-implement grids / ingest manifests for `run_completion_mode: checkpointed` with unapplied
+   rows and surface them at SessionStart, the way the deadline banner already does. One script; turns
+   "silently swallowed" into a standing visible item. **This is the load-bearing fix** — the
+   reclassification is what makes it correct, the surfacer is what makes it happen.
+3. **Record the stop REASON, not just the mode.** One field: `checkpoint_reason:`
+   (`section-budget` | `recall-degrading` | `frame-scope` | …). Cheap, and it is exactly the ambiguity
+   that made the owner ask.
+4. **Make the objective trigger primary.** Section count is the gate; *"recall feels lossy"* is an
+   early-stop only, never the sole basis for continuing. **Do NOT loosen the ~10–12 budget** — it is
+   defensible and the failure it prevents (confidently-green rows never actually compared) is the
+   worst failure this workflow has. Three passes over 28 rows is cheap next to shipping false parity.
+
+**Explicitly NOT proposed:** bigger passes. The owner asked whether the one-heavy-frame limit should be
+reviewed; the answer is that the budget is right and the *handoff* is what is broken.
+
+**Watch:** the general form is *"a workflow records an unfinished state in a place nothing reads."*
+The URL-path apply ledger (FG-2026-07-20-07) is the same family. If a third appears, the fix is a
+generic pending-work surfacer, not another per-workflow field.
+
+---
+
 ## 2026-07-26 — `[CORRECTED — mis-attributed on first write; real cause already diagnosed and being fixed in-flight]` a PATH-SCOPED commit hands hooks a temp `GIT_INDEX_FILE`, and the test sandbox inherits it
 
 ```yaml
@@ -2137,12 +2226,26 @@ the fork and NOT yet true anywhere downstream.** Do not read this Resolution as 
 **Verification:** markdownlint 0 errors across the 3 files; `validate-context-budget` 0 blocking.
 Regenerated `custom/skills-native/` ports (gitignored build artifact) carry the new text.
 
-**Follow-up owed, named rather than left as a landmine:** the edit pushed
-`design-implement/steps/step-01-ingest-design.md` from 90,081 → 94,071 bytes — **929 bytes under the
-95,000 hard ceiling**, so the *next* addition to that step will block the pre-commit gate. It wants a
-one-job-per-step split (the URL path and the MANIFEST path are the natural seam). Compression was
-already applied once here (the grain detail lives in `manifest-schema.md` and step-01 points at it);
-the next editor should split, not compress further.
+**Follow-up — RESOLVED, same session (`2f1508f6`).** The edit had pushed
+`design-implement/steps/step-01-ingest-design.md` from 90,081 → 94,071 bytes, leaving **929 bytes**
+under the 95,000 hard ceiling, so the next addition would have blocked the pre-commit gate. Split
+one-job-per-step on the natural seam — the three ingestion paths are mutually exclusive, yet every
+run loaded all three:
+
+| file | contents | bytes |
+|---|---|---|
+| `step-01-ingest-design.md` | router + `SHARED` + success/failure | 38,121 |
+| `step-01a-ingest-url.md` | `URL.1`–`URL.7` | 41,096 |
+| `step-01b-ingest-bundle.md` | `BUNDLE.1`–`BUNDLE.6` | 13,386 |
+| `step-01c-ingest-manifest.md` | `MANIFEST.1`–`MANIFEST.4` | 5,998 |
+
+Per-run context: URL 94→79KB, bundle →51KB, manifest →44KB — the largest saving on the manifest
+path, which is the one recommended for large surfaces. Headroom 929 bytes → ~54KB. **Lossless:**
+original lines 39–837 extracted by range and verified byte-identical per file; only the frontmatter,
+the RULES branch line and the INPUT-KIND dispatch were rewritten. **No section was renamed**, so the
+~24 `URL.*` citations in `SHARED`/SUCCESS/FAILURE did not need rewriting — step-01 carries a citation
+legend instead, and `SHARED` deliberately stayed in step-01 so `workflow.md`'s `step-01 §SHARED.1a`
+citations remain correct.
 
 **State stays `open`** until the fan-out lands — per the distribution-owed rule, authoring is not
 delivery.
