@@ -12,6 +12,31 @@ you say "there's no tool for this" or "let's build one", check here first and ru
 
 ---
 
+## Pasted images — the `[Image #N]` unreadable case (recovery path)
+
+**Symptom.** The prompt carries `[Image #1] [Image #2]` and you cannot actually see them: no
+description, no OCR, nothing to reason over. **The failure is SILENT** — nothing errors, so the
+tempting move is to answer from the surrounding text and let the image go unmentioned. Dropping
+screenshots in is a *primary* input mode here (design reviews, portal/shipment captures, error
+screens), not an edge case, and a confident answer built on an image you never saw is the worst
+possible outcome.
+
+**This is a HARNESS limitation, not a fork bug** (`FG-2026-07-15-01`, `owner: harness-vendor`). Nothing
+in this repo can fix the read path. What IS ours is the recovery, and never faking it:
+
+1. **SAY SO IMMEDIATELY, before answering anything.** *"The images came through as `[Image #N]`
+   placeholders — I can't read them."* Never proceed silently on the text alone. Never infer what a
+   screenshot probably showed.
+2. **Ask for a path, not a re-paste.** A file on disk is readable: `~/Downloads/shot.png`, or anywhere
+   the `Read` tool can reach — it renders images. This is usually a one-line fix and is faster than a
+   second paste, which often fails the same way.
+3. **For a web page or app**, prefer Claude in Chrome (below) over a screenshot: the DOM is readable
+   where a pasted pixel buffer is not.
+4. **If the image is genuinely unavailable**, mark the answer **UNVERIFIED — image not read** and name
+   what you would have checked in it. A conclusion is not "supported by a screenshot" you never saw.
+
+---
+
 ## Claude in Chrome
 
 Browser automation that drives the user's live Chrome session (`mcp__claude-in-chrome__*`).
