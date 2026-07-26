@@ -2855,7 +2855,7 @@ state: fork-fixed-distribution-owed
 owner: fork-maintenance
 routing: APPROVED + AUTHORED 2026-07-26 (owner "y", session claude-session-20260726-190747) — DISTRIBUTION NOT RUN
 routing_note: "Owner specified the change 2026-07-26 and HELD it, then approved it the same day. AUTHORED in the fork: step-04 trigger widened, manifest gains a fourth disposition, golden matrix added. DISTRIBUTION (sync to all 14 targets) is a separate Tier-3 action and has NOT run — the change fires in ZERO projects until it does."
-distribution: "sync-bmad-workflows.sh (all 14 targets) — NOT RUN; fires in zero projects until it does"
+distribution: "sync-bmad-workflows.sh (all 14 targets) — NOT RUN; fires in zero projects until it does. BATCHED into the STATUS.md fleet-re-sync STOP item (the single decision point); NO dedicated window for this change. 3 preconditions must pass first — see 'Distribution preconditions' below."
 blast_radius: "design-implement fans out to ALL 14 sync targets (~/.bmad-targets). Changes what every project's apply pass may call 'applied' + adds a manifest enum value existing manifests do not carry."
 ```
 
@@ -2987,6 +2987,29 @@ warnings (unchanged — the widened step added no new budget warning) · `check-
 **zero** projects today. Tier-3 blast radius (destructive `rsync --delete` over possibly-dirty trees);
 needs its own explicit go in a low-contention window. Until then the fork is the only place the new
 trigger and the fourth disposition exist.
+
+### Distribution preconditions (owner-set 2026-07-26) — verify BEFORE the sync, not after
+
+**Owner ruling: this change does NOT get its own sync window.** It is batched into the existing
+fleet-re-sync STOP item in `STATUS.md`, which is the **single decision point** for propagating any
+`custom/` change across the target set. Do not open a second fan-out for one workflow update.
+
+Three checks gate the fan-out. They are recorded here and on the STOP item — not left in a thread —
+because a precondition that lives only in conversation is not read at the moment it matters, which is
+the same failure this entry documents:
+
+1. **Re-verify `unrouted-golden-matrix.md` row 3 against a LIVE project.** Row 3 is the regression row —
+   a component created inside an EXISTING route with no non-test importer. It **passes** under the old
+   trigger and must **fail** under the new one. If it does not fail, the widening is not doing its job
+   and must not fan out.
+2. **Confirm `◐` appears correctly in at least one REAL manifest** — not a fixture — listed above the
+   grid, carrying a named follow-up.
+3. **Confirm `◐` is VISIBLE ON RESUME.** This is the specific way the disposition could still be inert:
+   `◐` is neither `✓ applied` nor `UNVERIFIED`, so a resume filter naming neither would carry it forward
+   and never walk it. The step-03/step-04 filters were patched for exactly this before commit; the check
+   is whether the patch holds in a live run, not whether the text says it does.
+
+Only after all three: `sync-bmad-workflows.sh` across the target set.
 
 ### Implementation note — two risks to settle BEFORE encoding (flagged, not decided)
 
