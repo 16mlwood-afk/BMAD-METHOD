@@ -133,12 +133,23 @@ the manifest is simply the file where getting them wrong is most expensive.
   gitignored `_bmad-output/`) if this session owns it, or left out of the commit entirely.
 - **The same applies to every file, not only manifests.** Never `-A`, never `.`, never a bare
   directory.
-- **Commit in ONE step: `git commit -- <explicit paths> -m …`. Do not `git add` and then commit.**
+- **Commit in ONE step: `git commit -m "…" -- <explicit paths>` (or `-F <msgfile> -- <paths>` for a
+  long message). Do not `git add` and then commit.** **The `--` goes AFTER the options, never
+  before** — everything following `--` is a pathspec, so the earlier `git commit -- <paths> -m …`
+  form printed here parsed `-m` and the message itself as filenames and died with
+  *"did not match any file(s) known to git"*. (Corrected 2026-07-25 after a session hit it verbatim;
+  see `FG-2026-07-25-12`.)
   The gap between the two commands *is* the sweep window: your files sit in the shared index, and
   any session that runs a bare `git commit` in that interval carries them under its own message.
   A path-scoped commit ignores the rest of the index entirely, so it is safe in both directions —
   it cannot scoop a foreign staged file, and a foreign bare commit cannot scoop yours after it.
 - **Caveat, same day: the path-scoped form is currently UNRELIABLE in the fork repo.** `git commit -m … -- <paths>` failed **four consecutive times** with the intermittent `invalid object … Error building trees` naming an unrelated untracked path (`.claude/skills/bmad-example/SKILL.md`), including after a `git read-tree HEAD` ruled out a stale index cache-tree — the object is absent from HEAD, the index, the working tree and the stash list, and `git fsck --connectivity-only` reports no missing reachable object. The plain staged form (`git add <explicit paths>` then `git commit`) succeeded immediately. So in THIS repo, until that failure is root-caused (fork-gaps 2026-07-20, explicitly not root-caused), the working order is: **`git add <explicit paths>` and commit in the very next command, with nothing else staged.** That keeps the sweep window to a second or two instead of eliminating it. Still never `-A`, never `.`, never a bare directory — the narrowing is what matters most, and the one-step form remains correct wherever it works.
+
+  **Counter-evidence, 2026-07-25:** `git commit -F <msgfile> -- <5 explicit paths>` succeeded twice
+  in this repo, in the same session, with another session's edits dirty in the same tree and one of
+  them already staged. So the four-failure caveat above is **not reproducing today** and must not be
+  read as "the one-step form is broken here." Prefer the one-step form; fall back to the two-command
+  order only on an actual `Error building trees`, and say so when you do.
 
   **Evidence (2026-07-25, third firing):** the commit that introduced *this very rule* was written
   as `git add … && git commit …` and was swept mid-window into another session's

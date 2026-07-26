@@ -1711,3 +1711,156 @@ All three are warn/disclose, not gates. The gap is that the URL path is *blind*,
 **Correction to the "Both lanes need the fix" note above.** `custom/skills-native/` is a **GENERATED artifact**, not a second source of record — `tools/port-workflows-to-skills.sh` opens with `rm -rf "$OUT"` and regenerates the whole tree from `custom/workflows/`. So the fix must NOT be hand-written there; hand edits are destroyed on the next port. The lane is nonetheless **already stale independently of this fix** — `URL.1b-i` (the early supersede probe) exists in `custom/workflows/` and is absent from `custom/skills-native/`, i.e. the porter has not been re-run since that edit. That staleness is the distribution job below, not a second authoring job.
 
 **Owed (why `fork-fixed-distribution-owed`, not `closed`):** (1) re-run the porter to refresh `custom/skills-native/` — it is a `rm -rf` + regenerate over 28 workflows and will also sweep in every other in-flight `custom/workflows/` edit, so it belongs in a quiet window, not a contended one; (2) `sync-bmad-workflows.sh` to the 14 targets, which is owner-gated and currently HELD per `STATUS.md`. **Until both run, this clause fires in ZERO projects — including cash-recovery, the skills-layout pilot where the gap was observed.** Authoring is not deployment (`FG-2026-07-25-09`).
+
+---
+
+## 2026-07-25 — the shared-index rule's own remedy is a command that cannot run, and its documented fallback is the hazard the rule exists to remove
+
+```yaml
+id: FG-2026-07-25-12
+class: enforcement
+scope: fork
+target: docs/manifest-contract.md
+marker: "Error building trees — ROOT-CAUSED"
+state: partly
+owner: fork-maintenance
+```
+
+### Incident
+
+**What fought us (fork maintenance, committing a `design-implement` fix while ~4 sessions held the same checkout).** Rule 4a — the mitigation `FG-2026-07-25-01` sharpened after its THIRD firing — prescribes verbatim: *"Commit in ONE step: `git commit -- <explicit paths> -m …`"*. That command **cannot succeed.** Everything after `--` is a pathspec, so git parsed `-m` and the entire commit message as filenames and died with `did not match any file(s) known to git`. The correct form puts `--` after the options (`git commit -m "…" -- <paths>`). Following the doctrine literally produces an error, and the obvious recovery from that error is `git add` then `git commit` — **the exact two-step form the rule exists to forbid.**
+
+**It gets worse one bullet down.** The same rule then carries a caveat saying the *correct* form is "currently UNRELIABLE in the fork repo" (four consecutive `Error building trees` failures, never root-caused) and instructs the reader to fall back to `git add` + commit. So a session that survives the syntax error is then told, by the same rule, to do the hazardous thing anyway. Today's counter-evidence: `git commit -F <msgfile> -- <5 paths>` succeeded **twice**, in this repo, in this session, with another session's edits dirty in the tree and one of them already staged.
+
+**Why structural, not a typo.** This is a mitigation whose *deterministic tier is a copyable command*, and the command was never executed before being canonised — it was written into the register and the contract in the same wave that diagnosed the incident. Nothing in the fork tests a prescribed shell recipe, so a doctrine file can ship an unrunnable remedy indefinitely and read as fully mitigated. Same shape as `FG-2026-07-25-09` (a hook that fires in zero projects while its tiering table says otherwise): **the artifact most likely to be cited as the fix is the one furthest from having been run.**
+
+### Work
+
+**Done this session (`docs/manifest-contract.md` 4a):** the recipe is corrected to `git commit -m "…" -- <paths>` / `-F <msgfile> -- <paths>` with an explicit note that `--` follows the options; the four-failure caveat now carries today's counter-evidence and is demoted from "unreliable here" to "fall back only on an actual `Error building trees`, and say so when you do."
+
+**Owed (why `partly`):**
+
+1. **Root-cause or retire the `Error building trees` caveat.** It is the only thing still pushing sessions to the two-step form, it has never been root-caused (`2026-07-20`), and it did not reproduce today. Leaving it in place unexamined means the hazard-reopening advice stays live on the strength of one unexplained afternoon.
+2. **Nothing verifies a prescribed command.** The general form is *"doctrine ships an executable recipe that no test executes."* Cheapest honest tier: a validator that extracts fenced/inline `git …` recipes from `docs/*.md` and at minimum parses them for option-after-`--` ordering. A full behavioural test is not worth it; an argument-order lint would have caught this one exactly.
+
+**Marker note:** `Error building trees — ROOT-CAUSED` is a FIX SENTINEL for owed item (1) — it does not exist yet and appears in `docs/manifest-contract.md` only when that caveat is explained or retired. The syntax half is already corrected (see Done above).
+
+**Watch:** a second unrunnable prescribed command anywhere in the fork docs makes (2) overdue rather than optional.
+
+**Priority: medium.** Nothing was lost — the error is loud and immediate. But this rule is the whole mitigation for a hazard that has now fired three times on the fork's own backlog and workflow files, and as written it fails on first use and then recommends the failure mode.
+
+---
+
+## 2026-07-25 — two sessions worked the same fork-gap entry concurrently, and the collision nudge built for exactly that watches a namespace the register is not in
+
+```yaml
+id: FG-2026-07-25-13
+class: routing-contract
+scope: fork
+target: check-fork-authoring-collision.sh
+marker: "fork-gaps entry-id collision key"
+state: open
+owner: fork-maintenance
+```
+
+### Incident
+
+**What fought us.** While authoring the `FG-2026-07-25-11` fix, another session was editing **the same register entry** — between two of my reads it corrected the entry's `target:` path and appended a "Both lanes need the fix" paragraph. Nothing warned either side. I found it only because a `Read` returned content my previous `Read` of the same range did not contain, and the edit-conflict error that followed was the first signal. Cost this time was small (their paragraph was directionally right; one claim in it needed correcting — it would have sent a session to hand-edit the GENERATED `custom/skills-native/` tree). Cost next time is the 2026-07-20 class: two sessions authoring the same fix into the same step file.
+
+**Why structural.** `check-fork-authoring-collision.sh` exists **for precisely this** — its own header says *"Two cold sessions pointed at the same gap can both author the same new standard … and collide."* But it fires only on the fork's `custom/workflows/shared/` standards namespace. **`docs/fork-gaps.md` is not in it** — and that file is (a) the fork's highest-contention artifact, (b) *the thing sessions point at when they say "pointed at the same gap"*, and (c) the file whose per-entry granularity makes silent concurrent edits hardest to notice, because two sessions editing different entries look identical to two sessions editing the same one. The register recently gained a write-time **schema** gate, which makes the coverage read as strong; the schema gate is orthogonal to concurrency and says nothing about who else is in the file.
+
+**Second, sharper miss:** the natural collision key here is not the file, it is the **entry id**. Two sessions in `docs/fork-gaps.md` on different ids are fine and should not be warned; two on the same id is the real event, and it is mechanically detectable from the diff hunks.
+
+### Work
+
+**Proposed (not actioned — one gate at a time, and this one wants the id-level key, not a path bolt-on).**
+
+1. Add `docs/fork-gaps.md` (and `STATUS.md`) to the nudge's watched set, keeping the existing per-session ledger so a session never flags its own edits.
+2. **Key on the entry id, not the file.** Resolve which `FG-…` entries the pending edit touches and warn only when another session's uncommitted diff touches the same id — otherwise the warn fires on every register edit and gets tuned out, which is worse than silence.
+3. Awareness tier only, same as today. Never block: legitimate parallel work on different entries is the normal case.
+
+**Marker note:** `fork-gaps entry-id collision key` is a FIX SENTINEL — it appears in the script only when (2) lands, so a grep for it is a real signal rather than a match on the header comment that describes the problem.
+
+**Watch:** if a second duplicated authoring lands from two sessions on one entry before this ships, the id-level key is overdue.
+
+**Priority: medium.** No loss this session, and the register survived because both edits happened to be compatible. But the failure it guards against — two full build cycles thrown away — has already fired five times in this workspace on the project side, and the fork's register is the one place sessions demonstrably converge.
+
+## 2026-07-25 — the ingest-manifest path promises a value-exact denominator its own schema never requires, so design-implement re-reads the source anyway — and the manifest's lossy summary was wrong in three places
+
+```yaml
+id: FG-2026-07-25-14
+class: workflow-contract
+scope: fork
+target: custom/workflows/implement/design-ingest/manifest-schema.md
+marker: "ingest manifest carries value-exact property rows"
+state: open
+owner: fork-maintenance
+```
+
+### Incident
+
+**What fought us.** `design-implement` ran `input_kind: ingest_manifest` against a real, gated,
+completeness-passing manifest (`design-ingest-clerk-inbound.md`, 10 frames / 23 sections /
+28 grid rows). Step-01 **MANIFEST.2** says to build the property catalog from the scaffold —
+*"`.properties` ← the row's `component×property rows`"* — and the path is sold as *"No download,
+no extract, no per-component re-catalog."* **The manifest had no per-property rows at all.** It
+carried section prose (`"46px, white, hairline base"`, `"30px"`, `"6/page"`) plus one summarized
+`tokens:` block. That is a fine *section inventory* and a genuinely good completeness gate; it is
+not a value-exact denominator, so the run had to mirror `InboundBoard.dc.html` (52KB) and read it
+directly to get exact CSS — i.e. do the ingest the manifest path exists to avoid.
+
+**Why that is structural, not one bad manifest.** `manifest-schema.md` does not *require* a
+value-exact property row per section, and `design-ingest` step-02's fan-out is free to emit prose
+anchors instead. So the producer is compliant and the consumer's stated contract is unmeetable at
+the same time. Nothing detects the mismatch: step-01's only guard is SHARED.1 (*catalog non-empty*),
+which a prose-anchor manifest satisfies.
+
+**The sharper harm — the summary was WRONG, and confidently so.** Diffing against the source turned
+up three errors in this manifest:
+
+1. Finding **F2** asserts *"No `<img>` element exists anywhere in the component … the
+   resolved-thumbnail treatment is never drawn."* The source draws one in **three** places, inside
+   `<sc-if value="{{ r.img }}">`. F2 then reasons from that to *"design-implement would have to
+   **infer** the resolved treatment"* — an inference-hazard warning derived from a false premise.
+2. `tokens.type_scale.primary_numeral: 30px`. The source says **26px**.
+3. Section 8 prose names the fourth filter chip *"Can't vouch"*. The source's `filters` array says
+   **`Gaps`**.
+
+A manifest that is merely *incomplete* degrades safely — the consumer notices and re-reads. A
+manifest that is **lossy but confident** is worse than absent: its whole purpose is to be trusted
+in a fresh context where the source is not loaded, and a session that honours MANIFEST.2 as written
+ships 30px, the wrong chip label, and a fabricated thumbnail treatment, with every gate green.
+This run only caught it because it re-read the source **against** the contract's advice.
+
+**Not the sub-agent caveat.** Step-01 URL.1b already notes a manifest *"already carries value-exact
+per-property rows"* as what makes MCP-free delegation safe — the contract *assumes* the property
+grain exists. This gap is that assumption never being made a requirement or a check.
+
+### Work
+
+**Proposed (not actioned — cross-workflow contract change, wants the owner's call on grain).**
+
+1. **Decide the grain and write it down.** Either (a) `design-ingest` step-02 MUST emit a
+   value-exact `component×property` row per section and `manifest-schema.md` requires it, or
+   (b) the manifest is explicitly a *section-inventory + completeness gate*, and
+   design-implement's MANIFEST.2 stops claiming it can build the CSS catalog from the scaffold —
+   instead declaring the source re-read as a required, budgeted step of the manifest path.
+   **(b) is the cheaper and probably more honest option**: value-exact rows for 28 sections is
+   most of the ingest cost, and re-reading one 52KB frame document was not the expensive part —
+   *believing the summary* would have been.
+2. **Make the mismatch detectable.** A `manifest_grain: sections | properties` field, set by
+   `design-ingest` and read by step-01, so the consumer branches instead of assuming. Cheap,
+   and it kills the silent case.
+3. **Stop the manifest restating source facts it cannot keep true.** Findings/token blocks that
+   paraphrase the design (a px value, a label, "no `<img>` exists") are the drift surface. Either
+   carry them with a source line-reference, or scope the manifest to structure and let the source
+   own values — reference-not-restate, applied to a generated artifact.
+
+**Watch:** these three errors were caught only because this run re-read the source *contrary to*
+the path's stated shortcut. If a future manifest-path run reports a clean grid without ever opening
+the design file, that is the failure mode landing silently — and the tell is a pass whose only
+value evidence is the manifest's own prose.
+
+**Priority: high.** The manifest path is the recommended route for exactly the large surfaces where
+nobody will re-read the source, and it is the route the `design-handoff` hook steers large bundles
+into.
