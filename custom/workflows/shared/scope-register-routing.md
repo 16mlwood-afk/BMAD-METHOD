@@ -37,6 +37,38 @@ instantiation of that contract's "name the residue, never drop it silently".
 
 ---
 
+## 0. Appending a row (read this FIRST — it is the whole compliance cost)
+
+This standard MANDATES an append from every shaping session, and the session it reaches is a cold
+one at the END of other work, with the least context to spend. So the append affordance comes before
+the rules. **Do not reverse-engineer the format from existing rows** — they are 400–2000 characters
+wide, the header sits ~70 lines above them, and the newest rows are the longest.
+
+```bash
+node tools/check-scope-register.js --register {planning_artifacts}/scope-register.md --new-row
+```
+
+It prints a correctly-columned skeleton for **both** tables plus the next free `SR-nn`, derived from
+the register's LIVE header — so a register that grows a column still gets a correct skeleton.
+
+**The pairing nothing else tells you: there are TWO tables and a row belongs in BOTH.** A short
+routing table (`id | route | next_artifact | state`) and a wide intake table
+(`id | item | category | discovery-source | trigger | evidence | disposition | …`). They are joined
+by `SR-nn` and by nothing else — appending to one and not the other is the single most common way a
+row is born inert. Minimal well-formed pair:
+
+```markdown
+| SR-36 | R2-bounded-local | implementation-artifacts/quick-spec-thing.md | SHAPED |
+
+| SR-36 | One-line item | design | audit 2026-07-26 | — | link/quote | pending | — | — | — | — |
+```
+
+Then check what you wrote (`--audit`). Three rules the skeleton cannot enforce: `route: TBD` is legal
+only while `disposition: pending` and owes the named unblocking decision (§2); `R5-parked` owes all
+three activation parts (§3); and "recorded in the register" is REGISTERED, not done (§4).
+
+---
+
 ## 1. Scope
 
 Applies to every write to a project's scope register (canonically
@@ -278,6 +310,26 @@ the registered-but-inert population. Run it: at `sprint-status`, at `maintenance
 on the project's SessionStart surfacer as a one-line count (`INERT SCOPE: N rows`) so a cold session
 sees it without asking. A non-zero count is not automatically wrong — it is the backlog of scope
 that has been agreed and not shaped, which is exactly the number that was previously invisible.
+
+**A trigger with nothing that fires it is a note, not a mechanism.** This section named three
+trigger points for ~4 weeks while **none of the three invoked the sweep**, so it only ran when
+somebody already suspected a problem — the exact failure this standard exists to kill, reproduced one
+level up. Now wired for real at `sprint-planning` step 5 (report-only, right before the completion
+summary); `maintenance-triage` intake and the SessionStart surfacer are still prose-only and
+therefore still unfired — treat them as owed, not as covered.
+
+**The reverse signature — DELIVERED-BUT-PENDING.** The sweep also reports a row still `pending`
+whose `next_artifact` (or the story id its prose names) ALREADY EXISTS on disk. This is the more
+expensive direction, because it is invisible: rows move ONTO `pending` automatically and off it only
+by a human remembering, so `pending` is a one-way ratchet and delivered-but-unclosed rows accumulate
+monotonically. Nobody notices, because a stale `pending` row is indistinguishable **by inspection**
+from a real open decision — the owner reads four blockers on their desk that are actually one.
+Measured on the first real register: 3 fires, all three genuine (SR-07 answered by a story merged
+~4 weeks earlier, SR-08 by its fixture retirement, SR-12 by a decision resolved the same day), 0
+false positives across 35 rows. **The detector deliberately fires only on a parsed `pending`** — an
+UNPARSED disposition is not a pending one, and the first cut, which treated null as pending, produced
+11 false blockers to catch those 3. **It never flips a disposition**: the flip stays human because
+owner-only-off-`pending` is the audit anchor. The gap was detection, not authority.
 
 **Golden suite.** `evals/scope-register-routing.md` — cases drawn from real registered rows that
 must route *differently*, scored on `route` + `next_artifact` + (for R5) the three activation parts.

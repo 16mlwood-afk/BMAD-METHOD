@@ -26,14 +26,19 @@ function ok(name, cond) {
   cond ? passed++ : failed++;
 }
 
+// Sandbox git MUST NOT inherit the outer repo's git env — see test/lib/clean-git-env.js.
+// Under a path-scoped commit the parent's GIT_INDEX_FILE is a TEMP index, and an inherited
+// `git add` here writes sandbox blobs into the real commit's tree.
+const { cleanGitEnv } = require('./lib/clean-git-env');
+
 function git(cwd, args) {
-  return execFileSync('git', args, { cwd, stdio: 'pipe', encoding: 'utf8' });
+  return execFileSync('git', args, { cwd, stdio: 'pipe', encoding: 'utf8', env: cleanGitEnv() });
 }
 
 // Returns { code, out } of the preflight run inside `cwd`.
 function preflight(cwd) {
   try {
-    const out = execFileSync('bash', [SCRIPT], { cwd, stdio: 'pipe', encoding: 'utf8' });
+    const out = execFileSync('bash', [SCRIPT], { cwd, stdio: 'pipe', encoding: 'utf8', env: cleanGitEnv() });
     return { code: 0, out };
   } catch (error) {
     return { code: error.status, out: `${error.stdout || ''}${error.stderr || ''}` };

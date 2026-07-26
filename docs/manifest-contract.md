@@ -143,13 +143,33 @@ the manifest is simply the file where getting them wrong is most expensive.
   any session that runs a bare `git commit` in that interval carries them under its own message.
   A path-scoped commit ignores the rest of the index entirely, so it is safe in both directions —
   it cannot scoop a foreign staged file, and a foreign bare commit cannot scoop yours after it.
-- **Caveat, same day: the path-scoped form is currently UNRELIABLE in the fork repo.** `git commit -m … -- <paths>` failed **four consecutive times** with the intermittent `invalid object … Error building trees` naming an unrelated untracked path (`.claude/skills/bmad-example/SKILL.md`), including after a `git read-tree HEAD` ruled out a stale index cache-tree — the object is absent from HEAD, the index, the working tree and the stash list, and `git fsck --connectivity-only` reports no missing reachable object. The plain staged form (`git add <explicit paths>` then `git commit`) succeeded immediately. So in THIS repo, until that failure is root-caused (fork-gaps 2026-07-20, explicitly not root-caused), the working order is: **`git add <explicit paths>` and commit in the very next command, with nothing else staged.** That keeps the sweep window to a second or two instead of eliminating it. Still never `-A`, never `.`, never a bare directory — the narrowing is what matters most, and the one-step form remains correct wherever it works.
+- **RESOLVED 2026-07-25 — the `Error building trees` caveat is retired, root cause found and fixed.**
+  For weeks this bullet said the one-step form was "UNRELIABLE in the fork repo" (four consecutive
+  `error: invalid object … for '.claude/skills/bmad-example/SKILL.md'` → `Error building trees`,
+  explicitly never root-caused) and sent sessions back to `git add` + commit — **re-opening the exact
+  sweep window this rule exists to close.** The cause was never git and never corruption:
 
-  **Counter-evidence, 2026-07-25:** `git commit -F <msgfile> -- <5 explicit paths>` succeeded twice
-  in this repo, in the same session, with another session's edits dirty in the same tree and one of
-  them already staged. So the four-failure caveat above is **not reproducing today** and must not be
-  read as "the one-step form is broken here." Prefer the one-step form; fall back to the two-command
-  order only on an actual `Error building trees`, and say so when you do.
+  `git commit … -- <paths>` is a PARTIAL commit, so git builds a **temporary index** and exports it
+  to hooks as `GIT_INDEX_FILE`. The fork's pre-commit runs `npm test`, which runs
+  `test/test-sync-skip-if-dirty.js`, which builds throwaway git repos and ran `git add -A` in them
+  **with the parent environment inherited** — and `cwd`/`git -C` do *not* override `GIT_INDEX_FILE`.
+  So the sandbox's `git add` wrote its entries into the real commit's temp index, pointing at blobs
+  that exist only in the sandbox's object store. Git then refused to build a tree from an object it
+  genuinely could not read. Everything the earlier investigation found was true and consistent: the
+  object *is* absent from HEAD, the index, the worktree, the stash and `fsck` — because it was never
+  in this repo at all.
+
+  Only the one-step form was ever affected: it is the only form that hands hooks a temp index. That
+  is why "just use `git add` first" appeared to work, and why the failure looked intermittent (it
+  needed that suite to run during a partial commit).
+
+  Fixed at the source: the test now strips `GIT_INDEX_FILE`, `GIT_DIR`, `GIT_WORK_TREE`,
+  `GIT_OBJECT_DIRECTORY`, `GIT_ALTERNATE_OBJECT_DIRECTORIES`, `GIT_COMMON_DIR` and `GIT_PREFIX` from
+  every sandbox git call. Proven: **13/13 standalone and 13/13 with `GIT_INDEX_FILE` set** (it was
+  11/13 leaked before the fix — the two failures were the same pollution making a sandbox misread as
+  clean). **So the one-step form is the rule again, with no caveat.** If `Error building trees` ever
+  returns, suspect a hook-invoked process doing git work in another repo without a clean env — do
+  not re-file it as index corruption, and do not quietly go back to two-step without saying so.
 
   **Evidence (2026-07-25, third firing):** the commit that introduced *this very rule* was written
   as `git add … && git commit …` and was swept mid-window into another session's

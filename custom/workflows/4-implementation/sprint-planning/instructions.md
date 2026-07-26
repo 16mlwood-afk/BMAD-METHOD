@@ -181,6 +181,30 @@ development_status:
 - Epics in-progress: {{in_progress_count}}
 - Stories done: {{done_count}}
 
+<action>Reconcile the SCOPE REGISTER against what the board now says (STD-SCOPEREG-001 §9 — the inert-scope sweep). REPORT-ONLY.</action>
+
+This is the sweep's designated trigger point, and until now nothing fired it: the standard named
+`sprint-status` as a trigger and no step invoked it, so rows sat `pending` for weeks *after their own
+answer merged*. The asymmetry that makes it rot: a workflow moves a row ONTO `pending`
+automatically, but only a human moves it OFF — a one-way ratchet, and a stale `pending` row is
+indistinguishable by inspection from a real open decision. Three of four rows once surfaced as
+"waiting on the owner" were waiting on nobody.
+
+```bash
+node {fork_tools}/check-scope-register.js --register {planning_artifacts}/scope-register.md --audit
+```
+
+- **No register / tool not reachable** → say so in one line and continue. This step never blocks the
+  sprint status, and a missing register is not a finding.
+- **`DELIVERED-BUT-PENDING` rows** (still `pending` while the artifact they waited for EXISTS) → list
+  them in the completion summary with the artifact each one names. **Read before believing:** an
+  existing file proves a STRING resolved, not that the row's question was answered.
+- **`PROMISED-NOT-PRODUCED` / inert rows** → report the count; these are the reverse case (routed,
+  still not shaped).
+
+<critical>NEVER flip a `disposition` here. Owner-only off `pending` is the audit anchor and is
+deliberate (§9) — the gap this step closes is DETECTION, not authority. Report; let the owner close.</critical>
+
 <action>Display completion summary to {user_name} in {communication_language}:</action>
 
 **Sprint Status Generated Successfully**
@@ -190,6 +214,7 @@ development_status:
 - **Total Stories:** {{story_count}}
 - **Epics In Progress:** {{epics_in_progress_count}}
 - **Stories Completed:** {{done_count}}
+- **Scope register:** {{inert_count}} inert · {{delivered_but_pending_count}} delivered-but-pending (list each with its artifact; owner closes them, this workflow does not)
 
 **Next Steps:**
 

@@ -24,7 +24,7 @@
  *     the golden eval (evals/scope-register-routing.md) — measured, not gated.
  *     Faking that check would be the indiscriminate-detector anti-pattern.
  *
- * THREE MODES:
+ * FOUR MODES:
  *   1. bare                          — fork ADOPTION scan over custom/workflows/:
  *                                      a workflow that produces or consumes scope-register
  *                                      rows but never references STD-SCOPEREG-001.
@@ -32,7 +32,16 @@
  *   2. --register <path>             — lint the ROWS of a project's scope register.
  *   3. --register <path> --audit     — the INERT-SCOPE SWEEP (STD-SCOPEREG-001 §9):
  *                                      accepted-with-no-next_artifact, parked-with-no-trigger,
- *                                      and next_artifact paths that don't exist on disk.
+ *                                      next_artifact paths that don't exist on disk, AND the
+ *                                      reverse signature — DELIVERED-BUT-PENDING: a row still
+ *                                      `pending` whose artifact ALREADY exists. That one is
+ *                                      report-only by design; the owner closes the row, never
+ *                                      this tool (§9 keeps the disposition flip human).
+ *   4. --register <path> --new-row   — AUTHORING: emit a correctly-columned skeleton for BOTH
+ *                                      paired tables, derived from the live header, plus the
+ *                                      next free SR id. The standard mandates an append from
+ *                                      every shaping session and shipped no writable affordance;
+ *                                      this is it. Prints, never writes.
  *
  * `--strict` makes a finding exit 1. NOT armed in `npm test` or the pre-commit
  * fast-path at v1: the row-shape heuristic is unproven against hand-maintained
@@ -55,8 +64,14 @@ const { collectStandardsCorpus, ROOT } = require('./lib/standards-corpus');
 const argv = process.argv.slice(2);
 const STRICT = argv.includes('--strict');
 const AUDIT = argv.includes('--audit');
+const NEW_ROW = argv.includes('--new-row');
 const regIdx = argv.indexOf('--register');
 const REGISTER = regIdx === -1 ? null : argv[regIdx + 1];
+
+if (NEW_ROW && !REGISTER) {
+  console.error('check:scoperegister --new-row requires --register <path>.');
+  process.exit(1);
+}
 
 const ROUTES = ['R1-capability', 'R2-bounded-local', 'R3-design', 'R4-operational-milestone', 'R5-parked'];
 
@@ -92,6 +107,54 @@ const ROUTE_ARTIFACT_SHAPE = {
 
 const findings = [];
 const note = (sev, where, msg) => findings.push({ sev, where, msg });
+
+// ---------------------------------------------------------------------------
+// on-disk probes — shared, so "does the artifact exist" has exactly ONE answer
+// ---------------------------------------------------------------------------
+
+/** Resolve a path-ish artifact reference near the register. Returns the path, or null. */
+function resolveNear(regDir, ref) {
+  for (const form of [ref, `${ref}.md`]) {
+    for (const base of [regDir, path.resolve(regDir, '..'), path.resolve(regDir, '../..')]) {
+      const p = path.resolve(base, form);
+      if (fs.existsSync(p)) return p;
+    }
+  }
+  return null;
+}
+
+const SKIP_DIRS = new Set(['node_modules', '.git', '.next', 'dist', 'build', '.claude', 'coverage']);
+
+/**
+ * A story id (`2-14`, `Story 2-14`) is NOT a path, and the register cites them bare all
+ * the time — SR-07 literally predicted "new Story 2-14 (on apply)". Walk a bounded slice
+ * of the project for a file whose NAME starts with that id. Depth-capped and
+ * directory-filtered: this is a hand-run audit, not a hot path.
+ */
+function findByStoryId(regDir, id, depth = 5) {
+  const root = path.resolve(regDir, '../..');
+  const wanted = new RegExp(`^${id.replaceAll('.', String.raw`\.`)}[-.]`);
+  const walk = (dir, left) => {
+    if (left < 0) return null;
+    let entries;
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return null;
+    }
+    for (const e of entries) {
+      if (e.isFile() && wanted.test(e.name)) return path.join(dir, e.name);
+    }
+    for (const e of entries) {
+      if (e.isDirectory() && !SKIP_DIRS.has(e.name) && !e.name.startsWith('.')) {
+        const hit = walk(path.join(dir, e.name), left - 1);
+        if (hit) return hit;
+      }
+    }
+    return null;
+  };
+  return walk(root, depth);
+}
 
 // ---------------------------------------------------------------------------
 // MODE 2/3 — lint a project's scope register
@@ -139,6 +202,56 @@ function lintRegister(file) {
       /`?disposition`?\s*[:=]?\s*`?(accepted|pending|deferred|rejected|moved)`?/i.exec(b) ||
       /\|\s*`(accepted|pending|deferred|rejected|moved)`\s*\|/i.exec(b);
     const disposition = dispM ? dispM[1].toLowerCase() : null;
+
+    // -- AUDIT: DELIVERED-BUT-PENDING (STD-SCOPEREG-001 §9) -----------------
+    // Rows move ONTO `pending` automatically (a workflow appends them) and move OFF it
+    // only by a human remembering — a one-way ratchet, so delivered-but-unclosed rows
+    // accumulate and are indistinguishable BY INSPECTION from real open decisions. The
+    // owner then reads N blockers on their desk that are actually one. (2026-07-25:
+    // three of four `route: TBD` rows surfaced as "waiting on Mason" were waiting on
+    // nobody — SR-07/2-14, SR-08/2-15, SR-12/the resolved shell decision.)
+    //
+    // Cheapest signature: still `pending` while the thing it was waiting for EXISTS.
+    // Runs BEFORE the route checks on purpose — all three exemplars were `route: TBD`,
+    // which the route branch below legitimately `continue`s past.
+    //
+    // DETECTION ONLY. Never flip a disposition here: owner-only off `pending` is the
+    // audit anchor and is deliberate (§9). The gap is detection, not authority.
+    // `pending` ONLY — an UNPARSED disposition is not a pending one. Treating null as
+    // pending fired on 11 extra rows in the first cut of this detector, every one of them
+    // an already-`accepted`/`absorbed` row whose disposition the row-shape heuristic simply
+    // did not read. Same discipline as AD-24g: no signal is not a story, and a detector
+    // that manufactures 11 false blockers to catch 3 real ones costs exactly the attention
+    // it was built to save.
+    if (AUDIT && disposition === 'pending') {
+      const nextForProbe = nextM ? nextM[1].trim().replaceAll(/^[`*\s]+|[`*\s]+$/g, '') : '';
+      const pathish = /([\w./-]+\.(?:md|ya?ml))/.exec(nextForProbe);
+      let found = pathish ? resolveNear(regDir, pathish[1]) : null;
+      let via = found ? `next_artifact "${pathish[1]}"` : null;
+
+      // No path-ish next_artifact? The row may still NAME its answer in prose — a story
+      // id, which is how SR-07 recorded the story that closed it four weeks earlier.
+      if (!found) {
+        const idM = /\bstor(?:y|ies)\s+`?(\d+[-.]\d+)/i.exec(b) || /\b(\d+-\d+)-[a-z0-9-]{3,}/i.exec(nextForProbe);
+        if (idM) {
+          const hit = findByStoryId(regDir, idM[1].replace('.', '-'));
+          if (hit) {
+            found = hit;
+            via = `story ${idM[1]} → ${path.basename(hit)}`;
+          }
+        }
+      }
+
+      if (found) {
+        note(
+          'stale',
+          where,
+          `DELIVERED-BUT-PENDING: still \`pending\`, but its ${via} EXISTS on disk. ` +
+            'Either the row was delivered and nobody closed it, or the artifact is a coincidence — READ it before touching the row. ' +
+            "A stale `pending` row is indistinguishable from a real open decision, and it spends the owner's attention (§9).",
+        );
+      }
+    }
 
     // -- route presence -----------------------------------------------------
     if (!routeM) {
@@ -269,8 +382,83 @@ function adoptionScan() {
 }
 
 // ---------------------------------------------------------------------------
+// MODE 4 — --new-row: emit a correctly-columned skeleton from the LIVE header
+// ---------------------------------------------------------------------------
+// The standard MANDATES an append from any shaping session, and shipped no writable
+// affordance: two tables that must be filled in lockstep (nothing says so), rows
+// 400–2000 chars wide, the header ~70 lines above the rows it describes, and a
+// validator that only tells you the row is wrong AFTER you hand-built it. The cost
+// lands on a cold session at the END of other work — the exact moment it decides
+// "naming the lane was enough" and leaves inert scope behind (fork-gaps FG-2026-07-25-08).
+//
+// Derived from the live header, never a hard-coded column list: a register that grows
+// a column gets a correct skeleton on the next run, with no edit here.
+function newRow(file) {
+  if (!fs.existsSync(file)) {
+    console.error(`check:scoperegister --new-row: register not found: ${file}`);
+    process.exit(1);
+  }
+  const lines = fs.readFileSync(file, 'utf8').split('\n');
+
+  // A header line is a `|`-row whose NEXT line is the `|---|---|` separator.
+  const headers = [];
+  for (let i = 0; i < lines.length - 1; i++) {
+    if (/^\s*\|/.test(lines[i]) && /^\s*\|[\s:|-]+\|\s*$/.test(lines[i + 1])) {
+      const cols = lines[i]
+        .split('|')
+        .slice(1, -1)
+        .map((c) => c.trim().replaceAll(/[`*]/g, ''));
+      if (cols.some((c) => /^id$/i.test(c))) headers.push({ line: i + 1, cols });
+    }
+  }
+  if (headers.length === 0) {
+    console.error('check:scoperegister --new-row: no `| id | … |` table header found. Is this a scope register?');
+    process.exit(1);
+  }
+
+  // Next free id, so the two tables cannot disagree about which row you are adding.
+  const ids = [...fs.readFileSync(file, 'utf8').matchAll(/\bSR-(\d+)\b/g)].map((m) => Number(m[1]));
+  const nextId = `SR-${String(ids.length > 0 ? Math.max(...ids) + 1 : 1).padStart(2, '0')}`;
+
+  // NO `|` inside a placeholder — a pipe in a cell silently splits the row and the
+  // skeleton stops being correctly-columned, which is the one thing this mode owes.
+  // Enum choices are `/`-separated for that reason.
+  const PLACEHOLDER = {
+    id: nextId,
+    route: 'R1-capability / R2-bounded-local / R3-design / R4-operational-milestone / R5-parked / TBD',
+    disposition: 'pending / accepted / deferred / rejected / moved',
+    state: 'REGISTERED / PROPOSED / DESCRIBED / SHAPED',
+    next_artifact: '<story file / quick-spec / ACTIVE brief / milestone key — the thing that makes it actionable>',
+    'next artifact': '<the thing that makes it actionable>',
+    owner: '<who>',
+    trigger: '<OBSERVABLE condition, not "when we get to it">',
+  };
+  const cell = (c) => (PLACEHOLDER[c.toLowerCase()] ?? `<${c}>`).replaceAll('|', '/');
+
+  console.log(`\ncheck:scoperegister --new-row · ${path.basename(file)} · next free id: ${nextId}\n`);
+  console.log('  BOTH tables take a row. They are paired by id and nothing in the file says so —');
+  console.log('  appending to one and not the other is the single most common way a row goes inert.\n');
+  for (const [n, h] of headers.entries()) {
+    console.log(`  ── table ${n + 1} (header at line ${h.line}, ${h.cols.length} columns) ──`);
+    console.log(`  | ${h.cols.map(cell).join(' | ')} |\n`);
+  }
+  console.log('  Then verify what you wrote:');
+  console.log(`    node tools/check-scope-register.js --register ${file} --audit\n`);
+  console.log('  Rules that the skeleton cannot enforce (STD-SCOPEREG-001):');
+  console.log('    • `route: TBD` is legal ONLY while `disposition: pending`, and owes the named unblocking decision (§2).');
+  console.log('    • `R5-parked` owes all three activation parts — owner, OBSERVABLE trigger, why-not-now (§3).');
+  console.log('    • "Recorded in the register" is REGISTERED, not done. Actionable needs the next artifact (§4).\n');
+  return { rows: headers.length };
+}
+
+// ---------------------------------------------------------------------------
 // report
 // ---------------------------------------------------------------------------
+if (NEW_ROW) {
+  newRow(REGISTER);
+  process.exit(0);
+}
+
 const mode = REGISTER ? (AUDIT ? 'REGISTER + INERT-SCOPE AUDIT' : 'REGISTER LINT') : 'FORK ADOPTION SCAN';
 let summary;
 if (REGISTER) summary = lintRegister(REGISTER);
@@ -278,13 +466,21 @@ else summary = adoptionScan();
 
 const fails = findings.filter((f) => f.sev === 'fail');
 const warns = findings.filter((f) => f.sev === 'warn');
+const stales = findings.filter((f) => f.sev === 'stale');
 
 console.log(
   `\ncheck:scoperegister (${mode} · ${STRICT ? 'STRICT — exit 1 on a finding' : 'WARN-ONLY — exit 0'}): ` +
     (REGISTER ? `${summary.rows} row(s) parsed` : `${summary.files} workflow files · ${summary.adopters} adopter(s)`) +
-    ` · ${fails.length} inert/invalid · ${warns.length} warning(s).`,
+    ` · ${fails.length} inert/invalid · ${stales.length} delivered-but-pending · ${warns.length} warning(s).`,
 );
 
+// Printed FIRST: these are the rows most likely sitting on the owner's desk pretending
+// to be open decisions. They cost attention, which is the scarcest thing here.
+if (stales.length > 0) {
+  console.log(`\n  ⏳ ${stales.length} DELIVERED-BUT-PENDING row(s) — still \`pending\` while the artifact they waited for exists:`);
+  for (const f of stales) console.log(`      • ${f.where}: ${f.msg}`);
+  console.log('      → Read each artifact, then the OWNER closes the row. This tool never flips a disposition.');
+}
 if (fails.length > 0) {
   console.log(`\n  ✗ ${fails.length} INERT or INVALID row(s) — registered scope with no route, no next artifact, or an incomplete park:`);
   for (const f of fails) console.log(`      • ${f.where}: ${f.msg}`);

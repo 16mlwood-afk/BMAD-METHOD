@@ -26,8 +26,17 @@ function ok(name, cond) {
   }
 }
 
+// Sandbox git MUST NOT inherit the outer repo's git env. `cwd` / `git -C` do NOT override
+// GIT_INDEX_FILE et al, and under a PATH-SCOPED commit the parent's GIT_INDEX_FILE is the
+// TEMP index git will build the commit tree from — so an inherited `git add -A` in a sandbox
+// writes sandbox-only blobs into the real commit and kills it with `Error building trees`.
+// Full account (this suite was the first of two confirmed instances): test/lib/clean-git-env.js
+// and fork-gaps FG-2026-07-25-12. Proven here: 13/13 standalone AND 13/13 with GIT_INDEX_FILE
+// set; it was 11/13 leaked before the fix.
+const { cleanGitEnv: cleanEnv } = require('./lib/clean-git-env');
+
 function git(cwd, args) {
-  execFileSync('git', args, { cwd, stdio: 'pipe' });
+  execFileSync('git', args, { cwd, stdio: 'pipe', env: cleanEnv() });
 }
 
 // A minimal, valid sync target: a git repo whose _bmad/bmm/workflows exists with a committed
@@ -67,7 +76,7 @@ function runCheck(home, projectRoot) {
   // Real script, --check (non-destructive) --only the one project. Temp HOME → temp targets file.
   try {
     return execFileSync('bash', [SCRIPT, '--check', '--only', projectRoot], {
-      env: { ...process.env, HOME: home },
+      env: cleanEnv({ HOME: home }),
       encoding: 'utf8',
       stdio: 'pipe',
     });
