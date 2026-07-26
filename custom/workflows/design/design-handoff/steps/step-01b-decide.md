@@ -140,6 +140,16 @@ Either path populates the same state, so step-03b renders identically. `{analyti
 
 **Per surface.** When the page carries multiple analytics/decision surfaces (the §5e gate fired), run this **once per surface**, exactly as §5c does — each surface gets its own rigor spec. For the common single-surface page, run it once.
 
+> **STATUS FIRST — `analytics-rigor` is NOT AUTHORED in any resolution root today** (global /
+> workspace / project), so on every current run the **fallback below is the expected path** and
+> `rigor_source: inline-fallback` is the NORMAL outcome, not a failure or a degradation to explain
+> away. Do not spend a turn hunting for the skill, and do not claim `rigor_source: skill` because the
+> instruction below says to load it. Authoring it is a design-lane decision, not a maintenance fix
+> (`FG-2026-07-20-04`). This status line lives HERE, at the instruction, because
+> `analytics-archetypes.md` has carried the same warning since 2026-07-20 while this step — the one
+> that actually tells a session to load it — did not: two fork docs disagreeing, with the
+> instruction-giving one uninformed.
+
 **Invoke the skill (mode: `spec`).** Load `analytics-rigor` via the Skill tool and pass it:
 - the **surface's decision-bearing figures**, wherever they sit (the §4b band's values AND the §4a record/hero/verdict numbers — not just the band),
 - the **decision the surface serves**, in the user's words (from `{feature_purpose}` / `{user_context}`),
@@ -178,6 +188,11 @@ Set `{has_decision_numbers}`, `{rigor_source}`, and the `{rigor_*}` fields (all 
 Skip unless the surface is a **capital decision** — its primary job is to commit a scarce resource (capital, inventory slots, time) under uncertainty with a real downside (a buy / reorder / sizing / go-no-go-with-stake). This is **narrower than §5c-2**: a coverage strip, a trend dashboard, or a status worklist carries decision *numbers* but commits nothing — it stops at rigor. Set `{is_capital_decision}` accordingly; when `false`, leave all `{decision_*}` empty and skip the rest of this section.
 
 §5c-2 made the figures honest (senior-analyst grade); this models and sizes the *decision* (executive / quant-desk grade). A surface can pass rigor — honest ranges, named gaps — and still leave the operator to decide how much to bet and whether the downside is survivable. Closing that is a distinct discipline.
+
+> **STATUS FIRST — `decision-analysis` is NOT AUTHORED in any resolution root today**, exactly like
+> its `analytics-rigor` sibling above. The fallback is the expected path and
+> `decision_source: inline-fallback` is the NORMAL outcome. Same reasoning, same lane: authoring it is
+> a design decision (`FG-2026-07-20-04` names §5c-2 and §5c-3 as the *same* defect side by side).
 
 **Invoke the skill (mode: `spec`).** Load `decision-analysis` via the Skill tool and pass it:
 - the **commitment the surface serves** — action · stake (capital at risk) · horizon · downside,
