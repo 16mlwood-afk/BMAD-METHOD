@@ -734,7 +734,7 @@ class: pointer-instance (shape-vs-target misclassification, standing thread)
 scope: project
 target: .claude/settings.local.json
 marker: "read-only invocation"
-state: partly
+state: closed
 owner: project:inbound-flow
 ```
 
@@ -790,6 +790,21 @@ behavioural diff is ever wanted.
 **Distribution:** `settings.local.json` is gitignored and does not sync. **Enforced in cash-recovery
 only**; the other 12 projects still run the old inline regex and still have every false positive above.
 
+
+
+### Closed — 2026-07-26: the fan-out ran; the legacy guard is gone from every project
+
+Owner approved the rollout explicitly. `tools/migrate-bash-edit-guard.sh --apply` migrated **13/13,
+0 failed** (one piloted first, then the remaining 12). **Verified INDEPENDENTLY of the migration
+script's own report** — the thing this whole family of gaps was caused by trusting: every project now
+greps exactly **1** reference to `bash_edit_guard` and **0** to the legacy blob, carries all four guard
+files, and passes `guard-health-check.sh` with **0 findings**.
+
+So the read-only false positives this entry logged (a `python3 -c` doing nothing but reading, blocked
+because the command string mentioned an edit token) are fixed everywhere, not just in cash-recovery.
+
+**Nothing was committed to git, deliberately** — see `FG-2026-07-25-02` for the reasoning; it is a
+tracking-policy question the fork has parked, not an oversight.
 
 ## 2026-07-18 — edit-guard false-positive reproduces in a SECOND project (cash-recovery): read-only `sed` pipe blocked (pointer-instance on the shape-vs-target thread — NOT a new gap)
 
@@ -1703,6 +1718,28 @@ with `--apply`.
 Both are policy calls about override CHANNEL and belong to the owner; only the already-documented
 env-var name was made to work.
 
+
+
+### Update — 2026-07-26: fan-out DONE (13/13); git tracking left to the owner, on purpose
+
+The reviewed guard — with the `cd` base, literal-`$VAR` resolution, the quoted-span rule for
+`tee`/`sed -i`/`awk -i`, and the logged `BMAD_ALLOW_MAIN_EDIT=1` override — now runs in **all 13**
+projects, independently verified (0 findings each, 0 legacy-blob references anywhere).
+
+**Deliberately NOT committed in any project, and this is a decision rather than an omission.** Four
+projects gitignore `.claude/` outright; eight track **no** hook files at all, so committing would
+newly track machine-local hook infrastructure — and `STATUS.md` records the fork-wide *"is `.claude/`
+tracked or gitignored in workflow-tree projects"* call as **explicitly PENDING**, with a standing
+instruction not to settle it from a working session. The ninth, `accounting-tools`, does track two
+hooks but sits on a **detached HEAD, 22 behind / 6 ahead** of `origin/main` — not a repo to commit
+into blind on someone else's behalf.
+
+Clone-durability is **unchanged, not regressed**: `settings.local.json` was already gitignored in
+every project, so the guard has never been clone-durable anywhere. Making it so is the same parked
+decision.
+
+**Still open on this entry:** the override-channel design choices (a consumed-and-cleared marker file;
+demoting `deny` to `ask` for docs-only paths). Owner calls, unchanged.
 
 ## 2026-07-25 — STD-SCOPEREG-001 §9 prescribes the inert-scope sweep at three trigger points and NOTHING invokes it, so register rows stay `pending` after the code ships
 
@@ -2814,10 +2851,11 @@ scope: fork
 target: custom/workflows/implement/design-implement/steps/step-04-apply-and-deliver.md
 target_secondary: custom/workflows/implement/design-ingest/manifest-schema.md
 marker: "applied-but-unreachable"
-state: open
+state: fork-fixed-distribution-owed
 owner: fork-maintenance
-routing: SPECIFIED BY OWNER 2026-07-26 (paste-back, session claude-session-20260726-124128) — HELD FOR EXPLICIT APPROVAL
-routing_note: "Owner ACKed the diagnosis and SPECIFIED both changes, but ruled PROPOSED-only: 'Do not alter step-04 behaviour or manifest enums yet.' Specification is below under 'Proposed change (OWNER-SPECIFIED)'. Nothing shipped."
+routing: APPROVED + AUTHORED 2026-07-26 (owner "y", session claude-session-20260726-190747) — DISTRIBUTION NOT RUN
+routing_note: "Owner specified the change 2026-07-26 and HELD it, then approved it the same day. AUTHORED in the fork: step-04 trigger widened, manifest gains a fourth disposition, golden matrix added. DISTRIBUTION (sync to all 14 targets) is a separate Tier-3 action and has NOT run — the change fires in ZERO projects until it does."
+distribution: "sync-bmad-workflows.sh (all 14 targets) — NOT RUN; fires in zero projects until it does"
 blast_radius: "design-implement fans out to ALL 14 sync targets (~/.bmad-targets). Changes what every project's apply pass may call 'applied' + adds a manifest enum value existing manifests do not carry."
 ```
 
@@ -2909,6 +2947,46 @@ list before proceeding.
 
 **On approval, also required:** a **golden case** — a manifest where a new component exists but is not
 wired — demonstrating correct use of `◐` and the refusal to mark `applied`.
+
+### AUTHORED 2026-07-26 — what shipped into the fork (distribution NOT run)
+
+Owner approved with a bare "y". Encoded, with both flagged risks resolved as recommended — **the
+deviations from the literal specification are named here so either can be reverted in one edit:**
+
+| File | Change |
+|---|---|
+| `custom/workflows/implement/design-implement/steps/step-04-apply-and-deliver.md` | Trigger widened; entry-surface enumeration + per-surface WHERE/HOW evidence; `⚠ UNROUTED COMPONENT` branch; the hard REFUSAL block; `◐` resume semantics; the §9 checklist assertion; the anti-pattern named |
+| `custom/workflows/implement/design-ingest/manifest-schema.md` | Fourth `status` value `◐ transcribed · UNROUTED` + its four rules + the `◐`-vs-`⊘ deferred` distinction |
+| `custom/workflows/implement/design-implement/steps/step-03-build-grid.md` | `◐` rows are carried without a delta recompute — carried, **not** closed |
+| `custom/workflows/implement/design-implement/unrouted-golden-matrix.md` | NEW — 15 golden cases; row 3 is the regression row (passes under the old trigger, fails under the new) |
+
+**Deviation 1 — the trigger is MECHANICAL, with no "should this be reachable?" test.** Encoded as
+*"whenever the run CREATED ANY COMPONENT FILE"*, with the deliberately-not-wired case carried by `◐` +
+a declared follow-up instead of by skipping the question. Owner intent is preserved exactly (an unwired
+surface can never read as applied); what changes is that the trigger cannot be argued past per
+component. To revert to the literal wording, restore *"any component that should be reachable"* in
+step-04's trigger block.
+
+**Deviation 2 — "substantially modified" narrowed to importer-removal.** Encoded as *"a change that
+removed a component's last non-test importer"* — the mirror of the existing orphaned-action grep.
+Modifying a component does not change whether anything imports it, so the general form widened the
+trigger without widening coverage. To revert, broaden that clause back.
+
+**Self-review caught one real defect before commit.** `◐` is neither `✓ applied` nor `UNVERIFIED`, so
+the existing resume filters (step-04 rule 18, step-03 §2 resume budget note) would have **carried it
+forward and never walked it** — the new disposition would have been inert on exactly the resume path it
+exists to protect. Both filters now name `◐` explicitly: values not re-delta'd, wiring still owed,
+surfaced in the opening resume summary. Without this the enum would have been authored-and-firing-nowhere,
+the same failure class as the entry it documents.
+
+**Verified:** `markdownlint-cli2` 0 errors across 50 files · `validate-context-budget.js` exit 0, 35 soft
+warnings (unchanged — the widened step added no new budget warning) · `check-fork-gap-schema.sh` and
+`check-fork-gap-targets.sh` clean.
+
+**NOT DONE — distribution.** `sync-bmad-workflows.sh` to all 14 targets has **not** run, so this fires in
+**zero** projects today. Tier-3 blast radius (destructive `rsync --delete` over possibly-dirty trees);
+needs its own explicit go in a low-contention window. Until then the fork is the only place the new
+trigger and the fourth disposition exist.
 
 ### Implementation note — two risks to settle BEFORE encoding (flagged, not decided)
 

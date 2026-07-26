@@ -84,13 +84,42 @@ ingest:
      row here is a section design-implement is structurally blind to — which is
      exactly the gap this scaffold closes. -->
 
-### `status` vocabulary — three values, and a scope decision MUST use the third
+### `status` vocabulary — four values; a scope decision MUST use the third, an unwired build MUST use the fourth
 
 | value | meaning | resume behaviour |
 |---|---|---|
 | `UNVERIFIED` | not yet dispositioned — the walkable set | selected by the resume walk |
-| `✓ applied` | dispositioned by a prior pass | terminal — never re-applied |
+| `✓ applied` | dispositioned by a prior pass **and reachable by an operator** | terminal — never re-applied |
 | `⊘ deferred(<reason>)` | deliberately out of scope (owner ruling, policy, missing backend) | **terminal — never auto-selected** |
+| `◐ transcribed · UNROUTED` | the code faithfully implements part of the brief but **has no reachable path for an operator yet** | **NON-terminal — an outstanding obligation.** Never counts as applied; blocks "frame fully applied" |
+
+**`◐ transcribed · UNROUTED` — the fourth value, and why `✓ applied` was not enough.**
+`applied` conflated two different questions: *do the values match the design?* and *can anyone reach
+this?* A transcribed-but-unwired component answers **yes** to the first, so it read as `applied` under
+every available reading — the row was not wrong, the state was **inexpressible**. Rules:
+
+- **Never treated as `applied`.** A frame holding any `◐` row is not fully applied, and no pass may
+  report it as such.
+- **Listed ABOVE the grid as an explicit open item** — never left to be inferred from a table cell, and
+  never written only in narrative below the grid. A resume read consults row statuses and the block
+  above them; prose further down is not read in time to matter.
+- **A resume walk treats `◐` as outstanding work.** It is the one non-terminal disposition:
+  `UNVERIFIED` means "not looked at yet", `◐` means "built, and the wiring is owed".
+- **Every `◐` carries its follow-up** — who wires it, and into what. `◐` with no named follow-up is the
+  same silent-staging failure wearing a new symbol.
+
+**Choosing between `◐` and `⊘ deferred`.** They are not interchangeable, and the difference is whether
+code was written. `⊘ deferred` = *we decided not to build it* (nothing exists; terminal). `◐` =
+*we built it and it is unreachable* (code exists; obligation outstanding). Downgrading a `◐` to
+`⊘ deferred` to close a pass is a **misreport**: it leaves live code in the tree that no operator can
+reach and no row is tracking.
+
+**Origin (cash-recovery `/receive`, 2026-07-20 → 2026-07-26).** Two frames were transcribed, their nine
+rows marked `✓ applied`, their forced deviations logged correctly, and shipped in two PRs. Both
+components had **zero non-test importers for six days.** The authoring pass *did* write "not yet
+wired… the largest un-owed piece" — 60 lines below a table of nine green ticks. Three later sessions
+read that manifest and none reopened it, because the grid said closed. That is the failure this value
+exists to make unrepresentable. Backing entry: `docs/fork-gaps.md` **FG-2026-07-26-05**.
 
 **A scope decision written only as prose in the manifest body does not bind the resume walk.** The one mechanism that decides what to build next reads *row statuses*, not narrative — so an owner ruling or policy deferral recorded in a `### OWNER DECISION` table while the rows stay `UNVERIFIED` leaves a frame that must NOT be built reading as the frame that SHOULD be built next. That is the dangerous direction of failure, and it is discretionary protection: it holds only while every future session re-reads the whole file.
 
