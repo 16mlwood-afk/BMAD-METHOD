@@ -1676,6 +1676,26 @@ re-tested live afterwards: B7 WARN fires on a staged table-first brief, `exit 0`
 If a third instance appears, the sync itself should assert reachability at delivery time rather than
 each gate re-discovering it.
 
+### Update — 2026-07-26: owed item (2) DONE (the durable half). Item (1) still owed.
+
+`check-design-brief-completeness.sh` now runs a **reachability self-check** when nothing is staged:
+if `design-brief-*.md` files exist on disk, none are staged, and at least one is **gitignored**, it
+prints a `[REACHABILITY]` warn naming a concrete example plus the verified one-line `.gitignore` fix,
+and states that until then the gate covers the low-risk path only. Never blocking; `exit 0` unchanged.
+Implementation note that matters: it lists candidates with `git ls-files --others --cached` **without**
+`--exclude-standard`, because omitting that flag is precisely what makes ignored files visible — the
+first cut passed a bogus `--exclude-standard=/dev/null` and silently found nothing, which would have
+shipped a self-check as inert as the gate it was written to expose.
+
+Golden cases, 5/5 (a real throwaway repo, not reasoning): ignored brief + nothing staged → WARN ·
+same repo after the `.gitignore` fix → silent · brief then stageable **without `-f`** and the real
+Block-B gate fires on it → correct · the fork itself (no briefs) → silent · cash-recovery (briefs
+tracked and un-ignored since PR #389) → silent.
+
+**Still owed — item (1), the 13 other projects.** Each needs the same `.gitignore` shape verified, not
+assumed. What changed is that a project in the broken state now *says so at commit time* instead of
+passing in silence, so the sweep no longer has to be done blind or all at once.
+
 ---
 
 ## 2026-07-25 — a fork-side `custom/githooks/` edit makes the contract's DETERMINISTIC tier read as live while it fires in zero projects, and the "prose consumers" table that exists to catch exactly this drift is itself unverified
@@ -1915,7 +1935,7 @@ class: routing-contract
 scope: fork
 target: check-fork-authoring-collision.sh
 marker: "fork-gaps entry-id collision key"
-state: open
+state: closed
 owner: fork-maintenance
 routing: routed
 routing_note: "The entry-id-keyed nudge proposed here is IMPLEMENTED — `check-fork-authoring-collision.sh` gained a `docs/fork-gaps.md` branch keyed on ENTRY ID (`4bbe52a7`), and it is CONFIRMED WORKING: it fired correctly on 2026-07-26 when session 984e3219 edited FG-2026-07-25-14 while another session held uncommitted changes to the same entry. Do NOT re-implement. The state stays `open` because a SECOND, DISTINCT failure mode in the same register is still uncovered — see below."
@@ -1965,7 +1985,28 @@ routing_note: "The entry-id-keyed nudge proposed here is IMPLEMENTED — `check-
 2. **Key on the entry id, not the file.** Resolve which `FG-…` entries the pending edit touches and warn only when another session's uncommitted diff touches the same id — otherwise the warn fires on every register edit and gets tuned out, which is worse than silence.
 3. Awareness tier only, same as today. Never block: legitimate parallel work on different entries is the normal case.
 
-**Marker note:** `fork-gaps entry-id collision key` is a FIX SENTINEL — it appears in the script only when (2) lands, so a grep for it is a real signal rather than a match on the header comment that describes the problem.
+### Resolution — 2026-07-26 (built + golden-tested; state → `closed`)
+
+`check-fork-authoring-collision.sh` gains a `docs/fork-gaps.md` branch **keyed on the entry id**, as
+proposed — not on the path, because two sessions on DIFFERENT entries is the normal healthy case and a
+per-file warn would be tuned out inside a day.
+
+**The part that decides whether this fires at all:** the foreign-dirty id is resolved by mapping the
+diff's **hunk line numbers** onto the entry that owns them (carrying each `id:` line forward), NOT by
+grepping the hunk text for an `FG-…` token. A session editing an entry's prose almost never repeats
+the id in the lines it changes, so a text-grep version would have detected essentially nothing while
+reading as live — the failure mode this whole batch has been about. Warns at most **once per (session,
+entry)** via the existing per-session ledger, namespaced `FG:`.
+
+Golden cases, 7/7: foreign-dirty id on first touch → WARN · same id again in the same session →
+silent · an id whose entry is clean → silent · a register edit naming no id → silent (no signal is not
+a story) · an unrelated file mentioning an id → silent · malformed JSON → silent · a fresh session on
+the same dirty id → WARN. The shared-standards branch is unchanged and still fires on its own terms.
+
+**Honest limits.** (a) Detection needs the id to appear in the *edit payload*, so a Write of the whole
+file with no id text is invisible. (b) It compares against the **working tree**, so a session that has
+already committed its edit is not "dirty" and will not be flagged. (c) It is awareness-tier and never
+blocks — deliberately, per the original design. Under-detection is the chosen failure direction.
 
 **Watch:** if a second duplicated authoring lands from two sessions on one entry before this ships, the id-level key is overdue.
 

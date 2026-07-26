@@ -143,6 +143,11 @@ the manifest is simply the file where getting them wrong is most expensive.
   any session that runs a bare `git commit` in that interval carries them under its own message.
   A path-scoped commit ignores the rest of the index entirely, so it is safe in both directions —
   it cannot scoop a foreign staged file, and a foreign bare commit cannot scoop yours after it.
+- **The one limitation: a NEW (untracked) file cannot ride the one-step form.**
+  `git commit -- <paths>` refuses it (`error: pathspec … did not match any file(s) known to git`),
+  so a new file needs `git add <that one path>` first. Add ONLY the new file, then commit with the
+  full explicit path list in the very next command — the window is one file wide and one command
+  long, which is as narrow as this gets. Do not let it become an excuse to `git add` everything.
 - **RESOLVED 2026-07-25 — the `Error building trees` caveat is retired, root cause found and fixed.**
   For weeks this bullet said the one-step form was "UNRELIABLE in the fork repo" (four consecutive
   `error: invalid object … for '.claude/skills/bmad-example/SKILL.md'` → `Error building trees`,

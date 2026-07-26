@@ -25,7 +25,37 @@ set -eu
 ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 staged=$(git diff --cached --name-only --diff-filter=ACM 2>/dev/null \
   | grep -E '(^|/)design-brief-[^/]*\.md$' || true)
-[ -z "$staged" ] && exit 0
+
+# REACHABILITY SELF-CHECK — a gate that no-ops because its input is INVISIBLE must say so,
+# or its silence reads as a pass (fork-gaps FG-2026-07-25-10).
+#
+# This gate only ever sees STAGED files. In a project whose .gitignore covers the artifacts
+# dir (`/_bmad-output/*` — the shape the fork's own onboarding establishes), a brand-new
+# brief cannot be staged without `git add -f`, so it NEVER reaches this check. Already-tracked
+# briefs stage normally, so EDITS are covered while NEW briefs are not — the worst possible
+# coverage shape, because a brand-new brief is exactly what a fresh `design-handoff` emits.
+# The measurement that made this gate look armed ("6 true fires / 0 false positives across 44
+# briefs") was real as LOGIC and would not have fired on a single new brief in practice.
+#
+# So: when briefs exist on disk, none are staged, and at least one of them is IGNORED, announce
+# it once. Cheap (one check-ignore call), quiet in a correctly-configured repo, and never
+# blocking.
+if [ -z "$staged" ]; then
+  # NOTE: deliberately WITHOUT --exclude-standard — omitting it is what makes `--others`
+  # include IGNORED files, which are the whole point of this check.
+  ondisk=$(git ls-files --others --cached 2>/dev/null \
+    | grep -E '(^|/)design-brief-[^/]*\.md$' | head -50 || true)
+  [ -z "$ondisk" ] && exit 0
+  ignored=$(printf '%s\n' "$ondisk" | git check-ignore --stdin 2>/dev/null | head -3 || true)
+  if [ -n "$ignored" ]; then
+    n=$(printf '%s\n' "$ignored" | wc -l | tr -d ' ')
+    printf 'design-brief-completeness [REACHABILITY]: %s brief(s) on disk are GITIGNORED — this gate cannot see NEW briefs in this repo, only edits to already-tracked ones.\n' "$n" >&2
+    printf '  e.g. %s\n' "$(printf '%s\n' "$ignored" | head -1)" >&2
+    printf '  Fix (one line in .gitignore): un-ignore the artifacts dir, re-ignore its contents, then negate design-brief-*.md — see fork-gaps FG-2026-07-25-10 for the verified shape.\n' >&2
+    printf '  Until then, treat this gate as covering the LOW-risk path only. Not blocking.\n' >&2
+  fi
+  exit 0
+fi
 
 findings=0
 warn() { printf 'design-brief-completeness [WARN]: %s\n' "$1" >&2; findings=$((findings + 1)); }
