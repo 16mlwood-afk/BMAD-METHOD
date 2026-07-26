@@ -1329,14 +1329,54 @@ classify_local_only() {
 # (tracked-modified vs untracked); with --commit, scoped-commits just those paths.
 # Gitignored paths are neither reported nor committed (git never sees them) — that's the
 # correct conservative behavior; we never force-add ignored files.
+# DELIVERY DOES NOT END AT `git commit` (FG-2026-07-26-08). This function used to stop at the
+# commit, and nothing anywhere pushed or checked — so a delivery could be "done" on 13 machines
+# and present on ZERO remotes. Measured 2026-07-26: 36 unpushed commits across 13/13 projects,
+# 28 of them this function's own `chore(bmad): deliver synced fork workflows` commits, while
+# every origin/main had moved on via PRs. Identical in 13 of 13 is a contract bug, not thirteen
+# people forgetting.
+#
+# It REPORTS, it does not push. Pushing into a repo that is also BEHIND needs a rebase-or-merge
+# decision per project, in trees with live parallel sessions — a Tier-3 fan-out and the owner's
+# call. What was missing was never the push; it was that nothing ever SAID the delivery had not
+# left the machine.
+report_unpushed_delivery() {
+  local project_root="$1"
+  local upstream ahead behind
+  upstream=$(git -C "$project_root" rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null) || upstream=""
+  [[ -z "$upstream" ]] && upstream="origin/main"
+  git -C "$project_root" rev-parse --verify -q "$upstream" &>/dev/null || return 0
+  ahead=$(git -C "$project_root" rev-list --count "$upstream"..HEAD 2>/dev/null || echo 0)
+  behind=$(git -C "$project_root" rev-list --count HEAD.."$upstream" 2>/dev/null || echo 0)
+  [[ "$ahead" -eq 0 ]] && return 0
+  echo "  ⚠  delivery NOT ON THE REMOTE: $ahead local commit(s) ahead of $upstream (and $behind behind)."
+  echo "         A committed delivery that was never pushed is invisible to every OTHER machine,"
+  echo "         to a fresh clone, and to CI — they get the workflow state this box thinks shipped."
+  if [[ "$behind" -gt 0 ]]; then
+    echo "         This branch has DIVERGED, so pushing needs a rebase-or-merge decision — not automated here."
+  else
+    echo "         Fast-forwardable: git -C $project_root push"
+  fi
+}
+
 summarize_bmad_delivery() {
   local project_root="$1"
-  $CHECK_ONLY && return 0
   git -C "$project_root" rev-parse --is-inside-work-tree &>/dev/null || return 0
+  # In --check mode, report the unpushed state and stop. Check mode existing to preview drift
+  # while staying silent about a delivery stuck on the local machine was half the blind spot.
+  if $CHECK_ONLY; then
+    report_unpushed_delivery "$project_root"
+    return 0
+  fi
   local bmad_paths=(_bmad .claude/skills .claude/commands/bmad CLAUDE.md)
   local status total untracked tracked
   status=$(git -C "$project_root" status --porcelain -- "${bmad_paths[@]}" 2>/dev/null || true)
-  [[ -z "$status" ]] && return 0
+  # A clean tree is NOT proof of delivery — the commit may be sitting unpushed. Check before
+  # the early return, or the quiet path stays quiet about the exact failure this closes.
+  if [[ -z "$status" ]]; then
+    report_unpushed_delivery "$project_root"
+    return 0
+  fi
   total=$(printf '%s\n' "$status" | grep -c . || true)
   untracked=$(printf '%s\n' "$status" | grep -c '^??' || true)
   tracked=$(( total - untracked ))
@@ -1346,13 +1386,16 @@ summarize_bmad_delivery() {
     if git -C "$project_root" diff --cached --quiet -- "${bmad_paths[@]}" 2>/dev/null; then
       echo "         nothing stageable (all changes gitignored) — commit skipped"
     elif git -C "$project_root" commit -q -m "chore(bmad): deliver synced fork workflows/skills/commands" -- "${bmad_paths[@]}" 2>/dev/null; then
-      echo "  OK    delivery: scoped-committed BMAD path changes"
+      echo "  OK    delivery: scoped-committed BMAD path changes (COMMITTED — not yet pushed)"
     else
       echo "  ⚠  delivery: scoped commit failed — resolve by hand"
     fi
   else
     echo "         run with --commit to deliver them, or commit by hand"
   fi
+  # ALWAYS, on every path — committed, skipped, or failed. The commit is the middle of the
+  # delivery, never the end.
+  report_unpushed_delivery "$project_root"
 }
 
 synced=0
@@ -1451,6 +1494,18 @@ while IFS= read -r target || [[ -n "$target" ]]; do
       fi
       echo "  ↻  propagated deletion(s) (source removed; purged on sync):"
       echo "$LOCAL_ONLY_PURGEABLE" | sed '/^$/d; s/^/     /'
+    fi
+
+    # Unpushed-delivery preview (FG-2026-07-26-08). `--check` previews DRIFT; it was silent
+    # about a delivery that never left the machine, which is the state 13/13 projects were
+    # actually in. A project can be perfectly in-sync on disk and still have every delivery
+    # stranded locally — "not stale" was never the same claim as "delivered".
+    if [[ -n "$(report_unpushed_delivery "$project_root")" ]]; then
+      if ! $dirty; then
+        echo "STALE $project"
+        dirty=true
+      fi
+      report_unpushed_delivery "$project_root"
     fi
 
     # Skip-if-dirty guard preview (fork-gap 2026-07-10): would a real sync REFUSE this target?

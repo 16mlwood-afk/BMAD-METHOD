@@ -2660,7 +2660,7 @@ class: delivery-ownership
 scope: fork
 target: sync-bmad-workflows.sh
 marker: "push-after-deliver"
-state: open
+state: partly
 owner: fork-maintenance
 routing: retro-routed
 routing_note: "Found and measured under standing 'continue fixing the fork gaps' maintenance instruction (2026-07-26). The FIX is a distribution/delivery change and is proposed, not shipped."
@@ -2731,6 +2731,43 @@ reserves for the owner. Measured and surfaced; not actioned.
 patching layer-by-layer and give delivery ONE end-to-end verification with a single owner.
 
 ---
+
+
+### Resolution — 2026-07-26: the CONTRACT BUG is fixed; the 36-commit drain stays owner-gated
+
+Owner confirmed the diagnosis ("a contract bug in the tool… systemic, not 13 people forgetting"), so
+the tool half is fixed. `sync-bmad-workflows.sh` gains `report_unpushed_delivery()`, called on **every
+path** — after a successful commit, after a skipped one, after a failure, when the tree was already
+clean, and in `--check`:
+
+```
+⚠  delivery NOT ON THE REMOTE: 3 local commit(s) ahead of origin/main (and 3 behind).
+       A committed delivery that was never pushed is invisible to every OTHER machine,
+       to a fresh clone, and to CI — they get the workflow state this box thinks shipped.
+       This branch has DIVERGED, so pushing needs a rebase-or-merge decision — not automated here.
+```
+
+Three specific holes closed, each one a place the old code was *quiet in exactly the failing state*:
+
+1. **`summarize_bmad_delivery` ended at the commit.** Its success line now reads `COMMITTED — not yet
+   pushed`, and the unpushed check runs unconditionally after it. The commit is the middle of the
+   delivery, never the end.
+2. **A clean tree returned early.** "No BMAD paths dirty" was treated as delivered — but that is the
+   exact shape of *committed and stranded*. The check now runs before that return.
+3. **`--check` returned before doing anything at all.** A mode whose whole job is previewing drift was
+   structurally silent about a delivery stuck on the machine. It now reports, and marks the project
+   `STALE` so it appears in the count rather than in a footnote. **"Not stale" was never the same
+   claim as "delivered".** Verified live: fires on **13/13**, with real ahead/behind per project and
+   the diverged-vs-fast-forwardable distinction.
+
+**It REPORTS; it does not push — deliberately.** Every one of the 13 is also *behind*, so a push needs
+a rebase-or-merge decision per repo, in trees with live parallel sessions. Automating that is the
+Tier-3 fan-out. What was missing was never the push; it was that nothing ever SAID the delivery had not
+left the machine.
+
+**Stays `partly`:** the 36 existing unpushed commits are still unpushed. That drain is the owner's,
+one repo at a time, in a low-contention window. The difference is that it is now impossible to run a
+sync or a `--check` without being told.
 
 ## 2026-07-26 — brief-revision-policy has no `revision_mode` for a hand-authored MATERIAL revision against built code, even though §174 explicitly blesses that path
 
