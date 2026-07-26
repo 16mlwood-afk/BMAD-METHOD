@@ -1590,6 +1590,48 @@ gate that guesses wrong on legitimate work is worse than a gate that cedes the d
 **documented cede**: the Bash arm gates shell-visible writes only, and the compensating controls are
 `collision_guard.py` (zone-based, fires on Edit/Write/Bash alike) plus the worktree discipline itself.
 
+
+### Behavioural spec + assumption reversals — owner-locked 2026-07-26
+
+**Spec (locked, not proposed).**
+
+1. **`.claude/hooks/bash_edit_guard.py` is the single source of truth across projects.** The inline
+   regex blob is LEGACY: superseded, must not be wired anywhere new, and where still running it is a
+   finding rather than a fallback. Kept only as the rollback copy in a `.bak-preguardwire-*`.
+2. **The guard's job is NARROW** — prevent direct writes to tracked project files from ad hoc shell
+   commands while parallel sessions run. It is **not** a general safety net for every way code can
+   change, and must not be grown into one.
+3. **Scripts are explicitly OUT OF SCOPE.** Do not guess what a script does; do not start blocking
+   script invocations unless policy changes. Closing this needs a concrete, testable scheme (a narrow
+   set of maintenance scripts with declared write behaviour), never speculative heuristics.
+4. **`BMAD_ALLOW_MAIN_EDIT=1` is the ONLY override** until a richer scheme is deliberately chosen.
+   Allowed for a small deliberate local text edit (CLAUDE.md, runbooks, docs); forbidden for bulk
+   refactors, source, migrations, lockfiles, CI, and cross-project shell edits. Every use owes an
+   immediate `git diff`/`git status` check **or** a maintenance-log note saying why.
+
+**Assumption reversals — recorded because each one was believed, load-bearing, and wrong.**
+
+| Old assumption | What was actually true | What changed |
+|---|---|---|
+| The reviewed guard had replaced the regex blob everywhere. | The blob was still live; every guard improvement applied to nothing. | **Wiring status is now a first-class maintenance signal** — a green suite proves LOGIC, only a live tool call proves WIRING. Doctrine line added to `global-bmad-workflow.md`; `guard-health-check.sh` is the probe. |
+| `BMAD_ALLOW_MAIN_EDIT=1` was a working override. | It was named in deny messages and honoured by **no** guard. | The override now truly works, is exact-match, and **logs** (paths only). Policy states when it may and may not be used; `audit-override-log.py` reviews it. |
+| Scripts were effectively covered by the same logic. | Scripts bypass the guard entirely — no shell-visible write target. | Documented as a **deliberate gap**, in CLAUDE.md and here. Explicitly NOT half-closed with guesses. |
+
+**Verification shipped with the spec** (so none of the above is an assertion): unit suite **47 cases**
+— every loosened behaviour paired with its inverse (a leading `cd` cannot launder an absolute target;
+substitution also turns unresolvable targets into PROTECTED ones; quoted-span filtering does not blind
+the guard to a real `tee`/`sed -i` write; the override is checked as permit + log + exact-match + the
+denied path writing no row + the suite not polluting the real audit log). Plus a live health check that
+invokes the guard through its real contract.
+
+**Fan-out prepared, NOT run:** `~/bmad-method-v6/tools/migrate-bash-edit-guard.sh` (dry run by
+default; per-project backup; edits only the single legacy hook entry; skips rather than guesses on an
+unexpected shape; runs the health check after each apply and reports failures loudly with the rollback
+path). Dry run says **13 projects** still carry the legacy blob. Its own first dry run parsed the
+`~/.bmad-targets` comment header into 13 phantom projects and reported them as migratable — fixed to
+absolute paths only, because a migration script whose project list is word salad must never be trusted
+with `--apply`.
+
 **Still open on this entry (design choices, NOT taken):** the marker-file override
 (`.claude/.allow-main-edit`, consumed-and-cleared) and demoting `deny` to `ask` for docs-only paths.
 Both are policy calls about override CHANNEL and belong to the owner; only the already-documented
@@ -2506,3 +2548,91 @@ citations remain correct.
 
 **State stays `open`** until the fan-out lands — per the distribution-owed rule, authoring is not
 delivery.
+
+## 2026-07-26 — brief-revision-policy has no `revision_mode` for a hand-authored MATERIAL revision against built code, even though §174 explicitly blesses that path
+
+```yaml
+id: FG-2026-07-26-03
+class: schema-taxonomy
+scope: fork
+target: custom/workflows/design/shared/brief-revision-policy.md
+marker: "revision_mode field-semantics table (§2) + invariants 2/3 + §174"
+state: open
+owner: fork-maintenance
+routing: unrouted
+routing_note: "NEW DESIGN / DOCTRINE lane — adding or redefining a closed-enum value is a taxonomy change, which the autonomous-maintenance split reserves for an owner routing marker. Logged and PROPOSED, deliberately NOT shipped. This entry is not authorisation to edit the enum."
+```
+
+### Incident
+
+**The hole.** `revision_mode ∈ {workflow_generated, manual_minor_revision, spec_derived}`.
+Invariant 2 says workflow-generated **or** spec-derived ⇒ `change_class ∈ {original,
+material_revision}`. Invariant 3 says `manual_minor_revision` ⇒ `change_class: clarification`, and
+names material+manual as *the forbidden case*. So a **material revision** may only carry
+`workflow_generated` or `spec_derived`.
+
+Now read §174: when `design-handoff` cannot run, the author *"must still manually replicate the same
+shape: write a new file with the new date, set `change_class: material_revision` and `supersedes`,
+flip the predecessor…"*. §174 blesses a hand-authored material revision — and leaves `revision_mode`
+unspecified, while every legal value misdescribes it:
+
+- `workflow_generated` — false. No workflow ran.
+- `spec_derived` — its stated precondition (§207) is *"`design-handoff` cannot read built code…
+  not yet implemented"*. False whenever the surface is built, which is the common case for a revision.
+- `manual_minor_revision` — forbidden by invariant 3.
+
+**Encountered live, not hypothetically.** `design-brief-removal-recovery-2026-07-26.md`
+(cash-recovery) is a material revision of a built surface, hand-authored from a live-data evidence
+pack because the owner had **locked** the composition — and `design-handoff` produces a
+*blank-canvas* brief that excludes current layout by design, so running it would have discarded the
+locks. It was stamped `spec_derived` as the least-wrong legal value, with the mismatch stated in the
+brief body rather than papered over. The completeness gate passes it; the §241 closed-enum validator
+would too. **That is the risk: the file is silently mislabelled and nothing detects it** — the same
+shape as the closed-enum slip §241 exists to catch, one level up.
+
+**Proposed resolutions (owner picks; do not implement unrouted).**
+(a) Add `evidence_derived` — hand/agent-authored against built code + live data. Cleanest, but a new
+enum value means every consumer's validator needs the addition.
+(b) Widen `spec_derived` to "hand or agent authored, not an automated workflow run", dropping the
+no-built-code precondition. No new value, no validator change; costs the word "spec" its literal
+meaning.
+(c) Do nothing, and document the approximation in §174. Zero cost, keeps the mislabel.
+
+Recommendation: **(b)** — the smallest change that makes existing stamps honest, and `revision_mode`
+already answers *"how did this file come to be"* rather than *"what did it read"*.
+
+---
+
+## 2026-07-26 — design-ingest fans out to subagents that CANNOT reach the design MCP, so the context-isolation the workflow sells is unavailable on the DesignSync path
+
+```yaml
+id: FG-2026-07-26-04
+class: architecture-assumption-gap
+scope: fork
+target: custom/workflows/implement/design-ingest/steps/step-01-frame-inventory.md
+marker: "fan-out MCP reachability"
+state: open
+owner: fork-maintenance
+```
+
+> **Id reassigned 2026-07-26 (mechanical, by another session):** created as `FG-2026-07-26-01`, which was already taken by the closed GIT_INDEX_FILE entry and is referenced by id in `STATUS.md`. A duplicate id fails the schema gate and blocks EVERY commit to this register, so the newer entry was renumbered to `-04`. Content untouched; nothing referenced it yet.
+
+### Incident
+**What fought us.** `design-ingest` exists to solve ONE problem: a large design bundle does not fit one context, so step-02 "FANS OUT — one isolated sub-agent per frame — so no single context holds the whole bundle." On the DesignSync/`claude_design` MCP path that architecture **does not work**, because a spawned subagent has no MCP servers registered. The frame agent ran `ToolSearch "select:DesignSync"` and got nothing; a keyword sweep returned only unrelated MCP tools. It could not fetch a single source file.
+
+**The workflow half-anticipates this and the mitigation is unusable.** step-01 §1 already says: on the DesignSync path, "mirror each `get_file` to disk via the context-free persist mechanism … never paste `get_file`'s return value through context." But `get_file` returns its payload **into the caller's context by construction** — there is no sink that bypasses it. So the only agent that CAN fetch (the orchestrator, which holds the MCP) is the exact agent whose context the fan-out exists to protect, and the persist step it is told to use does not remove the cost it was added to remove. The isolation is nominal.
+
+**Consequences, both real:**
+1. On a large bundle the orchestrator must pull the whole thing through its own context to stage it on disk — which is the `context-budget-overflow` failure `design-ingest` was created to prevent, just relocated one step earlier.
+2. Routing is now self-defeating: `design-implement`'s size preflight sends the LARGEST surfaces here, so the bigger the bundle, the more certainly the mitigation fails.
+
+**What the agent got RIGHT, and should be preserved as the reference behaviour.** `src/components/regrade-lineage/RegradeLineageApp.tsx`, `lineage-data.ts` and `lineage-presentation.ts` were all present locally, and it **refused to enumerate from them**, stating: enumerating the implementation and filing it as the design inventory "would make every downstream grid row self-confirm — the exact confound this ingest exists to prevent. It would look like a complete manifest and be worthless." That is precisely the failure this workflow exists to stop, and it declined the plausible-looking substitute unprompted. Worth citing in the step file as the required posture on an unreachable source.
+
+**Candidate fixes (not actioned — fork owner's call):**
+1. **Orchestrator-stages-then-fans-out, stated honestly.** Keep the fan-out for ENUMERATION but make step-01 explicit that on the MCP path the orchestrator stages the bundle to `_bmad-output/design-source/<slug>/` first, and that this costs orchestrator context — so the size preflight must gate on *stage* cost, not just ingest cost. Removes the false promise.
+2. **A real context-free sink.** If the MCP could write `get_file` output straight to a path (a `localPath` sink mirroring `write_files`), the current step-01 wording becomes true as written. This is the only fix that preserves the advertised isolation.
+3. **Fresh-session routing.** Document that a large MCP-path ingest belongs in a session opened FOR it, since the orchestrator's context is the binding constraint and a long-running session has already spent it.
+
+**Target file:** `custom/workflows/design/design-ingest/step-01-frame-inventory.md` §1 (the persist instruction) and the size-preflight rule in `design-implement` that routes here.
+
+**Priority: high.** Not cosmetic — it silently negates the entire reason `design-ingest` was split out of `design-implement`, and it fails hardest on exactly the bundles that need it most.
