@@ -1096,6 +1096,18 @@ Every obvious reading of that message is WRONG, and each costs a diagnostic hop:
 
 **Leading hypothesis, explicitly UNPROVEN:** this is the shared-index race, i.e. the same commingling hazard `parallel-sessions.md` D3 already names. The fork is ONE git repo with ONE index shared by ~25–37 concurrent sessions; another session's `git add` / lint-staged run writes a transient object and mutates the index inside my commit's read→tree-build window, so I reference an object that is gone by the time trees are built. That fits every observation — intermittency, the missing object, a path (`.claude/skills/bmad-example/SKILL.md`) belonging to no state of mine, clean forensics after the window closes, and retry-succeeds. It is a hypothesis because it has not been demonstrated under controlled concurrency.
 
+**NEW EVIDENCE 2026-07-26 (cash-recovery) — it fires on a SINGLE-PATH `git add -f`, and the sweep is the
+COMMIT, not the add.** Staging exactly one file (`git add -f <manifest>`) then running a bare
+`git commit` produced a commit of **8 files**: the manifest plus a parallel session's staged `/lineage`
+design-ingest work (a 335-line ingest artifact, an HTML template, a tokens file and three `ui_kits`
+JSX files). The `add` was correctly scoped; the *commit* took the whole index, which another session had
+already populated. Caught before push, recovered with `git reset --soft HEAD~1` (which correctly
+restored their 7 files to staged) and re-committed via the path-scoped form `git commit -- <path>`,
+which **succeeded on the first attempt** here — a third data point on the `--only` flakiness above, and
+this time in its favour. Their staged work was verified intact afterwards. **Sharpens the rule:** the
+danger is not a "bare `git add`" as the heading says — it is a bare `git commit` over an index you do
+not exclusively own, which a perfectly-scoped `add` does nothing to protect you from.
+
 **NEW EVIDENCE 2026-07-25 — retry did NOT clear it, and the trigger correlates with `--only`.** Four consecutive `git commit -m … -- <paths>` invocations failed with the identical error naming `.claude/skills/bmad-example/SKILL.md`; retrying was not enough. Forensics at the time of failure: the path is absent from `HEAD` (`git ls-tree -r HEAD` → 0 hits), absent from the index (`git ls-files -s` → empty), absent from disk, no stashes exist at all, and `git fsck --connectivity-only` reports only dangling objects — no missing reachable object. A `git read-tree HEAD` (rebuilding the index, ruling out a stale cache-tree) did not help either. The **plain staged form — `git add <explicit paths>` then `git commit` — succeeded on the first attempt**, immediately afterwards, with no other change. That is the strongest signal yet: it points at `--only`/path-scoped tree-building rather than at repo corruption, and it directly contradicts the earlier observation that `--only` succeeded on the next attempt (`e0dc8ea9`). Both observations stand; the mechanism is still NOT root-caused. **Practical consequence:** the shared-index anti-sweep rule (`manifest-contract.md` §4a) prefers the one-step path-scoped commit, which is currently unavailable here — so that rule now carries an explicit fallback (stage the explicit paths, commit in the very next command) rather than sending sessions at a form that fails.
 
 **Practical guidance until root-caused: RETRY the commit. Do NOT reach for `--no-verify`** (it skips every gate and is not the fix), and do not spend hops diagnosing repo corruption — the repo is healthy each time it is inspected. The stash preflight is kept on its own merits (a corrupt stash IS a real failure mode, now tested) but does NOT close this entry.
@@ -1145,8 +1157,10 @@ class: phantom-dependency / undistributed-contract
 scope: fork
 target: ~/bmad-method-v6/custom/workflows/design-handoff/step-01b-decide.md
 marker: "analytics-rigor-undistributed"
-state: open
+state: partly
 owner: fork-maintenance
+routing: retro-routed
+routing_note: "Coherence half fixed under standing 'action the fork gaps' maintenance instruction (2026-07-26); authoring the two skills stays NEW DESIGN and unrouted."
 ```
 
 ### Incident
@@ -1180,6 +1194,36 @@ So the suspicion in the entry above is CONFIRMED and is not confined to `analyti
 This narrows fix (a): these are **not** sync-manifest omissions. The standards assert contracts against skills that do not exist, so the choice is author them or demote the references from "mandatory pass / enforced gate" to "inline procedure". Leaving them as-is keeps two review gates performative.
 
 ---
+
+
+### Resolution — 2026-07-26: the COHERENCE half fixed; authoring the skills stays design-lane
+
+**Re-diagnosed before fixing, and it is narrower than logged.** The complaint was that a "mandatory"
+depth pass silently degrades. Most of that has since been closed by other work: step-01b already
+carries a full inline fallback, `rigor_source` / `decision_source` provenance is MANDATORY on both
+paths, a tier-6 commit gate warns on a `skill` claim with no invocation marker, and
+`analytics-archetypes.md` has carried a ⚠️ status block since 2026-07-20 saying the skill is not
+authored in any resolution root. So the pass does not silently degrade — it degrades *declaredly*.
+
+**What was actually still broken: two fork docs disagreed, and the uninformed one gave the
+instruction.** `analytics-archetypes.md` knew the skill was unauthored; `step-01b-decide.md` — the file
+that literally says *"Load `analytics-rigor` via the Skill tool"* — did not. A cold session reads the
+invoke instruction first, tries a skill that cannot resolve, and only then finds the fallback several
+paragraphs later. Same for the `decision-analysis` sibling at §5c-3, which the entry already named as
+the *same* defect side by side.
+
+**Fixed:** a STATUS-FIRST line now sits at each invoke point, saying the skill is not authored today,
+that the fallback is the **expected** path, and that `inline-fallback` is the NORMAL outcome rather
+than a failure to explain away — plus an explicit "do not claim `rigor_source: skill` because this
+instruction says to load it." Placed at the instruction, not in a sibling doc, because that is exactly
+the drift this was.
+
+**Deliberately NOT done — `partly`, not closed.** Authoring `analytics-rigor` and `decision-analysis`
+is NEW DESIGN (two new policy-skills, each needing an invocation policy and wired callers per the
+policy-skill health rules). Under the 2026-07-26 lane split that needs per-entry routing from Mason,
+so it is proposed, not shipped. The commit-time gate is left exactly as it is: warning on a
+`rigor_source: skill` claim with no marker is *correct*, and more correct now that the skill provably
+cannot be invoked.
 
 ## 2026-07-20 — the WIP register that exists to prevent collisions is edited by unsynchronised whole-file read-modify-write, and its `claimed_by` label is not stable even within one session
 
@@ -2636,3 +2680,183 @@ owner: fork-maintenance
 **Target file:** `custom/workflows/design/design-ingest/step-01-frame-inventory.md` §1 (the persist instruction) and the size-preflight rule in `design-implement` that routes here.
 
 **Priority: high.** Not cosmetic — it silently negates the entire reason `design-ingest` was split out of `design-implement`, and it fails hardest on exactly the bundles that need it most.
+
+### Evidence added 2026-07-26 (session `claude-session-20260726-122838`) — candidate 1 EXERCISED, and it works
+
+The fresh session this entry recommends as candidate 3 ran the same ingest (`regrade-lineage-ledger`)
+and completed the fan-out by applying **candidate 1**: orchestrator stages, then fans out. **This is
+evidence, not a fix.** The step file is unchanged and the entry stays **open** — making step-01 §1 say
+this is fork-canon prose that rides the sync into 14 projects, so it is the owner's call.
+
+**What was actually done.** The orchestrator called `DesignSync get_file` per file and `Write` each one
+into a repo-relative staging dir (`_bmad-output/design-source/<slug>/`), preserving the project's own
+path shape. The six frame agents were then pointed at those **disk paths** and needed no MCP at all.
+They ran concurrently with zero MCP dependency, which is the outcome the fan-out was designed for.
+
+**The cost, measured rather than estimated.** The `?file=` target here was a thin **3.7 KB** wrapper; the
+real design was three `ui_kits/` modules plus the consumed design-system primitives — **76 KB across 6
+files** once staged. Every byte crossed the orchestrator's context **twice**: once returning from
+`get_file`, once as the `Write` argument. So candidate 1 does not remove the cost the fan-out exists to
+avoid; it **relocates and doubles** it, in the one context that cannot be isolated. Affordable at 76 KB.
+Not affordable at the ~140 KB this entry cites — which is precisely the band `design-implement`'s size
+preflight routes here, so the self-defeating-routing consequence above survives this workaround.
+
+**Two things worth folding into whichever candidate is chosen:**
+- **Stage the SOURCE durably, not as scratch.** The staged tree was force-added and tracked, so the
+  manifest's value-exact property cells are auditable against the exact bytes the agents read, and a
+  later `design-implement` can re-read values with no MCP at all. That converts the workaround into a
+  durable asset instead of session residue, and it satisfies `manifest-schema.md` → "Path invariant"
+  rather than colliding with it.
+- **The double-crossing is the real defect, and only candidate 2 removes it.** A `localPath` sink on
+  `get_file` — mirroring the `localPath` that `write_files` **already** has, which uploads without the
+  content entering context — would make step-01 §1's existing wording true as written and cut the cost
+  to zero. The asymmetry is the whole bug: the MCP can already move disk→remote context-free, but not
+  remote→disk.
+
+**Reference posture preserved.** All six frame agents carried an explicit prohibition on reading
+`src/components/regrade-lineage/**`. Do not weaken that prompt clause when the step file is eventually
+edited — it is the clause that stops the implementation being enumerated as the design.
+
+---
+
+## 2026-07-26 — the bash edit-guard resolves a RELATIVE path against the main checkout, not the session's worktree cwd, so it blocks the exact isolation it demands
+
+```yaml
+id: FG-2026-07-26-06
+class: enforcement-false-positive
+scope: machine-local
+target: .claude/hooks/bash_edit_guard.py
+marker: "worktree-cwd-unobserved"
+state: open
+owner: fork-maintenance
+```
+
+> **Header added 2026-07-26 (mechanical, by a later session).** This entry was authored with **no
+> ```yaml header block**, which fails `tools/check-fork-gap-schema.sh` — and that gate is armed in
+> pre-commit, so the omission **blocked every commit to this register for every session** until it was
+> filled. Fields were read off the entry's own body; nothing was interpreted or added. `id` is the next
+> free 2026-07-26 slot at the time of the fix (-01…-05 taken), so it does not imply authoring order.
+
+### Incident
+**Noticed:** 2026-07-26 (cash-recovery, mid-build in a worktree). **Priority: medium.**
+**Root-cause class: a relative-path base that is ASSUMED (`CLAUDE_PROJECT_DIR`) rather than OBSERVED
+(the shell's real cwd), in the one path where the harness — not the command string — moved the cwd.**
+
+**Observed, mid-build.** A session that had ALREADY called `EnterWorktree` — `pwd` and
+`git rev-parse --show-toplevel` both returning
+`/Users/masonwood/code/cash-recovery/.claude/worktrees/feat-claim-window-deadline-clock` — ran a
+heredoc append to a **relative** path (`src/app/(clerk)/inbound/inbound-board-model.test.ts`) and was
+hard-denied with:
+
+> `BLOCKED: 20 parallel claude sessions detected and you are NOT in a worktree. This bash command writes: src/app/. Call EnterWorktree`
+
+The session was in a worktree. The guard resolved the relative target against `CLAUDE_PROJECT_DIR`
+(the main checkout) rather than the shell's actual cwd, decided the write landed on tracked main
+files, and denied. **The remedy it printed — "Call EnterWorktree" — was already satisfied**, so the
+message is unactionable: there is no state the agent can reach that clears it.
+
+**Why this is the documented defect class and still a NEW instance.** `CLAUDE.md` already records four
+resolution fixes in this family, including *"a leading `cd <dir> &&` is now honoured for relative
+targets"*. That fix covers a cwd change **expressed inside the command string**. It does not cover the
+session cwd being changed **by the harness** via `EnterWorktree` — the guard never learns the shell
+moved. So the same root cause (relative-path base is assumed, not observed) survives in the one path
+the project's own worktree mandate makes routine.
+
+**Cost, concretely.** The false deny is not merely noisy — it pushes work toward the tool-swap bypass
+the override log exists to make visible. The write succeeded immediately via the `Edit` tool with the
+identical target, which is the *"every real use became a tool-swap bypass"* pattern
+`FG-2026-07-25-02` already calls out. A guard that is trivially and silently routed around by
+switching tools is enforcing nothing while costing a round trip and an explanation to the owner.
+
+**Sharpest available signal for a fix:** the guard already knows how to derive the repo root
+(`git rev-parse --git-common-dir` is used elsewhere for the register path). Resolving a relative
+target against the **hook payload's cwd** — which `PreToolUse` supplies — rather than
+`CLAUDE_PROJECT_DIR` would close it, and is the same "observe, don't assume" discipline as the
+`cd`-honouring fix. **Not applied here:** the guard is live in front of every Bash call for ~20
+concurrent sessions, the owner's instruction this session was to build SR-38, and changing a live
+deny-tier gate mid-flight with that blast radius is a separate, deliberate decision. Proposed, not
+shipped.
+
+**Do NOT "fix" this by widening the allowlist to `src/`.** That would delete the guard's entire
+purpose (preventing ad-hoc shell writes to tracked project files from the main checkout) to solve a
+path-resolution bug. The defect is *where the base path comes from*, not *which paths are protected*.
+
+---
+
+## 2026-07-26 — `design-implement` can report a frame `✓ applied` while its component has ZERO non-test importers: step-04's entry-point check fires only on a NEW ROUTE, and the grid has no disposition for "transcribed but unrouted"
+
+```yaml
+id: FG-2026-07-26-05
+class: silent-partial-implementation
+scope: fork
+target: custom/workflows/implement/design-implement/steps/step-04-apply-and-deliver.md
+target_secondary: custom/workflows/implement/design-ingest/manifest-schema.md
+marker: "applied-but-unreachable"
+state: open
+owner: fork-maintenance
+routing: NEEDS OWNER MARKER — NEW DESIGN (extends what step-04 REQUIRES + adds a grid disposition enum value)
+```
+
+### Incident
+**Noticed:** 2026-07-26 (cash-recovery — owner-reported dead `/receive` surfaces, then a
+`design-implement` route-integration pass). **Priority: medium-high.** **Root-cause class: a
+completeness check whose TRIGGER is one altitude above the failure it exists to catch, plus a resume-state
+schema that cannot express the honest disposition — so the warning is written only in prose the resume
+read does not consult.**
+
+**What fought us (cash-recovery, `/receive`).** `design-implement` passes 4 and 6 transcribed frames 2
+(`process-station--scan-matched`, 551 LOC) and 3 (`process-station--scan-exception`, 690 LOC), marked
+all nine of their grid rows **`✓ applied`**, logged their forced deviations properly, and shipped them
+in PRs #357 and #360. **Both components had zero non-test importers, and stayed that way for six
+days.** `tsc`, `eslint`, 22 unit tests and two merged PRs were green the whole time. Their own file
+headers asserted `imported by ReceiveStation` — false. Nothing in the toolchain disagreed, because
+nothing asked whether a user could reach them.
+
+**Why it is structural, in two parts — and the second is the one that makes it invisible.**
+
+**(1) step-04 already HAS the right check, scoped so it cannot fire here.** The "Entry point /
+discoverability" section is mandatory *"whenever the run mounted a new route"*, and it exists because
+`/recovery/cross-check` shipped URL-only. Frames 2 and 3 mounted **no route** — they are components
+*inside* an existing one — so the check is not merely skipped, it is **structurally blind**: its
+trigger condition is a route, and the failure mode is a component. Same defect class (built, nothing
+points at it), one altitude down, and the existing rule's own trigger guarantees it is missed. Note
+this is NOT the `orphaned-actions` grep either: that finds an action left with zero callers after a
+*deletion*, the mirror image of a component created with zero importers.
+
+**(2) The manifest grid cannot EXPRESS the state, so the honest thing has nowhere to go.** Row
+disposition is `✓ applied` / `⊘ dropped` / `UNVERIFIED`. A transcribed-but-unrouted component is
+`applied` by every available reading — the CSS values *were* applied — so the row was not wrong, it was
+**inexpressible**. Pass 4 did say "Not yet wired into `ReceiveStation` — same posture as frames 0 and 1"
+in its prose and even flagged wiring as "the largest un-owed piece". That sentence sat 60 lines below a
+table of nine green ticks. **A resume read consults the grid, not the narrative** — the manifest says so
+itself ("the `(frame, section)` grid rows are resume state") — so the warning was written in the one
+place the next session does not read. Pass 5 then wired frames 0+1 and stopped; passes 7 and 8 wired
+their own frames; nobody re-derived the gap, because the grid showed it closed.
+
+**The compounding effect.** Three sessions read this manifest after pass 4 and none re-opened the
+wiring question. The prose warning is not a mitigation — it is the thing that failed. And the six days
+were not idle: `/receive` was reasoned about, briefed, and reported on as though those frames were part
+of the shipped surface.
+
+**Proposed (NOT shipped — needs a routing marker).**
+- **step-04** (`custom/workflows/implement/design-implement/steps/step-04-apply-and-deliver.md`; the
+  generated `custom/skills-native/` copy re-ports from it — never edit that tree by hand): change the entry-point trigger from *"mounted a new route"* to **"created any component"**,
+  and require the report to name, per created component, either its non-test importer chain to a route
+  entry or an explicit `UNROUTED — wiring owed` line. Cheap and deterministic: it is a grep for the
+  component name outside its own file and its test.
+- **manifest-schema:** add a disposition **`◐ transcribed · UNROUTED`** distinct from `✓ applied`, so
+  resume state can hold "the values match, nobody can reach it" without a session having to trust prose.
+  Enum change ⇒ owner's call.
+- A project-local deterministic tier already exists as the reference implementation:
+  `cash-recovery/scripts/check-reachability.mjs` (`npm run check-reachability`) — walks the module graph
+  from Next.js route entries, exits non-zero on an undeclared unreachable `.tsx`, with an
+  allowlist requiring a reason + owner for deliberately-staged components and a regression test pinning
+  both directions. **Evidence it earns its place: on first run it found FOUR MORE unreachable components
+  with zero false positives** (`ApprovalsApp`, `RecoveryApp`, `recovery/Worklist`, `recovery/money`).
+  Framework-specific (it keys on Next.js route conventions), so it generalises as a **pattern** for
+  step-04 to require, not as a file to sync.
+
+**Do NOT "fix" this by having step-04 read the component and reason about reachability.** The whole
+value is that a non-test importer is a *grep*, not a judgment. Verified: `tsc --noEmit` clean, `eslint`
+clean, 1884 tests / 184 files green, `npm run build` succeeds, `check-reachability` exits 0 — on merged
+main (cash-recovery `8bbb9b4`, `ca47deb`).
