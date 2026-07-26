@@ -11,6 +11,14 @@ This doc is **fork-local** (like `global-bmad-workflow.md` / `parallel-work-and-
 
 ## How this works
 - **Owner:** fork maintenance is carried in this repo by Mason via the fork-maintenance lane — `maintenance-triage` + `orchestrate-workflows` + the `mason-bmad-workflow-expert` skill; the investment decision on any gap is Mason's. Gaps logged here are re-surfaced by `check-fork-gaps.sh` at SessionStart (and a >30-day-stale stamp nudges the ~monthly trend scan). There is no separate persona and no GitHub Issues/Projects mirror — this file + that surfacer *is* the lane.
+- **AN ENTRY IS A BACKLOG ITEM, NOT A WORK ORDER.** Logging is autonomous; **implementing is not.** An entry records *that a gap exists and what the fix would look like* — it never, by existing, authorises anyone to write the fix.
+  - **Only a ROUTED entry may be implemented by a maintenance session.** Routing is Mason's call (or a delegate he names in-thread). Once routed, implementation may be freely delegated — the gate is on the decision to *start*, not on the work.
+  - **A vague standing prompt is not routing.** *"fix the recent fork gaps"*, *"action the backlog"*, *"clear the register"* name a **file**, not a piece of work, and fail the grounding gate for the same reason `quick-dev`'s does — you cannot state verb + target from the input alone. The bar is a concrete id AND a target: *"Implement FG-2026-07-25-11 in design-implement for inbound-flow."*
+  - **Proposing is always in scope.** Diagnose an entry, sharpen its target, draft the patch, report *"FG-N is ready to route, here is what I would write."* Writing the fork code is what waits.
+  - Doctrine home for the session-behaviour half: `docs/global-bmad-workflow.md` § Autonomous maintenance.
+- **Two independent lifecycles — do NOT conflate them.** `state:` answers *is the gap fixed?* (`open` → `closed`); **`routing:` answers *is anyone allowed to work on it?*** (`recorded` → `routed` → `in-progress` → `shipped`). A fresh entry is `state: open, routing: recorded` and is **inert by construction**. Optional companions on a routed entry: `routed_by:` and `routed_at:` (UTC ISO-8601 with `Z`) — who authorised it and when.
+  - **Why `routing:` and not `status:`** (the obvious name, deliberately rejected): a field called `status` sitting beside `state` is two near-synonyms for different axes in one block, and this register has logged that exact failure three times under other names — `actor` vs `author_provenance`, `claimed_by` vs `claimed_by_session_id`, `claimed_at` vs a local-time twin. A field that *looks* like the one next to it will eventually be read as it. `routing:` cannot be misread as `state:`.
+  - Absent `routing:` on a pre-existing entry reads as **`recorded`** — backward-compatible, and the safe default (unrouted, so not implementable).
 - **Claude logs here proactively** when the method / fork / infra fights an agent — per the global `workflow-friction-and-process-issues` policy. The user shouldn't have to notice the gap or drag it out; catching yourself working *around* the method is the signal to log.
 - **Free-form prose, plus up to three optional one-liners.** Each entry is prose: *what fought us · the specific target file/workflow it points at · why it's structural · proposed investigation · rough priority in words.* No mandatory schema — but where they're cheap to state, add:
   - `**Class:**` — a short kebab-case flavour tag (open vocabulary, not an enum). Reuse a `mason-bmad-workflow-expert` root-cause class where one fits (`contract-dimension-gap`, `context-budget-overflow`, …); otherwise coin one (`live-process`, `routing-contract`, `enforcement`, `memory`). Lets the trend scan grep by axis without rereading the file.
@@ -1485,6 +1493,67 @@ owner: fork-maintenance
 
 ---
 
+## 2026-07-26 — a test stages a fixture into the SHARED REAL index during pre-commit, then removes the blob, so EVERY commit to the fork dies on "Error building trees"
+
+```yaml
+id: FG-2026-07-26-01
+class: worktree-sync-drift
+scope: fork
+target: test/test-sync-skip-if-dirty.js
+marker: "bmad-example fixture"
+state: open
+owner: fork-maintenance
+```
+
+### Incident
+
+**Every commit to the fork currently fails**, after the full validator suite has already run and
+passed:
+
+```
+fatal: unable to read fc82610c46b589f323ad37db1f4cf1cb13c78272
+error: invalid object 100644 fc82610c... for '.claude/skills/bmad-example/SKILL.md'
+error: Error building trees
+```
+
+`.claude/skills/bmad-example/SKILL.md` is a **test fixture** created by
+`test/test-sync-skip-if-dirty.js`. It is not in `HEAD`, not in the index before the commit
+(`git ls-files -s | grep bmad-example` → empty), not in any stash, and `git fsck
+--connectivity-only` is clean. It appears **during** the pre-commit run: `npm test` creates and
+stages the fixture into the checkout's real index, then deletes the object, and git's tree-build
+then references a blob that no longer exists.
+
+**Why this is nasty rather than merely annoying.** The failure surfaces at the very END, after
+lint-staged, the whole validator suite, and the hook smoke-test have all run and reported green — so
+the operator reads a wall of passing output and then a tree error naming a path they never touched.
+Nothing in the message connects it to the test suite. The only working escape is `--no-verify`, which
+is precisely the escape the fork has repeatedly logged as corrosive: it discards the cheap validators
+that ARE the point of the gate. Same shape as the 2026-07-20 corrupt-stash outage — a commit-time
+outage whose only exit is the one that disables verification.
+
+**Aggravating factor:** the same suite reported **11 passed, 2 failed** in that run. Whether the two
+failures are pre-existing or a symptom of the same index pollution is UNVERIFIED — do not assume
+either.
+
+### Work
+
+1. **The test must never touch the checkout's real index.** It should build fixtures in a temp repo
+   (`mktemp -d` + `git init`), as `test_brief_regen_guard.py` and the sync-guard golden case already
+   do. A test that stages into the repo it runs in is unsafe in ANY checkout and actively dangerous in
+   this one, which is shared by many concurrent sessions.
+2. **Clean up on failure, not just on success.** If the fixture is genuinely needed in-repo, remove it
+   with `git update-index --force-remove` in a trap, so a failing assertion cannot leave the index
+   holding a reference to a deleted blob.
+3. **Triage the 2 failing assertions** in `test-sync-skip-if-dirty.js` separately — they gate the
+   `rsync --delete` skip-if-dirty guard, which is the Tier-3 protection on the fleet fan-out. A red
+   test there is not cosmetic.
+
+**Watch:** this is the third commit-time outage in the shared checkout whose only escape is
+`--no-verify` (corrupt stash 2026-07-20; foreign staged set 2026-07-25; this). If a fourth appears,
+the pattern is the shared checkout itself, not the individual causes.
+
+---
+
 ## 2026-07-25 — the design-brief gate covers EDITS but structurally misses NEW briefs, because `_bmad-output/` is ignored in every project the hook ships to
 
 ```yaml
@@ -1674,6 +1743,12 @@ target: custom/workflows/implement/design-implement/steps/step-01-ingest-design.
 marker: "SHARED.1a-iii"
 state: fork-fixed-distribution-owed
 owner: fork-maintenance
+routing: retro-routed
+routed_by: "Mason (post-hoc, 2026-07-26)"
+routed_at: "2026-07-26T10:12:00Z"
+implemented_by: "session 8367c19a (prompt: \"fix an action, the recent fork gaps.\")"
+implemented_at: "2026-07-25T21:06:46Z"
+routing_note: "IMPLEMENTED BEFORE ROUTING EXISTED — retro-routed, review needed. Authored ~7 min after FG-11 was logged, under a vague standing prompt, while this register still said the investment decision was Mason's. Not distributed (see `distribution:`), and the implementing session correctly marked it owed rather than closed. Kept as the worked example behind the routing gate above; review the landed `SHARED.1a-iii` clause before it is distributed."
 distribution: "custom/skills-native/ re-port (GENERATED tree — tools/port-workflows-to-skills.sh) + sync-bmad-workflows.sh to 14 targets; both owner-gated, neither run"
 ```
 
