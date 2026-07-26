@@ -636,8 +636,10 @@ class: undocumented-recovery-path
 scope: harness
 target: custom/workflows/shared/tool-registry.md
 marker: "n/a"
-state: open
+state: partly
 owner: harness-vendor
+routing: retro-routed
+routing_note: "Recovery path documented under standing 'action the fork gaps' maintenance instruction (2026-07-26); the READ path is the harness vendor's and stays open."
 ```
 
 ### Incident
@@ -652,6 +654,26 @@ owner: harness-vendor
 **Fix direction:** add one line to the tool-registry: *"Pasted images are cached at `~/.claude/image-cache/<uuid>/<N>.png`, numbered in paste order. If a prompt shows `[Image #N]` placeholders you cannot read, locate them with `find ~/.claude/image-cache -newermt today -iname '*.png'` and Read the paths directly — do NOT infer the contents or ask for a re-paste until that fails."* Cheap, no rail change, converts a rediscovery into a lookup. **Worth verifying before encoding:** the `<uuid>` did NOT match this session's id, so the recipe should stay find-by-mtime rather than construct-the-path — and one occurrence is a thin base for a general claim, so treat the mechanism as provisional until a second session confirms the cache layout. **Priority: low–medium** — low frequency-of-notice, but the downside branch is silent data fabrication on an operator task.
 
 **Related friction, same session (points to the standing gap-#111 / (c) allowlist thread, above — NOT a new gap):** the Bash edit-guard hard-blocked a `cat > fill.py` heredoc whose target was the **session scratchpad** (`/private/tmp/claude-501/<project-slug>/<session-uuid>/scratchpad/`) — a **new target class** for that thread, and a sharper contradiction than the prior ones: the harness system prompt *explicitly instructs* agents to use the scratchpad for all temp files and states it "can generally be used without permission prompts", while the guard blocks writes to it as an "edit-equivalent" and redirects to a worktree — meaningless for a session-private tmp dir where cross-session collision is impossible by construction. Same root as every prior hit: the guard classifies on the command SHAPE (`cat >`), not the expanded TARGET path. Worked around via the Write tool, which passed on the identical target — re-confirming the standing Bash-vs-Edit/Write inconsistency ask. Logged here by pointer, not duplicated.
+
+
+### Resolution — 2026-07-26: the RECOVERY path is documented; the READ path stays with the vendor
+
+`custom/workflows/shared/tool-registry.md` gains a **"Pasted images — the `[Image #N]` unreadable
+case"** section, placed first because it is the failure a session meets before it reaches any tool.
+Four rules: say so IMMEDIATELY and never answer from the surrounding text alone; ask for a FILE PATH
+rather than a re-paste (the `Read` tool renders images from disk, and a second paste usually fails the
+same way); prefer Claude in Chrome for a web page, where the DOM is readable and a pasted pixel buffer
+is not; and if the image is genuinely unavailable, mark the answer **UNVERIFIED — image not read** and
+name what you would have checked in it.
+
+**Why this is the right half to fix.** The entry is `scope: harness`, `owner: harness-vendor` — nothing
+in this fork can make the images readable. But the *harm* was never the missing pixels; it was the
+**silence**: nothing errors, so the tempting move is to answer from the text and let the image go
+unmentioned, producing a confident conclusion "supported by" a screenshot nobody saw. That half is
+entirely ours and needed no vendor.
+
+**Stays `partly`** because the read path is unfixed and not ours to fix. Do not close this on the
+strength of the recovery doc.
 
 ## 2026-07-16 — the local-render "honest done-check" can only paint the states the SEED DATA contains, so the state axis it exists to certify goes silently unverified
 
@@ -2794,7 +2816,9 @@ target_secondary: custom/workflows/implement/design-ingest/manifest-schema.md
 marker: "applied-but-unreachable"
 state: open
 owner: fork-maintenance
-routing: NEEDS OWNER MARKER — NEW DESIGN (extends what step-04 REQUIRES + adds a grid disposition enum value)
+routing: SPECIFIED BY OWNER 2026-07-26 (paste-back, session claude-session-20260726-124128) — HELD FOR EXPLICIT APPROVAL
+routing_note: "Owner ACKed the diagnosis and SPECIFIED both changes, but ruled PROPOSED-only: 'Do not alter step-04 behaviour or manifest enums yet.' Specification is below under 'Proposed change (OWNER-SPECIFIED)'. Nothing shipped."
+blast_radius: "design-implement fans out to ALL 14 sync targets (~/.bmad-targets). Changes what every project's apply pass may call 'applied' + adds a manifest enum value existing manifests do not carry."
 ```
 
 ### Incident
@@ -2838,23 +2862,75 @@ wiring question. The prose warning is not a mitigation — it is the thing that 
 were not idle: `/receive` was reasoned about, briefed, and reported on as though those frames were part
 of the shipped surface.
 
-**Proposed (NOT shipped — needs a routing marker).**
-- **step-04** (`custom/workflows/implement/design-implement/steps/step-04-apply-and-deliver.md`; the
-  generated `custom/skills-native/` copy re-ports from it — never edit that tree by hand): change the entry-point trigger from *"mounted a new route"* to **"created any component"**,
-  and require the report to name, per created component, either its non-test importer chain to a route
-  entry or an explicit `UNROUTED — wiring owed` line. Cheap and deterministic: it is a grep for the
-  component name outside its own file and its test.
-- **manifest-schema:** add a disposition **`◐ transcribed · UNROUTED`** distinct from `✓ applied`, so
-  resume state can hold "the values match, nobody can reach it" without a session having to trust prose.
-  Enum change ⇒ owner's call.
-- A project-local deterministic tier already exists as the reference implementation:
-  `cash-recovery/scripts/check-reachability.mjs` (`npm run check-reachability`) — walks the module graph
-  from Next.js route entries, exits non-zero on an undeclared unreachable `.tsx`, with an
-  allowlist requiring a reason + owner for deliberately-staged components and a regression test pinning
-  both directions. **Evidence it earns its place: on first run it found FOUR MORE unreachable components
-  with zero false positives** (`ApprovalsApp`, `RecoveryApp`, `recovery/Worklist`, `recovery/money`).
-  Framework-specific (it keys on Next.js route conventions), so it generalises as a **pattern** for
-  step-04 to require, not as a file to sync.
+### Proposed change (OWNER-SPECIFIED 2026-07-26 — PROPOSED ONLY, NOT SHIPPED)
+
+Owner ACKed the diagnosis, ruled both halves **fork-level design-implement issues, not local quirks**,
+and specified the change below — then held it: *"Keep them in PROPOSED state until Mason explicitly
+approves. Do not alter step-04 behaviour or manifest enums yet."* **Nothing in the fork has been
+changed.** This section is the specification of record for when approval lands.
+
+**Target:** `custom/workflows/implement/design-implement/steps/step-04-apply-and-deliver.md`
+(the generated `custom/skills-native/` copy re-ports from it via `tools/port-workflows-to-skills.sh` —
+never edit that tree by hand) + `custom/workflows/implement/design-ingest/manifest-schema.md`.
+
+**Blast radius:** design-implement fans out to **all 14 sync targets** (`~/.bmad-targets`). This changes
+what every project's apply pass is permitted to call `applied`, and adds a disposition value that no
+existing manifest carries. Distribution is a separate Tier-3 action from authoring.
+
+**(1) Requirement change — widen the island check.**
+
+| | |
+|---|---|
+| **Old trigger** | *"Whenever the run mounted a new route, check for unlinked entry points."* |
+| **New trigger** | *"Whenever the run created or substantially modified any component that should be reachable (routes, drawers, views, or other named entry surfaces), run the unlinked-island check."* |
+
+Behaviour:
+- **Enumerate entry surfaces broader than routes** — routes · top-level views · named drawers/sheets
+  that must be reachable from some trigger.
+- **Require evidence per surface** — where it is reachable *from* (parent route / trigger), and *how*
+  the user gets there.
+- **A newly created entry surface with no reachable path CANNOT be marked `applied`.** It is either
+  explicitly **dropped**, or marked **`◐ transcribed · UNROUTED`**.
+
+**(2) Enum change — a fourth manifest disposition.**
+
+`◐ transcribed · UNROUTED` — *"code changes that faithfully implement part of the brief but have no
+reachable path for operators yet."* Rules:
+- **Cannot be treated as `applied`.**
+- **Must be called out ABOVE the grid** as an explicit open item — never buried in narrative below it.
+  (This is the clause that answers cause (2): the pass-4 warning existed and sat 60 lines under nine
+  green ticks.)
+- **Resume reads must treat `◐` as an outstanding obligation.** The workflow may not declare the frame
+  fully applied while any `◐` entries exist.
+
+**Enforcement:** step-04 **refuses** to mark a frame `applied` if the grid holds any `◐` without a
+matching follow-up plan; briefing/resume rules instruct readers to scan **both** the grid and the `◐`
+list before proceeding.
+
+**On approval, also required:** a **golden case** — a manifest where a new component exists but is not
+wired — demonstrating correct use of `◐` and the refusal to mark `applied`.
+
+### Implementation note — two risks to settle BEFORE encoding (flagged, not decided)
+
+Recording these because they change whether the result is a gate or a suggestion. Neither blocks
+approval; both want a decision at encoding time.
+
+1. **"Components that SHOULD be reachable" puts a judgement back in the trigger.** The reference
+   implementation is deterministic precisely because it does *not* ask that: it asks the mechanical
+   question — *does this file have a non-test importer chain to a route entry?* — and pushes the
+   judgement into an explicit declaration (`reachability-allowlist.json`, reason + owner required).
+   A trigger phrased as "should be reachable" is re-litigable per component, which is how a check
+   becomes advisory. **Suggested reconciliation:** keep the *detection* mechanical (every created
+   component, no exceptions) and let `◐` + a declared reason carry the "this one is deliberately not
+   wired yet" judgement. That preserves the owner's intent — an unwired surface cannot read as applied
+   — without making the trigger arguable.
+2. **"Substantially modified" adds cost without adding detection.** Modifying a component does not
+   change whether anything imports it; a modified-but-already-routed component is reachable, and a
+   modified-but-unrouted one was already caught by the "created" arm on the pass that created it.
+   Unless the intent is to catch a modification that *removes* the last importer — a real case, and the
+   mirror of the existing `orphaned-actions` grep — this clause widens the trigger without widening
+   coverage. **Suggested:** either drop it, or scope it explicitly to *"a change that removes a
+   component's last non-test importer."*
 
 **Do NOT "fix" this by having step-04 read the component and reason about reachability.** The whole
 value is that a non-test importer is a *grep*, not a judgment. Verified: `tsc --noEmit` clean, `eslint`
