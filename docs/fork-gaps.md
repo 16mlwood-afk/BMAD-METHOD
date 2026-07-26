@@ -3390,3 +3390,154 @@ v1 unmodified (`design-ingest-clerk-receive.md`, mtime 2026-07-26T11:53Z, 9 pass
 
 Interacts with `FG-2026-07-26-07` (manifest gitignored ⇒ overwrite is unrecoverable) and
 `FG-2026-07-26-09` (same workflow, same run).
+
+## 2026-07-26 — `design-implement`'s early existence preflight probes whether a capability's OBJECT exists, not whether it REACHES the surface's view model, so a brownfield redesign whose domain modules are all built-but-unwired passes the cheap gate and only halts at §4c after a full ingest + map
+
+**Class:** contract-dimension-gap
+**Fix scope:** fork-only
+**Marker:** `reaches the surface's view model`
+
+**What fought us.** A `design-implement` run against the Claude Design claim-evidence-pack handoff
+(`/reimbursements/queue`, cash-recovery, brief `design-brief-claim-evidence-pack-2026-07-26`, SR-39)
+was always going to halt — 11 of the 18 capabilities the handoff draws have no live read path — but
+it only found that out at **step-02b §4c**, after ingesting the whole bundle over the DesignSync MCP
+(5 `get_file` round trips), reading a 1960-line implementation component, and reconciling the token
+foundation. Every byte of that was spent on a run that could not proceed.
+
+The workflow *has* an early gate for exactly this: the **Net-new / no-target preflight** in
+`workflow.md` (Input Resolution), including its capability-granularity probes 4–6, which run "as soon
+as `{target_slug}` + the target route are resolved… the earliest cheap point, before ingest and the
+grid." It passed cleanly, and correctly by its own terms:
+
+- probes 1–3 (route · page component · backing object) — all three present; this is a live surface.
+- probe 4 (paired backend/arch-spec self-marks not-ready) — no such artifact.
+- probe 5 (**"grepping the schema + shared types for the *capability's* object finds nothing"**) —
+  found everything: `deadline-clock.ts`, `claim-manifest.ts`, `claim-evidence.ts` all exist as built,
+  tested domain modules, and `carrier_tracking_status.delivered_at` is in the schema.
+- probe 6 (assumed read/save path has no implementation) — `fileReimbursementAction` exists.
+
+**Why it's structural, not a one-off.** Probe 5 asks *does the capability's object exist in the
+repo?* The question that actually decides whether a brownfield redesign can proceed is one level in:
+*does that object reach THIS surface's view model?* Those come apart precisely in a mature codebase,
+which is where redesigns happen — a domain module can be built, unit-tested and merged while nothing
+projects it into the read model the page consumes. Here the project's own scope register had already
+written the answer down: the SR-38 row records verbatim that `/reimbursements/queue` *"is NOT wired —
+its `Candidate` type carries no tracking number, so there is no path to
+`carrier_tracking_status.delivered_at` … Recorded, not silently built."* The fact was cheap, written,
+and unreachable by the probe as specified.
+
+The failure is quiet in the way this register keeps logging: nothing errored, the gate ran, and the
+verdict ("true brownfield diff — proceed normally") was wrong for a reason the probe cannot see.
+Same shape as the entries above it — a check that inspects the *presence* of a thing rather than the
+*edge* to the consumer that needs it.
+
+**Proposed investigation (NOT shipped — this changes what a probe IS).** Add a **wiring** dimension
+to the capability-granularity probe: for a redesign of an EXISTING surface, for each capability the
+handoff's brief §2 Domain Data / §8 Implementation Files names, check whether its fields appear in
+the surface's own view-model type (the `{impl_page}`'s props / read-model interface), not merely in
+`src/domain/**` or the schema. A capability whose module exists but whose fields are absent from the
+view model is **built-but-unwired** — a distinct verdict from both `net-new-surface` and
+`capability-net-new`, and the one that should early-exit with "this needs a read-model pass first."
+Cheap inputs: the brief is already read for supersede resolution at this point, and the view-model
+type is one file. Worth checking whether the same signal belongs in `design-handoff` so a brief for
+an unwired capability carries the flag from birth rather than being re-derived by every implementer.
+
+Open question for the owner, deliberately not decided here: whether this early exit should be **soft**
+(recommend + override, matching the existing net-new exit) or should hard-route to `quick-spec`. Soft
+is the consistent choice; hard-routing is a lane decision.
+
+**Priority:** medium-high. It doesn't corrupt anything — the §4c gate did catch it — but it makes the
+catch expensive, and expense is what erodes a gate: the pressure on the next session is to skip the
+preflight it "knows" will pass. Cost is bounded and repeats on every brownfield redesign of a surface
+whose domain outran its read model, which in this repo is a recurring shape (`unwired-arbiter-cluster`
+records four other tested-but-dead domain services awaiting one wiring epic).
+
+**Target file:** `custom/workflows/implement/design-implement/workflow.md` — the *"Capability-granularity probe (the overlay case)"* block under *Net-new / no-target preflight*, probes 4–6 and the Verdict paragraph.
+**state:** open
+**routing:** recorded
+
+## 2026-07-26 — design-implement mandates entering a worktree BEFORE mapping, and the worktree branches from origin/main — so on the manifest path the durable ledger is not in the tree the apply runs in
+
+```yaml
+id: FG-2026-07-26-11
+class: step-ordering
+scope: fork
+target: custom/workflows/implement/design-implement/steps/step-02-map-implementation.md
+target_secondary: custom/workflows/implement/design-ingest/steps/step-03-emit-manifest-and-handoff.md
+marker: "manifest-ledger-unreachable-from-mandated-worktree"
+state: open
+routing: recorded
+owner: fork-maintenance
+related: FG-2026-07-26-07
+```
+
+### Incident
+
+**Noticed:** 2026-07-26 (cash-recovery, `design-implement` pass 1 against
+`design-ingest-clerk-receive-station-v2.md`, 84 rows / 11 frames). **Priority: medium.**
+
+**What fought us.** Two mandatory instructions of the same workflow contradict each other on the
+manifest path, and nothing in either one notices:
+
+1. **step-02 §0** — *"If the project mandates worktrees, enter the worktree NOW — before reading a
+   single implementation file… map and apply in the SAME path space."* Good rule, real reason (the
+   harness tracks read-state per absolute path, so mapping in the main checkout makes step-04's first
+   `Write` fail on a file already read).
+2. **The resumable-apply Critical Rule** — *"the manifest IS the durable progress ledger… persist
+   each row's disposition back into the manifest file the moment that frame is done."*
+
+`EnterWorktree` defaults to `worktree.baseRef: fresh`, i.e. it branches from **`origin/main`**. The
+manifest is gitignored, force-added by `design-ingest`, and **left uncommitted** at ingest exit. So
+the file the apply is required to write dispositions into **does not exist inside the worktree the
+apply is required to enter.** Neither step says so; the failure is silent until you look for the
+ledger and it isn't there.
+
+**Why this is distinct from FG-2026-07-26-07.** That entry is about *durability* — a gitignored
+artifact a parallel `git clean` can destroy, unrecoverably. This one is about *ordering and
+reachability*: even a perfectly intact manifest is invisible to the mandated worktree unless it is on
+`origin/main` first. Fixing -07 (protect the file) does not fix this; fixing this (commit before
+entering) happens to also fix -07 for that artifact. They should be resolved together, but they are
+not the same defect and -07's text does not cover it.
+
+**Cost this session.** Not fatal, because the collision was noticed before the worktree was created —
+but the resolution had to be **invented**, not followed: commit the manifest by explicit path → push →
+PR **#426** → admin-merge → *then* `EnterWorktree`. That is a full extra delivery cycle spent purely
+to make the workflow's own ledger reachable, and it is nowhere in the workflow. An agent that entered
+the worktree first (exactly as step-02 §0 instructs) would have found no manifest and had to choose
+between abandoning the worktree mandate, re-ingesting, or writing dispositions to a main-checkout path
+while the code lives in a worktree — splitting ledger and code across two branches.
+
+Compounding, same session: the branch the main checkout sat on (`fix/publish-claim-source-docs`) still
+held the **pre-squash** commits of two already-merged PRs, so the first `git push` was rejected and a
+PR was opened against a stale head and had to be closed (#425) and re-cut from a clean branch. That is
+the known 13/13 diverged-`main` gap surfacing inside this one's workaround.
+
+### Proposed fix (drafted, NOT shipped — deliberately)
+
+A four-line precondition at the head of **step-02 §0**, on the manifest path only:
+
+> **MANIFEST PATH — commit the ledger BEFORE you enter the worktree.** `EnterWorktree` branches from
+> `origin/main`, and a `design-ingest` manifest is gitignored + force-added + typically uncommitted —
+> so it will NOT exist in the new worktree. If `git ls-files --error-unmatch <manifest>` fails, commit
+> it by explicit path (`git add -f <manifest>`) and land it on `origin/main` FIRST. Never `git add -A`
+> here: a shared checkout carries other sessions' dirty ledgers (manifest-contract rule 4).
+
+Not shipped this session, for two reasons, both about blast radius rather than confidence:
+
+- The cleaner fix is upstream — have **`design-ingest` step-03 commit the manifest it emits** instead
+  of leaving it force-added. But *whether BMAD artifacts get committed at all* is the same lifecycle
+  question `FG-2026-07-26-07` is holding open for the owner, and answering it here would be deciding
+  it by side-effect.
+- This session's routing was "run design-implement", not fork maintenance. The edit rides
+  `sync-bmad-workflows.sh` into 13 projects — distribution is a Tier-3 stop regardless.
+
+**Verified, not asserted:** the contradiction was exercised, not reasoned about. The manifest was
+uncommitted at run start (`git status` showed `A  _bmad-output/…design-ingest-clerk-receive-station-v2.md`);
+it was committed and merged as `c1121bd` (#426); `EnterWorktree` then produced a worktree at
+`c1121bd` in which `ls` confirmed the manifest present. Had it not been merged first, the worktree
+would have branched from `d35a36a`, which does not contain the file.
+
+**Target file:** `custom/workflows/implement/design-implement/steps/step-02-map-implementation.md` — §0
+*"Worktree precondition — Enter the worktree BEFORE mapping"*.
+**state:** open
+**routing:** recorded
