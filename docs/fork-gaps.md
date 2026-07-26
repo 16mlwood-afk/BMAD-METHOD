@@ -2652,6 +2652,86 @@ citations remain correct.
 **State stays `open`** until the fan-out lands — per the distribution-owed rule, authoring is not
 delivery.
 
+## 2026-07-26 — EVERY project's local `main` is diverged: 13/13 carry unpushed BMAD-sync commits, so "delivered" work has never reached any remote
+
+```yaml
+id: FG-2026-07-26-08
+class: delivery-ownership
+scope: fork
+target: sync-bmad-workflows.sh
+marker: "push-after-deliver"
+state: open
+owner: fork-maintenance
+routing: retro-routed
+routing_note: "Found and measured under standing 'continue fixing the fork gaps' maintenance instruction (2026-07-26). The FIX is a distribution/delivery change and is proposed, not shipped."
+```
+
+### Incident
+
+**Found while trying to commit one file.** Per the owner's tracking ruling, the edit-guard should be
+committed into the projects that can take it. Every candidate refused for the same pre-existing
+reason: **its local `main` is diverged from `origin/main`.** Not one repo, not a few — measured
+across all 13:
+
+| unpushed commits | of which `chore(bmad)` sync deliveries |
+|---|---|
+| brand-source-finder 3 · accounting_api_backend 3 · image-pipeline 3 · otp_manager 3 · wera-catalog 3 · bison-website 3 | 3 / 3 / 3 / 3 / 3 / 3 — **all of them** |
+| amazon-lead-generator 4 · comms_dashboard 5 · accounting-tools 6 | 3 / 2 / 1 |
+| amazon-removal-assistant 2 · taylor_work 2 · bison-ops 1 · inbound-flow 1 | 2 / 2 / 1 / 1 — **all of them** |
+
+**36 unpushed commits across the fleet; 28 of them are BMAD sync deliveries.** Each repo is also
+BEHIND (3–20 commits), because the remote moved on via PRs — so this is real two-way divergence, not
+a stale read.
+
+The shape is identical everywhere: `chore(bmad): deliver synced fork workflows/skills/commands`
+committed locally and **never pushed**, while `origin/main` advanced through normal PRs
+(`chore(onboard): stamp onboarding marker (#16)`, `enable v6.8 skills-native dual-layout (#15)`).
+
+### Why structural, not 13 coincidences
+
+The sync's delivery contract ends at **commit**. Nothing in it pushes, opens a PR, or verifies the
+delivery reached a remote — so the last hop is left to a human who was never told they own it. The
+identical failure in 13 of 13 repos is the tell: this is the tool's contract, not thirteen people
+forgetting.
+
+It is the **third layer** of the same "distribution owed" family, each one further along the pipe and
+each previously invisible to the layer above:
+
+1. `FG-2026-07-25-09` — authored in the fork, never synced → fires in zero projects.
+2. `FG-2026-07-10-01` — synced to disk, never committed → invisible to git, no owner, no count.
+3. **This one** — committed locally, never pushed → invisible to every *other* machine and to CI,
+   and it silently blocks the next thing that needs a clean push in that repo (which is exactly how
+   it surfaced).
+
+**Cost, concretely.** Every project's `origin/main` is missing its fork deliveries, so a fresh clone,
+a CI run, or any other machine gets workflows that the local box thinks were "delivered weeks ago".
+And the divergence blocks unrelated work: a one-file commit now requires resolving somebody else's
+two-way divergence first, in a repo the current session does not own.
+
+### Work
+
+**Not fixed here, and deliberately so.** Pushing 36 commits across 13 repos is a Tier-3 fan-out
+(each needs a rebase-or-merge decision against a moved remote, in repos with live parallel sessions),
+and resolving another session's divergence unasked is exactly the class of action the autonomy ladder
+reserves for the owner. Measured and surfaced; not actioned.
+
+**Proposed fix (owner call):**
+
+1. **Extend the sync's delivery contract past `commit`.** `--commit` already exists; it should either
+   push (or open a PR) or report loudly, per project, that the delivery is committed-but-unpushed.
+   Silence after `commit` is what taught 13 repos to look delivered.
+2. **Surface it where it is already looked at.** The SessionStart surfacer now separates
+   distribution-owed from open investigations (`FG-2026-07-10-01`); an "unpushed local commits: N"
+   line per project belongs in the same place. A number nobody sees is the whole mechanism of this
+   family.
+3. **Drain deliberately, in a low-contention window** — per repo: rebase onto the moved remote, run
+   that project's checks, push. Owner-gated, one repo at a time, never a loop.
+
+**Watch:** if a fourth layer appears (pushed but never merged; merged but never deployed), stop
+patching layer-by-layer and give delivery ONE end-to-end verification with a single owner.
+
+---
+
 ## 2026-07-26 — brief-revision-policy has no `revision_mode` for a hand-authored MATERIAL revision against built code, even though §174 explicitly blesses that path
 
 ```yaml
@@ -3037,3 +3117,239 @@ approval; both want a decision at encoding time.
 value is that a non-test importer is a *grep*, not a judgment. Verified: `tsc --noEmit` clean, `eslint`
 clean, 1884 tests / 184 files green, `npm run build` succeeds, `check-reachability` exits 0 — on merged
 main (cash-recovery `8bbb9b4`, `ca47deb`).
+
+---
+
+## 2026-07-26 — the ingest manifest is designated the DURABLE resume ledger, but it lives in a gitignored dir, so the one artifact the workflow relies on is the one git cannot protect
+
+<!-- heading restored 2026-07-26 by another session: this entry was written with no `## ` line, so it nested inside the entry above and failed markdownlint MD024, blocking every commit to the register. Title derived from this entry's own marker + opening paragraph; body untouched. -->
+
+```yaml
+id: FG-2026-07-26-07
+class: artifact-durability
+scope: fork
+target: custom/workflows/implement/design-ingest/steps/step-03-emit-manifest-and-handoff.md
+marker: "manifest-resume-ledger-is-gitignored"
+state: open
+routing: recorded
+owner: fork-maintenance
+```
+
+### Incident
+**Noticed:** 2026-07-26 (cash-recovery, mid `design-implement` apply). **Priority: high.**
+
+**What fought us.** `design-implement`'s resumable-apply contract states plainly that *"the manifest
+IS the durable progress ledger"* and instructs a pass to **persist each row's disposition back into
+the manifest file the moment that frame is done — durable state lands BEFORE any compaction.** That
+guarantee is load-bearing: it is the whole reason a large surface may be applied across several
+checkpointed sessions instead of one context.
+
+The manifest lives at `_bmad-output/implementation-artifacts/design-ingest-*.md`, which is
+**gitignored** in every consuming project. So the artifact the workflow designates as its durability
+mechanism is the one artifact git cannot protect. This session read
+`design-ingest-regrade-lineage-ledger.md` in full at 18:05Z, applied frame 1, and found it **deleted
+at 18:54Z** — along with the six `_bmad-output/design-source/regrade-lineage-ledger/**` files that
+`design-ingest` had staged (`git add`-ed, never committed). Neither was recoverable: gitignored means
+never in the object store, and the staged blobs had been unstaged before they could be reached. No
+session announced it. The same window also removed this session's `wip-register.yaml` claim.
+
+**Why structural, not a one-off.** The shared main checkout has ONE git index. A bare `git reset` in
+a session that never entered a worktree unstages another session's `git add -f`; a follow-up
+`git clean -fd` then deletes the now-untracked files. Every project CLAUDE.md already routes BMAD
+artifacts to the main checkout (they are main-only by design), and project policy sends every
+file-editing session into a worktree — so the artifacts sit permanently in the one tree that is
+concurrently mutated by sessions with no isolation. The workflow's contract assumes durability the
+storage location does not provide, and **nothing in the contract notices**: `design-implement` has a
+manifest-freshness warn, a supersede stamp, and a completeness gate, but no "does the ledger still
+exist / did it change under me" check between the intake read and the disposition write.
+
+The `design-source/` staging makes it worse rather than better. That directory exists only to work
+around `FG-2026-07-26-01` (a spawned frame subagent cannot reach the design MCP), so the workaround
+for one gap manufactured a second class of unprotected untracked files. Worth noting the orchestrator
+*can* reach DesignSync — verified this session by refetching `LineageLedger.jsx` and
+`lineage-ledger-data.js` directly, which also caught a sort order the manifest had left unspecified.
+
+**Cost this session.** Not fatal, but only because the section inventory happened to still be in
+context. Grain had to be downgraded `value-exact` → `summary` and the per-section CSS catalog was
+deliberately **not** reconstructed — rebuilding thousands of characters of value-exact CSS from an
+earlier read in the same window would produce an artifact that looks authoritative and cannot be
+verified, which is the "complete and worthless" failure `manifest-schema.md` already names. A session
+that had compacted, or resumed cold from the manifest, would have lost the gated 42-section inventory
+outright and owed a full six-agent re-ingest.
+
+**Suggested fixes (NOT shipped — this is an artifact-tracking policy call with 14-project blast
+radius, so it is proposed, not decided):**
+
+- (a) **`design-ingest` commits the manifest by explicit path at emit time** (`git add -f <manifest>`
+  + a scoped commit), so the ledger enters the object store the moment it exists. Smallest change,
+  and it makes the artifact recoverable by `git checkout` rather than by luck. Needs a decision on
+  whether these artifacts should be tracked at all — the current gitignore is deliberate.
+- (b) **A staleness/existence check in `design-implement` step-04** before the first disposition
+  write: re-stat the manifest and compare against the intake read (mtime + a cheap content hash). A
+  vanished or mutated ledger should surface loudly, not fail at the write.
+- (c) **Drop the `design-source/` staging in favour of orchestrator-side DesignSync refetch** where
+  the orchestrator has MCP access — removes a whole class of unprotected files and makes source
+  re-reads the norm, which `MANIFEST.1b` already says should beat the manifest anyway.
+
+**Target file:** `custom/workflows/design/design-ingest/step-03-emit-manifest-and-handoff.md` (emit +
+commit of the manifest) and `custom/workflows/design/design-implement/step-04-apply-and-deliver.md`
+(the §5 apply-ledger write path). Contract home: `~/bmad-method-v6/docs/manifest-contract.md`.
+
+## 2026-07-26 — `design-ingest`'s fan-out unit assumes ONE FILE PER FRAME, so a `.dc.html` single-component variant bundle makes step-02 incoherent: every frame agent reads the same file and none can see the variant map that decides its own live set
+
+```yaml
+id: FG-2026-07-26-09
+class: workflow-contract-mismatch
+scope: fork
+target: custom/workflows/implement/design-ingest/steps/step-02-fanout-enumerate.md
+marker: "fanout-unit-assumes-one-file-per-frame"
+state: open
+routing: recorded
+owner: fork-maintenance
+lane: NEW DESIGN / DOCTRINE — changes what the fan-out UNIT is. Proposed, NOT shipped.
+```
+
+### Incident
+
+**Noticed:** 2026-07-26 (cash-recovery, `design-ingest` on Claude Design project `a85e0da5`,
+`Clerk Receive Station v2.dc.html`). **Priority: medium-high** — it will recur on every `.dc.html`
+bundle, which is now Claude Design's *default* emit shape.
+
+**What fought us.** step-02 mandates *"one isolated sub-agent per `drawn: true` frame"* and hands each
+agent *"the frame's source file(s) under `{design_dir}` — the traced module(s) for that frame, or the
+sibling `<frame>.html`. Do NOT give it the whole bundle."* That instruction presumes the **legacy JSX
+bundle shape**, where a frame really is its own module or its own sibling HTML file.
+
+The current `.dc.html` shape does not work that way. This bundle's 11 frames all render from **one**
+~30KB component (`ReceiveDesk.dc.html`) as `sc-if` branches over shared chrome, selected by a single
+`variant` prop whose entire mapping lives in one `renderVals()` block. So:
+
+- **"The frame's source file" does not exist.** Every frame agent would be handed the identical file —
+  the exact thing the step forbids ("do NOT give it the whole bundle"), 11 times over.
+- **The isolation actively destroys accuracy.** An agent scoped to "enumerate frame
+  `process-station--scan-matched`" cannot know that `lastScan` is false for that variant and true for
+  `station`/`offline-degraded` — that fact lives in `renderVals()`, i.e. in the shared map it was told
+  not to reason about. Isolation makes the agent *less* able to enumerate its own frame correctly.
+- **The context rationale is void.** The whole bundle is ~30KB. The context-budget argument that
+  justifies fanning out does not apply, so the run pays 11× redundant reads for negative accuracy.
+
+Compounding: the DesignSync/`claude_design` MCP is session-bound and absent from sub-agent contexts
+(`FG-2026-07-26-06`), so the orchestrator must mirror the source to disk before any fan-out is even
+possible — and `get_file` has no `localPath` sink, so mirroring means retyping the bytes out of
+context. On a single-component bundle that is pure cost for no coverage gain.
+
+**Why structural, not a one-off.** `design-implement` step-01 URL.1c already *detects* the two bundle
+shapes and branches URL.2–URL.5 on `{bundle_shape}`. `design-ingest` inherits the shape distinction
+(step-01 delegates fetch to that very step) but **step-02 has no `dc_html` branch at all** — the
+fan-out contract was written once, against `legacy_jsx`, and never revisited when the second shape
+landed. Any `.dc.html` ingest hits it. This session complied with the *intent* (enumerate by frame,
+exhaustively, never by feature-area) while deviating from the *mechanism*, and had to disclose the
+deviation in the manifest — which is the tell that the mechanism, not the session, is wrong.
+
+**What we did instead (the compensating control, offered as the seed of the fix).** Enumerated all 11
+frames in one context and satisfied the completeness gate **mechanically**: every `sc-if` / `sc-for`
+node in the source was enumerated and mapped to a named section in a "Source block accounting" table,
+plus a per-variant live-set table read off `renderVals()` rather than inferred. Both tables are IN the
+delivered manifest, so the claim is checkable against source rather than trusted. Result: 11 frames,
+84 sections, 84 grid rows, `frames_with_empty_section_list: []`. **Evidence:**
+`_bmad-output/implementation-artifacts/design-ingest-clerk-receive-station-v2.md` (cash-recovery,
+force-added, `git ls-files --error-unmatch` verified; 84 grid rows and 11 frame lists confirmed by
+`grep -c`).
+
+**Proposed investigation (owner's call — this changes the contract, so it is NOT shipped here).**
+Give step-02 a `{bundle_shape}` branch, mirroring what URL.1c already does downstream:
+
+- `legacy_jsx` → today's per-frame fan-out, unchanged.
+- `dc_html`, multi-file (one `.dc.html` per frame) → per-frame fan-out on those files, unchanged.
+- `dc_html`, **single-component variant bundle** → do NOT fan out. Enumerate in one context and
+  require the two accounting artifacts above (`sc-if`/`sc-for` node→section map, and the per-variant
+  live-set read off the variant mapper) as the completeness evidence. That preserves the property the
+  gate actually protects — *nothing in the source is unaccounted for* — with a check that is
+  **stronger** than the fan-out, because it is mechanical and reviewer-checkable rather than an
+  assertion of thoroughness.
+- Add a cheap detector so the branch is not judgement: single frame-source file **and** a
+  `data-dc-script` / `renderVals()` variant mapper **and** >1 `data-screen-label` ⇒ single-component.
+
+Sibling of `FG-2026-07-26-06` (MCP unreachable from sub-agents): both are the same root — the
+ingest fan-out was designed for a world where a frame is a file and every agent can fetch.
+
+## 2026-07-26 — `design-ingest`'s manifest path is `design-ingest-<target_slug>.md` with no provision for a SECOND design bundle on the same slug, so the step-01 §5a "prior manifest → legitimate re-ingest, continue" verdict routes a new design straight onto a live apply ledger
+
+```yaml
+id: FG-2026-07-26-10
+class: artifact-collision
+scope: fork
+target: custom/workflows/implement/design-ingest/steps/step-01-frame-inventory.md
+also_touches: custom/workflows/implement/design-ingest/manifest-schema.md
+marker: "one-slug-one-manifest-vs-successor-design"
+state: open
+routing: recorded
+owner: fork-maintenance
+lane: NEW DESIGN / DOCTRINE — changes the manifest naming rule + a §5a verdict. Proposed, NOT shipped.
+```
+
+### Incident
+
+**Noticed:** 2026-07-26 (cash-recovery, ingesting `Clerk Receive Station v2.dc.html` for `/receive`).
+**Priority: high** — the failure is silent and destroys resume state that nothing else holds.
+
+**What fought us.** The schema fixes the manifest path as
+`{implementation_artifacts}/design-ingest-<target_slug>.md`, one file per slug, and step-01 §5a
+classifies an existing file at that path by **mtime alone**:
+
+> *Present and OLDER than `{run_started_at}`* → a prior completed ingest, not a concurrent one. This
+> is a **re-ingest**, which is legitimate. Note it for the step-03 pause and **continue**.
+
+That is correct when the second run re-ingests **the same design**. It is wrong — and destructive —
+when the second run ingests a **successor design for the same surface**, which is the normal outcome
+of a material re-brief. Here `design-ingest-clerk-receive.md` was built from a *different* Claude
+Design project (`afcb1d95` / `Process Station Single-Touch.dc.html`, generated from a brief now
+`brief_status: superseded`) and carries **nine apply passes**, the last APPLIED at 11:53Z the same
+day. §5a's verdict was `prior-manifest (re-ingest) → continue`, and step-03 §1 then says write to
+`design-ingest-<target_slug>.md` — i.e. **overwrite the live ledger for a partly-built surface.**
+
+Nothing in the workflow objects. The concurrency probe is satisfied (the file is older), the
+supersede stamp is satisfied (the *brief* is active — it is the *manifest* that is stale, and no
+field tracks that), and the completeness invariant is satisfied by the new content. The only thing
+standing between a correct-looking run and permanent loss of nine passes of resume state is a session
+noticing on its own — and `_bmad-output/` is gitignored (`FG-2026-07-26-07`), so the overwrite is
+**unrecoverable**.
+
+**Why structural, not a one-off.** It is the direct consequence of two rules that are each right
+alone: (a) `target_slug` is the brief join key and must stay stable across revisions, so the
+supersede check works; (b) the manifest is named by `target_slug`. Together they force *one manifest
+per surface, forever*, while the surrounding process explicitly supports *many successive designs per
+surface* — `brief-revision-policy.md` has a whole supersession chain for exactly that (this slug has
+**nine** briefs in its chain). The artifact layer has no equivalent of `superseded_by`; the brief
+layer versions cleanly and the manifest layer cannot version at all. Any material re-brief that
+produces a new bundle for an already-ingested surface reaches this.
+
+**What we did instead.** Kept `target_slug: clerk-receive` (so the brief join and supersede check stay
+honest) and wrote the manifest to a **distinct filename**,
+`design-ingest-clerk-receive-station-v2.md`, with a new `manifest_slug` field plus
+`supersedes_manifest:` / `supersedes_manifest_reason:` in the receipt, and a comment block explaining
+why the two must not be merged. The v1 ledger was left untouched as the audit trail for what is
+already on `/receive`. **Evidence:** both files present in cash-recovery
+`_bmad-output/implementation-artifacts/`; v2 force-added and `git ls-files --error-unmatch` verified;
+v1 unmodified (`design-ingest-clerk-receive.md`, mtime 2026-07-26T11:53Z, 9 passes intact).
+
+**Proposed investigation (owner's call — naming rule + a §5a verdict are contract, so NOT shipped).**
+
+1. **Split the two identities in the schema.** `target_slug` stays the brief join key; add
+   `manifest_slug` (defaulting to `target_slug`) as the filename key, with
+   `supersedes_manifest` / `superseded_by_manifest` giving the artifact layer the same chain the brief
+   layer already has.
+2. **Add a fourth §5a verdict — `prior-manifest-DIFFERENT-SOURCE`.** Mtime is the wrong discriminator;
+   the right one is free and already in the receipt: compare the existing manifest's `ingest.source`
+   (and `target_file`) against this run's. Same source → re-ingest, overwrite is fine. **Different
+   source → STOP and route to a new `manifest_slug`**, never overwrite.
+3. **Escalate when the incumbent has apply state.** If the existing manifest contains any
+   `### Pass ` record or any row not `UNVERIFIED`, an overwrite is destroying a resume ledger —
+   that should be a hard stop regardless of source comparison, per the append-only rule in
+   `docs/manifest-contract.md`.
+4. Have `design-implement` read `supersedes_manifest` and open by reporting what the predecessor
+   already applied, so a successor-design apply starts as a revision of a live surface rather than a
+   greenfield pass.
+
+Interacts with `FG-2026-07-26-07` (manifest gitignored ⇒ overwrite is unrecoverable) and
+`FG-2026-07-26-09` (same workflow, same run).
