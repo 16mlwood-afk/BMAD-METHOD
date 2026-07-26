@@ -843,6 +843,49 @@ Audit pending. Run `~/bmad-method-v6/sync-bmad-workflows.sh --check` to populate
 
 - comms_dashboard, brand-source-finder, inbound-flow, accounting-tools, bison-ops, image-pipeline, bison-website, amazon-removal-assistant, taylor_work, accounting_api_backend, otp_manager, wera-catalog, amazon-lead-generator
 
+### SR-35 — design-brief gate REACHABILITY (measured 2026-07-26, `tools/audit-brief-gate-reachability.sh`)
+
+A gate can be delivered AND activated AND still be **inert**, because the artifact it reads is
+gitignored in the target. `check-design-brief-completeness.sh` only inspects **staged** files; the
+`/_bmad-output/*` ignore means a **brand-new** brief — what a fresh `design-handoff` emits — cannot be
+staged without `git add -f` and never reaches the gate. Existing briefs were often force-added once,
+so **edits** still reach it: coverage inverted, high-risk path missed, gate reporting as armed.
+
+**Measured, not assumed — and the original hypothesis was WRONG.** FG-2026-07-25-10 predicted the hole
+was fork-standard across all 13. It is not. Actual: **9 OK · 1 INERT · 3 without the gate.**
+
+| Project | State | Action |
+|---|---|---|
+| **bison-ops** | **INERT** — gate delivered + active, new briefs IGNORED | apply the `.gitignore` negation (below) |
+| **inbound-flow** | **LATENT** — new briefs IGNORED, gate not yet delivered | fix `.gitignore` **before** the next sync, or the sync ships an inert gate |
+| accounting-tools · amazon-lead-generator | no gate delivered; input reachable | sync delivers a working gate — no `.gitignore` work needed |
+| the other 9 | OK — delivered, active, input reachable | none |
+
+Fix (after the existing `/_bmad-output/*` line):
+
+```gitignore
+!/_bmad-output/implementation-artifacts/
+/_bmad-output/implementation-artifacts/*
+!/_bmad-output/implementation-artifacts/design-brief-*.md
+```
+
+Verify: a new brief stages **without** `-f`; an untracked non-brief artifact stays ignored.
+
+**Fleet-sync order + blast radius (proposed, OWNER-GATED — do not run from a routine session):**
+
+1. **bison-ops** — `.gitignore` only, no sync. Blast radius **minimal**, fully reversible, fixes the one confirmed inert gate. Do this first: it is independent of the sync batch.
+2. **inbound-flow** — `.gitignore` **before** it appears in any sync batch. Same minimal radius; sequencing is the point, since syncing first delivers a gate that cannot see its input.
+3. **accounting-tools, amazon-lead-generator** — gate delivery via sync. Blast radius **moderate**: these ride the standing held batch (quick-flow restructure, skills-native migration, cockpit content), so they are not a one-file change. Not separable from the batch decision.
+4. **The remaining 9** — carry the B7/C5 clause on the next batch. Blast radius **moderate**, same batch caveat.
+
+The standing `## Now` hold applies to steps 3–4: `rsync --delete` fan-out into live sessions, quiet
+window only, never `--force`. Steps 1–2 are outside it — they touch no BMAD-managed path.
+
+**Durable fix still owed (the real one):** make the hook **WARN** when `design-brief-*.md` files exist
+on disk under a scanned path but **none are stageable** — *"N brief(s) on disk are gitignored; this
+gate cannot see new briefs in this repo."* Per-project `.gitignore` edits are cleanup; a gate that
+no-ops because its input is invisible must announce it, or its silence reads as a pass.
+
 ## Upstream Items Under Evaluation
 
 25 upstream commits behind. Per-commit triage not done yet. Reconciliation difficulty likely high in any area the fork has restructured (design pipeline, quick-dev, sync layer). Low-risk absorbs likely in areas the fork has not touched (core agents, party-mode, brainstorming, retro).

@@ -1540,6 +1540,10 @@ re-tested live afterwards: B7 WARN fires on a staged table-first brief, `exit 0`
    input is invisible must announce that, or its silence reads as a pass. This is the durable fix; the
    per-project `.gitignore` edits are the cleanup.
 
+**MEASURED 2026-07-26 — the fleet hypothesis was WRONG, recorded because a wrong prediction in a ledger is worse than none.** This entry predicted the hole was fork-standard across all 13. `tools/audit-brief-gate-reachability.sh` (new, read-only) measured it: **9 OK · 1 INERT (bison-ops) · 3 without the gate**, plus **inbound-flow LATENT** (input already unreachable, gate not yet delivered — syncing it first would ship an inert gate). So the blast radius is two `.gitignore` lines, not thirteen. The audit separates three things that are easy to conflate — gate DELIVERED, gate ACTIVATED, input REACHABLE — because a project can pass the first two and fail the third, which is the entire defect class.
+
+**The audit's own first run had a false negative, fixed before use:** it reported cash-recovery INACTIVE while that gate was demonstrably firing on every commit, because `core.hooksPath` is legally either relative (`.githooks`) or absolute and the check compared only the relative form. An audit that under-reports sends someone to "fix" a working project — the fastest way to lose an audit's audience. Resolve-then-compare now. Order + blast-radius plan: `STATUS.md` § Known Drift → SR-35.
+
 **Watch:** the general form is *"a delivered gate whose input class is unreachable in the target."*
 If a third instance appears, the sync itself should assert reachability at delivery time rather than
 each gate re-discovering it.
