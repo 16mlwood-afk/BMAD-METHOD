@@ -135,7 +135,7 @@ the manifest is simply the file where getting them wrong is most expensive.
   directory.
 - **Commit in ONE step: `git commit -m "…" -- <explicit paths>` (or `-F <msgfile> -- <paths>` for a
   long message). Do not `git add` and then commit.** **The `--` goes AFTER the options, never
-  before** — everything following `--` is a pathspec, so the earlier `git commit -- <paths> -m …`
+  before** — everything following `--` is a pathspec, so the earlier `git commit -- <paths> -m …` <!-- recipe-lint:ignore — quoted counter-example, not a prescription -->
   form printed here parsed `-m` and the message itself as filenames and died with
   *"did not match any file(s) known to git"*. (Corrected 2026-07-25 after a session hit it verbatim;
   see `FG-2026-07-25-12`.)

@@ -1333,7 +1333,7 @@ owner: fork-maintenance
 2. **A pre-commit advisory (warn-only, honest tier):** when `git commit` is invoked with NO pathspec AND the index contains files touched by more than one `session_id`'s recent activity, warn "bare commit over a shared index — N staged files were last touched by another session; commit by explicit path." Cannot be deterministic (session attribution of an index entry isn't recorded), so warn-only, same tier as the manifest gate.
 3. **Doctrine cross-link:** the CLAUDE.md multi-writer section should name the index case explicitly so a session doesn't read "multi-writer contract" as "manifests only."
 
-**THIRD FIRING — 2026-07-25, on the fix itself.** The commit introducing the mitigation (pre-commit `--no-stash` + `foreign-dirty` preflight + the generalized rule 4) was authored as `git add <paths> && git commit -m …` and was swept, in the window between the two commands, into a parallel session's `fff1e096 docs(status): record the viewport artifact-labeling wave`. Both files are intact on HEAD; the history says another session shipped them. **This sharpens the fix from "stage by explicit path" to "commit in ONE step — `git commit -- <paths> -m …`, never `git add` then commit."** The two-step form is the entire exposure: a path-scoped commit ignores the rest of the index, so it can neither scoop a foreign staged file nor be scooped after staging. Rule 4a in `docs/manifest-contract.md` now says exactly that, with this incident as its evidence.
+**THIRD FIRING — 2026-07-25, on the fix itself.** The commit introducing the mitigation (pre-commit `--no-stash` + `foreign-dirty` preflight + the generalized rule 4) was authored as `git add <paths> && git commit -m …` and was swept, in the window between the two commands, into a parallel session's `fff1e096 docs(status): record the viewport artifact-labeling wave`. Both files are intact on HEAD; the history says another session shipped them. **This sharpens the fix from "stage by explicit path" to "commit in ONE step — `git commit -- <paths> -m …`, never `git add` then commit."** The two-step form is the entire exposure: a path-scoped commit ignores the rest of the index, so it can neither scoop a foreign staged file nor be scooped after staging. Rule 4a in `docs/manifest-contract.md` now says exactly that, with this incident as its evidence. <!-- recipe-lint:ignore — quoted counter-example, not a prescription -->
 
 **Priority: medium.** No data loss (the failure mode is mis-attribution, not corruption), but it fired **twice in one commit** this session, on the fork's own backlog + workflow files, and the mitigation is pure git hygiene already half-written in the manifest contract — cheap to generalize, and it removes the `git reset --soft` foot-gun that made a routine un-scoop into a two-way sweep.
 
@@ -1979,13 +1979,13 @@ class: enforcement
 scope: fork
 target: docs/manifest-contract.md
 marker: "recipe argument order"
-state: partly
+state: closed
 owner: fork-maintenance
 ```
 
 ### Incident
 
-**What fought us (fork maintenance, committing a `design-implement` fix while ~4 sessions held the same checkout).** Rule 4a — the mitigation `FG-2026-07-25-01` sharpened after its THIRD firing — prescribes verbatim: *"Commit in ONE step: `git commit -- <explicit paths> -m …`"*. That command **cannot succeed.** Everything after `--` is a pathspec, so git parsed `-m` and the entire commit message as filenames and died with `did not match any file(s) known to git`. The correct form puts `--` after the options (`git commit -m "…" -- <paths>`). Following the doctrine literally produces an error, and the obvious recovery from that error is `git add` then `git commit` — **the exact two-step form the rule exists to forbid.**
+**What fought us (fork maintenance, committing a `design-implement` fix while ~4 sessions held the same checkout).** Rule 4a — the mitigation `FG-2026-07-25-01` sharpened after its THIRD firing — prescribes verbatim: *"Commit in ONE step: `git commit -- <explicit paths> -m …`"*. That command **cannot succeed.** Everything after `--` is a pathspec, so git parsed `-m` and the entire commit message as filenames and died with `did not match any file(s) known to git`. The correct form puts `--` after the options (`git commit -m "…" -- <paths>`). Following the doctrine literally produces an error, and the obvious recovery from that error is `git add` then `git commit` — **the exact two-step form the rule exists to forbid.** <!-- recipe-lint:ignore — quoted counter-example, not a prescription -->
 
 **It gets worse one bullet down.** The same rule then carries a caveat saying the *correct* form is "currently UNRELIABLE in the fork repo" (four consecutive `Error building trees` failures, never root-caused) and instructs the reader to fall back to `git add` + commit. So a session that survives the syntax error is then told, by the same rule, to do the hazardous thing anyway. Today's counter-evidence: `git commit -F <msgfile> -- <5 paths>` succeeded **twice**, in this repo, in this session, with another session's edits dirty in the tree and one of them already staged.
 
@@ -2017,8 +2017,21 @@ test: **13/13 standalone, 13/13 with `GIT_INDEX_FILE` set** (11/13 leaked, pre-f
 states the one-step form with no caveat. *A never-root-caused caveat had been sending every session
 back into the hazard the rule exists to remove.*
 
-**Marker note:** `recipe argument order` is a FIX SENTINEL for the remaining owed item (2) — the lint
-that would have caught the original option-after-`--` bug. It does not exist yet.
+**UPDATE — owed item (2) DONE 2026-07-26; entry now `closed`.** `tools/validate-doc-recipes.mjs`,
+wired into `npm test` (so it runs in the pre-commit chain). It extracts every `git …` recipe from
+fenced blocks and inline code across `docs/` + `custom/` (483 docs) and errors when an option-looking
+token sits AFTER a bare `--`. Scope is deliberately one axis — argument order — because that is
+mechanically decidable and it is what actually bit; it does NOT check whether a command is correct,
+whether its paths exist, or whether its flags are real. `custom/skills-native/` is skipped: it is
+generated from `custom/workflows/`, so linting it would double-report every finding.
+
+**The false-positive class this had to solve first, or it would have been deleted within a day:** a
+doc that EXPLAINS a broken command necessarily contains it. The first run flagged 3 sites and *all
+three were quotations* — this entry's own write-up, `FG-2026-07-25-01`'s third-firing note, and the
+corrected §4a bullet. So exemption is explicit and visible: `recipe-lint:ignore` anywhere on the line
+(an HTML comment, invisible in rendered prose). No heuristic guessing at "this line sounds like a
+counter-example". All three annotated → **0 errors across 483 docs**, and a probe file carrying
+`git commit -- src/a.ts -m "msg"` is caught (exit 1), so it is proven in both directions.
 
 **Watch:** a second unrunnable prescribed command anywhere in the fork docs makes (2) overdue rather than optional.
 
