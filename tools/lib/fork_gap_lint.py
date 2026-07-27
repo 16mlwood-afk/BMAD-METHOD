@@ -27,6 +27,8 @@ ROOT = os.environ.get("FORK_GAP_ROOT") or os.path.dirname(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 GAPS = os.path.join(ROOT, "docs", "fork-gaps.md")
 
+FIX_VALUES = {"none", "partial", "done"}
+DELIVERY_VALUES = {"n/a", "owed", "done"}
 STATES = {"open", "blocked", "partly", "fork-fixed-distribution-owed", "superseded", "closed"}
 SCOPES = {"fork", "project", "machine-local", "harness"}
 REQUIRED = ("id", "class", "scope", "target", "marker", "state", "owner")
@@ -77,7 +79,14 @@ def _build(heading: str, line_no: int, body: str) -> Entry:
             if ":" not in raw:
                 continue
             k, v = raw.split(":", 1)
-            header[k.strip()] = v.strip().strip('"')
+            v = v.strip()
+            # Strip a trailing inline comment on an UNQUOTED value (`delivery: owed  # why`).
+            # Only when unquoted: a quoted value may legitimately contain `#`, and eating that
+            # would silently truncate a marker or a distribution note. Enum fields carry their
+            # reason inline — that reason is the difference between a value and a decision.
+            if not v.startswith(('"', "'")):
+                v = re.split(r"\s+#", v, maxsplit=1)[0].strip()
+            header[k.strip()] = v.strip('"')
     return Entry(heading, line_no, header, body, "### Incident" in body)
 
 
@@ -142,6 +151,28 @@ def check_schema(entries) -> int:
             errors.append(f"{eid}: state fork-fixed-distribution-owed requires distribution")
         if not e.has_incident:
             errors.append(f"{eid}: no `### Incident` block")
+
+        # --- fix + delivery axes (schema v2, docs/proposals/fork-gap-axes-v2.md) ---------
+        # MIGRATION WINDOW: `state` remains a deprecated alias and stays REQUIRED, so a
+        # parallel session's in-flight entry cannot fail this gate mid-write. This register
+        # takes concurrent writes from many sessions; a hard cutover would block all of them.
+        # The pair is WARNED-on-absent, ERRORED-on-invalid — you may not have migrated yet,
+        # but you may never write a value that means nothing.
+        fix, delivery = e.header.get("fix"), e.header.get("delivery")
+        if fix is not None and fix not in FIX_VALUES:
+            errors.append(f"{eid}: unknown fix `{fix}` (allowed: {', '.join(sorted(FIX_VALUES))})")
+        if delivery is not None and delivery not in DELIVERY_VALUES:
+            errors.append(f"{eid}: unknown delivery `{delivery}` (allowed: {', '.join(sorted(DELIVERY_VALUES))})")
+        # `delivery` is meaningless while nothing is built — §2 of the proposal.
+        if fix == "none" and delivery not in (None, "n/a"):
+            errors.append(f"{eid}: fix `none` with delivery `{delivery}` — nothing is built, so there "
+                          "is nothing to deliver. Set `delivery: n/a`.")
+        # The value that rotted the old field: `partial` with no enumeration of what remains.
+        if fix == "partial" and not re.search(r"\bNOT taken\b|\bstill (?:open|owed)\b|\bremain(?:s|ing)\b|"
+                                              r"\bowed\b|\bnot done\b|\bunbuilt\b", e.body, re.I):
+            errors.append(f"{eid}: fix `partial` but the body never names what is OUTSTANDING. "
+                          "`partly` with no enumeration is exactly what rotted the old single field — "
+                          "name the residue, or the honest value is `none` or `done`.")
 
     unknowns = sum(1 for e in entries for f in ("class", "scope", "target", "owner")
                    if e.header.get(f) == "unknown")

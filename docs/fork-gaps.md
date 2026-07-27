@@ -70,6 +70,11 @@ scope: harness
 target: harness:EnterWorktree (cwd-pinned session)
 marker: "n/a"
 state: partly
+fix: partial
+# delivery: UNSET — `partly` is ambiguous by construction (half-built vs
+# built-but-undelivered). A human sets this; the migration must not guess,
+# because guessing `n/a` here understates the sync queue. See
+# docs/proposals/fork-gap-axes-v2.md §3.
 owner: harness-vendor
 ```
 
@@ -100,6 +105,11 @@ scope: machine-local
 target: ~/.claude/mailbox/README.md
 marker: "local-peer push is unsupported"
 state: partly
+fix: partial
+# delivery: UNSET — `partly` is ambiguous by construction (half-built vs
+# built-but-undelivered). A human sets this; the migration must not guess,
+# because guessing `n/a` here understates the sync queue. See
+# docs/proposals/fork-gap-axes-v2.md §3.
 owner: mason
 ```
 
@@ -125,6 +135,8 @@ scope: fork
 target: sync-bmad-workflows.sh
 marker: "sync_scope"
 state: open
+fix: none
+delivery: n/a
 owner: fork-maintenance
 ```
 
@@ -144,6 +156,11 @@ scope: fork
 target: custom/workflows/shared/deployment-to-prod.md
 marker: "bmad-synced-scripts.txt"
 state: partly
+fix: partial
+# delivery: UNSET — `partly` is ambiguous by construction (half-built vs
+# built-but-undelivered). A human sets this; the migration must not guess,
+# because guessing `n/a` here understates the sync queue. See
+# docs/proposals/fork-gap-axes-v2.md §3.
 owner: fork-maintenance
 ```
 
@@ -171,6 +188,8 @@ scope: fork
 target: custom/workflows/implement/design-ingest/steps/step-01-frame-inventory.md
 marker: "to-disk mirror"
 state: fork-fixed-distribution-owed
+fix: done
+delivery: owed
 owner: fork-maintenance
 routing: retro-routed
 routing_note: "Verify-and-close sweep 2026-07-27 (owner: 'go for it'). Entry's own status line states the fork fix is DONE at source with distribution the only residue — re-read, not grepped. Reclassified so it joins the single fleet sync instead of standing as an open investigation."
@@ -217,6 +236,11 @@ scope: fork
 target: custom/workflows/implement/design-implement/workflow.md
 marker: "no-backend preflight"
 state: partly
+fix: partial
+# delivery: UNSET — `partly` is ambiguous by construction (half-built vs
+# built-but-undelivered). A human sets this; the migration must not guess,
+# because guessing `n/a` here understates the sync queue. See
+# docs/proposals/fork-gap-axes-v2.md §3.
 owner: fork-maintenance
 ```
 
@@ -245,6 +269,11 @@ scope: machine-local
 target: ~/.claude/mailbox/README.md
 marker: "[to: session"
 state: partly
+fix: partial
+# delivery: UNSET — `partly` is ambiguous by construction (half-built vs
+# built-but-undelivered). A human sets this; the migration must not guess,
+# because guessing `n/a` here understates the sync queue. See
+# docs/proposals/fork-gap-axes-v2.md §3.
 owner: mason
 ```
 
@@ -272,6 +301,8 @@ scope: machine-local
 target: origin/main
 marker: "local main is N commits behind"
 state: open
+fix: none
+delivery: n/a
 owner: mason
 ```
 
@@ -299,6 +330,8 @@ scope: fork
 target: check-fork-gaps.sh
 marker: "DISTRIBUTION OWED"
 state: partly
+fix: partial
+delivery: n/a   # fork-local tooling (check-fork-gaps.sh surfacer) — nothing to distribute
 owner: fork-maintenance
 routing: retro-routed
 routing_note: "Fixes (a)+(c) implemented under standing 'continue fixing the fork gaps' maintenance instruction from Mason; (b) remains owner-gated Tier-3."
@@ -370,6 +403,8 @@ scope: machine-local
 target: ~/.claude/mailbox/README.md
 marker: "last-heartbeat"
 state: open
+fix: none
+delivery: n/a
 owner: mason
 ```
 
@@ -399,6 +434,11 @@ scope: project
 target: .claude/settings.local.json
 marker: "git check-ignore"
 state: partly
+fix: partial
+# delivery: UNSET — `partly` is ambiguous by construction (half-built vs
+# built-but-undelivered). A human sets this; the migration must not guess,
+# because guessing `n/a` here understates the sync queue. See
+# docs/proposals/fork-gap-axes-v2.md §3.
 owner: project:cash-recovery
 ```
 
@@ -452,6 +492,8 @@ scope: project
 target: the project's PostToolUse:EnterWorktree hook (the one that already runs BMAD auto-sync and prints "Worktree...
 marker: "node_modules symlink"
 state: open
+fix: none
+delivery: n/a
 owner: unknown
 ```
 
@@ -481,6 +523,8 @@ scope: harness
 target: the ExitWorktree remove-safety check (the "Worktree has N commit(s) on <branch>" guard) — it should reconci...
 marker: "n/a"
 state: open
+fix: none
+delivery: n/a
 owner: harness-vendor
 ```
 
@@ -510,6 +554,8 @@ scope: project
 target: inventory-manager/drizzle/migrations/_journal.json
 marker: "migration-number claim"
 state: open
+fix: none
+delivery: n/a
 owner: project:inventory-manager
 ```
 
@@ -539,6 +585,8 @@ scope: project
 target: project:inventory-manager/.githooks/pre-push
 marker: "vitest related --run"
 state: open
+fix: none
+delivery: n/a
 owner: project:inventory-manager
 ```
 
@@ -568,6 +616,8 @@ scope: fork
 target: custom/workflows/design/design-handoff/steps/step-01c-topology.md
 marker: "workflow/wizard states"
 state: fork-fixed-distribution-owed
+fix: done
+delivery: owed
 owner: fork-maintenance
 routing: retro-routed
 routing_note: "Verify-and-close sweep 2026-07-27 (owner: 'go for it'). Entry's own status line states the fork fix is DONE at source with distribution the only residue — re-read, not grepped. Reclassified so it joins the single fleet sync instead of standing as an open investigation."
@@ -608,6 +658,8 @@ scope: fork
 target: custom/workflows/implement/design-implement/workflow.md
 marker: "capability-granularity"
 state: fork-fixed-distribution-owed
+fix: done
+delivery: owed
 owner: fork-maintenance
 routing: retro-routed
 routing_note: "Verify-and-close sweep 2026-07-27 (owner: 'go for it'). Entry's own status line states the fork fix is DONE at source with distribution the only residue — re-read, not grepped. Reclassified so it joins the single fleet sync instead of standing as an open investigation."
@@ -648,6 +700,8 @@ scope: fork
 target: custom/
 marker: "custom-extensions.md"
 state: open
+fix: none
+delivery: n/a
 owner: fork-maintenance
 ```
 
@@ -677,6 +731,8 @@ scope: harness
 target: custom/workflows/shared/tool-registry.md
 marker: "n/a"
 state: partly
+fix: partial
+delivery: owed   # tool-registry.md is sync-carried prose; recovery path not yet fanned out
 owner: harness-vendor
 routing: retro-routed
 routing_note: "Recovery path documented under standing 'action the fork gaps' maintenance instruction (2026-07-26); the READ path is the harness vendor's and stays open."
@@ -724,6 +780,8 @@ scope: fork
 target: custom/workflows/implement/design-implement/steps/step-04-apply-and-deliver.md
 marker: "State-render coverage"
 state: fork-fixed-distribution-owed
+fix: done
+delivery: owed
 owner: fork-maintenance
 routing: retro-routed
 routing_note: "Verify-and-close sweep 2026-07-27 (owner: 'go for it'). Fork fix confirmed present in the target; residue is DISTRIBUTION ONLY, so it joins the single fleet sync rather than standing as its own investigation."
@@ -768,6 +826,8 @@ scope: project
 target: inbound-flow ops surface — an admin HTTP trigger for processApprovedEntries (there is none) and/or a local-...
 marker: "process-approved"
 state: open
+fix: none
+delivery: n/a
 owner: project:inbound-flow
 ```
 
@@ -793,6 +853,8 @@ scope: project
 target: .claude/settings.local.json
 marker: "read-only invocation"
 state: closed
+fix: done
+delivery: done
 owner: project:inbound-flow
 ```
 
@@ -873,6 +935,8 @@ scope: project
 target: the Bash edit-guard hook command in cash-recovery's .claude settings.
 marker: "read-only invocation"
 state: closed
+fix: done
+delivery: done
 owner: project:cash-recovery
 ```
 
@@ -938,6 +1002,8 @@ scope: fork
 target: custom/workflows/*/sprint-planning/
 marker: "outcome_dod"
 state: open
+fix: none
+delivery: n/a
 owner: fork-maintenance
 ```
 
@@ -963,6 +1029,8 @@ scope: machine-local
 target: ~/.claude/
 marker: "snapshot rotation"
 state: open
+fix: none
+delivery: n/a
 owner: mason
 ```
 
@@ -986,6 +1054,8 @@ scope: harness
 target: the delegated-build-agent launch contract (the Agent tool's capability profile for design-implement / quick...
 marker: "n/a"
 state: open
+fix: none
+delivery: n/a
 owner: harness-vendor
 ```
 
@@ -1015,6 +1085,8 @@ scope: fork
 target: custom/workflows/design/design-handoff/steps/step-01-gather.md
 marker: "3e. Operator-domain pass"
 state: fork-fixed-distribution-owed
+fix: done
+delivery: owed
 owner: fork-maintenance
 routing: retro-routed
 routing_note: "Verify-and-close sweep 2026-07-27 (owner: 'go for it'). Fork fix confirmed present in the target; residue is DISTRIBUTION ONLY, so it joins the single fleet sync rather than standing as its own investigation."
@@ -1065,6 +1137,8 @@ scope: machine-local
 target: ~/.claude/settings.local.json
 marker: "settings.local.json allowlist scan"
 state: open
+fix: none
+delivery: n/a
 owner: mason
 ```
 
@@ -1095,6 +1169,8 @@ scope: fork
 target: custom/skills/bmad-correct-course/SKILL.md
 marker: "different proposal_id"
 state: fork-fixed-distribution-owed
+fix: done
+delivery: owed
 owner: fork-maintenance
 routing: retro-routed
 routing_note: "Verify-and-close sweep 2026-07-27 (owner: 'go for it'). Entry's own status line states the fork fix is DONE at source with distribution the only residue — re-read, not grepped. Reclassified so it joins the single fleet sync instead of standing as an open investigation."
@@ -1142,6 +1218,8 @@ scope: fork
 target: custom/workflows/implement/design-implement/steps/step-01-ingest-design.md
 marker: "bundle_shape"
 state: fork-fixed-distribution-owed
+fix: done
+delivery: owed
 owner: fork-maintenance
 routing: retro-routed
 routing_note: "Verify-and-close sweep 2026-07-27 (owner: 'go for it'). Fork fix confirmed present in the target; residue is DISTRIBUTION ONLY, so it joins the single fleet sync rather than standing as its own investigation."
@@ -1220,6 +1298,11 @@ scope: fork
 target: .githooks/pre-commit + the package.json lint-staged block
 marker: "stash-preflight"
 state: partly
+fix: partial
+# delivery: UNSET — `partly` is ambiguous by construction (half-built vs
+# built-but-undelivered). A human sets this; the migration must not guess,
+# because guessing `n/a` here understates the sync queue. See
+# docs/proposals/fork-gap-axes-v2.md §3.
 owner: fork-maintenance
 ```
 
@@ -1274,6 +1357,8 @@ scope: fork
 target: ~/bmad-method-v6/custom/workflows/design-handoff/step-01-gather.md
 marker: "viewport-class-unmapped"
 state: open
+fix: none
+delivery: n/a
 owner: fork-maintenance
 ```
 
@@ -1304,6 +1389,8 @@ scope: fork
 target: ~/bmad-method-v6/custom/workflows/design-handoff/step-01b-decide.md
 marker: "analytics-rigor-undistributed"
 state: partly
+fix: partial
+delivery: owed   # design-handoff step-01b is sync-carried; status line not yet fanned out
 owner: fork-maintenance
 routing: retro-routed
 routing_note: "Coherence half fixed under standing 'action the fork gaps' maintenance instruction (2026-07-26); authoring the two skills stays NEW DESIGN and unrouted."
@@ -1380,6 +1467,8 @@ scope: project
 target: .claude/wip-register.yaml
 marker: "exactly one guard_events:"
 state: open
+fix: none
+delivery: n/a
 owner: project:cash-recovery
 ```
 
@@ -1436,6 +1525,8 @@ scope: fork
 target: a repo-root .ignore (written by onboard-project.sh, topped up by sync)
 marker: "worktrees-search-exclusion"
 state: partly
+fix: partial
+delivery: owed   # .ignore written in cash-recovery only; 12 projects owed
 owner: fork-maintenance
 routing: retro-routed
 routing_note: "Fixed under standing maintenance instruction; owner said 'u tell me' on 2026-07-26."
@@ -1499,6 +1590,8 @@ scope: fork
 target: custom/workflows/implement/design-implement/workflow.md
 marker: "URL-path apply ledger"
 state: partly
+fix: partial
+delivery: owed   # fork workflow prose; sync fan-out owed
 owner: fork-maintenance
 distribution: "sync-bmad-workflows.sh (all 14 targets)"
 ```
@@ -1531,6 +1624,8 @@ scope: fork
 target: custom/workflows/implement/design-implement/steps/step-02-map-implementation.md
 marker: "Enter the worktree BEFORE mapping"
 state: fork-fixed-distribution-owed
+fix: done
+delivery: owed
 owner: fork-maintenance
 routing: retro-routed
 routing_note: "Verify-and-close sweep 2026-07-27 (owner: 'go for it'). Fork fix confirmed present in the target; residue is DISTRIBUTION ONLY, so it joins the single fleet sync rather than standing as its own investigation."
@@ -1576,6 +1671,8 @@ scope: machine-local
 target: ~/.claude
 marker: "evidence-identifier allowlist"
 state: open
+fix: none
+delivery: n/a
 owner: mason
 ```
 
@@ -1598,6 +1695,8 @@ scope: fork
 target: ~/bmad-method-v6/
 marker: "bash_edit_guard.py"
 state: closed
+fix: done
+delivery: done
 owner: fork-maintenance
 routing: retro-routed
 routing_note: "Implemented under standing 'continue fixing the fork gaps' maintenance instruction from Mason (2026-07-26)."
@@ -1668,6 +1767,8 @@ scope: project
 target: accounting-tools/CLAUDE.md
 marker: "vat-audit-canonical-home-check.sh"
 state: open
+fix: none
+delivery: n/a
 owner: project:accounting-tools
 ```
 
@@ -1706,6 +1807,8 @@ scope: fork
 target: docs/manifest-contract.md
 marker: "shared-index sweep"
 state: open
+fix: none
+delivery: n/a
 owner: fork-maintenance
 ```
 
@@ -1740,6 +1843,8 @@ scope: project
 target: .claude/settings.local.json
 marker: ".claude/.allow-main-edit"
 state: partly
+fix: partial
+delivery: done   # guard propagated + health-checked on 13/13 this week
 owner: project:cash-recovery
 ```
 
@@ -1929,6 +2034,8 @@ scope: fork
 target: custom/workflows/4-implementation/sprint-planning/
 marker: "delivered-but-pending"
 state: fork-fixed-distribution-owed
+fix: done
+delivery: owed
 owner: fork-maintenance
 routing: retro-routed
 routing_note: "Implemented under standing 'fix the recent fork gaps' maintenance instruction from Mason."
@@ -1972,6 +2079,8 @@ scope: fork
 target: custom/workflows/shared/scope-register-routing.md
 marker: "policy-lane R3"
 state: open
+fix: none
+delivery: n/a
 owner: fork-maintenance
 ```
 
@@ -2010,6 +2119,8 @@ scope: fork
 target: custom/workflows/design/create-design-policy/
 marker: "policy-placement-residue-vs-doctrine"
 state: open
+fix: none
+delivery: n/a
 owner: fork-maintenance
 ```
 
@@ -2053,6 +2164,11 @@ scope: fork
 target: custom/workflows/implement/design-implement/steps/step-04-apply-and-deliver.md
 marker: "run_completion_mode"
 state: partly
+fix: partial
+# delivery: UNSET — `partly` is ambiguous by construction (half-built vs
+# built-but-undelivered). A human sets this; the migration must not guess,
+# because guessing `n/a` here understates the sync queue. See
+# docs/proposals/fork-gap-axes-v2.md §3.
 routing: in-progress
 owner: fork-maintenance
 distribution: "sync-bmad-workflows.sh (all 14 targets)"
@@ -2152,6 +2268,8 @@ scope: fork
 target: test/lib/clean-git-env.js
 marker: "GIT_ENV_TO_STRIP"
 state: closed
+fix: done
+delivery: done
 owner: fork-maintenance
 ```
 
@@ -2272,6 +2390,8 @@ scope: fork
 target: custom/githooks/check-design-brief-completeness.sh
 marker: "new-brief gate coverage"
 state: partly
+fix: partial
+delivery: owed   # same githook; per-project .gitignore sweep also owed
 owner: fork-maintenance
 routing: retro-routed
 routing_note: "Implemented under standing 'fix the recent fork gaps' maintenance instruction from Mason."
@@ -2359,6 +2479,8 @@ scope: fork
 target: custom/githooks/check-design-brief-completeness.sh
 marker: "githook distribution legibility"
 state: partly
+fix: partial
+delivery: owed   # githook B7 clause authored, fires in zero projects until sync
 owner: fork-maintenance
 distribution: "sync-bmad-workflows.sh (all 14 targets)"
 ```
@@ -2439,6 +2561,8 @@ scope: fork
 target: custom/workflows/shared/scope-register-routing.md
 marker: "register append affordance"
 state: fork-fixed-distribution-owed
+fix: done
+delivery: owed
 owner: fork-maintenance
 routing: retro-routed
 routing_note: "Implemented under standing 'fix the recent fork gaps' maintenance instruction from Mason."
@@ -2476,6 +2600,8 @@ scope: fork
 target: custom/workflows/implement/design-implement/steps/step-01-ingest-design.md
 marker: "SHARED.1a-iii"
 state: fork-fixed-distribution-owed
+fix: done
+delivery: owed
 owner: fork-maintenance
 routing: retro-routed
 routed_by: "Mason (post-hoc, 2026-07-26)"
@@ -2536,6 +2662,8 @@ scope: fork
 target: docs/manifest-contract.md
 marker: "recipe argument order"
 state: closed
+fix: done
+delivery: done
 owner: fork-maintenance
 routing: retro-routed
 routing_note: "Implemented under standing 'fix the recent fork gaps' maintenance instruction from Mason."
@@ -2606,6 +2734,8 @@ scope: fork
 target: check-fork-authoring-collision.sh
 marker: "fork-gaps entry-id collision key"
 state: closed
+fix: done
+delivery: done
 owner: fork-maintenance
 routing: routed
 routing_note: "The entry-id-keyed nudge proposed here is IMPLEMENTED — `check-fork-authoring-collision.sh` gained a `docs/fork-gaps.md` branch keyed on ENTRY ID (`4bbe52a7`), and it is CONFIRMED WORKING: it fired correctly on 2026-07-26 when session 984e3219 edited FG-2026-07-25-14 while another session held uncommitted changes to the same entry. Do NOT re-implement. The state stays `open` because a SECOND, DISTINCT failure mode in the same register is still uncovered — see below."
@@ -2691,6 +2821,8 @@ scope: fork
 target: custom/workflows/implement/design-ingest/manifest-schema.md
 marker: "Grain invariant"
 state: fork-fixed-distribution-owed
+fix: done
+delivery: owed
 owner: fork-maintenance
 routing: routed
 routed_by: "Mason (direct in-thread directive to claude-session-20260725-205653, 2026-07-26)"
@@ -2840,6 +2972,8 @@ scope: fork
 target: docs/fork-gaps.md
 marker: "fix axis and delivery axis"
 state: partly
+fix: partial
+delivery: n/a   # fork-local lint tooling; consumed from the fork
 owner: mason
 routing: routed
 routing_note: "ROUTED by owner 2026-07-27: proceed 1 now, 2 next, 3 per-target. Step 1 BUILT; step 2 drafted as a change package awaiting approval."
@@ -2977,6 +3111,8 @@ scope: fork
 target: sync-bmad-workflows.sh
 marker: "push-after-deliver"
 state: partly
+fix: partial
+delivery: n/a   # sync-bmad-workflows.sh is fork-local and runs FROM the fork
 owner: fork-maintenance
 routing: retro-routed
 routing_note: "Found and measured under standing 'continue fixing the fork gaps' maintenance instruction (2026-07-26). The FIX is a distribution/delivery change and is proposed, not shipped."
@@ -3094,6 +3230,8 @@ scope: fork
 target: custom/workflows/design/shared/brief-revision-policy.md
 marker: "revision_mode field-semantics table (§2) + invariants 2/3 + §174"
 state: open
+fix: none
+delivery: n/a
 owner: fork-maintenance
 routing: unrouted
 routing_note: "NEW DESIGN / DOCTRINE lane — adding or redefining a closed-enum value is a taxonomy change, which the autonomous-maintenance split reserves for an owner routing marker. Logged and PROPOSED, deliberately NOT shipped. This entry is not authorisation to edit the enum."
@@ -3148,6 +3286,8 @@ scope: fork
 target: custom/workflows/implement/design-ingest/steps/step-01-frame-inventory.md
 marker: "fan-out MCP reachability"
 state: open
+fix: none
+delivery: n/a
 owner: fork-maintenance
 ```
 
@@ -3220,6 +3360,8 @@ scope: machine-local
 target: .claude/hooks/bash_edit_guard.py
 marker: "worktree-cwd-unobserved"
 state: closed
+fix: done
+delivery: done
 owner: fork-maintenance
 routing: retro-routed
 routing_note: "Fixed under standing maintenance instruction; owner said 'u tell me' on 2026-07-26."
@@ -3302,6 +3444,8 @@ target: custom/workflows/implement/design-implement/steps/step-04-apply-and-deli
 target_secondary: custom/workflows/implement/design-ingest/manifest-schema.md
 marker: "applied-but-unreachable"
 state: fork-fixed-distribution-owed
+fix: done
+delivery: owed
 owner: fork-maintenance
 routing: APPROVED + AUTHORED 2026-07-26 (owner "y", session claude-session-20260726-190747) — DISTRIBUTION NOT RUN
 routing_note: "Owner specified the change 2026-07-26 and HELD it, then approved it the same day. AUTHORED in the fork: step-04 trigger widened, manifest gains a fourth disposition, golden matrix added. DISTRIBUTION (sync to all 14 targets) is a separate Tier-3 action and has NOT run — the change fires in ZERO projects until it does."
@@ -3501,6 +3645,8 @@ scope: fork
 target: custom/workflows/implement/design-ingest/steps/step-03-emit-manifest-and-handoff.md
 marker: "manifest-resume-ledger-is-gitignored"
 state: open
+fix: none
+delivery: n/a
 routing: recorded
 owner: fork-maintenance
 ```
@@ -3574,6 +3720,8 @@ scope: fork
 target: custom/workflows/implement/design-ingest/steps/step-02-fanout-enumerate.md
 marker: "fanout-unit-assumes-one-file-per-frame"
 state: open
+fix: none
+delivery: n/a
 routing: recorded
 owner: fork-maintenance
 lane: NEW DESIGN / DOCTRINE — changes what the fan-out UNIT is. Proposed, NOT shipped.
@@ -3653,6 +3801,8 @@ target: custom/workflows/implement/design-ingest/steps/step-01-frame-inventory.m
 also_touches: custom/workflows/implement/design-ingest/manifest-schema.md
 marker: "one-slug-one-manifest-vs-successor-design"
 state: open
+fix: none
+delivery: n/a
 routing: recorded
 owner: fork-maintenance
 lane: NEW DESIGN / DOCTRINE — changes the manifest naming rule + a §5a verdict. Proposed, NOT shipped.
@@ -3733,6 +3883,8 @@ scope: fork
 target: custom/workflows/implement/design-implement/workflow.md
 marker: "reaches the surface's view model"
 state: open
+fix: none
+delivery: n/a
 owner: fork-maintenance
 ```
 
@@ -3818,6 +3970,8 @@ target: custom/workflows/implement/design-implement/steps/step-02-map-implementa
 target_secondary: custom/workflows/implement/design-ingest/steps/step-03-emit-manifest-and-handoff.md
 marker: "manifest-ledger-unreachable-from-mandated-worktree"
 state: open
+fix: none
+delivery: n/a
 routing: recorded
 owner: fork-maintenance
 related: FG-2026-07-26-07
@@ -3903,6 +4057,8 @@ scope: fork
 target: .claude/scripts/find-pending-checkpoints.sh
 marker: "resume ledger is the manifest"
 state: open
+fix: none
+delivery: n/a
 owner: fork-maintenance
 ```
 
@@ -3980,6 +4136,8 @@ scope: fork
 target: custom/workflows/implement/design-implement/workflow.md
 marker: "prior halted preflight against this design_source"
 state: open
+fix: none
+delivery: n/a
 owner: fork-maintenance
 ```
 
@@ -4112,6 +4270,8 @@ scope: fork
 target: docs/manifest-contract.md
 marker: "shared-HEAD commit misdirection"
 state: open
+fix: none
+delivery: n/a
 owner: fork-maintenance
 routing: NEW DOCTRINE — needs an owner marker. Proposes a commit-target rule (where shared artifacts get committed FROM), which is a change to what the rule IS, not a repair of how it executes. Logged, not shipped.
 ```
@@ -4158,6 +4318,8 @@ target: custom/workflows/design/design-handoff/steps/step-01-gather.md
 also: custom/workflows/design/design-handoff/workflow.md
 marker: "halt record + scope-register routing for a design-handoff stop"
 state: open
+fix: none
+delivery: n/a
 owner: fork-maintenance
 routing: NEEDS OWNER ROUTING — defining the halt-artifact contract is a new
   design decision, not an execution repair. Sibling FG-2026-07-27-01 was
