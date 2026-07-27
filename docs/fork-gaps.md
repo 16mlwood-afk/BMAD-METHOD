@@ -2830,6 +2830,105 @@ citations remain correct.
 **State stays `open`** until the fan-out lands — per the distribution-owed rule, authoring is not
 delivery.
 
+## 2026-07-27 — one entry, three lifecycles: the register cannot represent DELIVERY state, so the truth migrates into prose and the machine-readable field rots
+
+```yaml
+id: FG-2026-07-27-03
+class: lane-status-model
+scope: fork
+target: docs/fork-gaps.md
+marker: "fix axis and delivery axis"
+state: open
+owner: mason
+routing: recorded
+routing_note: "NEW DESIGN / DOCTRINE lane — changing the register's schema is a taxonomy decision, owner's call. Logged and brainstormed, deliberately not implemented."
+```
+
+### Incident
+
+**Found by the sweep, not by theory.** A verify-and-close pass over the stale-open candidates
+reclassified **8 entries** in one sitting. Not one of them needed work: every single one already
+recorded, **in its own status line**, that the fork fix was DONE at source with distribution the only
+residue — and every single one was still sitting at `state: open` or `partly`, presenting as an open
+investigation competing for owner attention.
+
+That is not eight people being careless. **Eight independent authors wrote the truth in the prose and
+left the field wrong**, which is the signature of a field that cannot express what the author needed
+to say.
+
+### Why structural
+
+**One entry is being used for three different lifecycles, and only one of them is immutable:**
+
+| Layer | What it is | How often it changes | Who owns it |
+|---|---|---|---|
+| **FINDING** | this is broken, here is the evidence, here is the target file | never, once written | the noticer |
+| **DECISION** | what we will do, and whether anyone may start | rarely (routing) | Mason |
+| **DELIVERY** | authored → synced → committed → pushed → verified | repeatedly, per stage | whoever ships it |
+
+`state:` is a single enum spanning all three — `open | partly | blocked |
+fork-fixed-distribution-owed | closed | superseded`. It mixes *"has anyone diagnosed this"* with
+*"is it fixed"* with *"has it shipped"*. So an author who has fixed the thing but not distributed it
+has no field that says so — `partly` is technically true and says nothing, `closed` is a lie. They
+write the real answer in prose and move on. **The prose becomes the record and the field becomes
+decoration.**
+
+**The costs are the ones we actually paid this week:**
+
+1. **A backlog that lies about its own size.** 55 "live" entries, of which 13 were one command. The
+   owner reads 13 blockers that are one.
+2. **Re-derivation.** Every session meeting a `partly` entry must re-read the whole body to find out
+   whether anything is actually owed — the exact cost the register exists to prevent.
+3. **It hid a real unblock.** `FG-2026-07-20-01` sat blocked on *"edit-guard secondary remains OPEN on
+   the hooks track"*. That secondary shipped on 2026-07-26; nothing connected the two, so it stayed
+   presenting as blocked until read by hand.
+
+**Sibling, not duplicate:** `FG-2026-07-10-01` is *"distribution-owed has no OWNER"* — nobody drains
+it. This is one layer earlier: **the register cannot say a thing is distribution-owed in a way a
+machine can read**, so it does not even reach the queue that has no owner.
+
+### The deeper pattern (worth more than the schema fix)
+
+**Delivery state should be COMPUTED, not written.** *"Is this distributed?"* is answerable by diffing
+the fork against the projects. *"Is it pushed?"* is `git rev-list origin/main..HEAD`. Every
+hand-written delivery claim in this file is a cached value with no invalidation — and today's other
+finding is the same shape one level down: the sync's contract ended at `commit` and nothing computed
+whether the delivery had left the machine (`FG-2026-07-26-08`).
+
+**Anything a machine can derive should not be a field an author maintains.**
+
+### Work
+
+**Not implemented — this is a taxonomy change and belongs to the owner.** Options brainstormed, with
+the honest trade-off on each:
+
+1. **Split the axis in two: `fix: none|partial|done` + `delivery: n/a|owed|done`.** Cheap, and it makes
+   the observed mislabel *impossible to write*: an author who has fixed something sets `fix: done` and
+   is then forced to answer the delivery question. Migration is mechanical for the 66 entries.
+   *Cost:* two fields to keep honest instead of one, and `delivery` is still hand-written.
+2. **Derive `delivery` instead of storing it.** A checker diffs `custom/workflows/` against each
+   project and answers "distributed?" per entry from the target path. *Cost:* only works for
+   sync-carried targets; a hooks-track or project-scope entry has no such derivation, so it is a
+   partial answer that must say so rather than guess.
+3. **Contradiction detector (cheapest, catches THIS bug without any schema change).** Lint the body
+   against the field: if the prose says *"fix DONE"*, *"distribution owed"*, *"verified built"* while
+   `state` is `open`/`partly`, that is a mechanically decidable disagreement. It would have caught all
+   8. *Cost:* keyword heuristic, so it needs a quiet allowlist; catches the mislabel, not the root.
+4. **Split the file: findings register vs delivery queue.** Structurally cleanest — an immutable
+   finding never moves, delivery is a separate short-lived list. *Cost:* two homes, cross-references,
+   and this fork has repeatedly found that two homes drift.
+
+**Recommendation for the owner: (3) now, (1) next, (2) only where derivable.** (3) is a one-file
+checker that pays for itself immediately and needs no migration; (1) is the real fix and its migration
+is mechanical; (2) is right in principle but partial in practice, so it should back the other two
+rather than replace them.
+
+**Watch:** if a ninth entry is found with its fix recorded only in prose before any of this lands, stop
+treating it as a hygiene problem — the field is not being maintained because it *cannot* be, and (1)
+is overdue rather than optional.
+
+---
+
 ## 2026-07-26 — EVERY project's local `main` is diverged: 13/13 carry unpushed BMAD-sync commits, so "delivered" work has never reached any remote
 
 ```yaml
