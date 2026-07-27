@@ -3964,3 +3964,46 @@ success criteria). **DISTRIBUTION IS THE STOP AND HAS NOT HAPPENED:** these ride
 projects**, including cash-recovery, until it does. Do not describe this as live.
 **state:** open
 **routing:** maintenance half FIXED (owner-routed 2026-07-27); still open on (a) the halt-vs-warn threshold and whether the preflight artifact becomes a consumed contract — owner call, and (b) distribution to the 14 targets — owner go required
+
+## 2026-07-27 — the contracts REQUIRE writing shared artifacts in the main checkout, but nothing pins that checkout's HEAD, so a session that verified the branch at session start can commit onto a parallel session's branch minutes later
+
+```yaml
+id: FG-2026-07-27-02
+class: shared-state-unpartitioned
+scope: fork
+target: docs/manifest-contract.md
+marker: "shared-HEAD commit misdirection"
+state: open
+owner: fork-maintenance
+routing: NEW DOCTRINE — needs an owner marker. Proposes a commit-target rule (where shared artifacts get committed FROM), which is a change to what the rule IS, not a repair of how it executes. Logged, not shipped.
+```
+
+### Incident
+
+**Friction (real this session — `design-implement` pass 3 on `/recovery`, with ~4 sessions live in the same repo).** At session start I checked the main checkout: `git branch --show-current` → `main`. I did the code work in a worktree, correctly. Then I committed the manifest write-back from the **main checkout**, because that is what the contracts tell me to do. In the interval, a parallel session had switched that checkout onto its own branch (`docs/receive-v2-ad6-disposition`). My commit landed on **their branch**.
+
+Unwinding it made the damage worse: `git reset --soft HEAD~1` was computed against a HEAD that had moved again — the same session had committed on top of mine — so the reset removed **their** commit, not mine. Content survived in the index and I restored it inside a minute (reflog `HEAD@{1}`), and their working tree was never touched. But the residue was not recoverable by me: **their open PR squash-merged MY commit under THEIR title**, because their own commit did not exist when the PR was opened, and their actual change is still sitting un-delivered on a local branch.
+
+### Why the existing entry doesn't cover it
+
+`FG-2026-07-25-01` covers the shared **INDEX** — a parallel bare `git commit` sweeping my *staged* files. This is the shared **HEAD**: my *own, explicit, by-path* commit landing on a foreign *branch*. Correct index hygiene does not help; I staged one file by path and committed it deliberately. The variable that betrayed me was which branch the checkout was pointing at, which I had verified and which is not mine to hold.
+
+It also extends that entry's `reset --soft` warning in a way worth naming separately: `git reset --soft HEAD~1` is **unsafe by construction in a shared checkout**, because `HEAD~1` is evaluated at run time against a pointer another session moves. The safe form is `git reset --soft <explicit-sha>` — and even that races. My unwind was a second, larger incident caused by the recovery from the first.
+
+### Why structural
+
+**The doctrine actively directs sessions into the one place with unpartitioned mutable state.** Two live contracts mandate it explicitly:
+
+- the WIP-register contract — *"Claims must be authored in the MAIN CHECKOUT"* (project `CLAUDE.md`), because a claim written in a worktree is invisible until committed **and** pushed;
+- the manifest contract — the ingest manifest is a main-checkout artifact, and rule 4 says *"commit the manifest explicitly by path"*.
+
+Both rules are right about *visibility* and silent about *commit target*. "Commit it by path" answers **what** to stage; nobody answers **from where**, and the honest answer — from a worktree branch, then deliver by PR like everything else — contradicts nothing in either contract but is nowhere stated. So every session follows the contracts correctly and commits into a branch pointer it does not own.
+
+The failure is invisible at the moment it happens: `git commit` succeeds, prints a sha, and the pre-commit gates pass. It surfaces only later, as a `Not possible to fast-forward` on a branch you never touched.
+
+### Shape of the fix (proposal — owner's call, not shipped)
+
+1. **State the commit-target rule where the main-checkout mandate is made.** Writing a shared artifact in the main checkout ≠ committing it there. Write the file there (so it is visible immediately, which is the whole point); **commit and deliver it from the worktree branch**, by path, through the normal PR. Distinguish the two operations explicitly — the contracts currently conflate them.
+2. **Never `git reset --soft HEAD~1` in a shared checkout.** Resolve the sha first, reset to it explicitly, and re-verify HEAD is where you left it before and after. Better: don't commit there, and the unwind never arises.
+3. **Cheap deterministic candidate:** a `PreToolUse` Bash check on `git commit` that fires when cwd is the shared main checkout AND `git branch --show-current` is a branch this session did not create. Warn-only; it has the one fact the agent cannot hold — that the pointer moved since it last looked. Sibling of the collision guard, and it fails open the same way.
+4. **Related but separate:** `FG-2026-07-26-*` records that the design-implement worktree branches from `origin/main` and therefore cannot see the durable ledger. That gap and this one pull in opposite directions — one says the manifest is not in the apply tree, this says do not commit it from the shared one. They should be resolved **together**, or the fix for either makes the other worse.
