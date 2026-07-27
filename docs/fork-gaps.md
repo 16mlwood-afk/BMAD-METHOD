@@ -170,8 +170,11 @@ class: context-safety-hole / MCP-ergonomics
 scope: fork
 target: custom/workflows/implement/design-ingest/steps/step-01-frame-inventory.md
 marker: "to-disk mirror"
-state: partly
+state: fork-fixed-distribution-owed
 owner: fork-maintenance
+routing: retro-routed
+routing_note: "Verify-and-close sweep 2026-07-27 (owner: 'go for it'). Entry's own status line states the fork fix is DONE at source with distribution the only residue — re-read, not grepped. Reclassified so it joins the single fleet sync instead of standing as an open investigation."
+distribution: "sync-bmad-workflows.sh fan-out to the 13 projects — rides the standing owner-gated fleet re-sync gate (STATUS 'Now')"
 ```
 
 ### Incident
@@ -194,6 +197,16 @@ owner: fork-maintenance
 
 
 ---
+
+
+### Sweep — 2026-07-27: reclassified to distribution-owed, not re-investigated
+
+This entry's own status line already recorded **fork fix DONE at source, distribution OWED** — it was
+simply never moved off `partly`, so it kept presenting as an open investigation. Re-read against the
+target and reclassified. Nothing was rebuilt and nothing new was decided.
+
+Counted here rather than closed because **authoring is not delivery**: the fix reaches no project until
+the fan-out runs. That is one command for all of them, not one investigation each.
 
 ## 2026-07-07 — the Claude-Design paste-route (UserPromptSubmit hook + design-implement command) has no NET-NEW / no-backend preflight, so it routes a paste for a surface that doesn't exist yet straight into design-implement
 
@@ -553,8 +566,11 @@ class: contract-dimension-gap
 scope: fork
 target: custom/workflows/design/design-handoff/steps/step-01c-topology.md
 marker: "workflow/wizard states"
-state: partly
+state: fork-fixed-distribution-owed
 owner: fork-maintenance
+routing: retro-routed
+routing_note: "Verify-and-close sweep 2026-07-27 (owner: 'go for it'). Entry's own status line states the fork fix is DONE at source with distribution the only residue — re-read, not grepped. Reclassified so it joins the single fleet sync instead of standing as an open investigation."
+distribution: "sync-bmad-workflows.sh fan-out to the 13 projects — rides the standing owner-gated fleet re-sync gate (STATUS 'Now')"
 ```
 
 ### Incident
@@ -572,6 +588,16 @@ owner: fork-maintenance
 
 ---
 
+
+### Sweep — 2026-07-27: reclassified to distribution-owed, not re-investigated
+
+This entry's own status line already recorded **fork fix DONE at source, distribution OWED** — it was
+simply never moved off `partly`, so it kept presenting as an open investigation. Re-read against the
+target and reclassified. Nothing was rebuilt and nothing new was decided.
+
+Counted here rather than closed because **authoring is not delivery**: the fix reaches no project until
+the fan-out runs. That is one command for all of them, not one investigation each.
+
 ## 2026-07-11 — design-implement's net-new preflight gates on SURFACE existence, so a net-new CAPABILITY (with a net-new backing store) overlaid on an EXISTING surface slips through as "brownfield, proceed"
 
 ```yaml
@@ -580,8 +606,11 @@ class: contract-dimension-gap
 scope: fork
 target: custom/workflows/implement/design-implement/workflow.md
 marker: "capability-granularity"
-state: partly
+state: fork-fixed-distribution-owed
 owner: fork-maintenance
+routing: retro-routed
+routing_note: "Verify-and-close sweep 2026-07-27 (owner: 'go for it'). Entry's own status line states the fork fix is DONE at source with distribution the only residue — re-read, not grepped. Reclassified so it joins the single fleet sync instead of standing as an open investigation."
+distribution: "sync-bmad-workflows.sh fan-out to the 13 projects — rides the standing owner-gated fleet re-sync gate (STATUS 'Now')"
 ```
 
 ### Incident
@@ -598,6 +627,16 @@ owner: fork-maintenance
 **Blast radius:** any design-implement run against an existing surface where the handoff is really a new capability + new persistence (overlays, new lifecycle dimensions, "add drafts/versions/approvals to X"). Medium: no data loss (the §4c halt is the backstop), but it defeats the point of a *cheap pre-ingest* gate and burns a full ingest before the stop. **Priority: medium** — the safety net holds; the cost is wasted spend + a late halt on a class of handoff (capability-on-existing-surface) that is common in a mature brownfield app.
 
 **RESOLUTION (2026-07-19):** shipped in `custom/workflows/implement/design-implement/workflow.md` "Net-new / no-target preflight" — added a **capability-granularity probe** (probes 4–6: paired not-ready backend/arch-spec for `{target_slug}`; the *capability's* backing object grepped separately from the surface's primary object; the assumed save/park/resume/reload path). Revised verdict: a surface probe (1–3) hitting no longer waves the run through if any capability probe fires — it early-exits `capability-net-new` with the same soft recommendation, moving the catch pre-ingest instead of at the post-ingest §4c halt. Two determination flavours (`net-new-surface` vs `capability-net-new`) surfaced in the §SHARED.2 opening summary. Additive; brownfield diff behaviour unchanged when 1–3 exist and 4–6 are clear. **OWED:** distribution to the 13 projects via `sync-bmad-workflows.sh`.
+
+
+### Sweep — 2026-07-27: reclassified to distribution-owed, not re-investigated
+
+This entry's own status line already recorded **fork fix DONE at source, distribution OWED** — it was
+simply never moved off `partly`, so it kept presenting as an open investigation. Re-read against the
+target and reclassified. Nothing was rebuilt and nothing new was decided.
+
+Counted here rather than closed because **authoring is not delivery**: the fix reaches no project until
+the fan-out runs. That is one command for all of them, not one investigation each.
 
 ## 2026-07-11 — project-local custom extensions (hooks / skills / scripts / CLAUDE.md rules) have no formal DECLARATION, so a globally-worthy invention stays siloed in one repo until a human happens to see it in a live session
 
@@ -683,8 +722,10 @@ class: contract-dimension-gap
 scope: fork
 target: custom/workflows/implement/design-implement/steps/step-04-apply-and-deliver.md
 marker: "State-render coverage"
-state: partly
+state: fork-fixed-distribution-owed
 owner: fork-maintenance
+routing: retro-routed
+routing_note: "Verify-and-close sweep 2026-07-27 (owner: 'go for it'). Fork fix confirmed present in the target; residue is DISTRIBUTION ONLY, so it joins the single fleet sync rather than standing as its own investigation."
 distribution: "sync-bmad-workflows.sh (all 14 targets)"
 ```
 
@@ -700,6 +741,22 @@ distribution: "sync-bmad-workflows.sh (all 14 targets)"
 **Status (2026-07-16):** partly resolved: 2026-07-19 — added a "State-render coverage" cede to design-implement step-04 §5b: a live/local render must enumerate the grid's non-default state rows painted-vs-no-data and CEDE the unpainted ones (visually-unverified, into a §9 prod-smoke checklist), mirroring the content-lane disclose-don't-fake posture. Distribution owed. The per-state seed helper is noted as a non-gating adjunct.]`  `[gating completed: 2026-07-23 — the cede is now MANDATORY, not just described: added a "State-render coverage (prod-smoke owed)" section to step-04's §9 mandatory-section gate (equally-mandatory, non-conformant if omitted, alongside Frame-coverage / Content-lane / Capabilities-removed / Entry-point), an acceptance-list bullet, and a checklist.md item. A render-only pass that omits the cede is now non-conformant. Still open ONLY on distribution — the fork source is pushed to myfork/custom; the 13-project sync fan-out rides the standing fleet re-sync gate (STATUS "Now"), not a unique owed step here. The per-state seed helper remains a non-gating project-local adjunct (unbuilt).
 
 **Fix direction:** step-04 §5b should, when the done-check is a live/local render, **enumerate the grid's non-default state rows and mark each painted vs. no-data-to-paint**, then CEDE the unpainted ones explicitly — name them, mark `visually-unverified (static/unit-covered only)`, and (if a brief/PR exists) drop them into a short prod-smoke checklist — exactly the disclose-don't-fake posture the content lane already uses. Cheaper adjunct worth noting but not gating: a per-state seed helper (`db:local:sample --states`) that injects one row per declared state-variant so the render can actually cover the axis. **Watch:** if a second surface hits this (a render passing while domain state-variants have no local data), promote "verification-evidence can't cover a contract axis → cede-by-disclosure" from the two content-lane/state-axis instances into a first-class `mason-bmad-workflow-expert` note under `contract-dimension-gap` rather than re-deriving it. **Priority: medium** — the render is increasingly the owner's real acceptance gate, and a silent "looks done" on the exact states a redesign adds is the expensive miss.
+
+
+### Sweep — 2026-07-27: reclassified, not re-investigated
+
+Verify-and-close pass over the stale-open candidates. **The fork fix is present in the target and was
+read, not grepped** — the detector's own rule is that a marker proves a STRING exists, never that the
+gap is resolved. What remains here is DISTRIBUTION, so this is not an open investigation competing for
+attention: it is one of N items riding a single sync.
+
+**Confirmed:** step-04 §5b carries the State-render coverage cede — a live/local render enumerates the
+grid's non-default state rows painted-vs-no-data and CEDES the unpainted ones as visually-unverified
+into a §9 prod-smoke checklist. A render-only pass that omits it is non-conformant.
+
+**The one non-distribution residue is explicitly non-gating:** the per-state seed helper is an unbuilt
+project-local adjunct, and the entry already says so. It does not hold this open — naming it here so
+that stays true rather than being quietly dropped.
 
 ## 2026-07-16 — an operator can reach the prod DB (proxy) but NOT prod Redis, so any BullMQ-triggered action (listing publish) can't be driven or verified from a local script — it hangs silently and orphans state mid-transition
 
@@ -956,8 +1013,10 @@ class: contract-dimension-gap (domain-semantics injection) — sibling of the 20
 scope: fork
 target: custom/workflows/design/design-handoff/steps/step-01-gather.md
 marker: "3e. Operator-domain pass"
-state: partly
+state: fork-fixed-distribution-owed
 owner: fork-maintenance
+routing: retro-routed
+routing_note: "Verify-and-close sweep 2026-07-27 (owner: 'go for it'). Fork fix confirmed present in the target; residue is DISTRIBUTION ONLY, so it joins the single fleet sync rather than standing as its own investigation."
 distribution: "sync-bmad-workflows.sh (all 14 targets)"
 ```
 
@@ -979,6 +1038,22 @@ distribution: "sync-bmad-workflows.sh (all 14 targets)"
 - **Sequence:** this fork-gap (now) → draft pass spec + profile schema (design artifact only, no wiring) → after approval, wire §3e + halt behavior → validate by rebuilding the clerk cockpit through `design-router → design-handoff` (confirm expected-contents-first, identity-before-identifier, evidence-before-input). Route authoring through `enforcement-expert` (tier the halt) + `mason-bmad-workflow-expert` (fork author). Project-side continuity: cash-recovery memory `operator-domain-pass-gap`. **Priority: medium-high** — no data risk, but it is the root cause of shipped domain-blind cockpit UIs (the clerk bench) and generalizes across every expert-operator surface in the family.
 
 - **2026-07-18 — design-implement size-preflight (URL.1c) can't distinguish "N separate frames" from "N state-variants of ONE component", and its routing recommendation is actively wrong for the latter.** Target file: `custom/workflows/implement/design-implement/steps/step-01-ingest-design.md` (§URL.1c "Size preflight — recommend design-ingest"; synced to project `.claude/skills/bmad-design-implement/step-01-ingest-design.md`). **Symptom:** a Claude-Design *canvas* export (`design_doc_mode: canvas`) delivered the `/receive` redesign as a single 131KB `.dc.html` holding 7 `<!-- FRAME N -->` blocks — but frames 1–5 are STATE-VARIANTS of one scanner-terminal surface (idle → session-open matched/unmatched → scan-matched → scan-exception → closed-reconciled), not 7 distinct surfaces; only frames 6–7 are true drilled §13 lookups. URL.1c fired (≥5 frames AND ≥60KB) and recommended routing through `design-ingest`. **Why that's wrong:** `design-ingest` fans out ONE isolated agent PER FRAME and enumerates each as a separate section-inventory. Applied to a state-variant canvas it would (a) shatter one component's state machine into 5 "frames", losing the fact they share a shell + differ only by state, and (b) produce a grid scaffold that mismodels the impl (one `ReceiveStation.tsx` with conditional state, not 5 pages). The state axis is exactly what design-implement's component×STATE×property grid is built to hold in ONE catalog — fanning it out per-state discards that. **Root cause:** the preflight's frame COUNT comes from counting `<!-- FRAME -->` blocks / `<script src>` groups / sibling `.html`, with no check for whether those "frames" are `data-screen-label` variants of the same surface id (here every frame's id is `receive-station` / `receive-station--<state>` — the shared stem is the tell). **Proposed fix:** in URL.1c, before recommending design-ingest, collapse the frame count by shared surface-stem (`receive-station--*` → 1 surface + K states); gate the design-ingest recommendation on **distinct-surface count**, not raw frame/block count, and add a canvas-specific note: "a `design_doc_mode: canvas` export of state-variants of one surface should be ingested INLINE as one component with a state axis, NOT fanned out per-frame." Also teach `design-ingest` to detect the same shared-stem case and treat variants as states of one frame rather than N frames. **Handled this session** via the autonomous-mode disclose-and-proceed escape hatch (ingested inline, delegated the two capability inventories to read-only sub-agents to stay off the compaction trap) — so no damage, but a less-careful operator would follow the recommendation and mismodel the surface. **Priority: medium** — no data risk; correctness/legibility of the ingest model for the increasingly-common canvas export shape.
+
+
+### Sweep — 2026-07-27: reclassified, not re-investigated
+
+Verify-and-close pass over the stale-open candidates. **The fork fix is present in the target and was
+read, not grepped** — the detector's own rule is that a marker proves a STRING exists, never that the
+gap is resolved. What remains here is DISTRIBUTION, so this is not an open investigation competing for
+attention: it is one of N items riding a single sync.
+
+**Confirmed by a parallel session on 2026-07-20 and re-checked now:** `custom/skills/operator-domain-pass/SKILL.md`
+exists and `design-handoff` step-01-gather §3e is wired — fires on `{is_processing_cockpit}`, co-fires
+with §3d, resolves the operator profile as its first action, invokes the skill in extract mode, halt
+behaviour present. Fixes (a)+(b)+(c) of the ratified plan are landed.
+
+**Note carried forward:** the profile it consumes is PROJECT-local, so a fork-path validator flagging
+it is a true negative, not pointer rot. Do not "fix" that by repointing it at the fork.
 
 ## 2026-07-19 — the secret-scanner watches file WRITES but is blind to the permission allowlist, where the harness itself persists inline-secret Bash commands verbatim in plaintext
 
@@ -1018,8 +1093,11 @@ class: enforcement
 scope: fork
 target: custom/skills/bmad-correct-course/SKILL.md
 marker: "different proposal_id"
-state: partly
+state: fork-fixed-distribution-owed
 owner: fork-maintenance
+routing: retro-routed
+routing_note: "Verify-and-close sweep 2026-07-27 (owner: 'go for it'). Entry's own status line states the fork fix is DONE at source with distribution the only residue — re-read, not grepped. Reclassified so it joins the single fleet sync instead of standing as an open investigation."
+distribution: "sync-bmad-workflows.sh fan-out to the 13 projects — rides the standing owner-gated fleet re-sync gate (STATUS 'Now')"
 ```
 
 ### Incident
@@ -1044,6 +1122,16 @@ owner: fork-maintenance
 
 **RESOLUTION (2026-07-19):** shipped fixes (a) + (b) in the authoritative sync source `custom/skills/bmad-correct-course/SKILL.md` step 6 — the marker drop is now gated by three mutually-exclusive `<check>` blocks: *no sprint-execution artifact in `files_to_change`* → skip the write + record `sprint_apply_marker: NOT_DROPPED — no tracker files`; *slot already held by a different `proposal_id`* → HALT rather than clobber + record `BLOCKED — slot held by <id>`; *tracker files present AND slot free/own* → write. Section 6's Executor Manifest template gained the `sprint_apply_marker` disposition field so the manifest and the drop agree. Fix (c) (single-slot → keyed set) NOT taken — it touches the `sprint-apply-gate` hook (separate distribution track), left as a noted future enhancement. **OWED:** distribution — the fix reaches project sessions only after `~/bmad-method-v6/sync-bmad-workflows.sh` fans out to the 13 targets (Tier-3, run under the sync's dirty-target guard). Kept `[partly resolved]` in the live file until that sync runs.
 
+
+### Sweep — 2026-07-27: reclassified to distribution-owed, not re-investigated
+
+This entry's own status line already recorded **fork fix DONE at source, distribution OWED** — it was
+simply never moved off `partly`, so it kept presenting as an open investigation. Re-read against the
+target and reclassified. Nothing was rebuilt and nothing new was decided.
+
+Counted here rather than closed because **authoring is not delivery**: the fix reaches no project until
+the fan-out runs. That is one command for all of them, not one investigation each.
+
 ## 2026-07-20 — design-implement step-01 URL PATH is hard-coded to the LEGACY Claude Design bundle shape, so its whole ingest machinery silently no-ops on the `.dc.html` format Claude Design now emits — including whole-frame VARIANT props that hide a shipped capability behind a `default: false`
 
 ```yaml
@@ -1052,8 +1140,10 @@ class: contract-dimension-gap (missing-source-on-one-input-path flavour → sile
 scope: fork
 target: custom/workflows/implement/design-implement/steps/step-01-ingest-design.md
 marker: "bundle_shape"
-state: partly
+state: fork-fixed-distribution-owed
 owner: fork-maintenance
+routing: retro-routed
+routing_note: "Verify-and-close sweep 2026-07-27 (owner: 'go for it'). Fork fix confirmed present in the target; residue is DISTRIBUTION ONLY, so it joins the single fleet sync rather than standing as its own investigation."
 distribution: "sync-bmad-workflows.sh (all 14 targets)"
 ```
 
@@ -1101,6 +1191,24 @@ Compounding: `readme.md` DOES exist inside `_ds/<ds-id>/`, so URL.2's `../README
 **RESOLUTION (2026-07-20, `33e6f01c`):** shipped fixes (a)–(e) in the authoritative sync source `custom/workflows/implement/design-implement/` — **URL.1c** resolves `{bundle_shape}` (`legacy_jsx` | `dc_html`) *before* the size preflight (which counted `<script src>` groups and read zero on `.dc.html` regardless of size, now shape-aware); **URL.2/URL.3/URL.3a/URL.4** gained `.dc.html` sub-branches (README from `_ds/<ds-id>/readme.md`; the self-contained frame document read in full instead of a module trace; frame harvest from `FRAME n` banners + `data-screen-label`/`id` + cross-frame `.dc.html#anchor` links + sibling `*.dc.html`, with URL.3a source-5 Linked-records reconciliation unchanged; tokens + `styles.css` resolved from the `<helmet>` link set); **URL.5a** adds the mandatory editor-prop VARIANT axis (parse `data-props`, enumerate EVERY `<sc-if>` branch, tag each row `variant` alongside `state`, flag `hides_capability`, carry "proposal"/"unbriefed" labels as annotation only); **URL.6** halts on a zero-modules AND zero-README AND zero-tokens ingest. `{bundle_shape}` + `{design_variants}` added to `workflow.md` state; four checklist items added. **step-02b was deliberately NOT touched** — all variant branches fold into `{design_components}` / `{design_frame_inventory}`, so its regression-surface check inventories them through its existing logic and stays independent of the grid. **Legacy JSX bundles are byte-for-byte unaffected** (existing instructions became the `legacy_jsx` branch verbatim). **DISTRIBUTION (2026-07-20):** sync run — **cash-recovery synced** (skills-layout path; 35 ports + 34 shared policies delivered) and the fix is verified live there (URL.1c / URL.5a / URL.6 all present, `{bundle_shape}` + `{design_variants}` in SKILL.md, the local-only `operator-domain-pass` skill left intact). **13 old-layout projects BLOCKED** by the skip-if-dirty guard (uncommitted tracked changes in BMAD-managed paths — mostly the "uncommitted prior sync" shape, but `inbound-flow` carries 14 design-handoff/design-router files that may be a peer session mid-edit). Not forced. Those 13 do not currently consume `.dc.html` handoffs, so the gap is closed where it bites.
 
 **DISTRIBUTION PARKED (owner decision, 2026-07-20).** Do **NOT** re-run sync for this bundle. Distribution to the other 13 stays parked until their trees settle — specifically **no sync to `inbound-flow`** until its 14 modified design-handoff/design-router files are resolved (peer session possibly mid-edit). A future session that "helpfully" re-runs sync or reaches for `--force` here is going against a ratified decision, not filling a gap.
+
+
+### Sweep — 2026-07-27: reclassified, not re-investigated
+
+Verify-and-close pass over the stale-open candidates. **The fork fix is present in the target and was
+read, not grepped** — the detector's own rule is that a marker proves a STRING exists, never that the
+gap is resolved. What remains here is DISTRIBUTION, so this is not an open investigation competing for
+attention: it is one of N items riding a single sync.
+
+**Confirmed:** `33e6f01c` landed the URL.1c shape branch, the `.dc.html` sub-branches, the URL.5a
+variant axis and the URL.6 near-empty guard; `bundle_shape` is resolved and reported in the SHARED.2
+summary.
+
+**The secondary that kept this from being distribution-only is now CLOSED.** The entry read
+*"Edit-guard secondary remains OPEN on the hooks track"* — that hooks-track work shipped 2026-07-26/27
+(`bash_edit_guard.py` wired for the first time, four resolution defects fixed, the reachable marker
+override, propagated to 13/13 with health checks). So nothing on this entry is now waiting on anything
+but the sync.
 
 ## 2026-07-20 — a single stale, UNRESTORABLE stash silently blocks EVERY commit to the fork, because lint-staged stashes before running and the failure surfaces as an opaque "invalid object … Error building trees"
 
@@ -1421,8 +1529,10 @@ class: contract-dimension-gap
 scope: fork
 target: custom/workflows/implement/design-implement/steps/step-02-map-implementation.md
 marker: "Enter the worktree BEFORE mapping"
-state: partly
+state: fork-fixed-distribution-owed
 owner: fork-maintenance
+routing: retro-routed
+routing_note: "Verify-and-close sweep 2026-07-27 (owner: 'go for it'). Fork fix confirmed present in the target; residue is DISTRIBUTION ONLY, so it joins the single fleet sync rather than standing as its own investigation."
 distribution: "sync-bmad-workflows.sh (all 14 targets)"
 ```
 
@@ -1442,6 +1552,19 @@ distribution: "sync-bmad-workflows.sh (all 14 targets)"
 3. **Do NOT sanction the rm-then-Write workaround in prose.** If a fallback is documented at all it should be "re-read the file at its worktree path," accepting the context cost, precisely so the guard is never routinely disarmed.
 
 **Priority: medium** — costs context and teaches a bad reflex on every worktree-mandated project, but is fully avoidable by one ordering sentence.
+
+
+### Sweep — 2026-07-27: reclassified, not re-investigated
+
+Verify-and-close pass over the stale-open candidates. **The fork fix is present in the target and was
+read, not grepped** — the detector's own rule is that a marker proves a STRING exists, never that the
+gap is resolved. What remains here is DISTRIBUTION, so this is not an open investigation competing for
+attention: it is one of N items riding a single sync.
+
+**Confirmed:** step-02 §0 carries the worktree precondition — enter the worktree BEFORE reading any
+impl file, so map and apply share one path space; degrades explicitly to "map in place" for
+non-worktree projects. Candidate fix 1 taken; the rm-then-Write workaround deliberately left
+unsanctioned. No residue beyond the fan-out.
 
 ## 2026-07-21 — secret-scanner PostToolUse hook false-positives on evidence identifiers in memory files
 
@@ -3709,3 +3832,98 @@ so the repair does NOT fan out and is not a distribution stop). Companion doctri
 was built to close).
 **state:** open
 **routing:** recorded
+
+## 2026-07-27 — `design-implement` writes a HALT verdict to a preflight artifact and then never reads it back, so an identical re-paste of the same Claude Design URL re-derives the same halt from zero
+
+```yaml
+id: FG-2026-07-27-01
+class: contract-dimension-gap
+scope: fork
+target: custom/workflows/implement/design-implement/workflow.md
+marker: "prior halted preflight against this design_source"
+state: open
+owner: fork-maintenance
+```
+
+### Incident
+
+On 2026-07-26 a session ran `design-implement` against
+`claude.ai/design/p/f93d6a81…?file=templates/claim-evidence-pack/ClaimEvidencePack.html`. It completed
+step-01 ingest and step-02 mapping, then HALTED at step-02b on two gates (§4 capability drop, §4c
+fixture-to-prod), and wrote the verdict to
+`_bmad-output/implementation-artifacts/design-implement-preflight-claim-evidence-pack-2026-07-26.md`
+— a well-formed artifact carrying `design_source`, `design_file`, `target_slug`, `baseline_commit`
+and `outcome: HALTED at step-02b`.
+
+On 2026-07-27 the owner pasted **the same Claude Design prompt again** — same URL, same `Implement:`
+line. Nothing in the workflow's Input Resolution surfaced that artifact. The re-run would have
+re-spent the full ingest + map to reach a halt already on disk, one directory away, keyed on the
+exact `design_source` string it was handed.
+
+It did not, only because the session grepped `implementation-artifacts/` on a hunch before starting.
+That is luck, not a gate.
+
+### Why the existing intake checks all miss it
+
+Input Resolution already runs three staleness/conflict checks, and this case slips between them by
+construction:
+
+- **Supersede** (`{handoff_supersede_status}`) asks *has a DIFFERENT brief replaced this one?* — no.
+  The brief is `active`.
+- **Freshness** asks *was the SAME brief materially revised after the manifest was built?* — no, and
+  it is manifest-path only; this was a raw URL run with no manifest.
+- **Concurrent-run** (§SHARED.1a-ii) asks *is another session working this slug RIGHT NOW?* — a
+  different question, and it is keyed on the register, not on any prior verdict.
+
+None of them asks *has this exact design source already been run to a terminal halt, and is that
+verdict still valid?* The artifact is a **write-only** output: the workflow emits it and no workflow
+reads it.
+
+### Why it recurs by construction rather than occasionally
+
+The re-paste is not operator error — it is the designed path. Claude Design's "Send to local coding
+agent" panel emits a **stable** prompt for a given file, and the project's `design-handoff-detect`
+hook deterministically routes every such paste into this workflow. So the same input arrives again
+every time the owner revisits the design, and each arrival pays the full ingest+map cost to rediscover
+a conclusion already recorded. The blocker in this instance is a read model that takes days to land,
+so the halt is *durable* — the window in which re-pastes are wasted is wide, not a same-hour edge.
+
+**Distinct from `FG-2026-07-26-13`** (same file, adjacent problem). That entry is about making the
+FIRST detection cheaper — the existence preflight probes whether a capability's object exists rather
+than whether it reaches the view model, so the halt costs a full ingest. This entry is about not
+REPEATING a detection that already completed and was written down. Fixing -13 shortens each wasted
+run; fixing this one removes the repeat entirely. They compose; neither subsumes the other.
+
+Note the asymmetry that makes this visible: a **checkpointed** pass IS detected — a SessionStart
+banner (`find-pending-checkpoints.sh`) surfaces unfinished design-implement passes. A **halted** pass
+is surfaced by nothing. The fork already accepted the principle that a terminal-but-incomplete pass
+must announce itself on the next session; it just never applied it to the halt case.
+
+### Proposed fix (NOT shipped — needs an owner call on the staleness rule)
+
+In Input Resolution, after `{design_url}` / `{design_file}` are resolved and before any ingest: glob
+`{implementation_artifacts}/design-implement-preflight-*.md`, match frontmatter `design_source`
+against the incoming URL (normalized — strip query-param ordering), and on a hit SURFACE the prior
+verdict with its `outcome`, `date` and `baseline_commit`, plus a computed **still-valid?** signal
+(`git log <baseline_commit>..origin/main -- <the paths the halt named>` — empty ⇒ the blocker almost
+certainly still holds).
+
+Two things are deliberately NOT decided here, because they are doctrine and belong to the owner:
+
+1. **Halt vs warn.** A prior halt whose baseline is unchanged is arguably a hard stop; a prior halt
+   with intervening commits to the named paths is clearly a proceed-and-recheck. Picking the
+   threshold defines a new gate, which is a rule change, not maintenance.
+2. **Whether the preflight artifact becomes a contract.** Reading it back promotes it from a report
+   into a machine-consumed input, which implies a schema (`design_source`, `outcome`,
+   `baseline_commit`, `blocked_on`) and a staleness policy. That is the same promotion the ingest
+   manifest went through, and it should be a deliberate decision rather than a side effect.
+
+The cheap half is uncontroversial and could ship alone: **surface the prior artifact, do not gate on
+it.** Even a one-line "a prior run against this design_source halted on <date> — see <file>" would
+have paid for itself twice already.
+
+**Target file:** `custom/workflows/implement/design-implement/workflow.md` (§Input Resolution — the
+same file as `FG-2026-07-26-13`, different section). Distribution is the stop: this rides
+`sync-bmad-workflows.sh` to 14 targets, so it is proposed here and not fanned out.
+**state:** open
+**routing:** needs owner call (halt-vs-warn threshold + whether the preflight artifact becomes a consumed contract)
