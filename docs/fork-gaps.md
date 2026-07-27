@@ -4423,9 +4423,10 @@ class: workflow-resilience / missing-degradation-ladder
 scope: fork
 target: custom/workflows/implement/design-ingest/steps/step-02-fanout-enumerate.md
 marker: "fan-out degradation"
-state: open
-fix: none
-delivery: n/a
+state: partly
+fix: partial
+delivery: owed
+distribution: "sync-bmad-workflows.sh fan-out to the 13 projects — rides the standing owner-gated fleet re-sync gate (STATUS 'Now'). Carries the step-02 transport ladder, wave-capping and shared-source-file state selectors. The open (c)-legality question needs an owner ruling, NOT distribution."
 owner: owner-decision
 routing: NEEDS ROUTING MARKER
 routing_note: "The DEGRADATION POLICY is a design choice (inline-with-disclosure vs halt vs bounded-retry vs resume), so it is proposed, not shipped. The sibling observation — that step-02 has no batch-size guidance and a naive launch-all can CAUSE the failure — is arguably maintenance, but it is bundled here because both fixes land in the same step file and splitting them would produce two entries about one mechanism."
@@ -4489,6 +4490,38 @@ LARGEST surfaces (the size preflight sends anything >=5 frames here) will keep m
    review-only scaffolding, a dead state variable, and two frames that can silently resolve to
    `undefined`). The gap is the missing ladder, never the fan-out itself.
 
+**Status (2026-07-27): PARTLY RESOLVED — the maintenance half is SHIPPED at fork source; the one
+genuine policy decision is still owner-gated.**
+
+SHIPPED into `custom/workflows/implement/design-ingest/steps/step-02-fanout-enumerate.md`:
+
+- **§2 now separates the two failure classes.** `RETURNED-BUT-EMPTY` keeps the existing under-read
+  recovery; `NEVER RETURNED` gets an explicit transport ladder — bounded re-dispatch of *that frame*
+  (2 attempts, spaced) → wait when a whole wave dies → **resume, don't restart** (dispatch only the
+  missing frames) → then stop and put the choice to the user. Plus a named failure mode: *never let a
+  dead agent become a silently absent frame.*
+- **§1 now mandates capped WAVES** (~4–6 in flight) rather than one-agent-per-frame all at once, with
+  the reason stated: this workflow is deliberately routed the widest surfaces, so the burst can itself
+  provoke the load-shedding that kills the fan-out, and waves make the resume cheap.
+- **§1 now requires resolved STATE SELECTORS for any frame sharing a source file with a sibling** —
+  the coherence repair that makes the current fan-out unit usable (see the scope-widening note on
+  `FG-2026-07-26-09`; the unit *redefinition* there remains owner-gated and was NOT taken).
+- **`completeness.frames_not_enumerated` added to `manifest-schema.md`** so an honest partial is
+  *declarable* rather than only improvisable — the gate previously offered pass-or-improvise.
+- FAILURE MODES gained four entries covering the dead-agent, silent-method-switch, shared-file and
+  burst cases.
+
+**STILL OPEN — the actual owner decision:** *is orchestrator-inline enumeration ever legal?* step-02
+now surfaces it as choice (c) with a stated precondition (only when the mirror already spent the
+context) and a mandatory manifest stamp, and explicitly says it is **not a default and must never be
+taken silently**. It does not RULE on legality, because that is deciding what the rule IS. Until it is
+ruled on, a session hitting this stops and asks.
+
+**Delivery: OWED.** Fork source only (`custom/workflows/`) — invisible to the 13 targets until the
+`sync-bmad-workflows.sh` fan-out, which rides the standing owner-gated fleet re-sync gate. The
+2026-07-27 cash-recovery run that produced this entry was executed against the project's *stale*
+synced copy, which is why it hit the gap at all.
+
 ---
 
 ## 2026-07-27 — the ingest manifest's named completeness gate is guarded by a number the AGENT hand-sums, and nothing verifies it
@@ -4499,9 +4532,10 @@ class: gate-precision / self-reported-field
 scope: fork
 target: custom/workflows/implement/design-ingest/steps/step-03-emit-manifest-and-handoff.md
 marker: "sections_total verify"
-state: open
-fix: none
-delivery: n/a
+state: fork-fixed-distribution-owed
+fix: done
+delivery: owed
+distribution: "sync-bmad-workflows.sh fan-out to the 13 projects — rides the standing owner-gated fleet re-sync gate (STATUS 'Now'). Carries tools/check-ingest-manifest.js, the manifest-schema.md completeness fields, and the rewritten step-03 §2. NOTE: the package.json `test:ingest-manifest` wiring is working-tree only, uncommitted by design — see the Status note."
 owner: fork-maintenance
 routing: MAINTENANCE — the standard already mandates the invariant; it simply is not checked. Fixable without an owner decision.
 ```
@@ -4546,6 +4580,61 @@ identity and append-only discipline, not section arithmetic.
 4. **Deliberately NOT proposed:** having the verifier *write* `sections_total`. The agent should
    still declare it and the checker should still disagree — a self-stamping counter would remove the
    disagreement that catches the error.
+
+**Status (2026-07-27): FORK-FIXED, distribution owed. All three proposals shipped.**
+
+- **`tools/check-ingest-manifest.js` (NEW).** Derives the counts independently from the emitted
+  manifest and asserts nine invariants: grid rows == `sections_total` (C1) · per-frame grid rows ==
+  the declared `(N sections)` heading (C2) == `sections_per_frame[frame]` (C3) · every `drawn: true`
+  frame in BOTH the section inventory and the scaffold (C4) · no grid rows for an undeclared frame
+  (C5) · `frames_with_empty_section_list` empty (C6) · the §2a grain pair (C7) · no duplicate
+  frame-inventory rows (C8) · `sections_per_frame` sums to `sections_total` (C9). Warn-only by
+  default; `--strict` exits 1; `--json` for machine use. Its header states plainly what a green run
+  does NOT prove.
+- **`manifest-schema.md`:** `completeness.sections_per_frame` is now REQUIRED (a single total is
+  unverifiable by eye; the map localises *which* frame is miscounted), `frames_not_enumerated` added
+  as an optional honest-partial declaration, and the Completeness invariant section now names the
+  checker and its nine codes.
+- **step-03 §2 rewritten from assertion to instruction:** it now RUNS the checker with `--strict`,
+  treats non-zero as a HALT, and requires the output be quoted in the handoff — *"a claim with no run
+  is UNVERIFIED"*. The old text said "verify" and offered no mechanism.
+
+**Evidence (what I actually ran, not what I intended):**
+
+- `node test/test-ingest-manifest-check.js` → **10 passed, 0 failed** (`npm run test:ingest-manifest`).
+  Pins BOTH directions: a consistent manifest passes, and each defect class fires with its own code —
+  C1+C9 on the real 66-vs-73 defect, C1+C2 on a dropped grid row, C3 on a per-frame-map disagreement,
+  C4 on a drawn frame absent from both halves, C4+C5 on an undeclared frame, C6, C7, C8, plus
+  warn-only-does-not-exit-nonzero.
+- Against the live artifact that motivated this entry
+  (`cash-recovery` `design-ingest-reimbursement-claims-queue.md`, 11 frames / 73 sections):
+  **CONSISTENT, exit 0.** Injected the original `sections_total: 66` defect into a copy → correctly
+  reported C1-TOTAL + C9-SUM, exit 1.
+- `npx eslint` 0 errors · `npx prettier --check` clean · `npx markdownlint-cli2` **0 errors** across all
+  four changed markdown files · `bash tools/check-fork-gap-schema.sh` 0 errors ·
+  `bash tools/check-fork-gap-targets.sh` 0 errors.
+- One real defect found *by* the suite during authoring: two codes were reported for a single
+  zero-grid-rows condition (`C4-NO-GRID-ROWS` from the inventory side and `C4-MISSING-GRID` from the
+  drawn-frame side). Deduped so one condition yields one finding.
+
+**SMALL RESIDUAL SCHEMA GAP found while applying this (not fixed here).** §2a's grain test inspects
+the grid **cell** specifically, and has no vocabulary for *"value-exact, but stored per-section in the
+Section inventory rather than inline in the cell"* — which is how a manifest with 73 exhaustive
+property catalogs has to be laid out, since inlining them all would make the grid unreadable. The
+cash-recovery manifest therefore carries an explicit `property_rows_location: section-inventory` field
+plus a "where the values actually live" note redirecting `design-implement` MANIFEST.2. That field is
+**ad hoc, not schema'd** — either add it to the enum's vocabulary or let MANIFEST.2 fall back to the
+Section inventory by contract. Left as a proposal rather than bent into an enum that cannot express it.
+
+**Delivery: OWED.** `tools/` and `custom/workflows/` are fork-local; the 13 projects keep the old
+hand-sum text until the `sync-bmad-workflows.sh` fan-out runs (standing owner-gated fleet re-sync
+gate). **`package.json` wiring caveat:** `test:ingest-manifest` is added to the `scripts` block and to
+the `test` chain in the WORKING TREE but is deliberately **NOT committed by this session** — another
+session holds staged changes in `package.json`, and committing that path would have dropped their index
+state (overwriting another session's work is a Tier-3 never). Whoever commits `package.json` next will
+carry the line; if it is ever lost, re-add:
+`"test:ingest-manifest": "node test/test-ingest-manifest-check.js"` plus
+`&& npm run test:ingest-manifest` in the `test` chain.
 
 ---
 

@@ -52,15 +52,23 @@ git ls-files --error-unmatch "{path}" >/dev/null 2>&1 || \
 
 If the evidence genuinely lives only in a scratchpad and you do not intend to persist it, **omit the field entirely** — an absent pointer is honest, a dangling one is not. Do not "fix" this by rewriting the path string to a location the files were never copied to; move the files, force-add them, then record the tracked path.
 
-## 2. Re-assert the completeness invariant
+## 2. Re-assert the completeness invariant — RUN THE CHECKER, do not hand-sum
 
-Before declaring done, verify and stamp:
+Stamp `ingest.date` and `completeness.*` first (the orchestrator has the clock; scripts do not) — including the REQUIRED `completeness.sections_per_frame` map, one entry per drawn frame.
 
-- `completeness.frames_with_empty_section_list` is **empty**. If not, step-02's gate was bypassed — halt, do not emit a malformed manifest.
-- `completeness.sections_total` == the number of grid-scaffold rows. A mismatch means a section was enumerated but not scaffolded (or vice versa) — reconcile before emitting.
-- Every `drawn: true` frame appears in BOTH the section inventory and the grid scaffold.
+Then **verify by running the tool, not by adding it up again:**
 
-Stamp `ingest.date` and `completeness.*` now (the orchestrator has the clock; scripts do not).
+```bash
+node ~/bmad-method-v6/tools/check-ingest-manifest.js --manifest {manifest_path} --strict
+```
+
+A non-zero exit is a **HALT** — fix the manifest and re-run; do not emit. It asserts, independently of your own arithmetic: grid rows == `sections_total` (C1) · per-frame grid rows == each frame's declared `(N sections)` heading (C2) == `sections_per_frame[frame]` (C3) · every `drawn: true` frame in BOTH the section inventory and the scaffold (C4) · no grid rows for an undeclared frame (C5) · `frames_with_empty_section_list` empty (C6) · the §2a grain pair (C7) · no duplicate frame rows (C8) · `sections_per_frame` sums to `sections_total` (C9).
+
+**Quote the checker's output in the handoff — a claim with no run is UNVERIFIED.** "Invariants satisfied" without the command's result is exactly the assertion this replaced.
+
+**Why this is a tool now (FG-2026-07-27-06).** This step used to say "verify `sections_total` == the number of grid-scaffold rows" and offer no mechanism, so both sides of the equation were the agent's own hand-arithmetic. A 2026-07-27 run declared `sections_total: 66` against a 73-row grid — the five `claim-workspace--*` variants under-counted by one frame's worth — and caught it only via a throwaway script. A gate keyed on a self-reported number is the fork's own named anti-pattern (`actor` / `claimed_by` / `claimed_at`); the fix is a second, independent derivation that can disagree with you. The checker deliberately does NOT write `sections_total` — you still declare it, and the disagreement is the whole mechanism.
+
+**And be clear what green means.** A clean run proves the numbers agree with themselves. It does **not** prove the enumeration is complete — a section nobody wrote down is invisible to a reader of the manifest by construction. Completeness is carried by step-02's fan-out and by the human review at the §3 pause. Never report a green checker run as evidence that nothing was missed.
 
 ### 2a. Classify the GRAIN — and never let it default silently
 

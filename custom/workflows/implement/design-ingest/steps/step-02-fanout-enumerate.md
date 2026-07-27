@@ -1,6 +1,6 @@
 ---
 name: 'step-02-fanout-enumerate'
-description: 'Fan out one isolated agent per drawn frame to enumerate that frame''s COMPLETE top-level section list + component×property catalog. The frame is the fan-out unit; each agent is told to enumerate its frame exhaustively, never a named subset. An empty section list for a drawn frame HALTS (frame-completeness gate).'
+description: 'Fan out one isolated agent per drawn frame (in capped waves) to enumerate that frame''s COMPLETE top-level section list + component×property catalog. The frame is the fan-out unit; each agent is told to enumerate its frame exhaustively, never a named subset, and a frame sharing a source file with a sibling also gets its resolved state selectors. An empty section list for a drawn frame HALTS; an agent that NEVER RETURNS takes the transport ladder (bounded retry, resume-missing, then ask) and never becomes a silently absent frame.'
 ---
 
 # Step 2: Fan-out Section Enumeration
@@ -23,9 +23,24 @@ For each `{design_frame_inventory}` entry with `drawn: true`, launch an isolated
 
 Give each agent: the frame's source file(s) under `{design_dir}` (the traced module(s) for that frame, or the sibling `<frame>.html`), `{design_tokens}` for value resolution, and the frame's role/parent. Do NOT give it the whole bundle.
 
-Run the frame agents concurrently where the harness allows (independent reads). Collect each into `{frame_sections}[frame]` (the ordered section list) and `{section_catalog}[frame][section]` (copy + property rows + data fields).
+**When more than one frame shares a source file, the file is NOT enough — pass the frame's RESOLVED STATE SELECTORS too.** "The frame's source file" presumes one file per frame. That presumption breaks routinely: state variants of one surface live in one module, so several agents get a byte-identical file and **no way to know which variant they are enumerating.** Whatever selects the variant — an `sc-if`/prop map in a `.dc.html`, or a `pickFor`/`goFrame`-style chooser in a *third* module on the legacy JSX path — is invisible from inside the shared file. So for every frame whose source file is shared with a sibling, state in the prompt: the exact selector values that make this frame the rendered one (claim/record state, prop values, window class, status), and which sections consequently take a different branch. Resolve them yourself from the selecting module before you fan out; an agent that has to guess its own variant will silently catalog the default. **Trigger is `frames-per-file > 1`, not the bundle shape** — the legacy shape reaches it as soon as a surface has state variants. (Observed 2026-07-27: 9 of 11 frames shared a file; the 5 workspace variants were selected from a third module. Related: `FG-2026-07-26-09`, whose fan-out-unit redefinition remains owner-gated — this is the coherence repair that makes the CURRENT unit usable, not that redefinition.)
+
+**Launch in WAVES, not all at once.** Run frame agents concurrently, but cap concurrency (~4–6 in flight) and start the next wave as slots free. This workflow is deliberately routed the LARGEST surfaces (the size preflight sends anything >=5 frames here), so "launch one per frame" on a wide bundle means a big simultaneous burst — which can itself provoke provider-side load-shedding and take out most of the fan-out at once. Waves also make §2's resume cheap: a failed wave is a handful of frames to re-dispatch, not the whole set. (Observed 2026-07-27: 11 launched at once, 8 died on API 529, and retries issued into the already-shedding API also failed.)
+
+Collect each into `{frame_sections}[frame]` (the ordered section list) and `{section_catalog}[frame][section]` (copy + property rows + data fields).
 
 ## 2. FRAME-COMPLETENESS GATE  (the named structural check)
+
+**Two different failures reach this gate, and only one of them used to be modelled.** Separate them before recovering — the remedies are not the same:
+
+- **RETURNED-BUT-EMPTY** — the agent came back and its section list is empty or absent. Handled below; it is an under-read.
+- **NEVER RETURNED** — the agent died (transport/API error, timeout, killed mid-run) and produced no result at all. This is a **transport** failure, not an under-read, and it says nothing about the frame. Ladder, in order:
+  1. **Re-dispatch that frame** (bounded: 2 attempts, spaced). Do not re-dispatch the whole fan-out — completed catalogs are independent and re-running them wastes the spend and risks a fresh burst.
+  2. **If a whole wave died, wait before the next attempt.** Simultaneous deaths across unrelated frames mean the provider is shedding load, not that the frames are hard; immediate retries into that condition fail too.
+  3. **RESUME, don't restart:** dispatch only the frames still missing, in a smaller wave.
+  4. **If frames are still missing after that, STOP and ask the user.** Do not quietly substitute a different enumeration method. Put the choice to them plainly: (a) wait and resume the missing frames later, (b) declare an honest partial — emit with `completeness.frames_not_enumerated` naming exactly the missing frames, which `design-implement` must refuse unless the operator accepts the partial, or (c) enumerate the missing frames in the orchestrator context. **(c) is NOT a default and must never be taken silently:** it trades away the per-frame isolation the fan-out exists for, so it is only defensible when the orchestrator ALREADY holds the source (e.g. the URL-path mirror had to pull the bundle through context anyway — see `design-implement` step-01a §URL.1b). If (c) is chosen, the manifest MUST record which frames were enumerated which way and what the deviation cost. Whether (c) is legal at all is an OPEN owner question (`FG-2026-07-27-05`) — until it is ruled on, surface it as a choice, never as your own call.
+
+**Never let a dead agent become a silently absent frame.** A frame with no catalog and no record of why is the exact "a whole section goes missing" failure this workflow exists to prevent, arriving through a different door. (Observed 2026-07-27: 8 of 11 agents died on sustained API 529s; the gate below had no branch for it.)
 
 For every `drawn: true` frame, after its agent returns:
 
@@ -64,3 +79,7 @@ Read fully and follow: `{project-root}/_bmad/bmm/workflows/implement/design-inge
 - **Delegating by feature-area instead of by frame** — reintroduces the exact seam-blindness this workflow fixes. The fan-out unit is the frame; the prompt says "enumerate this frame completely," never "look at the X section."
 - **Accepting an empty section list on a drawn frame** — the gate exists precisely to stop this; an empty list is a defect, not an empty success.
 - **Loading the whole bundle into the orchestrator** — defeats the context fix. Each frame agent reads only its frame.
+- **Letting a DEAD agent become a silently absent frame** — a frame with no catalog and no record of why is the same "whole section goes missing" failure arriving through the transport door. Take the §2 ladder; if frames remain missing, either declare them in `completeness.frames_not_enumerated` or ask — never omit.
+- **Silently switching enumeration method when the fan-out fails** — orchestrator-inline enumeration trades away the isolation the fan-out exists for. It is a choice to put to the user, recorded on the manifest, not a fallback to take quietly (`FG-2026-07-27-05`, open).
+- **Handing a shared source file to several agents with no state selectors** — each one sees the same bytes and cannot tell which variant it is enumerating, so they all catalog the default and the variants' real deltas vanish. Resolve the selectors before fanning out.
+- **Launching one agent per frame all at once on a wide bundle** — the burst can provoke provider load-shedding and take out most of the fan-out simultaneously. Cap concurrency and run waves.

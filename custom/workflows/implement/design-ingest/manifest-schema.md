@@ -35,7 +35,10 @@ ingest:
     frames_total: {int}
     frames_drawn: {int}
     sections_total: {int}               # sum of frame_sections across all drawn frames
+    sections_per_frame:                 # REQUIRED. One entry per drawn frame. A single total is unverifiable by eye; this map makes the arithmetic machine-checkable AND localises which frame is miscounted. Must sum to sections_total. (FG-2026-07-27-06)
+      {frame}: {int}
     frames_with_empty_section_list: []  # MUST be empty for a clean manifest — a non-empty list is a frame-completeness defect (step-02 should have halted)
+    frames_not_enumerated: []           # OPTIONAL, and an HONEST failure: frames whose enumeration could not be completed (e.g. the step-02 fan-out died and no fallback applied). A named non-empty list is a declarable partial; silently omitting a frame is not. design-implement must refuse a manifest with a non-empty list unless the operator explicitly accepts the partial.
     sections_with_property_rows: {int}      # of sections_total, how many carry a VALUE-EXACT component×property cell
     sections_missing_property_rows: []      # "<frame> / <section>" per section whose property cell is prose-only, elided (`…`), or empty. MUST be empty iff manifest_grain == value-exact.
   tokens:                               # SUMMARY ONLY, and NOT a substitute for reading the design source — see "Restated source facts".
@@ -195,6 +198,12 @@ This covers `ingest.source` when it is a local directory, and any evidence point
 ### Completeness invariant
 
 `ingest.completeness.frames_with_empty_section_list` MUST be empty in a delivered manifest. A non-empty list means step-02's per-frame completeness gate did not halt as it should have — the manifest is malformed and `design-implement` should refuse it (the same bounce-back shape as the synthesize-bundle gates).
+
+**The arithmetic is MACHINE-VERIFIED, not hand-summed — `tools/check-ingest-manifest.js`.** step-03 §2 invokes it with `--strict`, and the emit is blocked on a clean run. It derives the counts independently from the emitted file and asserts them against what the frontmatter declares: grid-scaffold rows == `sections_total` (C1) · per-frame grid rows == each frame's declared `(N sections)` heading (C2) == `sections_per_frame[frame]` (C3) · every `drawn: true` frame present in BOTH the section inventory and the scaffold (C4) · no grid rows for an undeclared frame (C5) · `frames_with_empty_section_list` empty (C6) · `manifest_grain: value-exact` requires an empty `sections_missing_property_rows` (C7) · no duplicate frame-inventory rows (C8) · `sections_per_frame` sums to `sections_total` (C9).
+
+**Why a tool and not an instruction (FG-2026-07-27-06).** Both sides of "verify `sections_total` == grid rows" used to be produced by the same agent, by hand, with no mechanism — so "verify" meant "add it up again and hope". A real 2026-07-27 run declared `sections_total: 66` against a 73-row grid and caught it only by an ad-hoc script. That is this fork's own anti-pattern turned on its own gate: *a field an agent self-reports will eventually be wrong; the harness must stamp anything a gate keys on.* The checker deliberately does **not write** `sections_total` — the agent still declares it and the tool still disagrees, because it is the disagreement between two independent derivations that catches the error.
+
+**What a green run does NOT mean.** It proves the manifest's numbers agree with themselves. It cannot prove the enumeration is COMPLETE — a section nobody wrote down is invisible to a reader of the manifest by construction. That axis is carried by the step-02 fan-out and by the human review at the step-03 handoff pause, and must never be claimed from a green checker run.
 
 ### Grain invariant — a manifest must declare what it can be trusted for
 
