@@ -171,6 +171,62 @@ check(
   ['DUP-FRAME'],
 );
 
+/* ── Robustness: a legitimate NARROWER table in a NEW section after the grid must not be read as
+ * grid rows. This is the defect the tool hit on its own first real use — a 3-column retraction
+ * table of commit SHAs, added in a section between the grid and Data-availability, had its SHAs
+ * reported as undeclared frames. Section scoping is by heading level + column count now. ── */
+check(
+  'foreign-narrow-table-after-grid',
+  goodManifest().replace(
+    '## Data-availability notes',
+    `## Retraction
+
+| commit | PR | what it shipped |
+|---|---|---|
+| 26a7e82 | #430 | phase 1 |
+| c3986ee | #448 | all 9 frames |
+
+## Data-availability notes`,
+  ),
+  0,
+  [],
+);
+
+/* ── Robustness: an h3 subsection INSIDE the grid section must not end it early. ── */
+check(
+  'h3-subsection-inside-grid-does-not-truncate',
+  goodManifest().replace(
+    '| beta | panel | "Beta" | b.id | .p{12px,400} | UNVERIFIED |',
+    `| beta | panel | "Beta" | b.id | .p{12px,400} | UNVERIFIED |
+
+### A note about the grid
+
+Prose that happens to sit inside the grid section.`,
+  ),
+  0,
+  [],
+);
+
+/* ── A 5-column grid (copy + properties merged into one locator, values carried per-section via
+ * `property_rows_location`) is legitimate and must parse. The 6-column schema example is not the
+ * only lawful shape, and enforcing the column count would fail a conformant manifest. ── */
+check(
+  'five-column-grid-parses',
+  goodManifest()
+    .replace(
+      '| frame | section | design copy/structure (verbatim) | data fields read | component×property rows | status |\n|---|---|---|---|---|---|',
+      '| frame | section | structure / values | data fields read | status |\n|---|---|---|---|---|',
+    )
+    .replace('| alpha | header | "Alpha" | a.id | .h{16px,600} | UNVERIFIED |', '| alpha | header | "Alpha" | a.id | UNVERIFIED |')
+    .replace(
+      '| alpha | body | "Alpha body" | a.body | .b{13px,400} | UNVERIFIED |',
+      '| alpha | body | "Alpha body" | a.body | UNVERIFIED |',
+    )
+    .replace('| beta | panel | "Beta" | b.id | .p{12px,400} | UNVERIFIED |', '| beta | panel | "Beta" | b.id | UNVERIFIED |'),
+  0,
+  [],
+);
+
 /* ── Warn-only default must NOT exit non-zero, so the tool is safe to run anywhere. ── */
 {
   const { exit } = run(goodManifest().replace('sections_total: 3', 'sections_total: 2'), 'warn-only', []);

@@ -136,27 +136,39 @@ if (C.sections_total === undefined)
 const grainMatch = src.match(/^\s*manifest_grain:\s*(\S+)/m);
 const grain = grainMatch ? grainMatch[1] : null;
 
-/* ── 2. Frame inventory: which frames are declared, and drawn? ── */
-function tableRowsUnder(headingRe, stopRe) {
+/* ── 2. Frame inventory: which frames are declared, and drawn? ──
+ *
+ * Section scoping is by HEADING LEVEL, not by naming the next section, and rows are filtered by
+ * column count. Both guards exist because the naive version broke on its own first real use: it
+ * scanned from `## Grid scaffold` to `## Data-availability`, so a perfectly legitimate 3-column
+ * table added between them (a retraction table of commit SHAs) was read as grid rows and its
+ * SHAs reported as undeclared frames. A manifest is prose that people add sections to; a parser
+ * that assumes a fixed next-heading is a parser that will be wrong again.
+ *   - stop at the next heading of the SAME-or-higher level as the start heading
+ *   - keep only rows with at least `minCells` columns (frame inventory 5, grid scaffold 6)
+ */
+function tableRowsUnder(headingRe, minCells) {
   const start = lines.findIndex((l) => headingRe.test(l));
   if (start === -1) return null;
+  const startLevel = (lines[start].match(/^#+/) || ['##'])[0].length;
   const rows = [];
   for (let i = start + 1; i < lines.length; i++) {
     const l = lines[i];
-    if (stopRe && stopRe.test(l)) break;
+    const h = l.match(/^(#+)\s/);
+    if (h && h[1].length <= startLevel) break; // next same-or-higher heading ends the section
     if (!l.startsWith('|')) continue;
     if (/^\|[\s\-:|]+\|?\s*$/.test(l)) continue; // separator
     const cells = l
       .split('|')
       .slice(1, -1)
       .map((c) => c.trim());
-    if (cells.length === 0) continue;
+    if (cells.length < minCells) continue; // a narrower table is not this table
     rows.push(cells);
   }
   return rows;
 }
 
-const frameRows = tableRowsUnder(/^##+\s+Frame inventory\s*$/, /^##+\s+Section inventory/);
+const frameRows = tableRowsUnder(/^##+\s+Frame inventory\s*$/, 5);
 const declaredFrames = new Map(); // name -> drawn(bool)
 if (frameRows) {
   for (const cells of frameRows) {
@@ -191,7 +203,14 @@ if (invDeclared.size === 0)
   );
 
 /* ── 4. Grid scaffold rows ── */
-const gridRows = tableRowsUnder(/^##+\s+Grid scaffold/, /^##+\s+Data-availability/);
+/* minCells 5, not 6. The schema EXAMPLE shows six columns (frame · section · design copy/structure ·
+ * data fields · component×property rows · status), but a real manifest may legitimately merge the
+ * copy and property columns into one locator and carry the resolved values per-section instead —
+ * which is what `property_rows_location` exists to declare. Column-count conformance is therefore
+ * deliberately NOT checked: the essential keys are frame + section + status, and the grain fields,
+ * not the column layout, are what tell a consumer where the values live. 5 is the floor that still
+ * excludes a narrower foreign table. */
+const gridRows = tableRowsUnder(/^##+\s+Grid scaffold/, 5);
 const gridPerFrame = new Map();
 let gridCount = 0;
 if (gridRows) {
