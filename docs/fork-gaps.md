@@ -1326,8 +1326,10 @@ class: stale-state
 scope: fork
 target: a repo-root .ignore (written by onboard-project.sh, topped up by sync)
 marker: "worktrees-search-exclusion"
-state: open
+state: partly
 owner: fork-maintenance
+routing: retro-routed
+routing_note: "Fixed under standing maintenance instruction; owner said 'u tell me' on 2026-07-26."
 ```
 
 ### Incident
@@ -1355,6 +1357,29 @@ owner: fork-maintenance
 **NEW DATAPOINT for the 2026-07-10 Bash edit-guard entry (`.claude/*` local-config false positive, marked "partly resolved 2026-07-19"): the fork path is STILL blocked.** Logging this very entry via a Bash heredoc append to `~/bmad-method-v6/docs/fork-gaps.md` was DENIED — *"26 parallel claude sessions detected and you are NOT in a worktree … this looks like an edit-equivalent"* — even though cash-recovery's CLAUDE.md states plainly that "anything under `/Users/*/bmad-method-v6/`" is allowlisted by the Bash guard and that fork edits need no project-worktree gymnastic. So the documented carve-out is **not implemented in the Bash matcher** (only in the Edit|Write matcher). The write then succeeded via the Edit tool — i.e. the undesigned "use a different tool for the identical effect" bypass that entry already names as the thing eroding the guard. Concretely: the 2026-07-19 alignment fix covered `_bmad-output/`, `.claude/`, `.sprint-apply-*` but **omitted the `~/bmad-method-v6/` fork path**. That omission is the fix — one allowlist entry in the Bash matcher, same file as the 2026-07-19 change. Worth noting it bit on a *fork-maintenance* write, which is exactly the workflow the carve-out exists for.
 
 ---
+
+
+### Update — 2026-07-27: `.ignore` added; the gap is REAL but narrower than logged
+
+**Measured before touching anything.** With 3 live worktrees, `grep -rl` for one symbol returned 12
+files, **9 of them worktree copies** — the two-thirds noise this entry describes, confirmed.
+
+But the picture per tool is not uniform, and the entry did not separate them:
+
+| tool | worktree hits before | after |
+|---|---|---|
+| `rg` (default) | 0 | 0 — ripgrep skips hidden dirs, so `.claude/worktrees/` was never in its results |
+| `rg --hidden` | **10** | **0** — this is what the new `.ignore` fixes |
+| `grep -r` | **9 of 12** | **9 of 12** — unchanged; `grep` does not read `.ignore` |
+
+So a repo-root `.ignore` carrying `.claude/worktrees/` is worth having and earns its place on the
+`--hidden` path, but it is **not** the whole fix the entry implies. The wrong-copy risk — reading a
+stale `.claude/worktrees/<x>/src/lib/foo.ts` and believing it is main — survives for any `grep -r`,
+`find`, or shell glob. That limit is written into the `.ignore` file itself rather than left for the
+next session to rediscover.
+
+**Stays `partly`:** cash-recovery only. The other 12 projects want the same one-line file, and that
+rides the same quiet window as the sync fan-out — not worth 12 separate writes into live trees tonight.
 
 ## 2026-07-20 — design-implement's resumable/durable apply exists ONLY on the manifest path, but the hook-routed DEFAULT path is the URL one — so the normal entry point has no recovery artifact at any size
 
@@ -1740,6 +1765,36 @@ decision.
 
 **Still open on this entry:** the override-channel design choices (a consumed-and-cleared marker file;
 demoting `deny` to `ask` for docs-only paths). Owner calls, unchanged.
+
+
+### REVERSAL — 2026-07-27: the marker override was rejected on the wrong criterion; it is now the reachable one
+
+**I rejected the marker file earlier the same day** in favour of `BMAD_ALLOW_MAIN_EDIT=1` alone,
+reasoning that a marker is stale-able state with a bootstrap problem. That judgement was **wrong**, and
+it was wrong on the criterion that actually decides it: **REACHABILITY.**
+
+**Proof, from trying to use it.** `BMAD_ALLOW_MAIN_EDIT=1 <cmd>` sets the variable for the *command's*
+process. The hook runs as a **separate process** reading the *harness* environment, so an inline prefix
+never reaches it. Combined with the Edit tool having no channel to set an env var at all, the override
+could not be exercised from inside a turn by **any** route. Worse, the one time it appeared to work
+(the CLAUDE.md edit earlier that day) it had not: that write passed because a `python3 script.py`
+invocation has no shell-visible write target — the script bypass, not the override.
+
+So the entry's original complaint survived my fix intact: **the named override was still inert.**
+
+**Now: a consumed-and-cleared marker at `.claude/.allow-main-edit`.** Both objections answered by
+construction rather than argued away — the bootstrap problem dissolves because `.claude/` is already an
+exempt zone (creating the marker is never itself blocked), and the staleness problem dissolves because
+the marker is **consumed before the command runs**: one marker, one override. It must be created in a
+PRECEDING tool call, since the hook fires before the command — which makes the override a deliberate
+two-step act that cannot be inlined. The audit row now records `via: marker | env`.
+
+Golden cases M1–M3: marker present → allowed; marker gone afterwards; the very next identical command
+denied again. **Proven end-to-end on a real blocked write** — the repo-root `.ignore` this session
+needed, which the guard had refused twice.
+
+**Still `partly`:** demoting `deny` to `ask` for docs-only paths shipped separately, but the other 12
+projects' `.ignore` files and the fork-side re-homing of the guard into the sync lane remain.
 
 ## 2026-07-25 — STD-SCOPEREG-001 §9 prescribes the inert-scope sweep at three trigger points and NOTHING invokes it, so register rows stay `pending` after the code ships
 
@@ -2903,8 +2958,10 @@ class: enforcement-false-positive
 scope: machine-local
 target: .claude/hooks/bash_edit_guard.py
 marker: "worktree-cwd-unobserved"
-state: open
+state: closed
 owner: fork-maintenance
+routing: retro-routed
+routing_note: "Fixed under standing maintenance instruction; owner said 'u tell me' on 2026-07-26."
 ```
 
 > **Header added 2026-07-26 (mechanical, by a later session).** This entry was authored with **no
@@ -2958,6 +3015,21 @@ purpose (preventing ad-hoc shell writes to tracked project files from the main c
 path-resolution bug. The defect is *where the base path comes from*, not *which paths are protected*.
 
 ---
+
+
+### Closed — 2026-07-27: observed cwd now beats assumed cwd
+
+`bash_edit_guard.py` read its cwd from `CLAUDE_PROJECT_DIR` only. That variable points at the MAIN
+checkout and does **not** move when the harness puts a session in a worktree — so a session that had
+correctly called `EnterWorktree` was told *"you are NOT in a worktree. Call EnterWorktree"* while
+standing in one, and its relative target was resolved against the wrong repo. The worst shape a guard
+can have: it punishes the session that did the right thing, and the only way out is the bypass.
+
+Fixed by preferring the payload's `cwd` (**observed**) over the env var (**assumed**), falling back to
+the env var for direct/test invocations that pass none. Golden cases W1–W3 pin all three paths: payload
+cwd inside a worktree → allow; payload cwd at the main checkout → still deny (proving W1 is the
+worktree doing the work, not the key merely being present); no payload cwd → unchanged behaviour.
+Suite 54 → 57, then 60 with the marker cases below. Propagated to 13/13, health-checked clean.
 
 ## 2026-07-26 — `design-implement` can report a frame `✓ applied` while its component has ZERO non-test importers: step-04's entry-point check fires only on a NEW ROUTE, and the grid has no disposition for "transcribed but unrouted"
 
@@ -3393,6 +3465,25 @@ Interacts with `FG-2026-07-26-07` (manifest gitignored ⇒ overwrite is unrecove
 
 ## 2026-07-26 — `design-implement`'s early existence preflight probes whether a capability's OBJECT exists, not whether it REACHES the surface's view model, so a brownfield redesign whose domain modules are all built-but-unwired passes the cheap gate and only halts at §4c after a full ingest + map
 
+```yaml
+id: FG-2026-07-26-13
+class: contract-dimension-gap
+scope: fork
+target: custom/workflows/implement/design-implement/workflow.md
+marker: "reaches the surface's view model"
+state: open
+owner: fork-maintenance
+```
+
+<!-- Header block added 2026-07-27 (mechanical, by a later session). This entry was authored with
+     its fields as PROSE (**Class:** / **Fix scope:** / **Marker:**) and no ```yaml block, which
+     fails check-fork-gap-schema.sh — armed in pre-commit, so it blocked every commit to this
+     register for every session. Fields transcribed from the entry's own prose; `fork-only` ->
+     `scope: fork` (the closed enum), target read from its own §"Input Resolution" reference, id
+     is the next free. Nothing interpreted, nothing added. -->
+
+### Incident
+
 **Class:** contract-dimension-gap
 **Fix scope:** fork-only
 **Marker:** `reaches the surface's view model`
@@ -3539,5 +3630,82 @@ would have branched from `d35a36a`, which does not contain the file.
 
 **Target file:** `custom/workflows/implement/design-implement/steps/step-02-map-implementation.md` — §0
 *"Worktree precondition — Enter the worktree BEFORE mapping"*.
+**state:** open
+**routing:** recorded
+
+## 2026-07-26 — the checkpointed-pass detector reads the PER-RUN GRID, but the durable resume ledger is the MANIFEST, so it false-fires on finished work and is structurally blind to every unfinished manifest-path pass
+
+```yaml
+id: FG-2026-07-26-12
+class: contract-dimension-gap
+scope: fork
+target: .claude/scripts/find-pending-checkpoints.sh
+marker: "resume ledger is the manifest"
+state: open
+owner: fork-maintenance
+```
+
+<!-- Header block added 2026-07-27 (mechanical, by a later session). Authored with the id on a
+     bare line and no ```yaml block, failing the pre-commit schema gate and blocking every
+     commit to this register. id taken from the entry's own first line; target and marker read
+     from its opening paragraph. Nothing interpreted. -->
+
+### Incident
+
+`FG-2026-07-26-12`
+
+`.claude/scripts/find-pending-checkpoints.sh` (shipped 2026-07-26 to close `FG-2026-07-26-02`) scans
+`design-implement-grid-*.md` frontmatter for `run_completion_mode: checkpointed` + `rows_deferred > 0`.
+That input class is wrong in both directions, and this session hit both at once.
+
+**FALSE POSITIVE — it reported completed work as unfinished.** The SessionStart banner announced
+`clerk-inbound — 17/28 rows applied, 11 DEFERRED` with a resume command. Verified: the grid
+(`design-implement-grid-clerk-inbound-2026-07-25.md`, frontmatter `run_completion_mode: checkpointed`,
+`rows_applied: 17`, `rows_deferred: 11`, dated `2026-07-25T20:07:07Z`) is accurate *about its own run* —
+but pass 2 finished the work the next day and closed the manifest it names
+(`design-ingest-clerk-inbound.md:203` — `### Pass — design-implement 2 of 2 (both §13 drawers) — MANIFEST COMPLETE`,
+mtime 2026-07-26 11:49). The `/inbound` board is merged, deployed and live
+(`inbound-board-implement-pass1` memory; #395 + #402, `833f301`).
+
+The grid can never self-correct **by design**: it is a per-run artifact, one per pass, append-only, and
+a later pass writes a NEW record into the manifest rather than revisiting the earlier run's frontmatter.
+So `run_completion_mode` is frozen at the instant that run stopped and has no path to "complete". The
+detector reads the one file whose staleness is structural.
+
+**FALSE NEGATIVE — it cannot see the two passes that ARE unfinished.** Today's manifest-path passes emit
+no grid file at all. `ls _bmad-output/implementation-artifacts/design-implement-grid-*.md` returns exactly
+three, all legacy (clerk-inbound 07-25, clerk-receive 06-29, owner-four-ledger-dashboard 06-27). Meanwhile
+`design-ingest-removal-recovery.md` sits at 42/114 applied (per the pass-2 claim-release commit `d0a61af`,
+#428) and `design-ingest-clerk-receive-station-v2.md` shows 82 of 84 grid rows still `UNVERIFIED` — both
+genuinely unfinished, both invisible to the detector. The banner was silent on exactly the two surfaces
+that need resuming and loud about the one that does not.
+
+**Why this matters more than a noisy banner.** The cost is not the noise, it is the instruction: the banner
+hands a cold session a resume command for a merged, deployed surface. This repo has already burned five
+sessions and two full build→verify→PR cycles on duplicate work (the Authorship Provenance collisions,
+CLAUDE.md § Same-Epic Collisions). A stale detector that says "resume this" is a duplicate-build generator
+pointed at the exact failure mode the collision guard exists to prevent.
+
+**The doctrine already answers which ledger wins.** `FG-2026-07-26-06` designates the ingest manifest as the
+DURABLE resume ledger. The detector predates that designation in practice and watches the other file.
+
+### Proposed fix (NOT shipped — deliberately)
+
+Invert the input class: iterate `design-ingest-*.md` manifests, treat a terminal marker
+(`MANIFEST COMPLETE`) as done, and derive residue from unapplied grid-scaffold rows; keep the legacy
+grid scan only as a fallback for manifests with no scaffold. Cross-check both, and never raise on a
+manifest whose latest pass record is terminal.
+
+Not shipped in this session for one reason, stated plainly: the repair changes what the detector READS,
+and it needs to be exercised against all three live manifest shapes (scaffold-with-status-column,
+prose-pass-record, legacy grid) before it can be trusted. Shipping an unrun rewrite of a
+false-positive detector at the end of a read-only triage session would replace a known-wrong signal
+with an unverified one — the same trade `FG-2026-07-25-09` and the unwired bash guard were logged for.
+This entry is the honest state: defect verified in both directions, fix designed, not run.
+
+**Target file:** `.claude/scripts/find-pending-checkpoints.sh` (cash-recovery, machine-local + untracked —
+so the repair does NOT fan out and is not a distribution stop). Companion doctrine:
+`FG-2026-07-26-06` (manifest is the durable resume ledger), `FG-2026-07-26-02` (the silence this script
+was built to close).
 **state:** open
 **routing:** recorded
