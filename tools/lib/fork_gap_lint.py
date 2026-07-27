@@ -17,6 +17,7 @@ fixed. Closing stays a human call made after reading the implementing section.
 
 from __future__ import annotations
 
+import hashlib
 import os
 import re
 import subprocess
@@ -430,6 +431,153 @@ def check_report(entries) -> int:
     return 0
 
 
+
+# ---------------------------------------------------------------------------
+# DERIVED DELIVERY — step 3 of FG-2026-07-27-04, and deliberately SELECTIVE
+# ---------------------------------------------------------------------------
+# Written delivery state is a cached value with no invalidation: someone types `owed`, the
+# sync runs, and nothing updates it. Where distribution is machine-checkable we should not be
+# typing it at all — we should be diffing.
+#
+# THREE RULES, and the third is the one that gets forgotten:
+#   1. Derivation BACKS the written axis, it never replaces it. This mode reports; it does not
+#      mutate the register. The written value stays authoritative because it is the one a human
+#      reasoned about.
+#   2. Where derivation is impossible the written value stands, and this says so explicitly
+#      rather than leaving a blank that reads as agreement.
+#   3. A derivation that CANNOT ANSWER returns UNKNOWN — never `done`. Absence of a diff is not
+#      proof of delivery when the comparison could not run. Same discipline as
+#      "unparseable is not young" and "no signal is not a story"; getting this backwards would
+#      let a broken mapping silently mark the whole register delivered.
+#
+# COVERAGE IS HALF THE REGISTER, ON PURPOSE. Only two target classes have a verified fork ->
+# project mapping (both used in anger this week):
+#     custom/workflows/<rest>  ->  <project>/_bmad/bmm/workflows/<rest>
+#     custom/githooks/<file>   ->  <project>/.githooks/<file>
+# `custom/skills/` is NOT derived: the project-side layout differs between the old layout and
+# the v6.8 skills-native one, so a single mapping would be wrong for some projects — and a
+# confidently wrong derivation is worse than an honest UNKNOWN.
+
+DERIVABLE_PREFIXES = (
+    ("custom/workflows/", "_bmad/bmm/workflows/"),
+    ("custom/githooks/", ".githooks/"),
+)
+# Consumed FROM the fork by definition — there is no project copy to compare, and that is
+# `n/a`, not an unknown.
+FORK_LOCAL_PREFIXES = ("tools/", "docs/", "test/", "evals/")
+
+
+def _targets_file_projects():
+    """Project roots from ~/.bmad-targets. Absolute-path lines only — the header prose in that
+    file has already been parsed into phantom projects once (migrate-bash-edit-guard.sh)."""
+    tf = os.path.join(os.path.expanduser("~"), ".bmad-targets")
+    if not os.path.exists(tf):
+        return []
+    roots = []
+    for line in open(tf):
+        line = line.strip()
+        if not line.startswith("/"):
+            continue
+        roots.append(re.sub(r"/_bmad/bmm/workflows/?$", "", line).rstrip("/"))
+    return sorted(set(roots))
+
+
+def _digest(path):
+    """Content digest of a file or directory tree; None if it does not exist."""
+    if not os.path.exists(path):
+        return None
+    h = hashlib.sha256()
+    if os.path.isfile(path):
+        h.update(open(path, "rb").read())
+        return h.hexdigest()
+    for root, dirs, files in os.walk(path):
+        dirs.sort()
+        for f in sorted(files):
+            if f == ".DS_Store":
+                continue
+            h.update(f.encode())
+            h.update(open(os.path.join(root, f), "rb").read())
+    return h.hexdigest()
+
+
+def derive_delivery(target):
+    """-> (verdict, detail). verdict in {done, owed, n/a, unknown}."""
+    t = target.strip()
+    if t.startswith(FORK_LOCAL_PREFIXES) or ("/" not in t and t.endswith(".sh")):
+        return "n/a", "fork-local: consumed from the fork, nothing to distribute"
+
+    rel = None
+    for fork_prefix, proj_prefix in DERIVABLE_PREFIXES:
+        if t.startswith(fork_prefix):
+            rel = proj_prefix + t[len(fork_prefix):]
+            break
+    if rel is None:
+        return "unknown", "no verified fork->project mapping for this target class"
+
+    src = os.path.join(ROOT, t)
+    if not os.path.exists(src):
+        return "unknown", "fork-side target does not exist (pointer rot — see the targets check)"
+
+    projects = _targets_file_projects()
+    if not projects:
+        return "unknown", "~/.bmad-targets unreadable — comparison could not run"
+
+    want = _digest(src)
+    # A project on the v6.8 SKILLS-NATIVE layout has no `_bmad/bmm/workflows` tree at all, so a
+    # missing file there is a LAYOUT FACT, not staleness. Counting it stale reported cash-recovery
+    # — the skills-native pilot — as behind on 9 entries it had never been behind on.
+    checked = [p for p in projects
+               if os.path.isdir(p) and (not rel.startswith("_bmad/bmm/workflows/")
+                                        or os.path.isdir(os.path.join(p, "_bmad/bmm/workflows")))]
+    stale = [os.path.basename(p) for p in checked if _digest(os.path.join(p, rel)) != want]
+    if not checked:
+        return "unknown", "no project roots resolved on disk"
+    if stale:
+        return "owed", f"{len(stale)}/{len(checked)} project(s) stale or missing: {', '.join(stale[:4])}" + \
+                       ("…" if len(stale) > 4 else "")
+    return "done", f"byte-identical in all {len(checked)} project(s)"
+
+
+def check_derive(entries) -> int:
+    agree = disagree = unknown = 0
+    rows = []
+    for e in entries:
+        if e.header.get("state") in ("closed", "superseded"):
+            continue
+        # DERIVATION ONLY APPLIES ONCE SOMETHING IS BUILT. The question is "did THIS entry's fix
+        # reach the projects", and a target file can differ from its project copies for reasons
+        # that have nothing to do with this entry (another session's unsynced edit to the same
+        # file). Asking it about a `fix: none` entry compares the wrong thing — the first cut did
+        # exactly that and produced 14 confident false disagreements. `fix: none` already implies
+        # `delivery: n/a` by schema rule, so there is nothing to check.
+        if e.header.get("fix") in (None, "none"):
+            continue
+        target = e.header.get("target", "")
+        written = e.header.get("delivery")
+        verdict, detail = derive_delivery(target)
+        if verdict == "unknown":
+            unknown += 1
+            continue
+        if written is None:
+            rows.append(("UNSET  ", e.id, written, verdict, detail))
+            disagree += 1
+        elif written == verdict:
+            agree += 1
+        else:
+            rows.append(("DIFFERS", e.id, written, verdict, detail))
+            disagree += 1
+
+    print("\nderived delivery — selective, report-only (FG-2026-07-27-04 step 3)")
+    for kind, eid, written, verdict, detail in rows:
+        print(f"  {kind} {eid}: written `{written}` vs derived `{verdict}` — {detail}")
+    print(f"\n  agree: {agree} · disagree/unset: {disagree} · NOT DERIVABLE (unknown): {unknown}")
+    print("  Derivation BACKS the written axis and never replaces it: nothing here was mutated,")
+    print("  and an UNKNOWN means the comparison could not run — never that delivery is done.")
+    print(f"  Coverage is partial by design: {unknown} entries have no verified fork->project")
+    print("  mapping (project-scope, machine-local, harness, or custom/skills whose project-side")
+    print("  layout differs between the old and skills-native layouts).\n")
+    return 0
+
 def main() -> int:
     mode = sys.argv[1] if len(sys.argv) > 1 else "schema"
     entries = [e for e in parse() if e.heading.strip() != "## Open"]
@@ -443,6 +591,8 @@ def main() -> int:
         return check_contradiction(entries)
     if mode == "report":
         return check_report(entries)
+    if mode == "derive":
+        return check_derive(entries)
     print(f"unknown mode: {mode}", file=sys.stderr)
     return 2
 

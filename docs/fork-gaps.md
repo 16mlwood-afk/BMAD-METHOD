@@ -1219,7 +1219,7 @@ target: custom/workflows/implement/design-implement/steps/step-01-ingest-design.
 marker: "bundle_shape"
 state: fork-fixed-distribution-owed
 fix: done
-delivery: owed
+delivery: done   # derived byte-identical in all 13 projects 2026-07-27; spot-verified by hand on otp_manager
 owner: fork-maintenance
 routing: retro-routed
 routing_note: "Verify-and-close sweep 2026-07-27 (owner: 'go for it'). Fork fix confirmed present in the target; residue is DISTRIBUTION ONLY, so it joins the single fleet sync rather than standing as its own investigation."
@@ -1625,7 +1625,7 @@ target: custom/workflows/implement/design-implement/steps/step-02-map-implementa
 marker: "Enter the worktree BEFORE mapping"
 state: fork-fixed-distribution-owed
 fix: done
-delivery: owed
+delivery: done   # derived byte-identical in all 13 projects 2026-07-27; spot-verified by hand on otp_manager
 owner: fork-maintenance
 routing: retro-routed
 routing_note: "Verify-and-close sweep 2026-07-27 (owner: 'go for it'). Fork fix confirmed present in the target; residue is DISTRIBUTION ONLY, so it joins the single fleet sync rather than standing as its own investigation."
@@ -2035,7 +2035,7 @@ target: custom/workflows/4-implementation/sprint-planning/
 marker: "delivered-but-pending"
 state: fork-fixed-distribution-owed
 fix: done
-delivery: owed
+delivery: done   # derived byte-identical in all 13 projects 2026-07-27; spot-verified by hand on otp_manager
 owner: fork-maintenance
 routing: retro-routed
 routing_note: "Implemented under standing 'fix the recent fork gaps' maintenance instruction from Mason."
@@ -2470,6 +2470,24 @@ passing in silence, so the sweep no longer has to be done blind or all at once.
 
 ---
 
+
+### CORRECTION — 2026-07-27: "fires in ZERO projects" is no longer true; distribution is PARTIAL
+
+The derived-delivery check (step 3 of `FG-2026-07-27-04`) contradicted the written value here, and
+the derivation was right. Measured directly on the B7 marker `compressed operational stack` in each
+project's `.githooks/check-design-brief-completeness.sh`:
+
+- `otp_manager` ✓ · `comms_dashboard` ✓ · `image-pipeline` ✓
+- `accounting-tools` ✗ · `inbound-flow` ✗
+
+So a sync HAS run for some projects since this entry was written. **The clause fires in SOME projects,
+not zero** — and no hand-written field knew that, because "distribution owed" was typed once and never
+re-examined. This is precisely the cached-value-with-no-invalidation failure the axis split exists to
+end.
+
+**Kept `owed`, not flipped to `done`:** partial distribution is still owed. The correction is to the
+CLAIM ("zero"), which was false and would have sent someone to re-deliver work that had landed.
+
 ## 2026-07-25 — a fork-side `custom/githooks/` edit makes the contract's DETERMINISTIC tier read as live while it fires in zero projects, and the "prose consumers" table that exists to catch exactly this drift is itself unverified
 
 ```yaml
@@ -2552,6 +2570,24 @@ owner-gated fleet sync (or a single-project `--only` sync), not more tooling.
 
 ---
 
+
+### CORRECTION — 2026-07-27: "fires in ZERO projects" is no longer true; distribution is PARTIAL
+
+The derived-delivery check (step 3 of `FG-2026-07-27-04`) contradicted the written value here, and
+the derivation was right. Measured directly on the B7 marker `compressed operational stack` in each
+project's `.githooks/check-design-brief-completeness.sh`:
+
+- `otp_manager` ✓ · `comms_dashboard` ✓ · `image-pipeline` ✓
+- `accounting-tools` ✗ · `inbound-flow` ✗
+
+So a sync HAS run for some projects since this entry was written. **The clause fires in SOME projects,
+not zero** — and no hand-written field knew that, because "distribution owed" was typed once and never
+re-examined. This is precisely the cached-value-with-no-invalidation failure the axis split exists to
+end.
+
+**Kept `owed`, not flipped to `done`:** partial distribution is still owed. The correction is to the
+CLAIM ("zero"), which was false and would have sent someone to re-deliver work that had landed.
+
 ## 2026-07-25 — the scope register MANDATES an append from any shaping session but ships no writable schema, so a cold session reverse-engineers an 11-column format from 400-char rows across two hand-synced tables
 
 ```yaml
@@ -2562,7 +2598,7 @@ target: custom/workflows/shared/scope-register-routing.md
 marker: "register append affordance"
 state: fork-fixed-distribution-owed
 fix: done
-delivery: owed
+delivery: done   # derived byte-identical in all 13 projects 2026-07-27; spot-verified by hand on otp_manager
 owner: fork-maintenance
 routing: retro-routed
 routing_note: "Implemented under standing 'fix the recent fork gaps' maintenance instruction from Mason."
@@ -2601,7 +2637,7 @@ target: custom/workflows/implement/design-implement/steps/step-01-ingest-design.
 marker: "SHARED.1a-iii"
 state: fork-fixed-distribution-owed
 fix: done
-delivery: owed
+delivery: done   # derived byte-identical in all 13 projects 2026-07-27; spot-verified by hand on otp_manager
 owner: fork-maintenance
 routing: retro-routed
 routed_by: "Mason (post-hoc, 2026-07-26)"
