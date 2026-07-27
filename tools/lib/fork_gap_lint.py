@@ -404,7 +404,11 @@ def check_report(entries) -> int:
                any(rx.search(e.body) for rx, _ in _DELIVERY_ONLY):
                 contradictions += 1
 
-    owed = [e for e in entries if e.header.get("state") == "fork-fixed-distribution-owed"]
+    # Count on the AXES now that every entry carries them (migration complete 2026-07-27).
+    # `state` is kept alongside for one deprecation cycle, so report BOTH and show the gap —
+    # a silent divergence between the old field and the new pair is how the next rot starts.
+    owed = [e for e in entries if e.header.get("fix") == "done" and e.header.get("delivery") == "owed"]
+    owed_by_state = [e for e in entries if e.header.get("state") == "fork-fixed-distribution-owed"]
 
     # Entries whose prose names another FG id as a blocker, where that id is now terminal.
     terminal = {e.header.get("id") for e in entries
@@ -423,6 +427,9 @@ def check_report(entries) -> int:
     print(f"  live entries:                      {len(live)}")
     print(f"  prose/field contradictions:        {contradictions}   (fix the FIELD, not the prose)")
     print(f"  fix done + delivery owed:          {len(owed)}   ← ONE sync, not {len(owed)} investigations")
+    if len(owed) != len(owed_by_state):
+        print(f"  (deprecated `state` says {len(owed_by_state)} — the axes are authoritative; the")
+        print("   difference is entries whose delivery was DERIVED and corrected, which `state` cannot express)")
     print(f"  blocked on an already-closed gap:  {len(blocked_on_delivered)}")
     for eid, ref in blocked_on_delivered:
         print(f"      • {eid} references {ref}, which is terminal — re-read; it may be unblocked")

@@ -71,10 +71,7 @@ target: harness:EnterWorktree (cwd-pinned session)
 marker: "n/a"
 state: partly
 fix: partial
-# delivery: UNSET — `partly` is ambiguous by construction (half-built vs
-# built-but-undelivered). A human sets this; the migration must not guess,
-# because guessing `n/a` here understates the sync queue. See
-# docs/proposals/fork-gap-axes-v2.md §3.
+delivery: n/a   # scope: harness — a harness-side fix has no project copy to distribute; the fork-side doc half is consumed from the fork
 owner: harness-vendor
 ```
 
@@ -106,10 +103,7 @@ target: ~/.claude/mailbox/README.md
 marker: "local-peer push is unsupported"
 state: partly
 fix: partial
-# delivery: UNSET — `partly` is ambiguous by construction (half-built vs
-# built-but-undelivered). A human sets this; the migration must not guess,
-# because guessing `n/a` here understates the sync queue. See
-# docs/proposals/fork-gap-axes-v2.md §3.
+delivery: n/a   # machine-local (~/.claude/mailbox) — not sync-carried, nothing to distribute
 owner: mason
 ```
 
@@ -157,10 +151,7 @@ target: custom/workflows/shared/deployment-to-prod.md
 marker: "bmad-synced-scripts.txt"
 state: partly
 fix: partial
-# delivery: UNSET — `partly` is ambiguous by construction (half-built vs
-# built-but-undelivered). A human sets this; the migration must not guess,
-# because guessing `n/a` here understates the sync queue. See
-# docs/proposals/fork-gap-axes-v2.md §3.
+delivery: done   # DERIVED byte-identical in all 13 projects 2026-07-27
 owner: fork-maintenance
 ```
 
@@ -237,10 +228,7 @@ target: custom/workflows/implement/design-implement/workflow.md
 marker: "no-backend preflight"
 state: partly
 fix: partial
-# delivery: UNSET — `partly` is ambiguous by construction (half-built vs
-# built-but-undelivered). A human sets this; the migration must not guess,
-# because guessing `n/a` here understates the sync queue. See
-# docs/proposals/fork-gap-axes-v2.md §3.
+delivery: owed   # DERIVED stale/missing in 13/13 projects 2026-07-27
 owner: fork-maintenance
 ```
 
@@ -270,10 +258,7 @@ target: ~/.claude/mailbox/README.md
 marker: "[to: session"
 state: partly
 fix: partial
-# delivery: UNSET — `partly` is ambiguous by construction (half-built vs
-# built-but-undelivered). A human sets this; the migration must not guess,
-# because guessing `n/a` here understates the sync queue. See
-# docs/proposals/fork-gap-axes-v2.md §3.
+delivery: n/a   # machine-local (~/.claude/mailbox) — same as FG-2026-07-03-01
 owner: mason
 ```
 
@@ -435,10 +420,7 @@ target: .claude/settings.local.json
 marker: "git check-ignore"
 state: partly
 fix: partial
-# delivery: UNSET — `partly` is ambiguous by construction (half-built vs
-# built-but-undelivered). A human sets this; the migration must not guess,
-# because guessing `n/a` here understates the sync queue. See
-# docs/proposals/fork-gap-axes-v2.md §3.
+delivery: n/a   # project-scope .claude/settings.local.json — gitignored, machine-local, no remote truth to compare
 owner: project:cash-recovery
 ```
 
@@ -1299,10 +1281,7 @@ target: .githooks/pre-commit + the package.json lint-staged block
 marker: "stash-preflight"
 state: partly
 fix: partial
-# delivery: UNSET — `partly` is ambiguous by construction (half-built vs
-# built-but-undelivered). A human sets this; the migration must not guess,
-# because guessing `n/a` here understates the sync queue. See
-# docs/proposals/fork-gap-axes-v2.md §3.
+delivery: n/a   # fork-local .githooks/pre-commit — runs from the fork, no project copy
 owner: fork-maintenance
 ```
 
@@ -2165,10 +2144,7 @@ target: custom/workflows/implement/design-implement/steps/step-04-apply-and-deli
 marker: "run_completion_mode"
 state: partly
 fix: partial
-# delivery: UNSET — `partly` is ambiguous by construction (half-built vs
-# built-but-undelivered). A human sets this; the migration must not guess,
-# because guessing `n/a` here understates the sync queue. See
-# docs/proposals/fork-gap-axes-v2.md §3.
+delivery: owed   # DERIVED stale/missing in 13/13 projects 2026-07-27
 routing: in-progress
 owner: fork-maintenance
 distribution: "sync-bmad-workflows.sh (all 14 targets)"
@@ -3769,6 +3745,21 @@ lane: NEW DESIGN / DOCTRINE — changes what the fan-out UNIT is. Proposed, NOT 
 `Clerk Receive Station v2.dc.html`). **Priority: medium-high** — it will recur on every `.dc.html`
 bundle, which is now Claude Design's *default* emit shape.
 
+**SCOPE WIDENED 2026-07-27 (cash-recovery, project `f93d6a81`, `ClaimEvidencePack.html` — a
+`legacy_jsx` bundle).** This is **not `.dc.html`-specific.** That bundle is the legacy JSX shape the
+step's instruction was written for, and the mismatch still bit: of 11 drawn frames, **seven** live in
+one module (`ClaimWorkspace.jsx` — `claim-workspace`, its five `--*` state variants, and
+`case-record`), and two more share `ClaimsQueue.jsx` (`claims-queue`, `queue--empty`). So nine of
+eleven frame agents were handed a file they share with at least one sibling, and the five state
+variants are selected by exactly the mechanism this entry describes — a `pickFor`/`goFrame` pair in a
+*third* file (`PackApp.jsx`) that overrides `claimTypes` per frame. An agent given only
+`ClaimWorkspace.jsx` **cannot see which variant it is enumerating**; I had to state the resolved
+state selectors in each agent's prompt by hand for any of them to be coherent.
+**Consequence for the fix:** the trigger condition is not the bundle shape, it is
+**frames-per-file > 1**, which the legacy shape reaches as soon as a surface has state variants — i.e.
+routinely. Whatever replaces the fan-out unit must key on that, and must carry the variant-selection
+map (wherever it lives) into every agent that shares a file.
+
 **What fought us.** step-02 mandates *"one isolated sub-agent per `drawn: true` frame"* and hands each
 agent *"the frame's source file(s) under `{design_dir}` — the traced module(s) for that frame, or the
 sibling `<frame>.html`. Do NOT give it the whole bundle."* That instruction presumes the **legacy JSX
@@ -4421,3 +4412,177 @@ artifact-shaped. They should be resolved together or the contract will be define
 5. **Deliberately NOT proposed:** making the halt non-blocking, or letting it emit a
    `pending-policy` brief. The gate is correct and the three project halts prove it; the gap is
    about what the stop *leaves behind*, never about whether it should stop.
+
+---
+
+## 2026-07-27 — `design-ingest`'s fan-out has no DEGRADATION path: when the per-frame agents die, the workflow's only named recovery is for an empty section list, not for an agent that never returns
+
+```yaml
+id: FG-2026-07-27-05
+class: workflow-resilience / missing-degradation-ladder
+scope: fork
+target: custom/workflows/implement/design-ingest/steps/step-02-fanout-enumerate.md
+marker: "fan-out degradation"
+state: open
+fix: none
+delivery: n/a
+owner: owner-decision
+routing: NEEDS ROUTING MARKER
+routing_note: "The DEGRADATION POLICY is a design choice (inline-with-disclosure vs halt vs bounded-retry vs resume), so it is proposed, not shipped. The sibling observation — that step-02 has no batch-size guidance and a naive launch-all can CAUSE the failure — is arguably maintenance, but it is bundled here because both fixes land in the same step file and splitting them would produce two entries about one mechanism."
+```
+
+### Incident
+**Target file:** `custom/workflows/implement/design-ingest/steps/step-02-fanout-enumerate.md`
+(§1 "Fan out — one agent per drawn frame" and §2 the frame-completeness gate).
+
+**Friction (real, 2026-07-27 — cash-recovery, the claim-evidence-pack handoff, 11 drawn frames).**
+Launched one agent per drawn frame as §1 mandates. **Eight of eleven died on API 529 Overloaded** — a
+sustained provider-side load-shedding event, not a workflow fault. Three completed and returned
+excellent catalogs.
+
+step-02's only named recovery is §2's *frame-completeness gate*, which handles an agent that
+**returns an empty section list** (re-run that one frame, then talk to the user). It has **nothing**
+for an agent that **never returns at all**. So the workflow's mandated mechanism failed in a way its
+own recovery section does not model, and the operator is left improvising at exactly the point where
+improvising is most likely to silently under-enumerate — which is the one failure mode this workflow
+exists to prevent.
+
+**What I did, and why it is not obviously right.** I enumerated the remaining eight frames in the
+orchestrator context from the mirrored source, and stamped the deviation onto the manifest
+(`ingest.enumeration_provenance` with method/by_fanout/by_orchestrator_inline/deviation_reason plus an
+explicit *what_the_deviation_costs* note). That was defensible **only because of a second gap**: the
+mirror step had already pulled the entire bundle through the orchestrator context (see
+FG-2026-07-06-01 and its update below), so the fan-out's context rationale was already spent and what
+the deviation actually cost was per-frame ISOLATION, not context. **On a bundle where the mirror had
+NOT burned context, inline enumeration would have been the wrong call** — and nothing in the workflow
+tells you how to tell those two situations apart.
+
+**Why structural:** a workflow whose core mechanism is N concurrent sub-agents needs a stated
+degradation ladder, the same way `design-implement` already has one (the project-side
+`design-implement-fallback-ladder` doctrine: DEGRADE down an artifact-fallback ladder, never
+halt-and-handback on the first missing source). The doctrine exists in this fork's own lineage;
+`design-ingest` step-02 just does not carry it. Related but distinct from the three 2026-07-26
+design-ingest entries (fan-out unit / MCP reach / manifest path) — those are about what the fan-out
+*reads*; this is about what happens when the fan-out *dies*.
+
+**Also observed, same mechanism:** step-02 says "Run the frame agents concurrently where the harness
+allows" with **no batch-size guidance**. Launching 11 at once plausibly contributed to the overload,
+and the retries I issued into an already-shedding API also failed. A workflow that routes itself the
+LARGEST surfaces (the size preflight sends anything >=5 frames here) will keep meeting this.
+
+### Proposed (owner decision — do not ship without a routing marker)
+1. **A degradation ladder in §2**, ordered and explicit: (a) bounded retry with backoff for a
+   *transport* failure, distinguished from the existing empty-list retry; (b) resume — re-dispatch
+   only the missing frames, since completed catalogs are independent; (c) orchestrator-inline
+   enumeration **only when the mirror has already spent the context** (state the test), with a
+   mandatory provenance stamp; (d) partial-manifest emit with the un-enumerated frames named and the
+   completeness gate deliberately FAILED rather than papered over. Today (c) is unwritten and (d) is
+   unavailable — the gate offers pass-or-improvise.
+2. **Batch guidance in §1** — a concurrency cap (or "launch in waves of N, wait, then continue"),
+   so the workflow does not create the load that kills it.
+3. **A required provenance field on the manifest**, not an ad-hoc one. I invented
+   `ingest.enumeration_provenance`; if mixed enumeration is a legal outcome it should be in
+   `manifest-schema.md` so `design-implement` can *read* it and weight its own trust, rather than a
+   field one session happened to write.
+4. **Deliberately NOT proposed:** abandoning the fan-out. It is the right mechanism — the three
+   agents that survived produced markedly better catalogs than my inline passes (one caught
+   review-only scaffolding, a dead state variable, and two frames that can silently resolve to
+   `undefined`). The gap is the missing ladder, never the fan-out itself.
+
+---
+
+## 2026-07-27 — the ingest manifest's named completeness gate is guarded by a number the AGENT hand-sums, and nothing verifies it
+
+```yaml
+id: FG-2026-07-27-06
+class: gate-precision / self-reported-field
+scope: fork
+target: custom/workflows/implement/design-ingest/steps/step-03-emit-manifest-and-handoff.md
+marker: "sections_total verify"
+state: open
+fix: none
+delivery: n/a
+owner: fork-maintenance
+routing: MAINTENANCE — the standard already mandates the invariant; it simply is not checked. Fixable without an owner decision.
+```
+
+### Incident
+**Target file:** `custom/workflows/implement/design-ingest/steps/step-03-emit-manifest-and-handoff.md`
+(§2 "Re-assert the completeness invariant") + `custom/skills/bmad-design-ingest/manifest-schema.md`
+(the `completeness` block).
+
+**Friction (real, 2026-07-27 — same run).** step-03 §2 says to verify `completeness.sections_total ==
+the number of grid-scaffold rows`. Both sides of that equation are produced by the agent, by hand,
+and §2 offers no mechanism — so "verify" means "add it up again and hope". **I got it wrong: I wrote
+`sections_total: 66` when the grid had 73 rows**, having under-counted the five `claim-workspace--*`
+variants by one frame's worth. It was caught only because I wrote a throwaway `python3` heredoc to
+count the table rows and compare — an ad-hoc check, not a prescribed one. Had I trusted my own
+arithmetic, the manifest would have shipped declaring a completeness gate satisfied against a wrong
+denominator, and `design-implement` would have consumed it as authoritative.
+
+**Why structural:** this is the fork's own named anti-pattern, applied to its own gate. The doctrine
+is explicit and repeated — *"a field an agent self-reports will eventually be wrong; the harness must
+stamp anything a gate keys on"* (the `actor` / `claimed_by` / `claimed_at` through-line in the
+collision-guard design). `sections_total` is exactly such a field: it looks like a fact, it is
+self-reported, and the workflow's headline structural check is keyed on it. `manifest-schema.md`
+already calls `frames_with_empty_section_list` the gate that "`design-implement` should refuse" a
+manifest on — but the arithmetic sibling has no checker, and `manifest-contract-gate.py --check` lints
+identity and append-only discipline, not section arithmetic.
+
+### Proposed fix (maintenance lane — no owner decision needed)
+1. **A deterministic verifier**, invoked by step-03 §2 rather than described: parse the emitted
+   manifest, count grid-scaffold data rows, count `## Frame: … (N sections)` headings, and assert
+   all three of — grid rows == `sections_total`; per-frame grid rows == each frame's declared N;
+   every `drawn: true` frame present in BOTH the section inventory and the scaffold. Natural home is
+   a `--check-completeness` mode on `manifest-contract-gate.py` (it already reads these manifests) or
+   a small `tools/check-ingest-manifest.js` beside `check-scope-register.js`.
+2. **Add `completeness.sections_per_frame`** to `manifest-schema.md` as a required map. A single
+   total is unverifiable by eye; a per-frame breakdown makes the arithmetic checkable *and* localises
+   which frame is miscounted. I wrote this field into the cash-recovery manifest by hand this run —
+   it is what turned "66 vs 73" into "the five workspace variants".
+3. **Evidence standard:** step-03 §2 currently permits a claim with no run. It should require the
+   verifier's output, on the same principle as the guard-health-check discipline — a green unit suite
+   proves logic, only a live invocation proves the thing actually ran.
+4. **Deliberately NOT proposed:** having the verifier *write* `sections_total`. The agent should
+   still declare it and the checker should still disagree — a self-stamping counter would remove the
+   disagreement that catches the error.
+
+---
+
+### UPDATE 2026-07-27 to FG-2026-07-06-01 (DesignSync `get_file` to-disk mirror) — the prescribed workaround DID NOT FIRE at real bundle sizes
+
+Recorded against the existing entry rather than as a new gap: the diagnosis there is correct and the
+fork fix is real, but this run is **negative evidence about the prescribed mechanism**, which the
+entry's status line does not yet carry.
+
+`step-01a-ingest-url.md` §URL.1b step 3 prescribes mirroring each `get_file` to disk *through the
+harness's large-output persistence*: "the harness auto-persists the raw tool output to a
+`tool-results/*.txt` JSON file and hands you back only that PATH", then extract file→file with
+`python3 json.load(...)['content']` so bytes never re-enter context — claimed **O(1) context
+regardless of bundle size**.
+
+**This session it fired for ZERO of eleven files.** Every `get_file` returned inline, including
+`ClaimWorkspace.jsx` at ~26KB source (which the formatter expanded to 64KB on disk) and
+`pack-data.js` at ~18KB. So I paid the full **2× context round-trip per file** — read inline, then
+re-emit through `Write` — for ~112KB of JSX plus tokens and eight design-system components. The
+entry's own 2026-07-06 text already flagged this honestly ("it only fires above the persistence
+threshold... an accident of harness plumbing, not a designed path"); this run confirms the threshold
+sits **above** normal frame-module size, which makes the prescribed mechanism effectively **inert for
+the common case** rather than merely imperfect.
+
+Consequences worth carrying:
+- The `state: fork-fixed-distribution-owed` / `fix: done` framing overstates it. The *documentation*
+  is done; the *mechanism* does not reliably execute. Suggest `fix: done-but-inert` or a status line
+  saying so plainly, so the next reader does not assume ingest is context-bounded on the URL path.
+- **It caused a second, worse effect this run:** because the mirror had already put the whole bundle
+  in my context, the fan-out's context rationale was spent before step-02 began — which is precisely
+  what made orchestrator-inline enumeration a defensible fallback when the agents died
+  (FG-2026-07-27-05). One gap made another gap's bad workaround look acceptable. That coupling is
+  the thing to fix, not the individual symptom.
+- Strengthens the case for proposal (b) there — **the upstream DesignSync `get_file` `localPath`
+  sink**. The fork-side workaround cannot be made reliable, because it depends on a harness threshold
+  the fork does not control and cannot detect in advance.
+- A cheap fork-side mitigation that does NOT depend on the threshold: have step-01 write the mirrored
+  file with a **shell heredoc or a tiny script the agent invokes**, rather than the `Write` tool — or
+  accept the cost explicitly and say so in the step, so the operator is not told the path is O(1)
+  when it is O(bundle).
