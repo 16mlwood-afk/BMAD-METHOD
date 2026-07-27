@@ -42,6 +42,22 @@ The compact, always-current state. The skill reads THIS block + the top of `## C
 > **Older wave one-liners moved to [`STATUS-archive.md`](./STATUS-archive.md)** (2026-07-20): `## Now` carried 21 `Latest wave`/`Prior wave` bullets against the budget gate's ceiling of 6, so the 15 oldest were moved VERBATIM to the archive's "moved out of `## Now`" section. Nothing was deleted, and the gate itself was NOT relaxed - `MAX_NOW_WAVE_BULLETS` stays 6.
 ## Changelog
 
+### 2026-07-27 — fork-gap register schema v2: `state` split into `fix` + `delivery` (owner approved 1→2→3; all three shipped)
+
+**Why.** A verify-and-close sweep reclassified **8 entries in one sitting** and none needed work: every one already recorded, *in its own status line*, that the fork fix was DONE with distribution the only residue — while still sitting at `open`/`partly`. Eight independent authors wrote the truth in prose and left the field wrong, which is the signature of a field that cannot say what the author means. One entry was spanning three lifecycles (finding · decision · delivery) through a single enum.
+
+**Step 1 — contradiction detector** (`npm run check:forkgap-contradiction`, wired into `npm test`). The rule is a **conjunction**, and the first cut proved why: a naive keyword list fired 15/69, of which 8 were "partly resolved" prose on a `partly` entry — *agreement*, not contradiction. Tightened to *fix-done-at-source* AND *distribution-is-the-only-residue* while the field disagrees: **1 true finding, 2 acknowledged**. WARN-only deliberately — the register's gate is armed in pre-commit, so an erroring heuristic would block every session's commit on one false positive.
+
+**Step 2 — the axes.** `fix: none|partial|done` + `delivery: n/a|owed|done` on all 71 entries, with `state` kept as a deprecated alias for one cycle so concurrent sessions' in-flight entries cannot fail the gate mid-write. 51 mapped mechanically; **18 were `partly`, ambiguous by construction, and the migration REFUSED to guess** — defaulting them to `n/a` would have understated the sync queue, the exact failure being fixed. All 18 subsequently read and set. The linter now errors on unknown values, on `fix: none` with a non-`n/a` delivery, and on `fix: partial` whose body never names what is outstanding.
+
+**Step 3 — selective derivation** (`npm run report:forkgap-delivery`). Derives delivery only for the two target classes with a verified fork→project mapping; `custom/skills/` is deliberately NOT derived (layout differs between old and skills-native, and a confidently wrong derivation is worse than an honest UNKNOWN). **Two precision bugs found and fixed before trusting it** — it was comparing *file* sync rather than *this entry's* delivery, and counting the skills-native pilot as stale on what is a layout fact.
+
+**It then corrected the record twice, which is the point of building it.** 5 entries written `owed` derive as byte-identical in all 13 (one hand-verified on `otp_manager`). And it falsified a claim made the day before: the B7 githook clause "fires in ZERO projects" is **false** — `otp_manager` / `comms_dashboard` / `image-pipeline` carry it; `accounting-tools` / `inbound-flow` do not. Distribution is **partial and uneven**, which no hand-written field knew. The report now counts on the axes and prints the deprecated `state` count alongside when they diverge — currently **8 vs 13**, the difference being exactly those corrections.
+
+**Validation earned its keep within the hour, on another session's writing:** a parallel session adopted the axes and wrote `fix: not-started` / `delivery: n-a`; the schema check caught all four near-misses and blocked the commit until they were normalised.
+
+**Owed, unchanged and owner-gated:** the fleet sync and the 36-commit push drain both still wait on a quiet window — 39 Claude processes were live at close, up from 18.
+
 ### 2026-07-26 — design-implement: island check widened to any created component + `◐ transcribed · UNROUTED` (`7ea08d76`)
 
 **What.** `design-implement` could report a frame `✓ applied` while its component had **zero non-test
