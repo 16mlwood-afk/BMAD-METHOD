@@ -138,6 +138,44 @@ Rules:
 - **Generalize — do not hardcode any one project.** The trigger is the project's mock-data convention (`DATA_STATE = "fixture"` is the common marker) + a production route; the disclosure floor's exact mechanism (banner component, marker comment, CI gate) belongs to the consuming project — name it where known, never assume it is identical across the 13.
 - **Forced-and-honest is fine; silent is not.** A disclosed fixture shipped after explicit confirmation, behind the disclosure floor and off the default landing, is a legitimate "designed-on-fixtures, awaits its wiring epic" surface. The prohibited move is wiring mock data into a prod route as an unremarked default and declaring the run done.
 
+### 4d. PERSIST the halt verdict before halting (§4 or §4c) — the report must outlive the session
+
+**A halt at §4 or §4c is the most expensive verdict this workflow produces, and until now it evaporated with the session.** The regression report was presented in chat and nowhere else — so the next session, handed the SAME Claude Design prompt (the "Send to local coding agent" panel emits a *stable* prompt per file, and any `design-handoff-detect` hook routes every paste straight back here), re-derived the identical halt from zero after a full ingest + map. The verdict already existed; nothing could find it.
+
+**So: whenever §4 or §4c halts, WRITE THE REPORT TO DISK FIRST, then halt.** Write before you present, not after — the durable artifact must land before the session can end or compact, the same discipline the apply ledger uses.
+
+Path: `{implementation_artifacts}/design-implement-preflight-{target_slug}-{date}.md`.
+
+Frontmatter — these fields are what Input Resolution's **Prior-halt recall** matches and displays, so emit them even when a value is unknown (write `unknown`, never omit silently):
+
+```yaml
+---
+type: design-implement-preflight
+workflow: design-implement (step-02b capability-delta preflight)
+target_slug: {target_slug}
+route: {the impl route}
+design_source: {design_url | bundle_dir | ingest_manifest_path}   # the matching key — verbatim
+design_file: {design_file}
+brief: {matched brief filename + brief_status, or "none"}
+handoff_supersede_status: {handoff_supersede_status}
+baseline_commit: {baseline_commit}                                 # the still-valid? signal reads from here
+outcome: HALTED at step-02b — {which gate(s): §4 capability drop | §4c fixture-to-prod}
+blocked_on: {ONE line naming the real blocker — e.g. "read model: 11 of 18 handoff capabilities have no live read path"}
+blocking_paths: [{the files/modules that must change for the blocker to clear}]
+date: {date}
+session: {session id}
+---
+```
+
+Body: the full report you were about to present — the ingest summary, `{production_capabilities}`, `{handoff_capabilities}`, the both-way delta with the per-capability KEEP / SAFE-TO-DROP verdicts and reasons, `{frame_composition_deltas}`, the computed scope verdict, and the recommended unblock plan. **Write the report you would have shown, not a summary of it** — a next session reading this must be able to skip the ingest entirely, which it cannot do from a précis.
+
+Rules:
+
+- **`blocked_on` and `blocking_paths` are the two fields that make this worth reading.** `blocking_paths` is what the recall check runs `git log <baseline_commit>..origin/main --` against to tell the next session whether the blocker has moved. A halt recorded without them is still useful prose but yields no staleness signal — name them concretely (the read-model module, the schema file, the projection), never "various".
+- **Persist on EVERY halting exit, including an owner-confirmed one.** If the owner then says "proceed anyway", record that resolution in the artifact rather than deleting it — the next session needs to know the halt happened *and* how it was settled.
+- **This is a REPORT, not yet a contract.** The recall check reads it opportunistically and treats a missing, malformed, or unparseable artifact as a silent no-op. Whether it should become a machine-consumed contract with an enforced schema (and whether the recall check should ever GATE on it) is an **open owner decision** — do not tighten it here.
+- **Never overwrite another day's artifact.** The filename carries `{date}`; a second halt on the same slug the same day appends a new record rather than replacing the file (same append-only discipline as the ingest manifest).
+
 ### 5. Record the approved plan
 
 - `{implementation_strategy}` ∈ `restyle-only | additive | partial | replacement` — resolved from BOTH axes: `restyle-only` ONLY when DROPPED **and** `{uplift_capabilities}` are empty; `additive` whenever the uplift is non-empty (new structure built, dropped capabilities retained); `partial` / `replacement` as the §4 drop-disposition resolved. A non-empty uplift can never resolve below `additive`.
@@ -164,6 +202,7 @@ Read fully and follow: `{project-root}/_bmad/bmm/workflows/implement/design-impl
 - If the dropped set is non-empty, the run **halted** with the regression report + strategy menu and recorded `{implementation_strategy}` + `{capability_dispositions}` — it did NOT proceed to the grid on an unconfirmed replacement.
 - If the uplift set is non-empty, the run **named it** (ADDED / DEEPENED), set strategy to at least `additive`, and carried `{uplift_capabilities}` to step-03/04 as build tasks — it did NOT flatten the uplift into "treatment alignment."
 - Kept capabilities are marked protected for step-03/04; dropped capabilities are routed to the step-04 §9 orphaned-action confirmation; uplift capabilities are routed to step-03 §2h / step-04 as `capability-build`.
+- **Any halting exit (§4 or §4c) PERSISTED its verdict to `{implementation_artifacts}/design-implement-preflight-{target_slug}-{date}.md` BEFORE halting (§4d)** — full report in the body, and frontmatter carrying `design_source`, `baseline_commit`, `outcome`, `blocked_on` and `blocking_paths` so Input Resolution's Prior-halt recall can match it and compute whether the blocker has moved. A halt presented only in chat is a **failed** exit: the next identical paste re-derives it from zero after a full ingest.
 - The **fixture-to-prod permission checkpoint (§4c)** ran: when the surface would ship to a production route backed by a mock module (`DATA_STATE = "fixture"` / the project's mock marker) with no live read path, the run **halted** for explicit owner authorization and did NOT auto-proceed (autonomous mode included) — disclosure (the fixture banner + the project's CI gate) is not treated as permission; otherwise it recorded `Fixture-to-prod: n/a`.
 
 ## FAILURE MODES

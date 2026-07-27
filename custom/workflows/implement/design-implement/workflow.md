@@ -34,6 +34,7 @@ This uses **step-file architecture** for focused execution:
 - `{target_slug}` — Kebab-case identifier for the target surface. On the manifest path it is `{ingest_manifest}.ingest.target_slug`; on the URL/bundle paths it is derived in step-01 §SHARED.1a from the primary frame (same slug semantics as `brief-revision-policy.md` Block A). Keys the supersede resolution.
 - `{prior_ingest_manifest}` — (URL/bundle runs) the path of an EXISTING `design-ingest-*{target_slug}*.md` manifest for this same surface, or `none`. Resolved in step-01 §SHARED.1a-iii by globbing `{implementation_artifacts}` on the slug already computed for the supersede check. A hit means earlier passes have an apply ledger this run would otherwise be blind to — including items flagged **"NOT applied (intent, not treatment)"**, which are prior DECISIONS, not unfinished work. Warn/disclose only, never a gate; when set, step-04 §5 appends this run's pass to THAT manifest under `docs/manifest-contract.md` instead of minting a parallel grid artifact.
 - `{handoff_supersede_status}` — `active` | `superseded` | `no_brief` | `ambiguous`. Resolved on EVERY path: the manifest path reads `{ingest_manifest}.ingest.supersede_status` at intake (stamped by `design-ingest`; absent ⇒ `no_brief`); the URL/bundle paths resolve it INDEPENDENTLY in step-01 §SHARED.1a by matching `{target_slug}` against briefs in `{implementation_artifacts}`, mirroring `design-ingest` step-01 §5 — so a handoff handed straight to `design-implement` (no ingest in front) still copes. Symmetric tolerance — never a hard refuse. `brief-revision-policy.md` §8.
+- `{prior_halt}` — `null` when no earlier run halted on this design source, else `{ artifact, date, session, outcome, blocked_on, baseline_commit, commits_since_on_blocking_paths }` read from a matching `design-implement-preflight-*.md`. Resolved in Input Resolution's **Prior-halt recall** — the cheapest intake check, so it runs FIRST (it keys on the raw input string, needing no `{target_slug}`, fetch, or bundle). **SURFACED, never gated on**; carried into the §SHARED.2 summary and the §9 report so the run states whether it re-derived a verdict that already existed. A missing/malformed artifact is a silent no-op.
 - `{superseded_by}` — the active successor brief filename, set when `{handoff_supersede_status} == superseded` (manifest: `ingest.superseded_by`; URL/bundle: the matched brief's `superseded_by`). Named to the user in the supersede surface/halt.
 - `{bundle_conformance}` — `pass` | `UNVERIFIED(<reason>)` | `halted(<reasons>)` | `warn(composition)`. The bundle→brief structural conformance verdict set in step-01 §SHARED.1b: does the design PROPOSAL cover the brief CONTRACT (every `frames` id drawn / `shell_role` honored / a non-default `composition` job-loop expressed, not a hero). A `halted(...)` exits BEFORE the apply pipeline ("proposal only; needs revision"); `UNVERIFIED` (no brief, or a brief predating the field) and `warn(composition)` proceed but are disclosed in the SHARED.2 summary and carried to the §9 report. The brief-side conformance gate; complements step-03 §2f's impl-side frame coverage and §2d's impl-side shell check.
 - `{run_completion_mode}` — `complete` (every in-scope row reached a terminal disposition this pass) | `checkpointed` (the pass stopped at a frame boundary with in-scope rows still UNVERIFIED, to stay inside the context budget — see the resumable-apply Critical Rule). Set in step-04; drives the §9 report's done-vs-resume framing.
@@ -195,6 +196,40 @@ passes).
 Halt — do NOT proceed to step 1.
 
 If neither refusal fires, set `{design_dir} = {bundle_dir}` and `{design_file}` defaults to the first entry in `{bundle_manifest}.screens` (use `<screen>.html` resolution within `{bundle_dir}`). Continue to step 1, which will skip the URL download path and read directly from `{bundle_dir}`. **Supersede awareness for this path is resolved in step-01 §SHARED.1a** (the slug isn't known until the frame inventory is built), same as the URL path — a bundle handed straight to `design-implement` still copes with a superseded handoff.
+
+#### Prior-halt recall (ALL input kinds) — read back what a previous run already decided
+
+**A step-02b halt is an expensive verdict that, before this pair of changes, had nowhere durable to live.** The halt presented its regression report *in chat* and the session ended; nothing persisted it and nothing read it back. So re-pasting the SAME Claude Design prompt re-derived the same halt from zero, after a full ingest + map. Step-02b now PERSISTS the verdict to `{implementation_artifacts}/design-implement-preflight-<slug>-<date>.md` (§4d) and this check READS it — the two ship together, because a reader with no writer is inert and a writer with no reader is write-only. That re-paste is **not operator error**: the "Send to local coding agent" panel emits a *stable* prompt per file, and any project `design-handoff-detect` hook routes every such paste straight here — so the identical input arrives again each time the owner revisits the design. When the blocker is slow to clear (a read model, an owner-gated model change), the window in which re-pastes are wasted is days wide, not a same-hour edge.
+
+**This check runs FIRST, before every other intake check, because it is the cheapest** — it keys on the raw input string, so it needs no `{target_slug}`, no frame inventory, no fetch, no bundle on disk.
+
+1. Glob `{implementation_artifacts}/design-implement-preflight-*.md`.
+2. Match each artifact's frontmatter `design_source` against the incoming `{design_url}` / `{bundle_dir}` / `{ingest_manifest_path}` — **normalized**: compare scheme + host + path and the URL-decoded `file=` value, ignoring query-param ORDER and unrelated params. Fall back to a `design_file` match when `design_source` is absent (a pre-contract artifact).
+3. On a hit, compute a **still-valid?** signal — `git log <baseline_commit>..origin/main -- <the paths the halt named as blocking>`. **Empty ⇒ nothing has moved on the blocking paths, so the prior halt almost certainly still holds.** Non-empty ⇒ the blocker may have cleared; name the intervening commits so the operator can judge.
+
+Set `{prior_halt}` and SURFACE it:
+
+```
+────────────────────────────────────────────────────────────────
+◇ A previous design-implement run against this SAME design source halted.
+
+  artifact:   {filename}
+  ran:        {date}   (session {session})
+  outcome:    {outcome}
+  blocked on: {blocked_on, verbatim from the artifact}
+  baseline:   {baseline_commit}
+  since then: {n} commit(s) touching the blocking paths{, or "none — the blocker has not moved"}
+
+Read that artifact before re-spending the ingest: it already carries the
+capability delta, the per-capability KEEP/DROP verdicts, and the recommended
+unblock path. Re-deriving them costs a full ingest + map and lands on the
+same verdict.
+────────────────────────────────────────────────────────────────
+```
+
+**SURFACE, never GATE.** This check does not halt, refuse, or skip a step — including when the still-valid signal says nothing has moved. A prior halt is *evidence*, not a verdict about this run: the blocker may have cleared in a way `git log` cannot see (an owner decision, a strategy change, a deliberate re-run to refresh the artifact), and a re-run that re-confirms a stale halt is cheap next to a gate that blocks a legitimate one. **Whether this should ever become a gate is an OPEN OWNER DECISION and is deliberately not taken here** — promoting it would define a new halt threshold (halt when the baseline is unchanged? warn otherwise?) and would promote the preflight artifact from a *report* into a *machine-consumed contract*, implying a schema and a staleness policy. Both are rule changes, not maintenance. Until that call is made, the artifact is read opportunistically and treated as advisory: a missing, malformed, or unparseable preflight artifact is a **silent no-op**, never an error.
+
+**Enforcement honesty:** PROBABILISTIC and deliberately so. The glob + match is mechanical, but nothing forces the operator to act on what it surfaces, and nothing verifies the artifact's `blocked_on` is still true. Its whole job is to put a verdict that already exists in front of the next session instead of leaving it write-only on disk. Note the asymmetry it closes: a **checkpointed** pass already announces itself on the next session (the pending-checkpoint detector); a **halted** pass announced itself to nobody.
 
 #### Net-new / no-target preflight (ALL input kinds)
 

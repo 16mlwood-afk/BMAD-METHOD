@@ -3833,7 +3833,7 @@ was built to close).
 **state:** open
 **routing:** recorded
 
-## 2026-07-27 — `design-implement` writes a HALT verdict to a preflight artifact and then never reads it back, so an identical re-paste of the same Claude Design URL re-derives the same halt from zero
+## 2026-07-27 — `design-implement`'s step-02b HALT verdict has no durable home and no reader, so an identical re-paste of the same Claude Design URL re-derives the same halt from zero after a full ingest + map
 
 ```yaml
 id: FG-2026-07-27-01
@@ -3876,8 +3876,17 @@ construction:
   different question, and it is keyed on the register, not on any prior verdict.
 
 None of them asks *has this exact design source already been run to a terminal halt, and is that
-verdict still valid?* The artifact is a **write-only** output: the workflow emits it and no workflow
-reads it.
+verdict still valid?*
+
+**CORRECTION, found while fixing this (the gap was WORSE than first written).** This entry originally
+said the artifact was a *write-only output* — that the workflow emitted it and nothing read it. That
+was wrong in the writer's favour: `grep -rn design-implement-preflight custom/workflows/` returned
+**zero** hits. **The fork never instructed anyone to emit that artifact at all.** The 2026-07-26
+artifact existed only because that session invented it on its own initiative. So a halt's verdict had
+**no durable home and no reader** — step-02b presented the regression report *in chat* and the session
+ended. Had the fix shipped as a reader alone, it would have read nothing in all 14 projects: the
+"authored, measured, documented as live, deployed to zero" shape this register keeps logging
+(`FG-2026-07-25-09`, the unwired bash guard).
 
 ### Why it recurs by construction rather than occasionally
 
@@ -3899,14 +3908,30 @@ banner (`find-pending-checkpoints.sh`) surfaces unfinished design-implement pass
 is surfaced by nothing. The fork already accepted the principle that a terminal-but-incomplete pass
 must announce itself on the next session; it just never applied it to the halt case.
 
-### Proposed fix (NOT shipped — needs an owner call on the staleness rule)
+### FIXED 2026-07-27 (maintenance half) — writer + reader, shipped as a PAIR
 
-In Input Resolution, after `{design_url}` / `{design_file}` are resolved and before any ingest: glob
-`{implementation_artifacts}/design-implement-preflight-*.md`, match frontmatter `design_source`
-against the incoming URL (normalized — strip query-param ordering), and on a hit SURFACE the prior
-verdict with its `outcome`, `date` and `baseline_commit`, plus a computed **still-valid?** signal
-(`git log <baseline_commit>..origin/main -- <the paths the halt named>` — empty ⇒ the blocker almost
-certainly still holds).
+Owner routed this ("fix the fork gap") after the entry was logged. The maintenance half is authored;
+the doctrine half below is untouched.
+
+**Writer — `steps/step-02b-regression-surface.md` §4d (new).** Any halting exit (§4 capability drop
+or §4c fixture-to-prod) now PERSISTS its verdict to
+`{implementation_artifacts}/design-implement-preflight-{target_slug}-{date}.md` **before** halting —
+write-then-present, so the artifact lands before the session can end or compact (the apply-ledger
+discipline). Frontmatter carries `design_source` (the match key, verbatim), `baseline_commit`,
+`outcome`, **`blocked_on`** and **`blocking_paths`**; the body carries the *full* report, not a
+précis, because a next session must be able to skip the ingest entirely. Added to the step's success
+criteria: a halt presented only in chat is now a **failed** exit. Persist on every halting exit
+including an owner-confirmed one (record the resolution, don't delete the record).
+
+**Reader — `workflow.md` §Input Resolution "Prior-halt recall" (new), plus `{prior_halt}`.** Runs
+**first**, before every other intake check, because it is cheapest — it keys on the raw input string
+and needs no `{target_slug}`, no fetch, no bundle. Globs the preflight artifacts, matches
+`design_source` normalized (scheme+host+path and the URL-decoded `file=`, ignoring query-param order),
+falls back to `design_file` for pre-contract artifacts, and computes the still-valid? signal from
+`git log <baseline_commit>..origin/main -- <blocking_paths>`.
+
+**Shipped as a pair on purpose.** A reader with no writer is inert; a writer with no reader is
+write-only. Either alone reproduces the exact failure this entry records.
 
 Two things are deliberately NOT decided here, because they are doctrine and belong to the owner:
 
@@ -3918,12 +3943,24 @@ Two things are deliberately NOT decided here, because they are doctrine and belo
    `baseline_commit`, `blocked_on`) and a staleness policy. That is the same promotion the ingest
    manifest went through, and it should be a deliberate decision rather than a side effect.
 
-The cheap half is uncontroversial and could ship alone: **surface the prior artifact, do not gate on
-it.** Even a one-line "a prior run against this design_source halted on <date> — see <file>" would
-have paid for itself twice already.
+Accordingly the shipped check **SURFACES and never GATES** — explicitly, including when the
+still-valid signal says the blocker has not moved. A missing, malformed, or unparseable artifact is a
+silent no-op, and step-02b §4d states in-line that the artifact is "a REPORT, not yet a contract."
+The recall check is therefore PROBABILISTIC by design: it puts an existing verdict in front of the
+next session; it does not enforce acting on it.
 
-**Target file:** `custom/workflows/implement/design-implement/workflow.md` (§Input Resolution — the
-same file as `FG-2026-07-26-13`, different section). Distribution is the stop: this rides
-`sync-bmad-workflows.sh` to 14 targets, so it is proposed here and not fanned out.
+**EVIDENCE — what was and was not run.** Verified by reading: the writer, the reader, the
+`{prior_halt}` variable entry, and the step-02b success-criteria line are all present and consistent
+(the reader's frontmatter keys match the writer's emitted keys one-for-one). `check-fork-gap-schema.sh`
+re-run green. **NOT run: this workflow has not yet been exercised end-to-end against a real halt** —
+no run has produced an artifact through §4d and then matched it through the recall check. The next
+step-02b halt is the first live test. Prose-tier workflow changes have no unit suite here, so this is
+the honest ceiling of verification today, and it is deliberately *not* claimed as proven.
+
+**Target files:** `custom/workflows/implement/design-implement/workflow.md` (§Input Resolution — the
+same file as `FG-2026-07-26-13`, different section) + `steps/step-02b-regression-surface.md` (§4d +
+success criteria). **DISTRIBUTION IS THE STOP AND HAS NOT HAPPENED:** these ride
+`sync-bmad-workflows.sh` to 14 targets and the sync has **NOT** been run — the change fires in **zero
+projects**, including cash-recovery, until it does. Do not describe this as live.
 **state:** open
-**routing:** needs owner call (halt-vs-warn threshold + whether the preflight artifact becomes a consumed contract)
+**routing:** maintenance half FIXED (owner-routed 2026-07-27); still open on (a) the halt-vs-warn threshold and whether the preflight artifact becomes a consumed contract — owner call, and (b) distribution to the 14 targets — owner go required
