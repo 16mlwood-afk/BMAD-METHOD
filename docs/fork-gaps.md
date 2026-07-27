@@ -4675,3 +4675,290 @@ Consequences worth carrying:
   file with a **shell heredoc or a tiny script the agent invokes**, rather than the `Write` tool — or
   accept the cost explicitly and say so in the step, so the operator is not told the path is O(1)
   when it is O(bundle).
+
+## 2026-07-27 — `design-ingest`'s documented O(1) mirroring mechanism has no trigger: DesignSync `get_file` returns inline at the sizes that matter, so the orchestrator holds the whole bundle AND re-emits it byte-for-byte to disk — the bundle crosses context TWICE before a single frame agent starts
+
+```yaml
+id: FG-2026-07-27-07
+class: workflow-mechanism-inoperative
+status: open
+routing: NOT-ROUTED — the clean fix is an upstream DesignSync change (a `localPath` sink on
+  `get_file`), which is not the fork's to build. The fork-side question — what step-01b should
+  instruct when the persist path does not fire — is a workflow-contract decision, so this is
+  logged and proposed, not shipped.
+```
+
+**Noticed:** 2026-07-27 (cash-recovery, `design-ingest` on Claude Design project
+`f93d6a81-e954-4d2d-9800-75a5fcfcf6ca`, target `templates/write-off-register/WriteOffRegister.html`,
+a `legacy_jsx` bundle of 6 frames).
+
+**What the contract promises.** `design-ingest` step-01 §1 delegates source acquisition to
+`design-implement` step-01a URL.1b step 3, which mandates a **context-free persist mechanism** and
+states its purpose explicitly: *"never paste `get_file`'s return value through context, or a large
+bundle blows the very context budget this fan-out exists to protect"* and *"This keeps mirroring
+**O(1) context regardless of bundle size**."* The recipe is: call `get_file`; the harness auto-persists
+a large tool result to a `tool-results/*.txt` file and hands back only the PATH; extract the body
+file→file with `python3 -c "import json;print(json.load(open('$TOOL_RESULT_PATH'))['content'])"`.
+
+**What actually happened — the mechanism never fired, not once.** Every `get_file` in this run
+returned its content **inline** in the tool result, including the three files that dominate the
+bundle:
+
+| File | Approx. size | Returned |
+|---|---|---|
+| `ui_kits/write-off-register/WriteOffRegister.jsx` | ~15 KB | inline |
+| `ui_kits/write-off-register/WriteOffDrawers.jsx` | ~14 KB | inline |
+| `ui_kits/write-off-register/writeoff-data.js` | ~13 KB | inline |
+
+There was no `tool-results/*.txt` path to extract from, so the `python3` step in the recipe had
+nothing to point at. The escape clause — *"A small `get_file` that returned inline rather than via a
+`tool-results/*.txt` file can be written directly"* — silently swallows the failure, because it
+describes the inline case as the SMALL case. Here it was the case for every file, at every size the
+budget cares about.
+
+**Why that is worse than a no-op — the bundle crosses context TWICE.** Because sub-agents cannot reach
+the DesignSync MCP (`FG-2026-07-26-01`/`-06`), the source MUST reach disk before the fan-out. With the
+persist path unavailable, the only route is: (1) `get_file` returns the bytes INTO the orchestrator
+context, then (2) the orchestrator re-emits those same bytes through the `Write` tool to put them on
+disk. ~45 KB of source was paid for twice — once inbound, once outbound — **before a single frame
+agent launched.** The fan-out's stated premise ("no single context holds the whole bundle") was
+already false at that point. The workflow header's motivating case — *"a ~140KB JSX bundle does not
+fit one context"* — would cost ~280 KB by this path, which is precisely the failure the design
+claims to prevent.
+
+**Why structural, not a one-off.** This is not the same finding as `FG-2026-07-26-01`/`-06` (sub-agents
+cannot reach the MCP) — that gap is *known and mitigated on paper*. The gap here is that **the
+mitigation itself is inoperative**, and nothing detects that. The step file presents the persist path
+as the normal case and the inline path as a benign small-file exception, so a session that experiences
+inline-only reads has no signal that the O(1) guarantee has silently degraded to O(2n). Three
+artifacts assert a context protection that did not exist for this run. Same shape as the guard that
+sat unwired for a day while three documents said it was live: **authored, documented, and firing
+nowhere.**
+
+**Cost this session.** Survivable only because this bundle is small (~50 KB of JSX across 3 modules,
+6 frames). It cost roughly double the intended orchestrator context for source acquisition, and the
+run continued without incident. A bundle at the size the preflight actually routes here (the ≥5 frame
+/ ≥60 KB soft threshold that SENDS work to `design-ingest`) would pay the doubled cost at the point
+where the budget is already the binding constraint — the cost curve is inverted against the operator
+in exactly the way `step-01 §5a` already notes for the collision window: **the bigger the job, the
+worse this fails.**
+
+**Suggested fixes (NOT shipped — proposed):**
+
+- (a) **Detect and say so.** Have URL.1b step 3 record whether the persist path fired, and surface it
+  in the SHARED.2 / step-01 §6 summary (`source mirrored via: tool-results persist | inline+rewrite
+  (O(2n) — context protection DEGRADED)`). Cheapest change, and it converts a silent degradation into
+  a stated one. This is the honest-tier fix and the one worth doing regardless of the others.
+- (b) **Stop describing inline as the small-file case.** The escape clause currently reads as "small
+  files return inline, that's fine" — reword so an inline return AT ANY MEANINGFUL SIZE is flagged as
+  the degraded path, not the expected one.
+- (c) **Upstream (the real fix, not the fork's to build):** give DesignSync `get_file` a `localPath`
+  sink symmetric with `write_files`, so content goes straight to disk and never returns to the caller.
+  The step file already names this as the clean fix and tracks it as a DesignSync gap; this entry is
+  evidence that the interim workaround does not hold, which strengthens the case for it.
+
+**Target file:** `custom/workflows/design/design-implement/step-01a-ingest-url.md` (§URL.1b step 3 —
+the persist mechanism and its escape clause) and `custom/workflows/design/design-ingest/step-01-frame-inventory.md`
+(§1, which delegates to it, and §6, which reports the ingest summary). Sibling entries:
+`FG-2026-07-26-01` / `FG-2026-07-26-06` (sub-agents cannot reach the MCP — the gap this mechanism
+exists to mitigate).
+
+## 2026-07-27 — a `design-ingest` manifest can declare itself NOT READY and `design-implement` structurally cannot see it; and the existence gate that should have caught the run contradicted its own trigger
+
+```yaml
+id: FG-2026-07-27-08
+class: gate-trigger-vs-verdict-mismatch (defect A) + declared-state-with-no-reader (defect B)
+scope: fork
+target: custom/workflows/implement/design-implement/workflow.md
+marker: "backing object alone is NOT a surface"
+state: partly
+fix: partial
+delivery: owed
+owner: fork-maintenance
+routing: retro-routed
+routing_note: "Defect A fixed under the standing maintenance instruction (execution defect — a gate whose trigger contradicted its own verdict). Defect B is NEW DESIGN (a new manifest contract field + a new refusal branch) and is PROPOSED ONLY, per the maintenance-vs-policy split."
+contradiction_ack: "Deliberately split — defect A is fixed in the target, defect B is proposed and unbuilt. `partly` is the correct state and the prose says so per-defect."
+distribution: "git push myfork custom + sync-bmad-workflows.sh (all 14 targets) — NOT RUN; defect A fires in zero projects until both do."
+```
+
+### Incident
+
+**Target file:** `custom/workflows/implement/design-implement/workflow.md` (§"Net-new / no-target
+preflight" — defect A, FIXED; and the `ingest_manifest` gating block — defect B, PROPOSED) plus
+`custom/workflows/implement/design-ingest/manifest-schema.md` (defect B's schema half).
+
+One `design-implement` invocation — cash-recovery, `design-ingest-canonical-unit-record.md`,
+`/units/[id]`, 12 frames / 75 grid rows — hit two independent defects on the same
+ingest→implement seam.
+
+#### Defect A — the existence gate had no verdict for the case it was built for (FIXED)
+
+The preflight stated its trigger as **"all three absent ⇒ net-new"** (probes: route · page
+component · backing object) while its own **Verdict** sentence four lines below said *"Only when
+probes 1–3 find an existing SURFACE … is this a true brownfield diff."* Those disagree exactly when
+route + page are absent but the schema table exists: the trigger says *not net-new*, the verdict says
+*not brownfield*, and the real case gets no classification at all.
+
+**Why structural, not a typo.** The state the gate cannot classify is the state the gate's own remedy
+CREATES. Its early-exit text tells the operator *"1. Build the minimal backend first (schema +
+service + types). 2. Run brownfield design-handoff…"* — comply, and probe 3 goes green while the
+surface stays unbuilt. **An all-three-absent trigger therefore disarms the gate for precisely the
+operator who followed its advice.** Observed: `units` present in `src/db/schema.ts`, no
+`src/app/**/units/[id]` route and no page component on the working tree *or* `origin/main` — 12
+frames that would all have returned `FRAME MISSING in impl`, i.e. the full-ingest-then-abort spend
+this preflight exists to prevent. The right verdict was reached only by overriding the letter of the
+rule with judgement, which is the definition of a gate not doing its job.
+
+**Fix (in target).** The trigger is now surface-probe-driven: probes 1–2 are the surface and decide
+the flavour; probe 3 scopes the *recommendation* (backend partly done ⇒ onboarding starts further
+along) and never vetoes the *verdict*. Three sites realigned — the trigger, the `net-new-surface`
+flavour definition, and the residual "probes 1–3 find an existing surface" clause in **Verdict**.
+**Verified:** `grep -n "all three absent\|NONE of probes\|probes 1–3 all absent"` → no matches (was
+3 sites); marker present once; the three rewritten sites read consistently.
+
+#### Defect B — `handoff_status` is written by no contract and read by no consumer (PROPOSED, not shipped)
+
+The manifest carried `ingest.handoff_status: NOT_READY` + `handoff_blockers: [B1…B4]` in frontmatter
+and a body heading *"HANDOFF GATE — NOT READY for design-implement / Do not run design-implement
+against this manifest until B1–B4 clear."* **Neither field exists anywhere in the fork** —
+`grep -rn "handoff_status\|handoff_blockers" custom/` returns zero hits — and `design-implement`'s
+manifest gating refuses on exactly one condition, `completeness.frames_with_empty_section_list`. So
+an ingest session invented a gate, wrote it into the artifact, and the consuming workflow is blind to
+it by construction. Had the surface existed, the apply would have proceeded straight through a
+manifest that declares itself unsafe to apply.
+
+Same shape as a guard that sits unwired while three artifacts assert it is live: **the declaration
+and the enforcement travel on separate tracks, and only the declaration shipped.** It is also the
+mirror of `FG-2026-07-27-06`'s lesson — *a field an agent self-reports will eventually be wrong, so
+the harness must stamp anything a gate keys on* — one level out: here a field an agent
+self-*declares* is never read, so the failure is not a wrong value but a gate with no reader.
+
+**Proposed (owner's call).** Promote the concept into
+`custom/workflows/implement/design-ingest/manifest-schema.md` as a first-class field with a defined
+vocabulary, and give `design-implement` a refusal branch shaped like the existing
+`frames_with_empty_section_list` bounce-back — but **tolerant, not hard**, matching the
+`supersede_status` posture (surface it, require explicit confirmation), because a NOT_READY manifest
+is usually still legitimately appliable after an owner ruling. Choosing the vocabulary and the
+refuse-vs-warn posture is a contract decision, which is why this half is proposed and not shipped.
+
+**Evidence for tolerant-not-hard.** Two of that manifest's four blockers did not survive checking.
+**B2** ("no `ebayFees`, `outboundShipping` or `soldGross` shape in any read model") is substantially
+false: `src/domain/net-recovery.ts` exposes a `reconciliation` block (`resaleGrossMinor` /
+`resaleFeesMinor` / `resaleVatMinor` / `costBasisMinor` / `reimbursementCashMinor` / `reversalsMinor`
+/ `resaleNetMinor`) with an asserted sum-to-total invariant, `resale-realized.ts` persists
+`ebayFeesMinor` / `outboundShippingMinor` under AD-7 null-not-zero discipline, and
+`/recovery/cross-check` is a built, routed surface. The blocker searched for the *design's* field
+names, not the *app's*. **B1**'s unreconciled £4.60 is then plausibly the design's 4-term breakdown
+against the app's 6-term identity (two missing addends), not broken arithmetic. Neither is a fork
+defect — but "an ingest session's self-declared blockers are unreviewed assertions" is the argument
+against a hard refuse: it would have been driven by a false finding.
+
+**Sibling entries:** `FG-2026-07-27-06` (a gate keyed on an agent-hand-summed number),
+`FG-2026-07-26-02` (a checkpointed pass that declares itself unfinished where nothing reads it) —
+one family: **a state an artifact declares about itself, with no consumer wired to read it.**
+
+#### Defect C — the fork-gap schema gate reads the WORKING TREE, so one session's uncommitted entry blocks every session's commits, and the only unblock is forbidden (FOUND, deliberately NOT fixed)
+
+Discovered while trying to commit defects A+B. `check-fork-gap-schema` is ARMED and blocking — all
+its findings are errors "because every one of them is mechanical". It lints `docs/fork-gaps.md` **as
+it sits on disk**, not the staged content. `FG-2026-07-27-07` is currently **entirely uncommitted**
+(`git diff HEAD --stat` on this file is insert-only; that whole entry is on the `+` side) and was
+written in the **pre-migration shape** — `status:` instead of `state:`, no `scope`/`target`/`marker`/
+`owner`, no `### Incident` block. Seven errors. So **no session can commit ANYTHING to the fork
+repo** — not a workflow fix, not a doc, not even an unrelated file — until that entry conforms.
+
+**Why this is a deadlock and not a chore.** The unblock is to edit an entry that another session has
+open and uncommitted right now. The collision doctrine names that as a hard stop ("overwriting
+another session's work"), and the fork's own PreToolUse nudge fired to say so — correctly, twice. So
+the gate's remedy and the fork's own concurrency doctrine point in opposite directions, and the
+sanctioned exit becomes `--no-verify`, i.e. the gate teaches its own bypass. That is the same shape
+this repo already logged for the Bash edit-guard: *a hard deny on a low-risk text edit does not stop
+the edit, it reroutes it.*
+
+I migrated `-07`'s header (mechanically, content-preserving, fields lifted from its own text) and
+then **reverted it verbatim** rather than keep a fix that overwrites a live session's work — its
+`Target file:` pointers are also rotted (`custom/workflows/design/design-{implement,ingest}/…`
+resolve to nothing; the real paths are under `custom/workflows/implement/…`), which its missing typed
+`target:` field means `check-fork-gap-targets` cannot see. Consequence: defects A and B above are **on
+disk and UNCOMMITTED**, unstaged from the shared index so a parallel bare `git commit` cannot scoop
+them.
+
+**Candidate fixes (owner's call — this is contract posture, not execution):** lint the STAGED blob
+rather than the working tree, so a session is gated on what it is actually committing; or exempt
+entries whose whole body is uncommitted-and-not-mine; or demote pre-migration-shape findings to WARN
+during the migration window while keeping new-entry conformance at ERROR (a migration gate that
+blocks on un-migrated legacy is a gate armed before its corpus was ready).
+
+## 2026-07-27 — a `value-exact` ingest manifest can record a SYMBOL REFERENCE where the copy should be, and nothing checks it — so the consumer must re-read the design source, which its own sub-agents cannot reach
+
+```yaml
+id: FG-2026-07-27-09
+class: completeness-gate-blind-to-unresolved-reference
+scope: fork
+target: custom/workflows/implement/design-ingest/steps/step-02-fanout-enumerate.md
+marker: "resolve every vocabulary reference to its literal"
+state: open
+fix: none
+delivery: n/a
+owner: fork-maintenance
+routing: maintenance
+routing_note: "Coherence repair against a promise the artifact ALREADY makes — the manifest declares `grain: value-exact` and `design-implement` is told to transcribe copy verbatim. Recording `DECISION[].label` instead of the three strings violates that promise; the completeness critic just never checks for it. Not a new standard."
+```
+
+### Incident
+
+**Target file:** `custom/workflows/implement/design-ingest/steps/step-02-fanout-enumerate.md` (the
+per-frame enumeration + its completeness critic — the reader that should resolve a referenced
+vocabulary) and `custom/workflows/implement/design-ingest/manifest-schema.md` (which defines
+`grain: value-exact` and should say what that covers besides CSS).
+
+`design-implement` pass 1 on `design-ingest-write-off-register.md` (cash-recovery, `/write-offs`,
+6 frames / 83 rows). The manifest is thorough — every CSS value resolved, both unheaded sections
+caught, a completeness critic that ran and reported "nothing further found". It still could not be
+implemented as written.
+
+Three grid rows in scope (§4d/66 the reversed status cell, §4c/45 the exception table, §4e/79 the
+timeline) render `DECISION[decision].label` and `DEFECT[defect].label`/`.note`. The manifest records
+**those expressions verbatim, as expressions** — it names the lookup and never resolves it. The five
+literal strings behind them appear nowhere in the file. Same for `W.GAPS[].label` in the dismiss
+chip. So the copy the surface actually displays is absent from the artifact that exists to carry it.
+
+**Why the existing gates all pass this.** The completeness critic asks *"is there a section no reader
+listed?"* — a section-level question. Every section IS listed; the rows are present, ordered and
+dispositioned. `sections_total` reconciles. `frames_with_empty_section_list` is empty. Nothing asks
+*"does any recorded cell contain an unresolved reference to a vocabulary this manifest does not
+hold?"* — which is a mechanical, greppable question (`IDENT[...]` / `IDENT[x].y` inside a copy cell).
+
+**Why it is not merely inconvenient.** The manifest's own header declares
+`Grain: value-exact — every CSS value below was read from JSX inline styles … never inferred`, and
+`design-implement`'s transcription rule is explicit that copy is reproduced verbatim and that a
+silent paraphrase is the prohibited move. A consumer that reaches an unresolved `DECISION[].label`
+therefore has exactly two legal moves: re-read the design source, or halt. It may not invent
+"Claim reversed".
+
+**And the re-read is precisely what the fan-out cannot do.** `FG-2026-07-26-01` / `-06` already
+record that the DesignSync MCP is session-bound and absent from sub-agent contexts. Compose the two
+and the failure is sharp: a manifest-driven run that delegates the diff to a sub-agent — which is the
+documented way to stay inside the context budget on a large surface — hits an unresolved reference it
+cannot resolve and has no legal continuation. This session only escaped it by being the orchestrator,
+holding the MCP itself, and spending two extra `get_file` calls. A cold or delegated session does not
+have that exit. The manifest is *designated* the durable, self-sufficient artifact; here it is
+self-sufficient for treatment and not for copy.
+
+**Worth stating precisely because the manifest is otherwise good.** This is not a thin or rushed
+ingest — it caught the two unheaded sections, distinguished both empty states, and flagged two
+competing label vocabularies for the same gap key. The blind spot is structural, not effort: the
+critic's question is about SECTIONS, and this is a defect INSIDE a cell.
+
+**Candidate fix (mechanical, maintenance-lane):** in step-02's per-frame enumeration, require every
+`IDENT[...]`-shaped reference in a copy/structure cell to be resolved to its literal — inline, or in
+a named vocabulary block in §6 that the row dereferences the same way it dereferences `→ §6/<id>`.
+Then have the completeness critic grep the emitted manifest for surviving `IDENT[` patterns in copy
+cells and treat a hit as a frame-incomplete finding, the same class as an empty section list. The
+schema half is one sentence in `manifest-schema.md` saying `grain: value-exact` covers **copy and
+vocabularies**, not only CSS.
+
+**NOT COMMITTED.** Left on disk, unstaged, per the deadlock recorded in `FG-2026-07-27-07`'s Defect
+C: the armed schema gate lints the working tree, another session's uncommitted entry is
+non-conforming, and the only unblock is to edit that live session's work — which the collision
+doctrine forbids. Same choice the previous session made, for the same reason.

@@ -83,3 +83,38 @@ Read fully and follow: `{project-root}/_bmad/bmm/workflows/implement/design-inge
 - **Silently switching enumeration method when the fan-out fails** — orchestrator-inline enumeration trades away the isolation the fan-out exists for. It is a choice to put to the user, recorded on the manifest, not a fallback to take quietly (`FG-2026-07-27-05`, open).
 - **Handing a shared source file to several agents with no state selectors** — each one sees the same bytes and cannot tell which variant it is enumerating, so they all catalog the default and the variants' real deltas vanish. Resolve the selectors before fanning out.
 - **Launching one agent per frame all at once on a wide bundle** — the burst can provoke provider load-shedding and take out most of the fan-out simultaneously. Cap concurrency and run waves.
+
+---
+
+## Resolve every vocabulary you dereference — a reference is not a value
+
+A frame's copy is often driven by a lookup table in the design source — `DECISION[decision].label`,
+`DEFECT[defect].note`, `GAPS[k].label`, `LIFECYCLE[claim.lifecycle].label`. **Recording the
+expression is not recording the copy.** The row then looks complete and specific while the string
+the surface renders exists nowhere in the manifest.
+
+**Do this, per frame, before you emit:**
+
+1. When a cell you are writing dereferences an ALL-CAPS vocabulary, open its definition in the
+   design source and **resolve every member you can reach** — the full `label` (and `note`, where a
+   row renders one) for each key.
+2. Put them **once** in a `### Vocabulary: <NAME>` block alongside the property catalogue, and let
+   rows dereference it exactly as they dereference `→ §6/<id>`. Do not copy a vocabulary per row —
+   that is the same self-drift the normalised catalogue exists to prevent.
+3. List `<NAME>` in `completeness.resolved_vocabularies`.
+4. If a vocabulary genuinely cannot be resolved, declare it in `completeness.unresolved_references`
+   as `"<NAME>: <why>"`. **Declared is fine. Silent is not** — the consumer cannot distinguish a
+   deferral from an omission, and one of those it is allowed to act on.
+
+**Why this is your job and not the consumer's.** `design-implement` is required to reproduce copy
+VERBATIM; a paraphrase is prohibited. So an unresolved reference leaves it two legal moves — re-read
+the design source, or halt — and the re-read is exactly what a **delegated sub-agent cannot do**: the
+design MCP is session-bound and absent from sub-agent contexts (`FG-2026-07-26-01` / `-06`), which is
+the documented way a large surface is handled. You are the last context that can reach the source
+cheaply. Leaving the reference unresolved exports an impossible task and invites an invented string.
+
+Machine-checked at emit by `tools/check-ingest-manifest.js` **C11** (step-03 §2 runs it `--strict`).
+It fires only on the `NAME[...].field` shape, so lowercase accessors and `.length` are invisible to
+it. On the sweep that introduced the check, **four of eight** delivered manifests carried at least
+one unresolved vocabulary while declaring value-exact grain — treat this as the normal failure, not
+an exotic one.

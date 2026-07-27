@@ -235,7 +235,7 @@ same verdict.
 
 **The existence gate — is there anything to implement against at all?** `design-implement`'s entire model is *diff a design against an EXISTING implementation and fix the deltas*. A design handed off for a **net-new surface whose route, page component, and backing object do not exist yet** has nothing to diff: the grid comes back all `FRAME MISSING in impl` and the run aborts itself at the §2b/§4c fixture-ship halt AFTER a full, non-trivial ingest. This bites hardest on exactly the normal case — a paste straight from Claude Design's "Send to local coding agent" panel for a surface you just designed but have not built. The strong, DETERMINISTIC routing layer (the paste-prompt handling above, and any project `design-handoff-detect` hook) points every paste here; this preflight is the deterministic guard that stops a net-new paste *before* the spend, so the catch no longer depends on the operator probabilistically recalling onboarding doctrine.
 
-Run this check **as soon as `{target_slug}` + the target route are resolved** (step-01 §SHARED.1a — the earliest cheap point, before ingest and the grid). Cheaply probe whether the target surface exists in the implementation — **all three absent ⇒ net-new**:
+Run this check **as soon as `{target_slug}` + the target route are resolved** (step-01 §SHARED.1a — the earliest cheap point, before ingest and the grid). Cheaply probe whether the target surface exists in the implementation. **Probes 1–2 ARE the surface and they alone decide the flavour: both absent ⇒ net-new, whatever probe 3 says — `backing object alone is NOT a surface`.** Probe 3 scopes the *recommendation* (a present table means the backend step is partly done); it is never a veto on the *verdict*. It has to read that way because this preflight's own onboarding path — *"build the minimal backend first"* — deliberately CREATES the schema-present / route-absent state, so an all-three-absent trigger disarms the gate for precisely the operator who followed the advice. Observed 2026-07-27 (cash-recovery `/units/[id]`, a 12-frame ingest manifest): `units` table present, no route and no page component — the old trigger said "not net-new" while the Verdict below said "not brownfield", leaving the real case with no verdict at all.
 
 1. **Route** — no route / nav entry matches the surface (`{target_slug}` or its route) in the app's router or nav config.
 2. **Page component** — no page / screen component file exists for the surface.
@@ -247,7 +247,7 @@ Run this check **as soon as `{target_slug}` + the target route are resolved** (s
 5. **Capability's backing object** — the handoff's README/brief declares a net-new capability ("net-new … capability overlaid on …"; a new store such as `order_drafts`), and grepping the schema + shared types for the *capability's* object (the draft/version/approval store — NOT the surface's primary object) finds nothing.
 6. **Assumed read/save path** — the save/park/resume/reload path this design assumes has no implementation (no action/mutation/service for the capability).
 
-**Verdict.** If NONE of probes 1–3 exists **⇒ net-new surface** (early-exit below). If a surface probe exists BUT any capability probe (4–6) fires **⇒ capability-net-new** — early-exit with the SAME soft recommendation, because the read/save path the design assumes does not exist yet, so the run would still ingest fully and stall at §4c. Only when probes 1–3 find an existing surface AND probes 4–6 are all clear is this a true brownfield diff — **proceed normally**. When surfacing a `capability-net-new` exit, name the missing capability object + spec so the override is informed. **EARLY-EXIT (soft — recommendation, not a hard refuse; the operator may override):**
+**Verdict.** If **both surface probes (1–2) are absent ⇒ net-new surface** (early-exit below) — record what probe 3 found, because a present backing object changes what you *recommend* (the schema step may already be done, so the onboarding path starts further along) but never *whether* this is net-new. If the surface exists (1–2 present) BUT any capability probe (4–6) fires **⇒ capability-net-new** — early-exit with the SAME soft recommendation, because the read/save path the design assumes does not exist yet, so the run would still ingest fully and stall at §4c. Only when probes 1–2 find an existing surface AND probes 4–6 are all clear is this a true brownfield diff — **proceed normally**. When surfacing a `capability-net-new` exit, name the missing capability object + spec so the override is informed. **EARLY-EXIT (soft — recommendation, not a hard refuse; the operator may override):**
 
 ```
 ══════════════════════════════════════════════════════════════════
@@ -274,7 +274,7 @@ you are knowingly implementing ahead of it), re-invoke with an explicit
 ══════════════════════════════════════════════════════════════════
 ```
 
-This is a **soft** early-exit (recommend + override), NOT a hard refuse like the two bundle gates above — it stops a mis-route by default while leaving the owner the wheel. Distinct from a *size* preflight (a large but EXISTING surface): this is about **existence** — whether there is anything to implement against at all. The determination has two flavours — `net-new-surface` (probes 1–3 all absent) and `capability-net-new` (surface exists but a capability probe 4–6 fires: a new persistence/lifecycle dimension whose backing object + read/save path are unbuilt). Surface which flavour in the run's opening summary (§SHARED.2) so the override is scoped to the real gap, not a blanket "surface missing."
+This is a **soft** early-exit (recommend + override), NOT a hard refuse like the two bundle gates above — it stops a mis-route by default while leaving the owner the wheel. Distinct from a *size* preflight (a large but EXISTING surface): this is about **existence** — whether there is anything to implement against at all. The determination has two flavours — `net-new-surface` (surface probes 1–2 both absent; the backing object may or may not exist, and if it does, say so) and `capability-net-new` (surface exists but a capability probe 4–6 fires: a new persistence/lifecycle dimension whose backing object + read/save path are unbuilt). Surface which flavour in the run's opening summary (§SHARED.2) so the override is scoped to the real gap, not a blanket "surface missing."
 
 #### When `{input_kind} == "claude_design_url"`: existing flow
 
@@ -283,6 +283,26 @@ Store the share-link as `{design_url}` and the resolved target as `{design_file}
 #### When `{input_kind} == "ingest_manifest"`: manifest gating
 
 Parse `{ingest_manifest_path}` into `{ingest_manifest}`. Then check one refusal gate — the completeness invariant the `design-ingest` workflow is required to uphold:
+
+**Trust check — run the manifest verifier, do not eyeball it.** Before consuming the manifest, run
+`node ~/bmad-method-v6/tools/check-ingest-manifest.js --manifest {ingest_manifest_path}` and read the
+findings. Two codes change what this run is allowed to assume:
+
+- **`C10-GRAIN-PROSE-ONLY` / `C10-GRAIN-CONFLICT`** — the manifest's body claims a grain its
+  frontmatter does not. **The frontmatter wins, and an absent `manifest_grain` means `summary`**
+  (manifest-schema "Grain invariant") — so a manifest that *reads* value-exact is one you must
+  re-read the design source for. Do not take the prose. Say in the run summary which you used.
+- **`C11-UNRESOLVED-VOCAB`** — a vocabulary is dereferenced but never resolved, so the literals it
+  names are **not in this manifest**. You may not transcribe what is not there and you may not
+  invent it. Resolve it from the design source in THIS context and record what you resolved, or
+  defer every row that depends on it with the reference named in its disposition. **Never delegate a
+  row carrying an unresolved reference to a sub-agent** — the design MCP is session-bound
+  (`FG-2026-07-26-01` / `-06`), so the agent can neither read it nor legally guess, and the failure
+  surfaces as invented copy rather than as an error. `C11-DECLARED` is the disclosed-deferral form:
+  same handling, already acknowledged by the producer.
+
+Neither is a refusal — a manifest is still consumable with a known gap. What is forbidden is
+consuming it as if the gap were not there.
 
 **Refusal — incomplete manifest.** If `{ingest_manifest}.ingest.completeness.frames_with_empty_section_list` is non-empty (a `drawn: true` frame with no enumerated sections), refuse:
 

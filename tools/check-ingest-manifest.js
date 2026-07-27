@@ -39,6 +39,22 @@
  *        sections_missing_property_rows to be empty (the §2a lie-prevention pair)
  *    C8  no duplicate frame rows in the Frame inventory
  *    C9  sum(sections_per_frame) == sections_total, when the map is declared
+ *    C10 the body's prose grain claim ("Grain: value-exact") matches the frontmatter
+ *        `manifest_grain` field — including the case where the field is ABSENT, which the
+ *        schema says a consumer MUST read as `summary`. Two disagreeing copies of the trust
+ *        level is worse than one wrong copy: it reads as corroborated.
+ *    C11 no UNRESOLVED VOCABULARY REFERENCE (`DECISION[x].label`, `DEFECT[].label`) survives in
+ *        a manifest claiming value-exact grain. The literals such a reference names are not in
+ *        the file, so the consumer must re-read the design source — which a delegated sub-agent
+ *        structurally cannot do (session-bound MCP). Override: declare it in
+ *        `completeness.unresolved_references` and it reports as a disclosed deferral instead.
+ *
+ *  CEDED, explicitly (a checker that guesses is worse than one that says it cannot tell):
+ *    When the grid scaffold's first column is not a frame name — a manifest may legitimately key
+ *    its grid on a ROW NUMBER and carry the frame in each sub-table's heading — C1–C5 are not
+ *    evaluated and ONE finding says so. The first time this parser was pointed at a real manifest
+ *    in that shape it emitted 98 findings for two real defects; a checker nobody trusts protects
+ *    nothing. C6–C11 do not depend on table layout and still apply.
  *
  *  NOT CHECKED, on purpose — and this is the important half:
  *    Whether the ENUMERATION IS COMPLETE. Whether a real section of a real frame was missed
@@ -147,6 +163,16 @@ const grain = grainMatch ? grainMatch[1] : null;
  *   - stop at the next heading of the SAME-or-higher level as the start heading
  *   - keep only rows with at least `minCells` columns (frame inventory 5, grid scaffold 6)
  */
+/* Real manifests NUMBER their headings — `## 2. Frame inventory`, `## 4. Grid scaffold — 83
+ * rows`, `### 3c. <frame> — 7 sections`. The first version of these matchers anchored on the
+ * bare heading text and therefore found NOTHING in the first real manifest it was pointed at:
+ * 0 grid rows against an 83-row file, reported as three confident "no such table" findings.
+ *
+ * That is the worst possible failure for a checker, because BOTH of its outcomes read as
+ * reassuring: a document it cannot parse reports either CONSISTENT (nothing to disagree with)
+ * or "your tables are missing" (which a reader assumes is a manifest defect, not a parser
+ * one). The same lesson as the heading-level/column-count fix in 175f8373 — a manifest is
+ * prose that people format; a parser that assumes one exact phrasing will keep being inert. */
 function tableRowsUnder(headingRe, minCells) {
   const start = lines.findIndex((l) => headingRe.test(l));
   if (start === -1) return null;
@@ -168,7 +194,7 @@ function tableRowsUnder(headingRe, minCells) {
   return rows;
 }
 
-const frameRows = tableRowsUnder(/^##+\s+Frame inventory\s*$/, 5);
+const frameRows = tableRowsUnder(/^##+\s+(?:\d+[a-z]?\.\s*)?Frame inventory\b/i, 5);
 const declaredFrames = new Map(); // name -> drawn(bool)
 if (frameRows) {
   for (const cells of frameRows) {
@@ -189,9 +215,16 @@ const drawnFrames = [...declaredFrames].filter(([, d]) => d).map(([n]) => n);
 
 /* ── 3. Section inventory headings: `## Frame: <name> (N sections)` (h2 or h3) ── */
 const invDeclared = new Map();
-const headingRe = /^#{2,4}\s+Frame:\s+(.+?)\s*\((\d+)\s+sections?\)/;
+/* Two accepted shapes, both allowing a `<n>.` / `<n><letter>.` section prefix:
+ *   A  `### Frame: <name> (7 sections)`   — the schema's own shape
+ *   B  `### 3c. \`<name>\` — 7 sections`  — the shape real manifests actually write
+ * B is anchored to end-of-line and requires the literal "N sections" tail, so a prose heading
+ * that merely contains an em-dash (`### 3a. Canonical section list — the register family`)
+ * does not match. Loosening past this would start inventing frames out of headings. */
+const headingReA = /^#{2,4}\s+(?:\d+[a-z]?\.\s*)?Frame:\s+(.+?)\s*\((\d+)\s+sections?\)/;
+const headingReB = /^#{2,4}\s+(?:\d+[a-z]?\.\s*)?`?(.+?)`?\s+[—–-]\s+(\d+)\s+sections?\s*$/;
 for (const l of lines) {
-  const m = l.match(headingRe);
+  const m = l.match(headingReA) || l.match(headingReB);
   if (!m) continue;
   const name = m[1].replaceAll('`', '').trim();
   invDeclared.set(name, Number(m[2]));
@@ -210,7 +243,7 @@ if (invDeclared.size === 0)
  * deliberately NOT checked: the essential keys are frame + section + status, and the grain fields,
  * not the column layout, are what tell a consumer where the values live. 5 is the floor that still
  * excludes a narrower foreign table. */
-const gridRows = tableRowsUnder(/^##+\s+Grid scaffold/, 5);
+const gridRows = tableRowsUnder(/^##+\s+(?:\d+[a-z]?\.\s*)?Grid scaffold\b/i, 5);
 const gridPerFrame = new Map();
 let gridCount = 0;
 if (gridRows) {
@@ -225,8 +258,32 @@ if (gridRows) {
   fail('NO-GRID', 'no `## Grid scaffold` table found');
 }
 
+/* ── 4a. Is the grid scaffold in the layout these checks assume? ──
+ *
+ * C1–C5 all key on "column 0 of a grid row is a frame name". A real manifest may legitimately
+ * lead with a ROW NUMBER instead (`| 1 | R1 owner shell nav | … |`) and carry the frame in its
+ * per-table heading. Run the frame-keyed checks against that and every row number is reported as
+ * an undeclared frame: the first time this parser was made to see a real manifest it produced 98
+ * findings on a document whose actual defects were two.
+ *
+ * A checker that cries wolf 98 times gets switched off, and then it protects nothing — so when
+ * the layout is not the one these checks understand, CEDE the dimension in one line rather than
+ * guess row-by-row. This is the same add-vs-cede call the workflow makes elsewhere: owning the
+ * boundary by disclosure beats a check that lies. The body-scanned checks (C10, C11) are
+ * unaffected — they do not depend on table layout at all, which is exactly why they still fire
+ * on a manifest whose scaffold shape this tool cannot read. */
+const gridKeys = [...gridPerFrame.keys()];
+const gridKeysMatchingFrames = gridKeys.filter((k) => declaredFrames.has(k)).length;
+const gridLayoutRecognised = gridKeys.length === 0 || declaredFrames.size === 0 || gridKeysMatchingFrames * 2 >= gridKeys.length;
+if (!gridLayoutRecognised) {
+  fail(
+    'GRID-LAYOUT-UNRECOGNISED',
+    `grid scaffold's first column is not a frame name (${gridKeysMatchingFrames}/${gridKeys.length} rows match a declared frame) — this manifest keys its grid on something else, most likely a row number with the frame carried in each sub-table's heading. C1–C5 are NOT evaluated for it; the frame/section arithmetic is unverified here, not verified-clean. C6–C11 still apply`,
+  );
+}
+
 /* ── 5. The checks ── */
-if (C.sections_total !== undefined && gridRows && gridCount !== C.sections_total) {
+if (gridLayoutRecognised && C.sections_total !== undefined && gridRows && gridCount !== C.sections_total) {
   fail(
     'C1-TOTAL',
     `C1 sections_total is ${C.sections_total} but the grid scaffold has ${gridCount} data rows — one section was enumerated and not scaffolded, or the count was hand-summed wrong`,
@@ -235,7 +292,7 @@ if (C.sections_total !== undefined && gridRows && gridCount !== C.sections_total
 /* Frames already reported as having zero grid rows — so the drawn-frame sweep below does not
  * report the SAME defect a second time from the other side. One condition, one finding. */
 const reportedNoGridRows = new Set();
-for (const [name, n] of invDeclared) {
+for (const [name, n] of gridLayoutRecognised ? invDeclared : new Map()) {
   const g = gridPerFrame.get(name);
   if (g === undefined) {
     reportedNoGridRows.add(name);
@@ -253,13 +310,13 @@ for (const [name, n] of invDeclared) {
     );
   }
 }
-for (const f of drawnFrames) {
+for (const f of gridLayoutRecognised ? drawnFrames : []) {
   if (!invDeclared.has(f))
     fail('C4-MISSING-INV', `C4 frame "${f}" is drawn:true in the Frame inventory but has no section-inventory entry`);
   if (!gridPerFrame.has(f) && !reportedNoGridRows.has(f))
     fail('C4-MISSING-GRID', `C4 frame "${f}" is drawn:true in the Frame inventory but has no grid-scaffold rows`);
 }
-for (const f of gridPerFrame.keys()) {
+for (const f of gridLayoutRecognised ? gridPerFrame.keys() : []) {
   if (declaredFrames.size > 0 && !declaredFrames.has(f)) {
     fail('C5-UNDECLARED', `C5 grid scaffold has rows for "${f}", which is not in the Frame inventory`);
   }
@@ -276,6 +333,96 @@ if (grain === 'value-exact' && Array.isArray(C.sections_missing_property_rows) &
     `C7 manifest_grain is value-exact but sections_missing_property_rows lists ${C.sections_missing_property_rows.length} section(s) — that combination is the exact lie the grain field exists to prevent`,
   );
 }
+/* ── C10: the manifest CLAIMS a grain in prose that its frontmatter does not declare ──
+ *
+ * `manifest_grain` is the field consumers branch on, and the schema is explicit that an ABSENT
+ * field must be read as `summary` — i.e. "re-read the design source for values". But a manifest
+ * can, and did, announce **"Grain: `value-exact`"** in its body while carrying no frontmatter
+ * field at all. Every human reader — and every agent reading top-down — takes the prose. The
+ * conservative default then never fires, and the source re-read it exists to force is skipped.
+ *
+ * This is the fork's own recurring shape one layer up: a field an agent self-reports will
+ * eventually be wrong, so never key a gate on the copy of it that is easiest to write. Here the
+ * two copies actively disagree, which is strictly worse than one wrong copy — it looks
+ * corroborated. Deterministic and judgement-free: either the strings match, or they do not. */
+const proseGrain = src.match(/^\*{0,2}Grain:?\*{0,2}\s*:?\s*`?(value-exact|partial|summary)`?/im);
+if (proseGrain) {
+  const claimed = proseGrain[1];
+  if (!grain) {
+    fail(
+      'C10-GRAIN-PROSE-ONLY',
+      `C10 the body announces grain "${claimed}" but frontmatter has no \`manifest_grain\` field — the schema says an absent field MUST be read as \`summary\`, so this manifest reads as value-exact to every human and as "re-read the source" to the one rule that is written down. Declare \`manifest_grain: ${claimed}\` in the frontmatter, or drop the prose claim`,
+    );
+  } else if (grain !== claimed) {
+    fail(
+      'C10-GRAIN-CONFLICT',
+      `C10 frontmatter declares \`manifest_grain: ${grain}\` but the body announces grain "${claimed}" — a consumer will trust whichever it reads first`,
+    );
+  }
+}
+
+/* ── C11: an UNRESOLVED VOCABULARY REFERENCE in a value-exact manifest ──
+ *
+ * A manifest may record `DECISION[decision].label` / `DEFECT[].label` / `GAPS[k].label` where the
+ * literal copy belongs — naming a lookup it never resolves. The strings the surface actually
+ * displays are then nowhere in the artifact built to carry them, while the manifest declares
+ * value-exact grain and design-implement is told to reproduce copy VERBATIM. The consumer's only
+ * legal moves become "re-read the design source" or "halt" — and the fan-out sub-agents that a
+ * large surface delegates to structurally CANNOT re-read it (the design MCP is session-bound,
+ * FG-2026-07-26-01/-06). Compose the two and a delegated run has no legal continuation; the
+ * remaining exit is to invent "Claim reversed", which is the one thing the transcription rule
+ * forbids. (FG-2026-07-27-09, cash-recovery /write-offs: five strings behind three references.)
+ *
+ * Conservative by construction — it fires ONLY on an ALL-CAPS identifier indexed and dereferenced
+ * (`NAME[...].field`), which is the vocabulary-constant convention. `entries[0].id`,
+ * `e.scopedComponents[]`, `rows[]` and every lowercase accessor are invisible to it. The
+ * frontmatter escape hatch is the logged override: a reference that genuinely cannot be resolved
+ * is declared, with its reason, and reported rather than silently passing. */
+/* `.length` is excluded: it is a JS builtin describing HOW MANY, never a piece of copy, so
+ * `ORDER_LINES["1SJ7K9RQ"].length` states a count the manifest can carry itself. Every other
+ * dereference names a FIELD of the vocabulary — which is where the literal lives. */
+const VOCAB_REF = /\b([A-Z][A-Z0-9_]{2,})\s*\[[^\]\n]*\]\s*\.\s*(?!length\b)[A-Za-z_]\w*/g;
+const bodyStart = (() => {
+  if (lines[0] !== '---') return 0;
+  const end = lines.indexOf('---', 1);
+  return end === -1 ? 0 : end + 1;
+})();
+const resolvedVocab = new Set((Array.isArray(C.resolved_vocabularies) ? C.resolved_vocabularies : []).map((v) => v.toUpperCase()));
+const declaredUnresolved = new Set(
+  (Array.isArray(C.unresolved_references) ? C.unresolved_references : []).map((v) =>
+    String(v)
+      .split(/[\s:(]/)[0]
+      .toUpperCase(),
+  ),
+);
+/* A `Vocabulary: NAME` block in the body resolves it too — the same dereference affordance the
+ * grid already uses for `→ §6/<id>`. */
+for (const l of lines) {
+  const m = l.match(/^#{2,6}\s+.*\bVocabulary:\s*`?([A-Z][A-Z0-9_]{2,})`?/);
+  if (m) resolvedVocab.add(m[1].toUpperCase());
+}
+const unresolvedHits = new Map(); // NAME -> {line, sample}
+for (let i = bodyStart; i < lines.length; i++) {
+  for (const m of lines[i].matchAll(VOCAB_REF)) {
+    const name = m[1].toUpperCase();
+    if (resolvedVocab.has(name)) continue;
+    if (!unresolvedHits.has(name)) unresolvedHits.set(name, { line: i + 1, sample: m[0] });
+  }
+}
+for (const [name, hit] of unresolvedHits) {
+  if (declaredUnresolved.has(name)) {
+    fail(
+      'C11-DECLARED',
+      `C11 vocabulary "${name}" is referenced but not resolved (first at line ${hit.line}: \`${hit.sample}\`) — DECLARED in completeness.unresolved_references, so this is a disclosed deferral, not a defect. The consumer must re-read the design source for it`,
+    );
+  } else if (grain === 'value-exact' || (proseGrain && proseGrain[1] === 'value-exact')) {
+    fail(
+      'C11-UNRESOLVED-VOCAB',
+      `C11 vocabulary "${name}" is referenced but never resolved (first at line ${hit.line}: \`${hit.sample}\`) while this manifest claims value-exact grain — the literals it names are not in this file, so a consumer must re-read the design source or halt, and a delegated sub-agent can do neither. Resolve it into a \`Vocabulary: ${name}\` block, or declare it in completeness.unresolved_references with a reason`,
+    );
+  }
+}
+
 if (C.sections_per_frame) {
   const sum = Object.values(C.sections_per_frame).reduce((a, b) => a + b, 0);
   if (C.sections_total !== undefined && sum !== C.sections_total) {

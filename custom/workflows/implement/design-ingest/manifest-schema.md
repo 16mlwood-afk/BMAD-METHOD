@@ -41,6 +41,8 @@ ingest:
     frames_not_enumerated: []           # OPTIONAL, and an HONEST failure: frames whose enumeration could not be completed (e.g. the step-02 fan-out died and no fallback applied). A named non-empty list is a declarable partial; silently omitting a frame is not. design-implement must refuse a manifest with a non-empty list unless the operator explicitly accepts the partial.
     sections_with_property_rows: {int}      # of sections_total, how many carry a VALUE-EXACT component×property cell
     sections_missing_property_rows: []      # "<frame> / <section>" per section whose property cell is prose-only, elided (`…`), or empty. MUST be empty iff manifest_grain == value-exact.
+    resolved_vocabularies: []               # Every ALL-CAPS vocabulary the manifest DEREFERENCES (DECISION, DEFECT, GAPS, LIFECYCLE…) whose members it resolves to literals — inline, or in a `Vocabulary: <NAME>` block. See "Vocabulary resolution" below. (FG-2026-07-27-09)
+    unresolved_references: []               # THE LOGGED OVERRIDE. "<NAME>: <why>" per vocabulary that genuinely could not be resolved. A declared deferral is reported and consumable; an UNdeclared one is a defect (C11), because the consumer cannot tell the difference between "deferred" and "forgotten".
   tokens:                               # SUMMARY ONLY, and NOT a substitute for reading the design source — see "Restated source facts".
     radii: { ... }
     type_scale: { ... }
@@ -233,3 +235,38 @@ So, for the `tokens:` block, the section-inventory copy column, and any `## Find
 - **Never reason downstream from a restated fact.** A finding that concludes *"…so `design-implement` would have to infer the resolved treatment"* has built an inference-hazard warning on top of a copy. If the premise drifts, the warning becomes the hazard.
 
 **Why (2026-07-25, cash-recovery, `FG-2026-07-25-14`).** A delivered, completeness-passing manifest for the Clerk Inbound Board carried three restated facts that were wrong against its own source: finding **F2** asserted no `<img>` existed anywhere and that the resolved-thumbnail treatment was never drawn (the source draws one in **three** places inside `<sc-if value="{{ r.img }}">`, and F2 then reasoned from that false premise to an inference warning); `tokens.type_scale.primary_numeral` said `30px` where the source said **26px**; and the section-8 prose named a filter chip *"Can't vouch"* where the source's `filters` array said **`Gaps`**. All three were caught only because that run re-read the design source **contrary to** the manifest path's own "no re-ingest" shortcut. A session that honoured MANIFEST.2 as written would have shipped the wrong numeral, the wrong label, and a fabricated thumbnail treatment, with every gate green.
+
+---
+
+## Vocabulary resolution — a reference is not a value (FG-2026-07-27-09)
+
+`manifest_grain: value-exact` promises the consumer it need not re-read the design source. A cell
+that records **`DECISION[decision].label`** breaks that promise while looking like it keeps it: the
+row is present, ordered, dispositioned and specific — and the string the surface actually renders is
+nowhere in the file.
+
+**The rule.** When a section's copy or data cell dereferences an ALL-CAPS vocabulary
+(`DECISION[x].label`, `DEFECT[].note`, `GAPS[k].label`), the manifest MUST resolve every member it
+can reach — inline, or once in a `### Vocabulary: <NAME>` block that rows dereference the same way
+they dereference `→ §6/<id>` — and list `<NAME>` in `completeness.resolved_vocabularies`. A
+vocabulary that genuinely cannot be resolved is declared in `completeness.unresolved_references`
+with a reason. Silence is the one disallowed option.
+
+**Why this is a hard rule and not a preference.** The consumer's transcription contract says copy is
+reproduced VERBATIM and a paraphrase is prohibited. So an unresolved reference leaves exactly two
+legal moves — re-read the design source, or halt. And the re-read is precisely what a **delegated
+sub-agent cannot do**: the design MCP is session-bound and absent from sub-agent contexts
+(`FG-2026-07-26-01` / `-06`), which is the documented way a large surface is meant to be handled.
+Compose the two and a delegated run has no legal continuation at all; the only remaining exit is to
+invent the string. Every previous fabrication incident in this fork started as a gap that looked
+like a detail.
+
+**Not a completeness question — a TRUST question.** `frames_with_empty_section_list` proves every
+frame was enumerated; `sections_missing_property_rows` proves every section carries values. Neither
+looks INSIDE a cell, so a manifest can satisfy both and still be unimplementable. Machine-checked by
+`tools/check-ingest-manifest.js` **C11**, which fires only on the `NAME[...].field` shape (an
+ALL-CAPS identifier, indexed, dereferenced) — lowercase accessors and `.length` are invisible to it.
+
+**It is not rare.** On the sweep that introduced the check, **four of eight** delivered manifests in
+one project carried at least one unresolved vocabulary — `DECISION`/`DEFECT`, `WINDOW`/`LIFECYCLE`/
+`CLAIM_TYPES`/`EVIDENCE`, `ORDER_LINES`. Every one of them declared value-exact grain.
