@@ -278,6 +278,127 @@ def check_stale_open(entries, creation_mode: bool) -> int:
     return 1 if errors else 0
 
 
+# ---------------------------------------------------------------------------
+# CONTRADICTION — the prose says the fix landed; the field still says it hasn't
+# ---------------------------------------------------------------------------
+# WHY (FG-2026-07-27-04). A verify-and-close sweep on 2026-07-27 reclassified EIGHT entries in
+# one sitting. None needed work: every one already recorded, in its own status line, that the
+# fork fix was DONE with distribution the only residue — while still sitting at `open`/`partly`.
+# Eight independent authors wrote the truth in prose and left the field wrong, which is the
+# signature of a field that cannot express what the author needed to say.
+#
+# THIS IS A SYMPTOM CATCHER, NOT THE MODEL FIX. The root cause is that one enum spans three
+# lifecycles (finding / decision / delivery); the real repair is the fix+delivery axis split.
+# This check exists because it would have caught all 8 today, needs no migration, and keeps
+# catching them while the split is designed.
+#
+# SEVERITY: WARN, never error — deliberately, and the reason matters. The register's gate is
+# armed in pre-commit, so an erroring keyword heuristic would block EVERY session's commit to
+# this file on a false positive. That already happened twice this week from unrelated schema
+# omissions, and a gate that blocks the whole team on a guess is the one that gets deleted.
+# Promotion to error requires the same bar as every other gate here: a proven-quiet window.
+#
+# ACKNOWLEDGEMENT: an entry may carry `contradiction_ack: <reason>` in its yaml header to
+# silence a known-fine case (e.g. prose quoting ANOTHER entry's closure). The ack must give a
+# reason — a bare ack is not accepted, same discipline as a parked scope row owing a trigger.
+
+# THE RULE IS A CONJUNCTION, NOT A KEYWORD LIST — and the first cut proved why.
+#
+# Naive version fired 15 times on 69 entries, and 8 of those were `partly resolved` prose on a
+# `state: partly` entry — which is AGREEMENT, not contradiction. Others fired on entries whose
+# body DESCRIBES the problem (this very check's own entry flagged itself). A detector that
+# cannot tell agreement from disagreement teaches everyone to ignore it, and the register's
+# gate is armed in pre-commit, so noise here is expensive.
+#
+# The precise signature of the bug — the one all 8 swept entries actually had — is BOTH:
+#   (a) the prose asserts the FIX IS DONE at source, AND
+#   (b) the prose says the only residue is DISTRIBUTION,
+# while the field is NOT `fork-fixed-distribution-owed`. That pair has exactly one correct
+# state, so disagreement is decidable rather than guessed. Anything weaker is a hint, not a
+# finding, and is deliberately not reported.
+_FIX_DONE = [
+    (re.compile(r"\bfork fix (?:is )?done\b", re.I), "the fork fix is done"),
+    (re.compile(r"\bfix (?:is )?done at source\b", re.I), "the fix is done at source"),
+    (re.compile(r"\bfix (?:is )?done\b", re.I), "the fix is done"),
+    (re.compile(r"\bverified built\b", re.I), "it was verified built"),
+    (re.compile(r"\bfixes? \([a-c]\)(?:\+\([a-c]\))* (?:are |appear )?landed\b", re.I), "the named fixes landed"),
+]
+_DELIVERY_ONLY = [
+    (re.compile(r"\bdistribution\b[^.\n]{0,60}\bowed\b", re.I), "distribution is the only residue"),
+    (re.compile(r"\bowed\b[^.\n]{0,40}\bdistribution\b", re.I), "distribution is the only residue"),
+    (re.compile(r"\bstill open only on distribution\b", re.I), "it is open only on distribution"),
+    (re.compile(r"\barchive on distribution\b", re.I), "it archives on distribution"),
+]
+
+# `fork-fixed-distribution-owed` is the CORRECT home for a done-but-undelivered entry, so it is
+# never a contradiction. `open`/`partly`/`blocked` all claim someone still has work to do.
+_UNFINISHED_STATES = {"open", "partly", "blocked"}
+
+
+def check_contradiction(entries) -> int:
+    findings = []
+    for e in entries:
+        state = e.header.get("state", "")
+        if state not in _UNFINISHED_STATES:
+            continue
+        ack = e.header.get("contradiction_ack", "").strip()
+        if ack and len(ack) >= 8:
+            continue
+        done = [why for rx, why in _FIX_DONE if rx.search(e.body)]
+        deliv = [why for rx, why in _DELIVERY_ONLY if rx.search(e.body)]
+        if done and deliv:          # conjunction — see the rule note above
+            findings.append((e.id, state, sorted(set(done)) + sorted(set(deliv))))
+
+    for eid, state, hits in findings:
+        print(f"  ⚠ {eid}: state `{state}` but the prose says {'; and '.join(hits)}.")
+        print("     Either the field is stale (move it — `fork-fixed-distribution-owed` is the")
+        print("     home for fixed-but-undelivered), or the prose overclaims. Read the entry and")
+        print("     resolve the disagreement; do NOT silence it by editing the prose to match.")
+        print("     Legitimately fine? add `contradiction_ack: <reason>` to the yaml header.")
+    print(f"check-fork-gap-contradiction: {len(findings)} contradiction(s) across {len(entries)} entry/entries "
+          f"(WARN-only — never blocks a commit).")
+    if findings:
+        print("  This is a SYMPTOM catcher. The model fix is the fix+delivery axis split")
+        print("  (FG-2026-07-27-04); until that lands, expect this to keep finding them.")
+    return 0  # never blocks
+
+
+def check_report(entries) -> int:
+    """Standing monitor for the three numbers that hid the problem (FG-2026-07-27-04 §4)."""
+    contradictions = 0
+    for e in entries:
+        if e.header.get("state") in _UNFINISHED_STATES and not e.header.get("contradiction_ack"):
+            if any(rx.search(e.body) for rx, _ in _FIX_DONE) and \
+               any(rx.search(e.body) for rx, _ in _DELIVERY_ONLY):
+                contradictions += 1
+
+    owed = [e for e in entries if e.header.get("state") == "fork-fixed-distribution-owed"]
+
+    # Entries whose prose names another FG id as a blocker, where that id is now terminal.
+    terminal = {e.header.get("id") for e in entries
+                if e.header.get("state") in ("closed", "superseded")}
+    blocked_on_delivered = []
+    for e in entries:
+        if e.header.get("state") not in _UNFINISHED_STATES:
+            continue
+        for ref in set(re.findall(r"FG-\d{4}-\d{2}-\d{2}-\d{2}", e.body)):
+            if ref in terminal and ref != e.header.get("id"):
+                blocked_on_delivered.append((e.id, ref))
+                break
+
+    live = [e for e in entries if e.header.get("state") not in ("closed", "superseded")]
+    print("\nfork-gap register — standing report")
+    print(f"  live entries:                      {len(live)}")
+    print(f"  prose/field contradictions:        {contradictions}   (fix the FIELD, not the prose)")
+    print(f"  fix done + delivery owed:          {len(owed)}   ← ONE sync, not {len(owed)} investigations")
+    print(f"  blocked on an already-closed gap:  {len(blocked_on_delivered)}")
+    for eid, ref in blocked_on_delivered:
+        print(f"      • {eid} references {ref}, which is terminal — re-read; it may be unblocked")
+    print("\n  The middle number is the one that lies about backlog size. The bottom one is how a")
+    print("  real unblock stayed invisible (FG-2026-07-20-01 sat blocked on work that had shipped).\n")
+    return 0
+
+
 def main() -> int:
     mode = sys.argv[1] if len(sys.argv) > 1 else "schema"
     entries = [e for e in parse() if e.heading.strip() != "## Open"]
@@ -287,6 +408,10 @@ def main() -> int:
         return check_targets(entries)
     if mode == "stale-open":
         return check_stale_open(entries, creation_mode="--creation-mode" in sys.argv)
+    if mode == "contradiction":
+        return check_contradiction(entries)
+    if mode == "report":
+        return check_report(entries)
     print(f"unknown mode: {mode}", file=sys.stderr)
     return 2
 

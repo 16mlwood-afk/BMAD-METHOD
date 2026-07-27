@@ -302,6 +302,7 @@ state: partly
 owner: fork-maintenance
 routing: retro-routed
 routing_note: "Fixes (a)+(c) implemented under standing 'continue fixing the fork gaps' maintenance instruction from Mason; (b) remains owner-gated Tier-3."
+contradiction_ack: "TRUE PARTIAL, not a stale field: fixes (a)+(c) shipped and (b) — the auto-drain — is owner-gated Tier-3, so distribution is NOT the only residue. `partly` is correct."
 ```
 
 ### Incident
@@ -2833,15 +2834,16 @@ delivery.
 ## 2026-07-27 — one entry, three lifecycles: the register cannot represent DELIVERY state, so the truth migrates into prose and the machine-readable field rots
 
 ```yaml
-id: FG-2026-07-27-03
+id: FG-2026-07-27-04
 class: lane-status-model
 scope: fork
 target: docs/fork-gaps.md
 marker: "fix axis and delivery axis"
-state: open
+state: partly
 owner: mason
-routing: recorded
-routing_note: "NEW DESIGN / DOCTRINE lane — changing the register's schema is a taxonomy decision, owner's call. Logged and brainstormed, deliberately not implemented."
+routing: routed
+routing_note: "ROUTED by owner 2026-07-27: proceed 1 now, 2 next, 3 per-target. Step 1 BUILT; step 2 drafted as a change package awaiting approval."
+contradiction_ack: "META-ENTRY: this entry DESCRIBES the done-plus-distribution-owed pattern as its subject matter, so it matches its own detector by construction."
 ```
 
 ### Incident
@@ -2928,6 +2930,43 @@ treating it as a hygiene problem — the field is not being maintained because i
 is overdue rather than optional.
 
 ---
+
+
+### Step 1 BUILT + package drafted — 2026-07-27 (owner routed: 1 now, 2 next, 3 later)
+
+**Step 1 — contradiction detector, SHIPPED.** `tools/check-fork-gap-contradiction.sh` →
+`fork_gap_lint.py contradiction`, wired into `npm test` and `npm run check:forkgap-contradiction`.
+
+**The rule is a CONJUNCTION, and the first cut proved why it had to be.** A naive keyword list fired
+**15 times on 69 entries** — and 8 of those were `partly resolved` prose on a `state: partly` entry,
+which is *agreement*, not contradiction; others fired on entries whose body merely DESCRIBES the
+pattern (this entry flagged itself). Tightened to: the prose asserts **fix done at source** AND
+**distribution is the only residue**, while the field is not `fork-fixed-distribution-owed`. That pair
+has exactly one correct state, so the disagreement is decidable rather than guessed. Result: **1 true
+finding, 2 acknowledged** (`contradiction_ack:`, which requires a reason — a bare ack is rejected).
+
+**Severity is WARN, never error — deliberately.** The register's schema gate is armed in pre-commit, so
+an erroring keyword heuristic would block EVERY session's commit to this file on one false positive.
+That already happened twice this week from unrelated schema omissions. Promotion needs a proven-quiet
+window, same bar as every other gate here.
+
+**Operator action when it fires:** read the entry and move the FIELD (`fork-fixed-distribution-owed` is
+the home for fixed-but-undelivered), or correct an overclaiming prose line. **Do not silence it by
+editing the prose to match a stale field** — that destroys the only accurate record.
+
+**Step 4 — monitoring, SHIPPED with it.** `npm run report:forkgaps` prints the three numbers that hid
+this: prose/field contradictions · fix-done-plus-delivery-owed · entries blocked on an already-closed
+gap. It immediately found **4 entries referencing gaps that are now terminal** — the same shape as
+`FG-2026-07-20-01`, which sat blocked on work that had shipped the day before.
+
+**Steps 2 + 3 — drafted, awaiting approval:** `docs/proposals/fork-gap-axes-v2.md` carries the field
+definitions, the full `state` → `fix`+`delivery` mapping table, 8 worked examples, the derivability
+matrix (what can be machine-checked and what must stay written), and step 2's numbered work list so
+approval is a yes/no rather than a discovery exercise.
+
+**The one thing the mapping cannot automate:** `partly` is ambiguous by construction — it means both
+"half-built" and "built, undelivered". Every other value maps mechanically; those ~17 must be read.
+The detector already lists which ones are the done-and-owed kind.
 
 ## 2026-07-26 — EVERY project's local `main` is diverged: 13/13 carry unpushed BMAD-sync commits, so "delivered" work has never reached any remote
 
@@ -4106,3 +4145,81 @@ The failure is invisible at the moment it happens: `git commit` succeeds, prints
 2. **Never `git reset --soft HEAD~1` in a shared checkout.** Resolve the sha first, reset to it explicitly, and re-verify HEAD is where you left it before and after. Better: don't commit there, and the unwind never arises.
 3. **Cheap deterministic candidate:** a `PreToolUse` Bash check on `git commit` that fires when cwd is the shared main checkout AND `git branch --show-current` is a branch this session did not create. Warn-only; it has the one fact the agent cannot hold — that the pointer moved since it last looked. Sibling of the collision guard, and it fails open the same way.
 4. **Related but separate:** `FG-2026-07-26-*` records that the design-implement worktree branches from `origin/main` and therefore cannot see the durable ledger. That gap and this one pull in opposite directions — one says the manifest is not in the apply tree, this says do not commit it from the shared one. They should be resolved **together**, or the fix for either makes the other worse.
+
+---
+
+## 2026-07-27 — every `design-handoff` HALT path emits a diagnostic to the chat and nothing else: no durable artifact, no scope-register row, no reader, so a correct stop leaves no trace the next session can resume from
+
+```yaml
+id: FG-2026-07-27-03
+class: contract-dimension-gap
+scope: fork
+target: custom/workflows/design/design-handoff/steps/step-01-gather.md
+also: custom/workflows/design/design-handoff/workflow.md
+marker: "halt record + scope-register routing for a design-handoff stop"
+state: open
+owner: fork-maintenance
+routing: NEEDS OWNER ROUTING — defining the halt-artifact contract is a new
+  design decision, not an execution repair. Sibling FG-2026-07-27-01 was
+  likewise logged, not fixed.
+```
+
+### Incident
+
+A `design-handoff` on "the canonical unit record (`/units/[id]`)" halted correctly at step-01 §3f
+validation gate class (a) — the route maps to no `docs/design-policy.md` §8.1 surface class, which
+is a HARD FAIL, so no brief may be produced. The gate did its job.
+
+Then the workflow ran out of contract. `step-01-gather.md` has **four** halt paths — §2-pre
+(ungrounded target), §2a (lookup-drawer redirect), §3e (HALT-on-missing-profile), §3f gate classes
+(a)/(b)/(c) — and every one of them specifies only *the text to emit*. None names an output path,
+an artifact shape, a frontmatter contract, or a consumer. So the session's choices were: let a
+substantial diagnosis evaporate into a chat message, or invent the artifact. I invented three
+things with no precedent to follow — a halt-record filename, a change-package artifact, and the
+shape of the scope-register row that routes it.
+
+The evidence that this is a real cost, not a tidiness complaint: **the same halt has now fired
+three times on this project** — `/lineage` (policy v14), the SR-39 claim evidence-pack station
+(v16), and this one — and each time the policy changelog is the *only* durable record that a
+handoff stopped, written after the fact by whoever authored the unblocking ruling. There is no
+artifact a cold session can read to answer "what has already been halted, and on what?".
+
+### Why structural
+
+Two shared standards already impose obligations that the halt path silently discharges neither of:
+
+- **STD-SCOPEREG-001** — "Before closing any shaping work … read the register and check whether the
+  item needs a row", and every new row owes a `route` + a `next_artifact`. A halted handoff *is*
+  closed shaping work; it is the single most likely moment for scope to end up registered-but-inert,
+  and nothing in the workflow points at the register.
+- **STD-COMPLETION-001** — a completion workflow's close must declare a `completion_disposition`.
+  `step-04-deliver.md` §10 owns that template, but a halt never reaches step-04, so a halted run has
+  no disposition at all. It is neither `pr_merged`, nor `pr_open`, nor `owner_gated_residue` — it is
+  off the enum.
+
+So the failure is not that the gate is wrong. It is that **the workflow models a halt as an
+absence** — the run that produced nothing — when a halt is in fact a *product*: a diagnosis, an
+evidence set, and an owner decision request, all of which are expensive to re-derive and none of
+which the workflow tells the session to keep.
+
+Sibling of **FG-2026-07-27-01** (`design-implement` step-02b HALT has no durable home and no
+reader), and the two share a root: halt verdicts across this workflow family are chat-shaped, not
+artifact-shaped. They should be resolved together or the contract will be defined twice, differently.
+
+### Shape of the fix (proposal — owner's call, not shipped)
+
+1. **A halt-record contract in the workflow, not per-session invention.** One named path
+   (`{implementation_artifacts}/design-handoff-halt-{target_slug}-{date}.md`), a small frontmatter
+   block (`halted_at`, `brief_produced: false`, `policy_version_at_halt`, `decisions_owed`), and the
+   rule that the record carries the evidence already gathered so the rerun is cheap.
+2. **Route the halt into the scope register.** A halted handoff appends a row with
+   `disposition: pending` and the named unblocking decision — which STD-SCOPEREG-001 already
+   permits (`route: TBD` is legal only while pending) but which nothing currently triggers.
+3. **Extend the completion enum with `halted_upstream_gate`**, so a stop is a declarable outcome
+   rather than a missing one.
+4. **A reader at intake.** Before §2-pre capture, check for an existing halt record for this
+   `target_slug` and surface it — the same "prior halted preflight" affordance FG-2026-07-27-01 asks
+   for on the `design-implement` side.
+5. **Deliberately NOT proposed:** making the halt non-blocking, or letting it emit a
+   `pending-policy` brief. The gate is correct and the three project halts prove it; the gap is
+   about what the stop *leaves behind*, never about whether it should stop.
