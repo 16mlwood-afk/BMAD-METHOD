@@ -57,6 +57,20 @@ ls {planning_artifacts}/brand-identity.md 2>/dev/null
 - Set `{brand_identity_path}` to the absolute path of whichever file was loaded
 - Set `{design_system}` = "branded"
 - Parse the frontmatter `version:` field of the loaded file → `{policy_version}` (integer). If no version field exists, default to `1`. This value is stamped into the generated brief's `policy_version_required` field in step-03 so downstream consumers can detect when the policy has moved past the brief's pinned version.
+- **FRESHNESS GATE — verify the tree is current BEFORE stamping (required).** `{policy_version}` is read from whatever tree this run happens to occupy. A stale checkout therefore makes the stamp **a claim the drift detector then trusts**:
+
+  ```bash
+  git fetch -q origin 2>/dev/null
+  git diff --quiet origin/HEAD -- <resolved policy path> || echo STALE
+  ```
+
+  (Substitute the path resolved above — `docs/design-policy.md` or the legacy `brand-identity.md`. If `origin/HEAD` is unset, use the repo's default remote branch.)
+
+  - **Clean →** stamp `{policy_version}` as read.
+  - **Divergent → HALT**, naming BOTH numbers: *"design-handoff — policy version unverifiable. `docs/design-policy.md` in this tree is v{local}; `origin/<default>` is v{remote}. Stamping v{local} would certify this brief against a policy that has since moved. Re-run from a current tree, or rebase this one, then retry."* Do **not** stamp a guessed value, and do **not** stamp the remote's number against locally-read content — a brief must be authored against the policy text it actually read.
+  - **No remote reachable (offline / no `origin`) →** proceed, but record an Open Question in the brief: *"policy freshness unverified — no remote reachable; `policy_version_required: {n}` is this tree's local value."* Silence is what makes this failure invisible.
+
+  **Why this is a gate, not a nicety.** The failure is not "a wrong answer" — it is a brief that **certifies its own correctness against a version nobody checked**. `brief-revision-policy.md` §2 makes consumers *"halt or warn when the current policy version exceeds this"*, so a stale stamp makes that detector report **no drift in exactly the case it exists to catch**. And it is invisible at every existing gate: the brief is internally consistent, the commit-time completeness check tests presence not currency, and `design-implement` compares against the number the brief supplied — nothing re-reads the policy. **Observed 2026-07-28 (cash-recovery):** the main checkout carried policy **v18** while `origin/main` was **v21** (three versions merged by parallel sessions); the run was one incidental grep away from stamping v18 into a brief authored against v21. Structurally likely to recur wherever `_bmad-output/` artifacts live in the main checkout while a worktree mandate keeps *code* out of it — the tree workflows are told to run in is the tree most likely to be behind.
 
 **If neither is found:**
 - Set `{brand_identity}` = empty, `{brand_identity_path}` = empty

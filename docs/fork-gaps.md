@@ -5786,6 +5786,26 @@ Option 2 generalises furthest: the same stale premise poisons the map step, the 
 
 The operator's share is real but small: one `git log origin/main` would have caught both cases, and the second one was caught that way. But the workflow never asks for it, the harness surfaces no drift warning, and the shared checkout is mutated by other sessions between turns. Calling this a discipline failure is how it stays open for another three weeks — the same reasoning that has kept FG-2026-07-08-01 at `fix: none`.
 
+### Case 3 (2026-07-28, `claude-session-20260728-132613`) — RE-CONFIRMED with no workflow in the loop, and the corroboration was FAKE
+
+Same shared checkout, same branch by name (`docs/receive-v2-ad6-disposition-*`), **93 commits behind `origin/main`**. No workflow ran. The input was a bare owner instruction — *"reimbursement queue. build it"* — so no gate, preflight, or contract was involved at all.
+
+`/reimbursements/queue` had shipped **all 9 frames the previous day** (PR #448), on top of read-model phases 1–3 (#430, #440), and was **live in production** (`APP_COMMIT_SHA 8140391` == `origin/main` tip, read off the container via `railway ssh`). Three independent surfaces nonetheless said *unbuilt*:
+
+| Surface read | What it said | Why it was stale |
+|---|---|---|
+| `design-ingest-reimbursement-claims-queue.md` | **73/73 rows `UNVERIFIED`**, zero pass records | #448 changed 6 code files and wrote back **nothing** — the manifest is designated the durable ledger and the apply never touched it (FG-2026-07-26-xx) |
+| `scope-register.md` SR-39 | *"DESIGN RETURNED + IMPLEMENT HALTED"* | the row has no delivery lifecycle — true on 07-26, never updated on ship (FG-2026-07-27-xx) |
+| SessionStart detectors (buildable-scope, checkpointed-pass) | routed toward unbuilt / resumable work | both read the two artifacts above |
+
+**What this adds to -06.** Case 1 was one gate reading one wrong tree. Case 3 is **three sources agreeing, none of which reads code** — the scope row, the manifest, and the detectors that consume them. Their agreement *reads* as corroboration and is actually one upstream cause counted three times. A session that dutifully cross-checks its sources still gets a confident wrong answer, because cross-checking artifacts against artifacts is not cross-checking.
+
+The manifest is now a **permanently** stale witness on this surface: with no write-back it will read `73/73 UNVERIFIED` forever, so every future session that consults it is told to build something that has been live since 27 July. The scope row could at least be corrected by hand; an unwritten ledger cannot self-correct.
+
+**What actually stopped it:** nothing structural — a deliberate `git log origin/main -- <path>` before starting, taken on the [[operations-are-not-evidence-artifacts-are]] reflex that a commit message is not evidence. Cost: a whole session spent proving a negative. Nothing was rebuilt.
+
+**Bearing on the candidate fixes above.** This strengthens **option 2** (assert the premise first) over option 1. Option 1 fixes the probes inside one workflow; Case 3 never entered a workflow. The premise assertion — *is this checkout at `origin/main`, and if not, by how much* — is the only one of the three that would have fired here, because it belongs to the **session**, not to any gate. Still PROPOSED, not shipped: it remains a contract change, and the entry stays `state: open`.
+
 ## 2026-07-28 — the net-new existence gate sits in `design-implement` (the CHEAP consumer) and not in `design-ingest` (the EXPENSIVE producer), so a full per-frame fan-out runs to completion against a surface that has no implementation
 
 ```yaml
@@ -5848,3 +5868,595 @@ ingest at a not-yet-implemented surface is the expected order of work, not opera
   session says it is.
 - **Priority: medium.** No data loss and no wrong output — the manifest is correct and useful. The
   cost is purely that a large context spend happens before the check that would have re-framed it.
+
+---
+
+## 2026-07-28 — `design-implement`'s intake covers HALTED and NET-NEW but not ALREADY-SHIPPED, so a re-paste of a stable design prompt spends a full ingest to rediscover the work is done
+
+```yaml
+id: FG-2026-07-28-08
+class: lifecycle-asymmetry-in-an-intake-gate
+scope: fork
+target: custom/workflows/implement/design-implement/steps/step-02b-regression-surface.md  (§3b) + workflow.md + step-04 §9 + step-01a step 2a
+related: FG-2026-07-27  (net-new preflight at capability granularity — the same probe failing in the OPPOSITE direction)
+marker: "is there anything LEFT to diff?"
+state: fork-fixed-distribution-owed
+fix: done
+delivery: owed
+distribution: "sync-bmad-workflows.sh fan-out to the 13 projects — rides the standing owner-gated fleet re-sync gate (STATUS 'Now'). PRECONDITION before fan-out: verify on a live project that the middle verdict `prior-pass-residual-deltas` CONTINUES rather than exits — an implementation that exits there has silently inverted this fix into a regression."
+owner: fork-maintenance
+routing: owner-routed
+routing_note: "Logged as NEW DESIGN (proposed, not shipped) because a new intake branch defines a new 'is this done?' verdict. Owner said 'fix it now' in the same session, supplying the marker; built under that instruction."
+```
+
+### Incident
+
+A re-paste of the Claude Design prompt for `templates/claim-evidence-pack/ClaimEvidencePack.html`
+(cash-recovery, 2026-07-28) entered `design-implement` and nothing in intake noticed that the design
+had **already been built, merged and deployed** — shipped in `#448` (all 9 frames, live-wired), with
+`c3986ee` an ancestor of the live `8140391`. The run had to establish that by hand, from `git log`
+and deploy ancestry, before it could tell the owner anything true about what was left to do.
+
+Two further facts made it worse rather than incidental: the target file **404'd** (the wrapper had
+been deleted from the design project while all four of its `ui_kits/` modules remained intact), and
+the run *did* go on to find a real defect in the shipped surface — a missing `Amazon order ID`
+identifier row, fixed in cash-recovery PR #525. So the correct outcome was neither "exit, it's done"
+nor "run the full build": it was **continue, re-framed as a residual-delta pass**, which is the
+verdict the intake had no way to express.
+
+- **Target file:** `~/bmad-method-v6/custom/workflows/implement/design-implement/workflow.md`
+  (§"Input Resolution" — alongside the existing *Prior-halt recall* and *Net-new / no-target
+  preflight* blocks, which is exactly where the missing third branch belongs).
+- **routing: NEW DESIGN — owner said "fix it now" (2026-07-28). ✅ FIXED IN FORK, DISTRIBUTION OWED.**
+  Logged as proposed-not-shipped because adding an intake branch defines a new "is this done?"
+  verdict; the owner supplied the routing marker in the same session and it was built.
+  **Fires in ZERO projects until a sync runs** — batched into the STATUS.md fleet re-sync gate
+  (owner ruling 2026-07-26: no `custom/` change gets its own sync window).
+
+**What shipped (fork-side):**
+
+- `steps/step-02b-regression-surface.md` — new **§3b Already-shipped recall**, placed post-map /
+  pre-grid (it needs step-02's impl paths + §3's delta, so it cannot be a cheap intake probe —
+  which honestly bounds the saving to the grid + apply, NOT the ingest).
+  Reads two signals **already in hand** — git provenance on the impl paths, and whether §3's
+  capability delta is all-empty — and yields a **three-way taxonomy, not a boolean**:
+  `already-shipped` · `prior-pass-residual-deltas` · `matches-no-provenance`.
+- `workflow.md` — `{prior_applied}` state variable + a pointer from the net-new preflight to its
+  twin, so the two ends of the lifecycle are legible from one place.
+- `steps/step-04-apply-and-deliver.md` — §9 report opens with the prior-commit attribution on
+  either provenance verdict. **This framing is most of the value.**
+- `steps/step-01a-ingest-url.md` — the second, smaller half: a **step 2a** slug-based degradation
+  ladder for a 404'd target (sibling `.html` → `ui_kits/<slug>/` modules → sibling wrapper),
+  with a mandatory disclosure of which source actually resolved.
+
+**Two design calls worth recording, because both were tempting to get wrong:**
+
+1. **The middle verdict is the valuable one.** A boolean "already shipped?" would have exited the
+   very run that motivated this entry — which went on to find a real defect (a missing identifier
+   row, cash-recovery PR #525). `prior-pass-residual-deltas` **continues** and merely re-frames
+   the run. **The failure mode to avoid is blocking a legitimate verification re-run, not
+   permitting one** — so this SURFACES and never gates, matching the Prior-halt recall's posture.
+2. **An all-empty CAPABILITY delta is not a green GRID.** §3 compares capabilities; the grid
+   compares pixels, plus copy and frame chrome the grid is itself blind to. The `already-shipped`
+   verdict is therefore a **cost** judgement ("a full grid to reconfirm a shipped surface is
+   expensive"), never a correctness claim, and §3b forbids phrasing it as "the implementation
+   matches the design."
+
+**Observed, not theorised (cash-recovery, this session).** The owner re-pasted the Claude Design
+prompt for `templates/claim-evidence-pack/ClaimEvidencePack.html`. That design was already built
+(`#448`, all 9 frames, live-wired), merged, and **deployed** — `c3986ee` is an ancestor of the live
+`8140391`. Nothing in the workflow's intake asks the question.
+
+**Gap.** Intake is well covered at one end of the lifecycle and not at all at the other:
+
+| Prior state of the work | Detected at intake? | By what |
+|---|---|---|
+| A previous run HALTED | ✅ | Prior-halt recall (globs `design-implement-preflight-*.md`) |
+| A previous run CHECKPOINTED | ✅ | manifest `{resume_prior_dispositions}` + the pending-checkpoint detector |
+| Nothing exists to diff against | ✅ | Net-new / no-target preflight (route · page · backing object) |
+| **The design is already fully applied and SHIPPED** | ❌ | **nothing** |
+
+Left alone, the run ingests the bundle, maps the implementation, runs step-02b and builds a 9-frame
+grid — to conclude every row already matches. The cost is the *whole* workflow, and it lands on a
+surface where a careless "apply" against a live, deployed route is the worst place to spend
+unverified effort.
+
+**This is the same case the prior-halt recall was built for, not an edge case.** That block's own
+rationale is that *"the 'Send to local coding agent' panel emits a stable prompt per file… so the
+identical input arrives again each time the owner revisits the design."* That is as true after the
+work SHIPS as while it is blocked — arguably more so, since revisiting a design you just shipped is
+the normal thing to do. Only the halted branch was implemented. Same trigger, same re-paste, half
+the coverage.
+
+**Note the asymmetry with the net-new gate.** Net-new asks *"is there anything to diff against?"*
+and exits when the answer is nothing. Its twin — *"is there anything LEFT to diff?"* — is unasked,
+so the two ends of one lifecycle are policed very differently.
+
+**Cheap signal, if the owner wants it built.** Not a new artifact: `git log --oneline origin/main --
+<the impl paths step-02 already resolves>` for a commit naming the `{target_slug}` / the design,
+plus deploy ancestry. It needs step-02's mapping to be meaningful, so the honest placement is a
+**post-map, pre-grid** surface (adjacent to step-02b), NOT the cheap pre-ingest lane — which does
+bound the saving to the grid rather than the ingest. It should **SURFACE, not gate**, same posture
+as the prior-halt recall: a re-run to verify residual deltas is legitimate — this session found a
+real one that way (PR #525, a missing identifier row) — so the failure mode to avoid is blocking
+it, not permitting it.
+
+- **Priority: medium.** No wrong output, no data loss — the run reaches a correct verdict. The cost
+  is a large avoidable spend, plus a report that says "all rows applied" reading as *this run did
+  the work* rather than *this was already done and deployed*, which is the more misleading of the two.
+
+**Related but NOT a duplicate:** the 2026-07-27 capability-granularity entry is the same preflight
+failing in the *opposite* direction — a net-new capability waved through as brownfield. This is the
+shipped-already direction. Both are the surface-granularity probe being asked a question it does
+not answer.
+
+**Second, smaller, same session — cheap to fold in if this is picked up.** The `?file=` target in
+the pasted prompt **404s**: `templates/claim-evidence-pack/ClaimEvidencePack.html` was deleted from
+the design project while the design itself remains intact under `ui_kits/claim-evidence-pack/*.jsx`.
+`steps/step-01a-ingest-url.md` has no defined degradation for "named target is gone but the design
+is still there" — URL.6's near-empty-catalog guard backstops a *plausible-but-thin* catalog, not a
+hard 404 on the target. This session navigated to the modules by hand. The fix is a fallback
+(`get_file` 404 → resolve the frame via the `ui_kits/<slug>/` modules and SAY the wrapper is
+missing), not a refusal.
+
+---
+
+## 2026-07-28 — RETRACTED+SUPERSEDED (same day): the reviewed Bash edit-guard was wired NOWHERE; the superseded legacy regex blob was the live enforcement
+
+```yaml
+id: FG-2026-07-28-10
+class: enforcement-wiring-drift
+scope: project
+target: .claude/settings.local.json
+marker: "looks like an edit-equivalent"
+state: closed
+fix: done
+delivery: n/a   # machine-local settings; not synced, not tracked
+owner: mason
+routing: routed
+routing_note: "ROUTED by owner 2026-07-28 ('fix all four'). Re-wired + verified by guard-health-check.sh (4/4) and test_bash_edit_guard.py 68/68 from the main checkout. Backup .bak-rewireguard-20260728T125030Z."
+contradiction_ack: "SUPERSEDES the same-day tilde-expansion diagnosis in this slot, which was WRONG and was 'confirmed' by a fail-open probe (empty stdout read as ALLOW). Recurrence is NOT fixed: guard-health-check.sh is invoked by nothing and exits 0 even while printing findings."
+```
+
+**Target file:** `.claude/settings.local.json` (machine-local, cash-recovery only — does NOT sync)
+**Lane:** MAINTENANCE — **FIXED AND VERIFIED in the same session.**
+**Session:** `claude-session-20260728-131615`
+
+### Incident
+
+A heredoc append to an allowlisted fork path was denied with *"looks like an edit-equivalent"* — a
+message that names no target. The reviewed guard names its targets. Two different code paths, and the
+one that fired was the superseded legacy blob.
+
+### RETRACTION FIRST — what this entry originally claimed, and why it was wrong
+
+This entry was first logged as *"the guard resolves a `~/`-prefixed write target against
+`CLAUDE_PROJECT_DIR`, so an allowlisted fork edit is denied."* **That diagnosis was WRONG.** It was
+inferred from a single differential (tilde denied / absolute allowed) with no probe behind it. When
+the owner asked for a fix, probing the guard directly showed tilde expansion works correctly on both
+paths — `os.path.expanduser` is already applied at both target-resolution sites.
+
+**Worse, the first probe harness "confirmed" the wrong answer.** It treated EMPTY STDOUT as ALLOW,
+and the guard path was mistyped (missing `.bak`), so python never opened the file, wrote to stderr,
+and produced empty stdout — every case reported ALLOW. A fail-open harness returned exactly the
+result being hoped for, and was one step from deleting a correct, observed finding as
+"unreproducible." The rebuilt harness asserts the file exists, asserts rc==0, treats stderr as fatal,
+and carries two controls (a real source write that MUST deny, a `/tmp` write that MUST allow).
+
+**Durable lesson, worth more than the bug:** a diagnostic that cannot fail is not evidence. Any probe
+built to test an enforcement mechanism needs a control case in BOTH directions before its output is
+allowed to change a conclusion.
+
+### The actual root cause
+
+The deny message that fired read *"looks like an edit-equivalent (sed -i / cat > / tee / etc.)"* and
+**named no target**. The reviewed guard's denies name theirs (*"This bash command writes:
+src/db/schema.ts"*). Two different code paths — and the target-less wording belongs to the **2050-char
+legacy inline regex blob**, which `CLAUDE.md` declares superseded and *"where it is still running it
+is a finding, not a fallback."*
+
+Inspection of the live `settings.local.json` PreToolUse hooks:
+
+```
+matcher='Bash'  len=2050  reviewed_guard=False  legacy_phrase_present=True
+```
+
+**`bash_edit_guard.py` was invoked by NO Bash matcher.** The project's own
+`guard-health-check.sh` confirmed both halves independently:
+
+```
+✗ settings.local.json does NOT invoke bash_edit_guard.py — the legacy inline regex is
+    probably still live. This is the exact 2026-07-26 finding: green suite, zero wiring.
+✗ the LEGACY regex blob is still present in settings.local.json — it is superseded and
+    must not run anywhere new
+```
+
+### Why this is structural
+
+`CLAUDE.md` records this exact regression as **already fixed** ("Now genuinely wired … the previous
+settings file is backed up as `.bak-preguardwire-*`"). It recurred. `settings.local.json` is
+machine-local, gitignored, unversioned and rewritten by many sessions — **four `.bak-*` files carry
+today's date alone** — so any session's rewrite can silently drop a hook, and nothing detects it
+because the health check is not wired to anything. Meanwhile a parallel session was actively
+iterating false-positive fixes on `bash_edit_guard.py` (+61 lines uncommitted) that **fired nowhere**,
+and the four open fork-gaps about Bash false positives stayed open *for that reason*.
+
+The deeper shape: **the most blast-radius-heavy config in the system is the one file with no version
+control, no review, and no drift detection.**
+
+### Fix — SHIPPED and VERIFIED this session
+
+Re-wired the reviewed guard and removed the legacy blob (backup first:
+`.bak-rewireguard-20260728T125030Z`). Post-fix health check:
+
+```
+✓ settings.local.json invokes the reviewed guard
+✓ ALLOW probe: read-only command mentioning sed -i / cat > / tee is permitted
+✓ DENY probe: a real write to tracked source is blocked
+✓ override probe: BMAD_ALLOW_MAIN_EDIT=1 permits AND writes an audit row
+HEALTHY
+```
+
+`test_bash_edit_guard.py` from the main checkout: **68/68**.
+
+### STILL OPEN — the recurrence is not fixed, only this instance
+
+Nothing stops the next settings rewrite dropping it again. `guard-health-check.sh` exists, passes,
+and **is invoked by nothing** — and it `exit 0`s even while printing findings, so it cannot gate
+anything as written. Candidate: run it from SessionStart (or a pre-push hook) and make it exit
+non-zero on a wiring failure. Owner-gated: it adds a startup check to every session.
+
+---
+
+## 2026-07-28 — the guard suite's worktree refusal is a path-substring check, so a worktree created anywhere else runs it and reports 25 confident false failures
+
+```yaml
+id: FG-2026-07-28-11
+class: environment-misclassification
+scope: project
+target: .claude/hooks/test_bash_edit_guard.py
+marker: "/.claude/worktrees/"
+state: open
+fix: none
+delivery: n/a   # project-local hooks; not synced
+owner: mason
+routing: unrouted
+routing_note: "Fix direction is a real query (git rev-parse --git-common-dir != --git-dir) replacing the substring, in the suite refusal AND both guards' detection. Not shipped in this pass — it changes guard behaviour, wants its own golden case."
+contradiction_ack: "The refusal exists to prevent a MEANINGLESS GREEN in a worktree; outside the conventional path it produces a meaningless RED instead (25 false failures vs 68/68 from the main checkout), which is worse — it invites fixing non-bugs in a healthy guard."
+```
+
+**Target files:** `.claude/hooks/test_bash_edit_guard.py` (refusal at the `PROJECT` check) ·
+`.claude/hooks/bash_edit_guard.py` + `collision_guard.py` (the same `*/.claude/worktrees/*` detection)
+**Lane:** MAINTENANCE (a guard that mis-classifies its own environment)
+**Session:** `claude-session-20260728-131615`
+
+### Incident
+
+To keep a parallel session's uncommitted WIP out of my commit, I created a git worktree **outside**
+the repo (in the session scratchpad) — legitimate, and it avoids the known "resident worktrees live
+INSIDE the repo tree" gap. Consequences, all three from one cause:
+
+1. **The suite ran and reported 25 failures**, every one `expected deny, got allow`. Its refusal is
+   `if "/.claude/worktrees/" in PROJECT`, which my path does not match — so instead of refusing it
+   produced a full page of confident, meaningless red. Run from the main checkout: **68/68 pass.**
+2. **The Edit tool denied a `docs/` edit** with *"you are NOT in a worktree"* — while standing in a
+   git worktree. `git rev-parse` would have said otherwise; the substring did not.
+3. An earlier probe was blocked the same way.
+
+### Why this is structural
+
+The refusal exists precisely because *"every case would trivially pass and report a meaningless
+green"* in a worktree — the suite already knows its output is environment-dependent. But it detects
+the environment by **string-matching a conventional path** rather than asking git. So the check is
+sound in intent and unsound in mechanism: it protects the one worktree location someone thought of,
+and produces its worst output — confident wrong answers — everywhere else. A *green* meaningless run
+is the documented fear; this is the *red* meaningless run, which is worse, because it invites
+"fixing" 25 non-bugs in a guard that was healthy.
+
+It also makes the supported worktree path **load-bearing and undocumented as such**: `EnterWorktree`
+happens to use `.claude/worktrees/`, so the convention holds by luck, and any deviation silently
+degrades three separate mechanisms.
+
+### Fix direction
+
+Replace the substring test with a real query — `git rev-parse --git-common-dir` differing from
+`--git-dir` means "inside a linked worktree", location-independent — in the suite's refusal AND in
+both guards' detection. Keep the substring as a fast path if desired, but never as the sole signal.
+Add a golden case: a worktree at a non-standard path must be RECOGNISED as a worktree.
+
+---
+
+## 2026-07-28 — the collision stamper's "never overwrite an owner" guard treats its own placeholder as an owner, so `claimed_by_session_id` is unpopulated on 41 claims and the gate has nothing to key on
+
+```yaml
+id: FG-2026-07-28-12
+class: identity-field-rot
+scope: project
+target: .claude/hooks/collision_stamp.py
+marker: "PENDING-STAMP"
+state: closed
+fix: done
+delivery: n/a   # project-local hook; not synced
+owner: mason
+routing: routed
+routing_note: "ROUTED by owner 2026-07-28 ('fix all four'). Shipped cash-recovery aa41407: placeholder recognised AND the stamp bound to the entry this write introduced. 27/27 tests."
+contradiction_ack: "The OBVIOUS one-line fix (treat the placeholder as unowned) would have introduced identity FORGERY — two sessions wrote claims 16s apart, so freshness alone cannot bind. 41 legacy placeholders deliberately NOT backfilled: no recoverable owner, and a guess is worse than UNKNOWN."
+```
+
+**Target file:** `.claude/hooks/collision_stamp.py` (machine-local, cash-recovery only — does NOT sync)
+**Lane:** MAINTENANCE (a detector that no-ops) — **but a fix is deliberately NOT shipped; see below.**
+**Session:** `claude-session-20260728-131615`
+
+### Incident
+
+Two claims written 16 seconds apart under an IDENTICAL `claude-session-<timestamp>` display header;
+the collision guard could not separate them and warned on both — including, later, on my own claim as
+I released it.
+
+### Evidence (measured)
+
+```
+41 claimed_by_session_id: "PENDING-STAMP"
+ 8 claimed_by_session_id: "957bc8b4-2c77-4b7e-a5a3-c9671db9c8be"
+ 8 claimed_by_session_id: "67e5800d-0cae-47a2-9e48-a242edb85c9d"
+ …
+```
+
+The stamper works on some paths and not others, and **41 claims carry the literal placeholder.**
+
+### Root cause — exact, one line
+
+`collision_stamp.py:130`:
+
+```python
+already_owned = bool(fields.get("claimed_by_session_id", "").strip())
+```
+
+`"PENDING-STAMP"` is a non-empty string, so `already_owned` is `True` and the guard at line 133
+(`if active and not already_owned and fresh and session_id`) refuses to stamp. **The placeholder that
+exists to mark "not yet stamped" is what permanently prevents the stamp.**
+
+### Why this is structural
+
+`CLAUDE.md` states the design plainly: `claimed_by_session_id` is *"the **only** field the gate
+compares"*; `claimed_by` is *"a non-authoritative display label"*, because the
+`claude-session-<timestamp>` header is provably not unique. **That is now observed, not
+hypothetical:** this session and a parallel one ran under the identical header
+`claude-session-20260728-131615` and both wrote claims. With the authoritative field unpopulated on
+both, the guard cannot separate them and degrades to warning on everything — it fired twice here,
+once on an unrelated claim (no path overlap: clerk/domain vs owner/staging) and once on **my own**
+claim as I released it. A gate that warns on self trains its warnings to be read as noise, which is
+exactly how the WARN→DENY promotion evidence gets poisoned.
+
+### Why the obvious fix is WRONG — do not ship it
+
+Treating `PENDING-STAMP` as unowned **introduces identity forgery.** Line 133 has no "is this the
+entry *this* tool call just wrote" check — it stamps *any* `active` + `fresh` + unowned entry, and 41
+such entries exist including **other sessions' active claims.** Removing the placeholder guard would
+let whichever session next touches the register stamp its own `session_id` onto another session's
+claim: the exact AD-24 `actor`-vs-`author_provenance` failure the design exists to prevent,
+re-introduced by the fix for it.
+
+### Fix direction
+
+1. Bind stamping to the entry introduced by *this* write (PreToolUse snapshot → PostToolUse diff).
+   The design already calls for a before/after comparison for the sibling "detect mutation of another
+   session's claim" gap — **same mechanism; land them together.**
+2. Only then treat `PENDING-STAMP` as unowned.
+3. Do **not** backfill the 41 existing placeholders — they have no recoverable owner, and a guessed
+   one is worse than `UNKNOWN`. Let the fix apply forward only.
+
+
+**STATUS: FIXED 2026-07-28** — `collision_stamp.py` now recognises `PENDING-STAMP` (and `pending`/`tbd`/`none`/`-`) as placeholders, and binds the stamp to the entry THIS write introduced (the `surface` string must appear in the Edit `new_string` / Write `content` / Bash `command`), so the forgery path the naive fix would have opened stays shut. Placeholder line is REPLACED, never duplicated. 27/27 tests pass (19 pre-existing unchanged + 8 new, incl. the 16-second forgery case). The 41 legacy placeholders are deliberately NOT backfilled — no recoverable owner. cash-recovery `aa41407`.
+
+---
+
+## 2026-07-28 — `design-handoff` stamps `policy_version_required` from whatever tree it happens to read, with no freshness check, so a stale checkout self-certifies a brief against the wrong policy version
+
+```yaml
+id: FG-2026-07-28-13
+class: unverified-input-stamped-as-fact
+scope: fork
+target: custom/workflows/design/design-handoff/steps/step-01-gather.md
+marker: "FRESHNESS GATE"
+state: closed   # fork-side gap CLOSED; distribution tracked by `delivery: owed` + the STATUS.md batch
+fix: done
+delivery: owed   # fires in ZERO projects until a sync runs
+distribution: "sync-bmad-workflows.sh fan-out to the 13 projects — rides the standing owner-gated fleet re-sync gate (STATUS 'Now')"
+owner: mason
+routing: routed
+routing_note: "ROUTED by owner 2026-07-28 ('fix all four'). MAINTENANCE not doctrine — brief-revision-policy.md §2 already requires consumers to halt/warn on this field. BATCHED into the standing owner-gated fleet re-sync gate (STATUS.md ## Now) per the 2026-07-26 no-solo-sync-window ruling."
+contradiction_ack: "A stale stamp makes the drift detector report NO DRIFT in exactly the case it exists to catch, and is invisible at every existing gate because nothing re-reads the policy. SECOND, SMALLER CONTRADICTION worth recording: this entry wanted state fork-fixed-distribution-owed, but check-fork-gap-stale-open --creation-mode exempts ONLY state: closed, so a NEW entry that ships its fix in the same commit cannot use the distribution-owed state without erroring (its marker is present by construction). Logged as closed + delivery: owed instead. The checker blind spot is real and unfixed — it makes fork-fixed-distribution-owed unusable at creation time."
+```
+
+**Target file:** `custom/workflows/design/design-handoff/steps/step-01-gather.md` §1b
+**Lane:** MAINTENANCE (a gate reading a value it cannot trust) — the fix is a freshness assertion, not a new rule
+**Session:** `claude-session-20260728-131615`
+
+### Incident
+
+§1b says: *"Parse the frontmatter `version:` field of the loaded file → `{policy_version}` … stamped
+into the generated brief's `policy_version_required` field … so downstream consumers can detect when
+the policy has moved past the brief's pinned version."*
+
+Main checkout: `version: 18`. Worktree off `origin/main`: `version: 21`. Three versions (v19/v20/v21)
+merged by other sessions that the main checkout's working branch did not carry. Authoring from the
+main checkout — the default place to run a BMAD workflow, since `_bmad-output` artifacts live there —
+would have shipped `policy_version_required: 18`.
+
+### Why this is structural, not a stale-branch nuisance
+
+An open entry already covers stale `main` driving wrong investigation. **This is sharper:** the stale
+read does not produce a wrong answer, it produces a brief that **certifies its own correctness
+against a version nobody checked.**
+
+- `policy_version_required` exists *specifically* to let consumers halt on policy drift. Stamping it
+  from an unverified tree makes the drift detector report `no drift` in exactly the case it was built
+  for — v19/v20/v21 could each have changed a rule the brief now silently violates.
+- **Invisible at every gate:** the brief is internally consistent, the commit-time completeness check
+  tests presence not currency, and `design-implement` compares against the number the brief supplied.
+  Nothing re-reads the policy.
+- **Guaranteed to recur here:** `bmad-artifacts-untracked-main-only` pushes workflow runs into the
+  main checkout while the worktree mandate pushes *code* out of it — so the tree most likely to be
+  stale is the one workflows are told to run in.
+- Caught only by chance, having re-grepped the policy in a worktree for an unrelated reason.
+
+### Fix direction
+
+In §1b, after resolving the policy file, assert freshness before stamping:
+`git fetch -q && git diff --quiet origin/main -- docs/design-policy.md`. On divergence, halt naming
+both version numbers — "policy in this tree is v18; `origin/main` is v21; re-run from a current tree
+or rebase". Cheap, deterministic, fails loud in the one case that currently fails silent.
+
+
+**STATUS: FIXED IN FORK 2026-07-28, DISTRIBUTION OWED** — `custom/workflows/design/design-handoff/steps/step-01-gather.md` §1b now carries a FRESHNESS GATE: fetch + diff the resolved policy path against `origin/HEAD` before stamping; HALT on divergence naming BOTH version numbers; proceed with a recorded Open Question when no remote is reachable. Confirmed MAINTENANCE not doctrine — `brief-revision-policy.md` §2 already requires consumers to halt/warn on this field, so reading it from an unverified tree was always an execution defect. **Fires in ZERO projects until a sync runs** — batched into the standing owner-gated fleet re-sync gate (STATUS.md `## Now`), per the 2026-07-26 ruling that no single `custom/` change gets its own sync window.
+
+---
+
+## 2026-07-28 — project design-policy §8.3 says an undecided-owner-class handoff must HALT; workflow §3f step 3 says WARN-ONLY and "do not freeze owner work". Both are live; the agent adjudicates mid-run
+
+```yaml
+id: FG-2026-07-28-14
+class: policy-workflow-contradiction
+scope: project
+target: docs/design-policy.md
+marker: "viewport policy not set for this owner surface-class"
+state: closed
+fix: done
+delivery: n/a   # project design-policy; consumed in-repo
+owner: mason
+routing: routed
+routing_note: "ROUTED by owner 2026-07-28 ('fix all four') — applied the direction this entry recommended. design-policy v22: OPEN ambition = WARN-ONLY; HALT reserved for CONTRADICTION of a DECIDED posture."
+contradiction_ack: "DOCTRINE-adjacent: the owner authorised the fix, and the direction was the one recommended here, but the underlying product question (the last undecided owner viewport class) remains the owner's and settling it retires this clause entirely."
+```
+
+**Target files:** `docs/design-policy.md` §8.3 (cash-recovery) **and**
+`custom/workflows/design/design-handoff/steps/step-01-gather.md` §3f step 3
+**Lane:** **NEW DESIGN / DOCTRINE — proposed, NOT shipped.** Which one wins is Mason's call.
+**Session:** `claude-session-20260728-131615`
+
+### Incident
+
+A `design-handoff` re-issue of `/staging/[unitId]` landed in the one remaining undecided owner
+viewport class, and the run had to adjudicate two live, opposite instructions mid-flight before it
+could decide whether to produce a brief at all.
+
+### The contradiction, verbatim
+
+`docs/design-policy.md` §8.3:
+> A `design-handoff` / `design-implement` for an owner surface whose ambition is not yet set must
+> **HALT** with a "viewport policy not set for this owner surface-class" diagnostic rather than assume
+> a posture or invent breakpoints.
+
+`step-01-gather.md` §3f step 3:
+> **Owner class + ambition OPEN → WARN-ONLY (do not freeze owner work).** … mark the brief
+> `unverified` / `pending-policy`, and LET THE HANDOFF CONTINUE.
+
+### Why it is structural
+
+Not a rule and its refinement — **opposite instructions for the same state.**
+`SOURCE-OF-TRUTH PRECEDENCE` puts project policy above the workflow, so a literal reading says HALT
+while the workflow being executed says CONTINUE. Precedent cuts the other way: the v18 changelog calls
+the warn-only path for `/stock` *"exactly as the policy already prescribes"* — i.e. §8.3 was already
+being read as if it said warn-only, which it does not.
+
+Net effect: **every handoff onto the one remaining undecided owner class ("Owner listings &
+catalog-management" — `/listings`, `/staging`, `/pricing`) is adjudicated ad hoc by whichever agent
+runs it.** I proceeded warn-only (owner standing default: proceed, don't stall, name the decision). A
+session reading precedence literally would have halted and delivered nothing. Same input, opposite
+output, both defensible — which makes a brief's `pending-policy` status a coin-flip rather than a
+contract.
+
+### Fix direction (owner decision, one line either way)
+
+Either amend §8.3 to say warn-only for an OPEN class and reserve HALT for a *contradiction of a
+DECIDED posture* (matching §3f's a/b/c/d split) — or amend §3f to honour a project policy that
+mandates HALT. **The scope is tiny and closing:** exactly one owner class remains undecided, so this
+has one live surface family left. Settling that class's posture retires the question entirely, which
+may be cheaper than reconciling the two documents.
+
+
+**STATUS: RESOLVED 2026-07-28 (owner-authorised) — design-policy v22.** Owner said "fix all four", so the direction recommended in this entry was applied: §8 preamble + §8.3 now say an OPEN owner ambition proceeds **WARN-ONLY** (`pending-policy`/`unverified`, fields `pending`), and **HALT is reserved for a CONTRADICTION of a DECIDED posture** (§3f a/b/c/e/f). Rationale recorded in the v22 changelog row: an OPEN ambition is *missing* information that an artifact can carry truthfully (the `/stock` v18→v19 re-verify proved the loop closes); a contradiction is *wrong* information nothing downstream re-checks. No posture, class membership, token, hard failure or assertion changed. **The owner still owns the underlying question** — settling the last undecided class (`Owner listings & catalog-management`) retires this clause's only live surface family, and the changelog says to prefer that over relying on the rule.
+
+---
+
+## 2026-07-28 — `design-implement` resolves WHICH BRIEF IS ACTIVE from whatever tree it happens to read; the manifest path has a freshness reconciliation and the URL/bundle path has none
+
+```yaml
+id: FG-2026-07-28-15
+class: unverified-input-stamped-as-fact
+scope: fork
+target: custom/workflows/implement/design-implement/steps/step-01-ingest-design.md
+marker: "brief freshness"
+state: open
+fix: none
+owner: mason
+routing: recorded
+sibling: FG-2026-07-28-13   # same shape, PRODUCER half (design-handoff stamping policy_version_required)
+contradiction_ack: "The gate that exists to stop building a superseded design is the gate a stale tree turns into a green light — and it is green, not absent, so nothing downstream re-checks it."
+```
+
+**Target file:** `custom/workflows/implement/design-implement/steps/step-01-ingest-design.md` §SHARED.1a
+**Lane:** MAINTENANCE (a gate reading a value it cannot trust) — the fix is a freshness assertion, and the same path already implements one for a sibling input
+**Session:** `claude-session-20260728-135458`
+
+### Incident
+
+Implementing `/staging/[unitId]` from a Claude Design URL. §SHARED.1a resolves
+`{handoff_supersede_status}` by matching `{target_slug}` against the briefs in
+`{implementation_artifacts}` and reading their `brief_status` — from the working tree.
+
+The main checkout sat **46 commits behind `origin/main`** on another session's branch. In that tree:
+
+- `design-brief-owner-staging-2026-06-20.md` reads `brief_status: active`, `superseded_by:` empty
+- `design-brief-owner-staging-2026-07-28.md` **does not exist**
+- `docs/design-policy.md` reads `version: 18`
+
+On `origin/main` the same two files read `superseded` / `superseded_by: …2026-07-28.md`, the
+successor exists and is `active`, and the policy is v21. So the gate resolves `active` **against the
+superseded brief** and the run proceeds — conformant, green, and building to a contract that was
+replaced eight days ago at a policy version three revisions old.
+
+Caught only because the bundle's own `@template` comment named a brief filename that was not on
+disk. Nothing in the workflow asks that question.
+
+### Why this is structural, not the same as FG-2026-07-28-13
+
+FG-13 is the **producer** half: `design-handoff` *stamping* `policy_version_required` from a stale
+tree. Its fix lands in `step-01-gather.md` §1b and does not touch this path. This is the **consumer**
+half: `design-implement` deciding **which brief is the contract at all**. Same class, different file,
+neither fix reaches the other.
+
+What makes it sharper than a general stale-`main` nuisance:
+
+- **The gate inverts rather than fails.** §SHARED.1a's whole job is refusing to silently build a
+  superseded design. A stale tree does not make it error — it makes it return `active`, which is
+  the one answer that means "carry on".
+- **The asymmetry is already in the file.** The `ingest_manifest` path carries an explicit
+  *Freshness reconciliation* block that compares a manifest's recorded `source_run_date` against the
+  current brief and WARNs on drift. The URL/bundle path resolves the brief itself with no equivalent
+  — so the input most likely to be stale is the one nobody checks. The precedent for the fix is
+  eleven paragraphs up in the same step.
+- **Guaranteed to recur in this project shape.** `bmad-artifacts-untracked-main-only` pushes BMAD
+  runs into the main checkout (that is where `_bmad-output` lives) while the worktree mandate pushes
+  *code* out of it — so the tree the workflow is told to run in is the tree most likely to be
+  parked on someone else's branch.
+- **Invisible at every existing gate.** §SHARED.1b then gates bundle→brief conformance against the
+  brief §SHARED.1a picked, so a wrong brief produces a confident `bundle_conformance: pass`. The
+  §SHARED.1a-iii prior-manifest check globs the same stale tree. The whole intake agrees with itself.
+
+### Fix direction
+
+Mirror the manifest path's freshness discipline onto the brief lookup in §SHARED.1a. After matching
+the brief for `{target_slug}`, assert the artifacts directory is current before trusting
+`brief_status`: `git fetch -q` then `git diff --quiet origin/HEAD -- <implementation_artifacts>`.
+On divergence, do not halt outright — **re-resolve against `origin/HEAD`** (`git show
+origin/HEAD:<path>`) and say in the SHARED.2 summary which tree the verdict came from. A brief that
+exists on `origin/HEAD` but not in the working tree is the loud case and should surface by name.
+Where no remote is reachable, record `supersede_resolved_from: working-tree (unverified)` rather
+than asserting `active`.
+
+Cheap, deterministic, and it fails loud in the one case that currently fails silent. Worth pairing
+with FG-2026-07-28-13's fix so both halves of the shape land together — and the pair is now a strong
+candidate for promotion into the `mason-bmad-workflow-expert` root-cause catalog as
+`unverified-input-stamped-as-fact`, since this is its second independent occurrence in one day.
