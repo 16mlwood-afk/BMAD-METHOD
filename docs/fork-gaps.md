@@ -5412,3 +5412,51 @@ own components render a repeated row/list/table construct and `page_mode` is `de
 only fire on redesign, where built code exists), and cheap (no new file reads). Deliberately NOT
 authored here: adding a gate is a design decision, and a mis-tuned one on a judgment field would be
 worse than none.
+
+### 2026-07-28 — FG-2026-07-28-01 FIXED (fork prose) + deterministic tier shipped per-project
+
+```yaml
+state: fixed-in-fork
+fix: custom/workflows/design/design-handoff/steps/step-01b-decide.md §5-pre (NEW)
+delivery: BATCHED onto the standing fleet re-sync gate (STATUS.md `## Now`) —
+  owner ruling 2026-07-26, no custom/ change gets its own sync window.
+  Fires in ZERO projects until that window runs.
+routing: owner-routed to fix this session ("action the fork gap ... fix it").
+```
+
+**Owner routed this to fix.** `enforcement-expert` was run first per the global gate, and its ruling
+narrowed the design materially — the fix that the original entry proposed is NOT the fix that shipped.
+
+**What the enforcement review rejected.** The candidate fix ("if the target's components render a
+repeated row/list/table construct and `page_mode` is `detail`, HALT") is the
+**indiscriminate-detector anti-pattern**. A `detail` page legitimately renders lists — line items,
+audit history, photo sets, raw source rows. `/units/[id]` renders three and is *correctly* `detail`.
+That check would fire on nearly every correct `detail` brief and would get the whole completeness
+gate switched off — a gate whose 2-true/0-false record is not worth spending.
+
+**What shipped instead — the discriminator is SELECTION, not repetition.**
+
+- **PROBABILISTIC (fork, §5-pre, this commit):** two mandatory checks. **(a)** a predecessor's
+  `page_mode` is PROVENANCE, NOT EVIDENCE — never inherit it across a `material_revision`; if the
+  rationale collapses without the predecessor, the mode was not derived. This was the actual causal
+  chain in the miss and had no coverage of any kind. **(b)** on `redesign` scope, run the selection
+  test against code the §3 mutation audit already opens — *does this surface render many instances of
+  its OWN primary record type, which the operator selects among?* — and record the answer.
+- **DETERMINISTIC (per-project githook, WARN-only PERMANENTLY):** one narrow conjunction that only a
+  contradiction satisfies — `page_mode: detail` + `scope: redesign` + `list_rendering_verdict:
+  single-render` + a route with **no dynamic segment** + a repeated-row construct in the resolved
+  components. Shipped to cash-recovery (PR #490). **Measured, not asserted:** across all 54 briefs,
+  baseline 31 warns → 32, delta exactly **1**, and that 1 is the true positive. Zero false positives;
+  `/units/[id]` and `/pricing/[unitId]` clear on the dynamic-route term, `/login` and
+  `/account/security` clear on having no selection set.
+
+**Permanently WARN, not warn-then-gate.** `page_mode` is a judgment field; no false-positive rate
+justifies a DENY on judgment.
+
+**Coverage is partial and the check says so.** A `new`-scope brief has no built code, so the
+deterministic tier cannot fire on one, and an unresolvable route stays silent. A quiet result is
+UNCHECKED, never verified — stated in the warn text so a green does not read as proof.
+
+**Two distribution tracks, neither complete:** the githook is per-project (cash-recovery only — the
+other 12 do not have it), and the workflow prose rides the batched fleet sync. Do not describe this
+gap as closed fleet-wide.

@@ -33,6 +33,29 @@ Set `{page_mode}` based on the feature's **dominant user task**:
 
 If unclear, default to "operational." These three values are the full `page_mode` enum the whole brief contract uses (`brief-revision-policy.md` Block B; consumed by `design-synthesize` / `design-implement`) — emit one of them, never a fourth.
 
+#### 5-pre. Verify the mode, don't just pick it — this field has the widest blast radius in the gather
+
+**`page_mode` is not a label, it is the input to five later decisions** — and it is the ONE major gather value with no derivation basis (contrast §3 data shape ← schema, §3a linked records ← the edge map, §5f frames ← §5/§5a/§3a, §5h completeness ← a hard halt). It drives §5a's default composition · §5b's band gate (whose shortcut is literally *"a single record has no aggregate dimension"*) · §5f rule 2, which decides whether a drilled detail drawer is emitted **at all** · §5f rules 4/5 · §5g list-rendering.
+
+**A wrong value produces no error. It produces a self-consistent brief describing the wrong surface, and every existing gate passes it** — §5h finds no missing frame (none was expected), the commit-time completeness check finds no missing field, and `design-synthesize` draws only what §7 lists. Observed 2026-07-27: a five-column worklist-plus-drawer surface was stamped `detail`, so **the worklist was never enumerated as a frame** and the generator would have produced a per-unit page with no list, looking finished (`FG-2026-07-28-01`).
+
+Two checks are MANDATORY before leaving this section.
+
+**(a) A predecessor's `page_mode` is PROVENANCE, NOT EVIDENCE — never inherit it.**
+On any `material_revision`, re-derive the mode from the surface and the job **as if no predecessor existed**. "The previous brief said `detail`" is not a reason and must not appear in `{page_mode_rationale}`. **If your rationale would collapse without the predecessor, you have not derived the mode.** This is the documented causal chain in the 2026-07-27 miss — a stale mode carried across a revision whose whole purpose was to correct the brief — and it is the same trap a project design policy names when it rules that an approved artifact is a record of a past decision, not evidence it was right.
+
+**(b) `redesign` scope — run the SELECTION test against the built code and record the answer.**
+You are already in those files: the §3 mutation-derivation audit has you grep the target's own components for server actions. While there, answer one question and write the answer into `{page_mode_rationale}`:
+
+> **Does this surface render many instances of its OWN primary record type, which the operator selects among?**
+
+- **Yes → it is not `detail`.** A page that lists its subject and drills into one is `operational` (per the hybrid rule above), however rich the drilled view is.
+- **No → `detail` survives**, and state why the lists you found are *child collections of one record* rather than a selection set.
+
+**Deliberately NOT "does it contain a list".** A `detail` page legitimately renders lists — line items, audit history, a photo set, raw source rows — so treating any `.map()` as disqualifying would flag nearly every correct `detail` brief. **The discriminator is SELECTION, not repetition.**
+
+**Honest tier.** Both checks are PROBABILISTIC — prose you execute. A judgment field cannot be decided by a hook, and a gate that tried would be the indiscriminate-detector anti-pattern. The DETERMINISTIC companion is deliberately narrow and **WARN-only, permanently**: a per-project commit-time brief check flags one high-precision conjunction — `page_mode: detail` **and** a route with no dynamic segment **and** `list_rendering_verdict: single-render` **and** a repeated-row construct in the resolved components. That clears `/units/[id]` (dynamic route, correctly `detail` with child lists) and a static settings page (no selection set), while catching the observed miss. It covers `redesign` only — a `new`-scope brief has no code to read — and it says so rather than reading green. **It distributes on the per-project hooks track, not with this workflow: authoring this section does not deploy that check.**
+
 **Capture the reasoning (not just the label).** Set `{page_mode_rationale}` to the concrete signal that selected the mode — the user-goal phrasing or data property that decided it (e.g. "user goal is 'spot which week slipped' → pattern discovery, not row processing"). This is recorded verbatim in the analytics rationale artifact (step-03b) when a band exists; capturing it now means the deliberation is not thrown away once the mode label is set. (Skip the capture only when `{has_analytics_band}` resolves to `false` below — no rationale artifact is emitted then.)
 
 ### 5a. Composition Fit Check — does the page-mode's default composition fit THIS surface?
