@@ -75,6 +75,34 @@ if (NEW_ROW && !REGISTER) {
 
 const ROUTES = ['R1-capability', 'R2-bounded-local', 'R3-design', 'R4-operational-milestone', 'R5-parked'];
 
+/**
+ * WHY-NOT-NOW — the closed set of reasons an accepted row may sit unbuilt.
+ *
+ * THE FAILURE THIS EXISTS FOR (2026-07-28, cash-recovery SR-49/SR-50). A session diagnosed
+ * two small changes — attach an identity already in memory, expose a boolean already
+ * computed, select a column that already existed — wrote "nobody is doing it / ready to be
+ * picked up", registered both rows, and stopped. Nothing blocked either one. The owner had
+ * to ask three times before the work happened, and it then took a single pass.
+ *
+ * A row registered because it is BLOCKED and a row registered because it was AVOIDED were
+ * byte-identical in the file: both had a route, a next_artifact, and an owner. Only
+ * `R5-parked` was ever required to say why-not-now. So the register — whose whole job is
+ * that work does not get lost — became a place to put work instead of doing it, and nothing
+ * could tell the difference.
+ *
+ * `NOT-BLOCKED` is deliberately IN the enum and deliberately FAILS. The point is that there
+ * is no silent option: either you name a real blocker, or you write down that there isn't
+ * one — and writing that down is the moment you notice you should just do it.
+ */
+const WHY_NOT_NOW = {
+  'owner-decision': 'needs a ruling only the owner can give',
+  'blocked-by-data': 'the data/source does not exist yet',
+  'blocked-by-artifact': 'an upstream artifact or workflow must land first',
+  'other-session': "another session's surface or an active claim",
+  'too-large-for-now': 'a genuine multi-pass build, not a same-session change',
+  'NOT-BLOCKED': 'nothing prevents it — this should have been DONE, not registered',
+};
+
 // Shape expectations per route (STD-SCOPEREG-001 §3). Deliberately SHAPE-only —
 // this asks "does the named artifact look like the kind this route requires",
 // never "is this the right route".
@@ -192,6 +220,8 @@ function lintRegister(file) {
     return { rows: 0 };
   }
 
+  const missingWhy = [];
+
   for (const row of rows) {
     const b = row.body;
     const where = `${path.basename(file)} ${row.id}`;
@@ -283,6 +313,34 @@ function lintRegister(file) {
     }
 
     // -- R5 activation ------------------------------------------------------
+    // -- why_not_now: is this row registered because it is BLOCKED, or because it was
+    // AVOIDED? Without this field those two are indistinguishable (see WHY_NOT_NOW).
+    // Only `accepted` rows are asked: a `pending` row is BY DEFINITION awaiting a
+    // decision, which is its own why-not-now.
+    // `R5-parked` is EXEMPT: it already owes a three-part activation block whose why-not-now
+    // is legitimately free text (§3 R5), and enforcing the enum on top of that flagged real,
+    // correct rows (SR-25 on the first run). One contract per row — the enum governs the
+    // rows that had NO why-not-now requirement at all.
+    if (disposition === 'accepted' && route !== 'R5-parked') {
+      // UNDERSCORE ONLY, deliberately. The register's PROSE already uses the hyphenated
+      // phrase "why-not-now" when quoting the standard or explaining a park, and matching
+      // that grabbed the next word and reported it as an invalid enum value on rows that
+      // were entirely correct (SR-25, first run). `why_not_now` is the FIELD; "why-not-now"
+      // is English. A detector that cannot tell them apart costs more than it catches.
+      const whyM = /`?why_not_now`?\s*[:=]\s*`?([A-Za-z-]+)`?/i.exec(b);
+      if (!whyM) {
+        missingWhy.push(row.id);
+      } else {
+        const why = whyM[1];
+        const key = Object.keys(WHY_NOT_NOW).find((k) => k.toLowerCase() === why.toLowerCase());
+        if (!key) {
+          note('fail', where, `\`why_not_now: ${why}\` is not in the closed enum: ${Object.keys(WHY_NOT_NOW).join(' | ')}. Free text here re-opens the hole the field closes.`);
+        } else if (key === 'NOT-BLOCKED') {
+          note('fail', where, "declares `why_not_now: NOT-BLOCKED` — nothing is stopping this, so it is not registrable scope, it is UNDONE WORK with paperwork attached. Do it, or name the real blocker.");
+        }
+      }
+    }
+
     if (route === 'R5-parked') {
       const missing = ['owner', 'trigger', 'why-not-now'].filter((k) => !new RegExp(`${k}\\s*[:=]\\s*\\S`, 'i').test(b));
       if (missing.length > 0) {
@@ -340,6 +398,17 @@ function lintRegister(file) {
       }
     }
   }
+  // ONE aggregate line, never one per row. ~50 legacy rows predate this field, and 50
+  // individual warnings would bury the two findings that matter — the indiscriminate-detector
+  // anti-pattern that gets a checker switched off. New rows get the field from `--new-row`.
+  if (missingWhy.length) {
+    note(
+      'warn',
+      path.basename(file),
+      `${missingWhy.length} accepted row(s) carry no \`why_not_now\` — cannot tell registered-because-BLOCKED from registered-because-AVOIDED: ${missingWhy.join(', ')}. Legacy rows are grandfathered; add it when you next touch one.`,
+    );
+  }
+
   return { rows: rows.length };
 }
 
@@ -429,6 +498,7 @@ function newRow(file) {
     disposition: 'pending / accepted / deferred / rejected / moved',
     state: 'REGISTERED / PROPOSED / DESCRIBED / SHAPED',
     next_artifact: '<story file / quick-spec / ACTIVE brief / milestone key — the thing that makes it actionable>',
+    why_not_now: `<${Object.keys(WHY_NOT_NOW).join(' | ')}> — if NOT-BLOCKED, do the work instead of filing this row`,
     'next artifact': '<the thing that makes it actionable>',
     owner: '<who>',
     trigger: '<OBSERVABLE condition, not "when we get to it">',

@@ -334,3 +334,52 @@ owner-only-off-`pending` is the audit anchor. The gap was detection, not authori
 **Golden suite.** `evals/scope-register-routing.md` — cases drawn from real registered rows that
 must route *differently*, scored on `route` + `next_artifact` + (for R5) the three activation parts.
 This measures the axis the linter cedes: route correctness. Replay on any change to §3.
+
+---
+
+## §10 `why_not_now` — a registered row must say why it isn't happening
+
+**Registering scope is not a way to make work go away.** Every accepted row carries
+`why_not_now:` from the closed set below. It is the field that distinguishes a row registered
+because it is BLOCKED from a row registered because it was AVOIDED — which were, until
+2026-07-28, byte-identical in the file.
+
+| value | means |
+|---|---|
+| `owner-decision` | needs a ruling only the owner can give |
+| `blocked-by-data` | the data or source does not exist yet |
+| `blocked-by-artifact` | an upstream artifact or workflow must land first |
+| `other-session` | another session's surface, or an active claim |
+| `too-large-for-now` | a genuine multi-pass build, not a same-session change |
+| `NOT-BLOCKED` | nothing prevents it — **so do it; do not file this row** |
+
+**`NOT-BLOCKED` is in the enum on purpose, and it FAILS the linter.** There is deliberately no
+silent option: either you name a real blocker, or you write down that there isn't one — and
+writing that down is the moment you notice you should just do the work. A row that cannot name
+a blocker is not registrable scope; it is undone work with paperwork attached.
+
+**The failure this closes (2026-07-28, cash-recovery, SR-49 split A + SR-50).** A session
+diagnosed two small changes — attach an identity already held in memory, expose a boolean
+already computed, select a column that already existed — wrote *"nobody is doing it / ready to
+be picked up"*, registered both rows, and stopped. Nothing blocked either. The owner asked
+three times before the work happened; it then took one pass, no schema change, no migration,
+no new query. Both rows had a route, a `next_artifact` and an owner, so **every existing check
+passed them**. Only `R5-parked` had ever been required to say why-not-now.
+
+**Scope of the rule:**
+
+- Asked of `accepted` rows only. A `pending` row is by definition awaiting a decision — that
+  is its own why-not-now.
+- `R5-parked` is EXEMPT: it already owes the three-part activation block (§3 R5) whose
+  why-not-now is legitimately free text. One contract per row.
+- Legacy rows are grandfathered and reported as ONE aggregate line, never one warning each —
+  50 individual warnings would bury the finding that matters.
+
+**Enforcement, honestly.** `tools/check-scope-register.js` decides two things
+DETERMINISTICALLY: whether the field exists, and whether its value is in the enum. It **cannot
+judge whether the stated reason is TRUE** — `owner-decision` on a row nothing is waiting for
+passes the linter. That axis stays PROBABILISTIC, and the mitigation is visibility: the
+sentence is now in the row, in the diff, and in front of the next reader. The checker is
+**WARN-ONLY** and runs only when invoked (`sprint-status`, `maintenance-triage`, before closing
+shaping work) — a pre-commit gate on the register would make it unavoidable and is the
+available upgrade, not something claimed here.
