@@ -3300,6 +3300,8 @@ marker: "fan-out MCP reachability"
 state: open
 fix: none
 delivery: n/a
+see_also: "2026-07-28 re-confirmation, later in this file — RE-CONFIRMED IN THE WILD (4 agents, 0 reads), the local-bundle workaround + why it does NOT close this, and a REPRODUCIBLE FALSE DIAGNOSIS to inoculate against. Read it before acting on this entry."
+
 owner: fork-maintenance
 ```
 
