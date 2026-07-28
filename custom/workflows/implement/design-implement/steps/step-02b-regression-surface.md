@@ -49,6 +49,47 @@ Compute the combined **`{uplift_capabilities}` = `{added_capabilities}` ∪ `{de
 
 **Frame RECOMPOSITION is a fourth signal — surface it, do NOT bury it in "CHANGED treatment-only."** A present frame (a detail/create/lookup drawer) can keep all its capabilities yet be **recomposed**: sections renamed, regrouped, reordered, or its header/footer chrome changed. That is what a user reads as "the drawer looks completely different," but classified as CHANGED it silently "flows through the grid" — where the per-component sweep cannot see arrangement (the grouping/order is owned by no single component). So when you compare each present frame's design composition (section order + group headings + header/footer chrome — from the manifest section inventory or the frame source) against the impl frame's, record a `{frame_composition_deltas}` entry for every frame that is materially recomposed: `{ frame, renamed_groups[], reordered: bool, regrouped[], chrome_delta (header/footer) }`. This is NOT a capability (it adds/drops nothing) — it is a **structural treatment** axis, and step-03 §2d-bis emits a Frame-composition grid row for each entry. **Name it in the preflight output**, so a scope halt shows the visual magnitude instead of a one-line "drawer · DEEPENED/treatment · buildable: yes" that reads as trivial (the real inbound-flow supply-order miss: Cost & sourcing→Economics, standalone Lifecycle→folded, Related records→Routing & source, black footer button→blue — all hidden behind one "treatment" line).
 
+### 3b. Already-shipped recall — has this design ALREADY been applied? (SURFACE, never gate)
+
+**The symmetric twin of Input Resolution's net-new preflight.** That check asks *"is there anything to diff against?"* and exits when the answer is nothing. This asks the other end of the same lifecycle — ***"is there anything LEFT to diff?"*** — and until it existed, the two ends were policed very differently: intake could spot a run that HALTED (Prior-halt recall), one that CHECKPOINTED (`{resume_prior_dispositions}` + the pending-checkpoint detector), and a surface with nothing built yet — but **not a design that was already fully applied and shipped.**
+
+**This is the same trigger the Prior-halt recall was built for, not an edge case.** That block's own rationale is that the "Send to local coding agent" panel emits a *stable* prompt per file, so the identical input arrives again each time the owner revisits the design — and any project `design-handoff-detect` hook routes every such paste straight back here. That is as true *after* the work ships as while it is blocked; arguably more so, since revisiting a design you just shipped is the normal thing to do. Only the halted branch was implemented.
+
+**Runs HERE — post-map, pre-grid — deliberately, and the placement is an honest trade.** It needs step-02's resolved impl paths and §3's computed delta to say anything trustworthy, so it cannot live in the cheap pre-ingest lane with the net-new preflight. **That bounds the saving to the grid + apply, not the ingest** — say so rather than implying it saves the whole run.
+
+**Read two signals. Neither is new evidence — both are already in hand:**
+
+- **Signal A — PROVENANCE (git).** `git log --oneline origin/main -- <the impl paths step-02 already resolved>`, looking for a commit naming the design, the `{target_slug}`, or a design-implement/design-ingest pass over this surface. Optionally extend to deployment: if the project records a live commit (a `/api/status`-style endpoint, a deploy log, a platform deployments tab), test ancestry — `git merge-base --is-ancestor <that commit> <live sha>` — and report **shipped vs merely merged**, which are different claims on this fork's projects (merge ≠ deploy in several of them).
+- **Signal B — DELTA (already computed in §3).** Are `{dropped_capabilities}`, `{added_capabilities}` and `{deepened_capabilities}` **all empty**? An all-empty delta is precisely "nothing left to build."
+
+**Three outcomes — this is a taxonomy, not a boolean, and the middle one is the valuable case:**
+
+| A (git provenance) | B (delta all-empty) | Verdict | What the run does |
+|---|---|---|---|
+| ✅ | ✅ | **ALREADY SHIPPED** | Surface it and **recommend exiting** without a grid. Treatment deltas may still exist, so this is a recommendation, not a refusal — see the rule below. |
+| ✅ | ❌ | **PRIOR PASS + RESIDUAL DELTAS** | **Continue — but re-frame the run as a RESIDUAL-DELTA pass, not a build.** The most valuable outcome: a prior pass applied most of the design and left specific gaps. |
+| ❌ | ✅ | **MATCHES, NO PROVENANCE** | Note it and continue. The impl may match by convergence, or the design may have been applied by a route that left no traceable commit. Do not assert a prior pass you cannot evidence. |
+
+Record `{prior_applied}` = `{ verdict, commit, subject, deployed: bool|unknown, evidence }`, or `none` when neither signal fires. **Absent / unreadable git history is a silent no-op** — same posture as the Prior-halt recall.
+
+Surface it in the preflight output:
+
+```
+◇ This design appears to have been applied already.
+  commit:    {sha} {subject}
+  deployed:  {yes — ancestor of live {sha} | merged, not deployed | unknown}
+  delta:     {no capability delta remains | N residual item(s): …}
+  verdict:   {ALREADY SHIPPED | PRIOR PASS + RESIDUAL DELTAS | MATCHES, NO PROVENANCE}
+```
+
+Rules:
+
+- **SURFACE, never GATE — and this one especially.** It does not halt, refuse, or skip a step, *including* on the ALREADY-SHIPPED verdict. A re-run to verify residual deltas is legitimate and productive: the run that motivated this section found a real one that way (a missing identifier row in an otherwise-complete 9-frame surface — cash-recovery PR #525). **The failure mode to avoid is blocking a legitimate verification re-run, not permitting one.** An owner who re-pastes and says "check it anyway" gets a full pass.
+- **A capability delta is NOT a treatment delta — an all-empty §3 does not mean the grid would be all-green.** §3 compares *capabilities*; the grid compares *pixels*, plus copy and frame chrome the grid is itself blind to. So the ALREADY-SHIPPED verdict must never be phrased as "the implementation matches the design" — only as "the design's capabilities are all present." Recommending an exit is a **cost** judgement (a full grid to confirm a shipped surface is expensive), never a correctness claim.
+- **The verdict changes the REPORT's framing, and that is most of its value.** On either provenance verdict, step-04 §9 must open by saying the design was already applied — naming the commit and its deployed state — and describe this run as a *verification / residual-delta* pass. A report that says "all N rows applied" over an already-shipped surface reads as *this run did the work*, which is the more misleading of the two failure modes: no wrong output, but a false claim of authorship.
+- **Never let this become a reason to skip §4 / §4c.** The DROP halt and the fixture-to-prod checkpoint are about *intent and authorization*, and both remain live regardless of what was shipped before. In particular a prior pass does not authorize a fixture-to-prod ship.
+- **Do not spend a new artifact on it.** Signals A and B are git plus a list §3 already computed. If it ever needs more than that, it is doing too much.
+
 ### 4. Branch on the DROPPED set (regression → halt for intent)
 
 **If `{dropped_capabilities}` is empty:**

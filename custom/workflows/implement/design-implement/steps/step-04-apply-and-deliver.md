@@ -224,6 +224,20 @@ Output these as a `**Brand Identity Updates**` section in the completion report.
 Output — the **"Deltas not applied" section is mandatory and never omitted.** If everything was applied, say so explicitly; if anything was deferred or dropped, every such delta is listed here with its reason (pulled from the §5 apply ledger). The user must be able to see, from the completion report alone and without opening the artifact, exactly what did NOT make it in.
 
 ```
+{if prior_applied.verdict in ("already-shipped", "prior-pass-residual-deltas"):}
+◇ THIS DESIGN WAS ALREADY APPLIED — this run is a VERIFICATION / RESIDUAL-DELTA pass, not a build.
+
+  applied by: {prior_applied.commit} {prior_applied.subject}
+  state:      {deployed — ancestor of live {sha} | merged, NOT deployed | unknown}
+
+Say this FIRST, before any "applied N rows" line. A report that leads with the row count over an
+already-shipped surface reads as *this run did the work* — a false claim of authorship, and the
+more misleading of the two failure modes here (there is no wrong output, only a wrong attribution).
+Attribute the build to the prior pass; claim only what THIS pass changed.
+{if prior_applied.verdict == "already-shipped": Note that no capability delta remained. If a grid
+was built anyway (a legitimate verification re-run), report its treatment findings normally — an
+empty CAPABILITY delta never implied a green GRID, and must not be reported as though it did.}
+
 {if run_completion_mode == "checkpointed":}
 ⚠ NOT FINISHED — Design implementation CHECKPOINTED. {rows_deferred} row(s) remain and
 NOTHING WILL RESUME THEM ON ITS OWN.

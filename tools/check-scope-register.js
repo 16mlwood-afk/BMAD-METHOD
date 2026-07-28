@@ -328,16 +328,24 @@ function lintRegister(file) {
       // were entirely correct (SR-25, first run). `why_not_now` is the FIELD; "why-not-now"
       // is English. A detector that cannot tell them apart costs more than it catches.
       const whyM = /`?why_not_now`?\s*[:=]\s*`?([A-Za-z-]+)`?/i.exec(b);
-      if (!whyM) {
-        missingWhy.push(row.id);
-      } else {
+      if (whyM) {
         const why = whyM[1];
         const key = Object.keys(WHY_NOT_NOW).find((k) => k.toLowerCase() === why.toLowerCase());
         if (!key) {
-          note('fail', where, `\`why_not_now: ${why}\` is not in the closed enum: ${Object.keys(WHY_NOT_NOW).join(' | ')}. Free text here re-opens the hole the field closes.`);
+          note(
+            'fail',
+            where,
+            `\`why_not_now: ${why}\` is not in the closed enum: ${Object.keys(WHY_NOT_NOW).join(' | ')}. Free text here re-opens the hole the field closes.`,
+          );
         } else if (key === 'NOT-BLOCKED') {
-          note('fail', where, "declares `why_not_now: NOT-BLOCKED` — nothing is stopping this, so it is not registrable scope, it is UNDONE WORK with paperwork attached. Do it, or name the real blocker.");
+          note(
+            'fail',
+            where,
+            'declares `why_not_now: NOT-BLOCKED` — nothing is stopping this, so it is not registrable scope, it is UNDONE WORK with paperwork attached. Do it, or name the real blocker.',
+          );
         }
+      } else {
+        missingWhy.push(row.id);
       }
     }
 
@@ -401,7 +409,7 @@ function lintRegister(file) {
   // ONE aggregate line, never one per row. ~50 legacy rows predate this field, and 50
   // individual warnings would bury the two findings that matter — the indiscriminate-detector
   // anti-pattern that gets a checker switched off. New rows get the field from `--new-row`.
-  if (missingWhy.length) {
+  if (missingWhy.length > 0) {
     note(
       'warn',
       path.basename(file),
