@@ -5460,3 +5460,34 @@ UNCHECKED, never verified — stated in the warn text so a green does not read a
 **Two distribution tracks, neither complete:** the githook is per-project (cash-recovery only — the
 other 12 do not have it), and the workflow prose rides the batched fleet sync. Do not describe this
 gap as closed fleet-wide.
+
+### 2026-07-28 — FG-2026-07-26-04 RE-CONFIRMED IN THE WILD. Still `state: open`. A workaround exists and does NOT close it.
+
+Exercised, not theorised. A `design-ingest` step-02 fan-out on `recovery-cross-check` (cash-recovery,
+`claude_design_url` input) dispatched **four** cataloguer agents; **all four read nothing**. The
+context-isolation this phase sells is genuinely unavailable on the DesignSync path.
+
+**A local-bundle workaround exists — staging the design source to
+`_bmad-output/design-source/<slug>/` and re-running the fan-out against the filesystem path. DO NOT
+MARK THIS GAP FIXED BECAUSE OF IT.** The workaround changes the INPUT SHAPE to dodge the defect; the
+defect — subagents do not inherit the design MCP — is untouched. Every future URL-input run hits it
+again, and the workaround costs an orchestrator-side fetch of the whole bundle, which is precisely
+the context spend the fan-out was designed to avoid. Owner-ratified 2026-07-28: *"the workaround
+unblocks the run, it does not resolve the fork gap."*
+
+**A FALSE DIAGNOSIS TO INOCULATE AGAINST — it will recur, because every blocked agent reaches it
+independently.** All four agents concluded *"DesignSync is not configured on this machine; check
+`.mcp.json`"* and backed it with real evidence (`ToolSearch select:DesignSync` → no match; zero
+`designsync` hits across `.mcp.json`, `settings*.json`, `~/.claude.json`). **It is false.** The
+orchestrator used DesignSync successfully in the same session — `list_files` on the project and
+`get_file` on the target HTML both returned real content, and that is where the run's conformance
+verdict came from. The accurate finding is narrower: **configured and reachable from the
+ORCHESTRATOR, not inherited by SUBAGENTS.** A fixer acting on the agents' version edits `.mcp.json`,
+changes nothing, and concludes the tooling is haunted. Any future fix must be tested from inside a
+subagent, never from the orchestrator — an orchestrator-side check passes today and proves nothing.
+
+**Worth preserving: the agents failed WELL.** Each was offered plausible substitutes on disk — the
+built `RecoveryCrossCheckApp.tsx`, a staged `WorklistApp.design.jsx` — and each refused, on the
+stated grounds that cataloguing the implementation would fabricate a code-verified answer from a
+different artifact. That refusal is the behaviour to keep: a wrong section catalog is worse than
+none, because `design-implement` consumes it as a contract.
