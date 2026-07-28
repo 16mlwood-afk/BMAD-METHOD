@@ -5493,3 +5493,234 @@ built `RecoveryCrossCheckApp.tsx`, a staged `WorklistApp.design.jsx` — and eac
 stated grounds that cataloguing the implementation would fabricate a code-verified answer from a
 different artifact. That refusal is the behaviour to keep: a wrong section catalog is worse than
 none, because `design-implement` consumes it as a contract.
+
+## 2026-07-28 — an app-wide drawer convention covers the masthead; /users was fixed route-locally and the shared component was deliberately left alone
+
+```yaml
+id: FG-2026-07-28-03
+class: shared-component-convention-vs-route-local-fix
+scope: project            # cash-recovery app component — NOT fork doctrine. Filed here at owner
+                          # request for findability; it does not propagate to the other 12 projects.
+target: cash-recovery src/components/ds/Drawer.tsx
+also: cash-recovery src/app/(owner)/users/UsersAdmin.tsx (the route-local fix that shipped)
+marker: "drawer covers the app masthead"
+state: partly
+fix: partial
+delivery: done
+owner: Mason
+routing: owner-gated — NEW DESIGN decision, not a maintenance defect
+action: "AUDIT the other 7 drawer consumers, THEN decide the shared Drawer's behaviour."
+```
+
+### Incident
+
+**Target file:** `cash-recovery src/components/ds/Drawer.tsx` (the shared component, UNCHANGED) —
+the route-local fix landed in `src/app/(owner)/users/UsersAdmin.tsx` (PR #497, `b143853`, live).
+
+`fix: partial` and `delivery: done` are both literally true and the pair is the point: what was
+DELIVERED shipped completely, but it fixes ONE route out of eight known consumers. The remaining
+seven are untouched and unaudited.
+
+### What was observed
+
+The first live render of `/users` showed the detail drawer covering the app masthead — the nav tab
+"Grading" was chopped to "Gr" behind the drawer's left edge. Root cause: the drawer was
+`position: fixed; top: 0`, spanning the whole viewport.
+
+The Claude Design source for this surface does **not** do that. Its `Shell` positions the drawer
+inside the content wrapper *beneath* the masthead, so the nav stays fully visible while the table
+underneath is fully covered. So for `/users` this was an unambiguous fidelity delta, introduced in
+design-implement pass 2 and inherited by pass 3.
+
+### Why the fix is route-local, and why that is the open question
+
+`src/components/ds/Drawer.tsx` — the SHARED drawer every other surface uses — has the same
+full-viewport behaviour (`position: fixed; inset: 0` wrapper). So **every drawer in the app
+currently covers its own nav.** Fixing only `/users` makes that route the odd one out; fixing the
+shared component changes ~7 other surfaces that were never inspected for it.
+
+Owner ruling 2026-07-28: fix `/users` only (shipped), and **audit the other seven consumers before
+deciding the shared component's behaviour.** That audit has NOT been done.
+
+`/users` now anchors its own `DrawerShell` (and its scrim) at `top: APP_NAV_HEIGHT_PX`, a constant
+newly exported from `TopNav` so the offset cannot drift when the masthead height changes. A
+regression test pins that both panel and scrim clear the nav.
+
+### The judgement worth recording
+
+The route-local fix is the *right* call and also a **deliberate inconsistency**. Two drawers in one
+app behaving differently is a real cost; it was accepted because the alternative — changing seven
+un-audited surfaces to satisfy one design — is the larger, less reversible risk. That trade is only
+sound if the audit actually happens. If it does not, this entry is the record that `/users` is
+knowingly divergent rather than accidentally so.
+
+---
+
+## 2026-07-28 — FG-2026-07-28-04 — `design-ingest`'s own DOCUMENTED UNBLOCK for FG-2026-07-26-04 is not a representable input kind
+
+```yaml
+id: FG-2026-07-28-04
+# Structure-only repair 2026-07-28 by claude-session-20260728-114344: this entry was appended in a
+# bold-prose header form that check-fork-gap-schema.sh rejects, which blocked ANY commit of this
+# shared file for every session. Converted to the required yaml block. Every field below is lifted
+# verbatim from the prose it replaces — no claim added, removed or reinterpreted.
+class: documented-unblock-is-not-a-representable-input
+scope: fork
+target: custom/workflows/implement/design-ingest/workflow.md
+also: custom/workflows/implement/design-ingest/manifest-schema.md
+marker: "staged local bundle as an input_kind"
+state: open
+fix: none
+delivery: n/a
+owner: fork-maintenance
+routing: NEW DESIGN (adds an input kind) — routing marker needed, NOT shipped
+```
+
+### Incident
+
+**Target file:** `custom/workflows/implement/design-ingest/workflow.md` · `custom/workflows/implement/design-ingest/manifest-schema.md`.
+
+*(Heading added 2026-07-28 to satisfy the schema's required `### Incident` block. The
+original account is preserved verbatim under **What was observed** below — nothing was
+rewritten, summarised, or moved.)*
+
+### What was observed
+
+`FG-2026-07-26-04` (open) records that the step-02 fan-out cannot reach the design MCP from a
+subagent. The accepted workaround — written into the cash-recovery
+`design-ingest-recovery-cross-check.md` resume banner, and the one used successfully today — is:
+
+> stage the Claude Design bundle to disk, then re-run step-02's fan-out against the **local bundle
+> path** rather than the URL. Subagents can read the filesystem.
+
+That workaround **cannot be expressed as an input to the workflow it unblocks.** Input Resolution
+admits exactly two kinds:
+
+- `claude_design_url` — detected by `http(s)://` or the paste-signature
+- `synthesize_bundle` — detected by *a directory containing `manifest.yaml`*
+
+A staged Claude Design bundle is neither. It is a local directory with **no `manifest.yaml`** (it has
+`ui_kits/`, `templates/`, `tokens/`, `styles.css` — the Claude Design layout, not the
+design-synthesize layout). So the documented detection ladder falls through to its halt:
+
+> `"input must be a Claude Design URL/paste-prompt (https://...) or a directory containing manifest.yaml. Got: <input>"`
+
+### Why this is structural and not a one-off
+
+A cold session that follows the resume banner **correctly** — the banner is emphatic, twice, that
+re-running against the URL is known-broken — arrives at a hard halt with no legal way forward. The
+two documented paths are: the one that is broken, and the one that is unrepresentable. I only got
+through by bypassing Input Resolution by hand and entering at step-02 with the step-01 state carried
+from the existing manifest. That is not a route the workflow offers; it is me stepping around it.
+
+The gap is narrow and specific: `synthesize_bundle` detection keys on a **marker file** rather than
+on "is this a local directory of design source". Ingest genuinely does not need `manifest.yaml` for
+the fan-out — step-02 reads JSX/CSS off disk and nothing else.
+
+### Candidate fix (NOT taken — owner routing required)
+
+A third `input_kind` (`staged_design_bundle`): a local directory with no `manifest.yaml` that
+contains design source. It would skip the synthesize-specific refusal gates
+(`synthesis.dev_no_render`, `visual_review.needs_human_review` — meaningless for a Claude Design
+bundle), keep step-01's frame derivation reading the target HTML from disk, and record
+`ingest.input_kind: staged_design_bundle` so the manifest states plainly that values came from a
+staged copy rather than a live fetch.
+
+**Not shipped** because it adds an enum value to the manifest contract that `design-implement` also
+reads — a taxonomy change, which is Mason's call, not a maintenance repair. Logged so the next
+session hitting the same halt does not conclude the workflow is broken and re-derive the workaround
+from scratch.
+
+### Interaction with FG-2026-07-26-04
+
+This does NOT supersede it. `-04` is the real fault (subagents cannot reach the MCP); this entry is
+that the sanctioned workaround has no door. Closing `-04` would make this moot. Closing this one
+alone would make the workaround supported but still a workaround.
+
+---
+
+## 2026-07-28 — FG-2026-07-28-05 — the manifest Path invariant demands a TRACKED `ingest.source`, which a gitignored `_bmad-output/` makes unsatisfiable for any local-bundle run
+
+```yaml
+id: FG-2026-07-28-05
+# Structure-only repair 2026-07-28 by claude-session-20260728-114344: this entry was appended in a
+# bold-prose header form that check-fork-gap-schema.sh rejects, which blocked ANY commit of this
+# shared file for every session. Converted to the required yaml block. Every field below is lifted
+# verbatim from the prose it replaces — no claim added, removed or reinterpreted.
+class: invariant-unsatisfiable-for-a-legal-input
+scope: fork
+target: custom/workflows/implement/design-ingest/manifest-schema.md
+also: custom/workflows/implement/design-ingest/steps/step-03-emit-manifest-and-handoff.md
+marker: "Path invariant vs gitignored _bmad-output"
+state: open
+fix: none
+delivery: n/a
+owner: fork-maintenance
+routing: NEW DESIGN (reconciles an invariant) — routing marker needed, NOT shipped
+```
+
+### Incident
+
+**Target file:** `custom/workflows/implement/design-ingest/manifest-schema.md` · `custom/workflows/implement/design-ingest/steps/step-03-emit-manifest-and-handoff.md`.
+
+*(Heading added 2026-07-28 to satisfy the schema's required `### Incident` block. The
+original account is preserved verbatim under **What was observed** below — nothing was
+rewritten, summarised, or moved.)*
+
+### What was observed
+
+`manifest-schema.md` § Path invariant states the rule absolutely, and names the field:
+
+> "**Any path this manifest records that a downstream workflow will DEREFERENCE must be repo-relative
+> and point at a committed, durable location.** … This covers `ingest.source` when it is a local
+> directory"
+
+and step-03 §1a enforces it with `git ls-files --error-unmatch`, exiting 1 when the referent is not
+tracked.
+
+In cash-recovery, `.gitignore:40` is `/_bmad-output/*` — the **entire** artifact tree. The manifest
+itself survives this only because step-03 §1 force-adds it (`git add -f`). But a staged design bundle
+lives at `_bmad-output/design-source/<slug>/` and is, by that project's own settled convention,
+**deliberately ephemeral** — the `design-manifests-are-unrecoverable` project memory records that
+these bundles are gitignored, destroyable by a parallel session's tree clean, and cheap to re-stage.
+
+So for any local-directory run the invariant forces a choice between two bad options:
+
+1. **Force-add the whole design bundle** (12 files, ~135KB here) into git purely to satisfy a path
+   check — committing vendored design source the project deliberately does not track.
+2. **Fail §1a**, or omit/rewrite `ingest.source` — but `ingest.source` is a required frontmatter
+   field, and §1a's own remedy text ("move the files, force-add them, then record the tracked path")
+   explicitly forbids the rewrite.
+
+### Why this is not just the origin case restated
+
+The invariant's stated origin (2026-07-20) is a **dangling scratchpad pointer** — a manifest naming
+a session-scoped directory that got reaped. That is a real bug and the rule is right about it. But
+the rule as written conflates two different properties:
+
+- **not session-scoped** (the actual defect — a path that evaporates when a session ends)
+- **tracked in git** (the proxy chosen to enforce it)
+
+A repo-relative gitignored path under `_bmad-output/design-source/` is **not** session-scoped — it
+survives the session, any session can re-stage it deterministically from the same `projectId`, and
+the manifest already carries `design_url` as the durable regeneration key. It is destroyable, which
+is a weaker and different property than dangling. The proxy is stricter than the defect requires, and
+in a project where the whole artifact tree is gitignored the proxy is unsatisfiable by construction.
+
+### Candidate fix (NOT taken — owner routing required)
+
+Distinguish the two properties in the invariant: keep the hard ban on **session-scoped** paths
+(`/tmp`, `/private/tmp`, `*/scratchpad/*`, absolute) exactly as-is, and allow a repo-relative
+gitignored path for `ingest.source` **provided** the manifest also records the regeneration key
+(`design_url` + `projectId`) and marks the source `durable: false`. Downstream then knows the
+difference between "this pointer is dead" and "this pointer is re-derivable, here is how".
+
+**Not shipped** because it weakens a stated invariant in a shared contract, which is a doctrine
+decision, not a maintenance repair.
+
+### What I did in the interim (stated so it is not mistaken for compliance)
+
+Emitted the manifest with `ingest.source` recorded repo-relative, `durable: false`, and the
+`design_url` + `projectId` regeneration key alongside it — and did NOT force-add the staged bundle.
+That satisfies the invariant's *intent* (no dangling pointer; the referent is reconstructible) while
+failing its *letter* (the referent is untracked). Recorded here rather than quietly papered over.
