@@ -92,4 +92,10 @@ if git diff --cached --name-only | grep -qx 'docs/fork-gaps.md'; then
   bash tools/check-fork-gap-schema.sh                     || exit 1
   bash tools/check-fork-gap-targets.sh                    || exit 1
   bash tools/check-fork-gap-stale-open.sh --creation-mode || exit 1
+  # Orphan-annotation: an annotation of an EXISTING entry that the entry does not point back
+  # at. Orphaning is the DEFAULT in a 5,000-line append-only log, not the exception — see the
+  # script header. WARN-only by construction (the check returns 0), so no `|| exit 1`: the
+  # remedy is additive (`see_also`) and a blocked commit would push authors toward editing
+  # prior claims instead, which is the history-rewrite the append-only rule forbids.
+  bash tools/check-fork-gap-orphan-annotation.sh
 fi

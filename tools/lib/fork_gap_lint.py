@@ -585,6 +585,76 @@ def check_derive(entries) -> int:
     print("  layout differs between the old and skills-native layouts).\n")
     return 0
 
+# --------------------------------------------------- orphan cross-entry annotation
+
+ANNOT_HEADING_RE = re.compile(r"^#{2,3}\s+.*?(FG-\d{4}-\d{2}-\d{2}-\d{2})", re.M)
+
+
+def check_orphan_annotation(entries) -> int:
+    """A later annotation of an EXISTING entry must be reachable FROM that entry.
+
+    fork-gaps.md is an append-only log well past 5,000 lines, so an annotation of an
+    older entry necessarily lands far from it — 2,170 lines away, in the case that
+    produced this check (2026-07-28, FG-2026-07-26-04). Anyone reaching the original
+    the normal way (a grep, a triage sweep, the stale-open detector) reads its header
+    and never learns the annotation exists.
+
+    That is not a formatting nit. The orphaned content in the originating case was the
+    inoculation against a REPRODUCIBLE FALSE DIAGNOSIS that every blocked agent derives
+    independently with convincing evidence — precisely what a blocked reader needs and
+    precisely what they would not have found.
+
+    WARN-ONLY, and the remedy is ADDITIVE: add a `see_also` to the referenced entry.
+    It never asks anyone to alter a prior finding — that would be the quiet
+    history-rewrite the append-only discipline exists to prevent. A pointer is metadata,
+    not a claim.
+    """
+    text = open(GAPS).read()
+    lines = text.split("\n")
+    by_id = {e.id: e for e in entries if getattr(e, "id", None)}
+
+    # line_no -> owning entry, so a heading can be attributed to its enclosing ## block.
+    bounds = sorted(((e.line_no, e) for e in entries if getattr(e, "id", None)))
+
+    def owner_of(lineno):
+        own = None
+        for start, e in bounds:
+            if start <= lineno:
+                own = e
+            else:
+                break
+        return own
+
+    warns = 0
+    for m in ANNOT_HEADING_RE.finditer(text):
+        ref_id = m.group(1)
+        lineno = text[: m.start()].count("\n") + 1
+        owner = owner_of(lineno)
+        # A heading inside the entry it names is a self-reference, not an annotation.
+        if owner is not None and owner.id == ref_id:
+            continue
+        ref = by_id.get(ref_id)
+        if ref is None:
+            continue  # dangling id is check-fork-gap-schema's business, not ours
+        if "see_also" in ref.header:
+            continue
+        heading_txt = lines[lineno - 1].lstrip("# ").strip()
+        print(
+            f"  \u26a0 {ref_id}: annotated at line {lineno} but the entry (line {ref.line_no}) "
+            f"has no `see_also` pointing at it — a reader landing on the entry never finds it.\n"
+            f"      annotation: {heading_txt[:96]}\n"
+            f"      fix: add to {ref_id}'s yaml header ->  see_also: \"<what it says, and where>\"\n"
+            f"      (ADDITIVE ONLY — do not edit the entry's existing claims.)"
+        )
+        warns += 1
+
+    print(
+        f"check-fork-gap-orphan-annotation: {warns} orphaned annotation(s) across "
+        f"{len(by_id)} entry/entries. WARN-only — never blocks."
+    )
+    return 0
+
+
 def main() -> int:
     mode = sys.argv[1] if len(sys.argv) > 1 else "schema"
     entries = [e for e in parse() if e.heading.strip() != "## Open"]
@@ -594,6 +664,8 @@ def main() -> int:
         return check_targets(entries)
     if mode == "stale-open":
         return check_stale_open(entries, creation_mode="--creation-mode" in sys.argv)
+    if mode == "orphan-annotation":
+        return check_orphan_annotation(entries)
     if mode == "contradiction":
         return check_contradiction(entries)
     if mode == "report":
