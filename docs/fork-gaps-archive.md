@@ -1336,3 +1336,102 @@ owner: fork-maintenance
 3. **Doctrine line in `docs/manifest-contract.md`:** never diagnose from a file you did not stage while your own commit is in flight, and never conclude "broken" from a single read taken during another session's commit — retry the read before forming the claim.
 
 **Priority: medium.** No data loss, and the false read self-corrected within a minute. But the failure mode is a *confidently wrong, apparently-verified claim* about the health of the fork's own armed gates, produced by following the correct verification procedure — and mitigation (1) is a one-flag change already proposed on a sibling entry, now with three incidents behind it.
+
+## 2026-07-28 — the advisory-layer drift detector watches freshness and pointers but NOT the one HARD, mechanical constraint in the layer: the 8,000-char cap on the instructions wrapper  `[RESOLVED: 2026-07-28 — Signal F shipped in ~/.claude/hooks/advisory-drift-warn.py the same session it was logged (marker `SIZE_TARGET_CHARS`). Measures the wrapper in BOTH characters and UTF-8 bytes, binds on max(chars, bytes) against a 7,800 soft target / 8,000 hard cap, warn-only inside an already-registered SessionStart hook. 6/6 signal cases pass, including the golden case: the exact 7,978-char/8,096-byte file that shipped that morning now FIRES with "OVER the 8,000 cap by 96". Contract sides updated: advisory-docs-drift-policy gained the F row (plus the D/E rows it was missing) and the explicit binding-measure rationale; advisory-interaction-protocol's "check `wc -m`" instruction — the single-unit check that produced the miss — corrected to check both units with the larger binding. Logged BHV-2026-07-28-01.]`
+
+**Class:** `enforcement`
+**Fix scope:** global-only — the hooks track, **outside the fork tree** (the cross-link doctrine bullet applies)
+**Target file:** `~/.claude/hooks/advisory-drift-warn.py` (detector) + the `advisory-docs-drift-policy` global memory (contract). Not fork-customized and not a `custom/workflows/` path — this layer lives outside git/sync/hook coverage by design.
+**Marker:** `SIZE_TARGET_CHARS`
+`state: closed` · `routing: routed` · `routed_by:` Mason ("fix the fork gap now", in-thread) · `routed_at: 2026-07-28`
+
+### Incident
+
+`~/Documents/claude-advisory-board/claude-advisory-instructions.md` is pasted into the Perplexity
+Space *instructions field*, which rejects input over **8,000 characters**. The
+`advisory-docs-drift-policy` memory names that a **HARD LIMIT** and tells the agent to
+"check `wc -m` before saving."
+
+Session `claude-session-20260728-123557` shipped a v2.0 mode rewrite and reported it as
+**under 8,000**. Measured: **7,978 chars / 8,096 bytes UTF-8** — true by character count with
+**22 characters** of headroom, false by every byte-based measure (Finder size, `wc -c`, `ls -l`).
+Mason caught it by hand and reported the claim as wrong. Nothing in the wiring would have caught
+it, in either direction.
+
+Two distinct defects, and the second is the nastier one:
+
+1. **No size signal existed.** The detector implemented Signal A (stamp age > 30d), Signal B
+   (`CLAUDE.md` mtime newer than last review), Signal C (`[[Name]]` pointer integrity), Signal D
+   (shadow copy in `~/Downloads`) and Signal E (pair edited but not re-attested). The cheapest,
+   most objective, most mechanically checkable constraint in the whole layer — a count against a
+   fixed cap — was the one not wired. It is also the only one whose failure is **immediate and
+   total**: a stale doc still works, a rotted pointer degrades gracefully, an over-cap doc simply
+   cannot be pasted.
+2. **The cap had no declared MEASURE, so two correct answers disagreed.** The doc's house style
+   uses `—` (U+2014), `·` (U+00B7) and `→` (U+2192) — 70 non-ASCII characters costing +118 bytes
+   over the character count. So "under 8,000" was simultaneously true and false depending on
+   whether you counted `wc -m` or `wc -c`, and both parties could be honest and still ship a file
+   that would not paste. The memory said `wc -m`; every human-visible size readout says bytes.
+
+### Why this is structural, not a one-off
+
+The same shape this register has logged three times under other names — `actor` vs
+`author_provenance`, `claimed_by` vs `claimed_by_session_id`, `claimed_at` vs a local-time twin:
+**a quantity that looks like one number is two, and the check keys on whichever the writer
+happened to pick.** Here it is chars vs bytes. Declaring the measure was half the fix; the other
+half was that nothing measured at all.
+
+There was also a headroom problem independent of the units. Even on the generous reading, 22
+characters of slack against an 8,000 cap is not a compaction that passed — it is one sentence away
+from failing, and the doc had crept from 6,955 (the 2026-07-24 `context-compaction` golden case)
+back to the ceiling in four days. A cap with no *soft target* invites exactly that ratchet: every
+session compacts to just-barely-legal, and the next edit breaks it.
+
+### Fix — SHIPPED 2026-07-28 (same session; routed in-thread by Mason)
+
+**Signal F** added to `advisory-drift-warn.py` — note the letter: `D` and `E` had been taken
+earlier the same day, and the entry as first logged said "Signal D", which would have collided.
+
+- Measures the wrapper in **both** characters and UTF-8 bytes and **reports both in the banner**;
+  a banner naming one number is how the miss happened.
+- **Binds on `max(chars, bytes)`.** We do not know which unit the field counts, and erring toward
+  the larger can only ask for more room than needed, never less.
+- **`SIZE_TARGET_CHARS = 7800` soft / `SIZE_HARD_CAP = 8000` hard.** Warning *at* the cap warns at
+  the moment of breakage. The target is calibrated to leave a healthy wrapper quiet (7,636/7,754
+  after that session's recompaction) — a detector that fires on a file that is fine gets muted.
+  The hook's own docstring records that raising the target to silence a real warning is the wrong
+  lever.
+- Conservative: unreadable or non-UTF-8 → silent, matching the layer's existing rule.
+- `signal_f(path=INSTR)` takes its path as a parameter purely so it is testable without touching
+  the real file.
+
+**Verified by run, not asserted — 6/6:** real doc SILENT · **the exact 7,978/8,096 file that
+shipped that morning FIRES with "OVER the 8,000 cap by 96"** · 7,500 ASCII SILENT · 7,900 ASCII
+FIRES with "100 units of headroom left" · missing file SILENT · non-UTF-8 SILENT. Hook runs
+end-to-end at exit 0.
+
+**Contract sides updated in the same pass** (a signal the contract does not name is undocumented
+behaviour): `advisory-docs-drift-policy` gained the F row, the explicit binding-measure rationale,
+**and the D/E rows it was already missing**; `advisory-interaction-protocol`'s "check `wc -m`"
+line was corrected to check both units with the larger binding, and its stale headroom figure
+refreshed. Behaviour-ledger entry `BHV-2026-07-28-01`.
+
+**Interim, same session:** the wrapper was recompacted by reference-not-restate to **7,636 chars /
+7,754 bytes** — under on both measures. Verified: 0 pointers lost, 0 headings lost, 0 body
+pointers missing from the index, 0 index section-names missing from `claude-advisory-board.md`.
+
+### Honest limits of the fix
+
+- **Tier 4, not a gate.** DETERMINISTIC delivery / PROBABILISTIC action, per `enforcement-expert`.
+  It cannot stop anyone pasting an oversized doc; it makes the size impossible not to know.
+- **It fires at session start, not at the write.** It reports an oversized wrapper before the
+  *next* paste, not the one you are about to do. The stronger placement is a `PostToolUse` measure
+  on writes to that one path — **deliberately not built**: one new mechanism at a time, and this
+  one has to prove quiet first.
+- **Machine-local.** Lives in `~/.claude/hooks/`, does not ride the BMAD sync, fires on this
+  machine only. That is correct for this layer (the advisory docs are local by design) but it
+  means the fix is not distributed and never will be.
+
+- **Priority: medium.** No data loss; the failure is a rejected paste and a wasted round-trip with
+  the board. But it recurred on every instructions rewrite, and it burned an owner-noticed
+  correction cycle — the specific cost the drift detector exists to remove.

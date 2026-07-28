@@ -5728,3 +5728,123 @@ Emitted the manifest with `ingest.source` recorded repo-relative, `durable: fals
 `design_url` + `projectId` regeneration key alongside it — and did NOT force-add the staged bundle.
 That satisfies the invariant's *intent* (no dangling pointer; the referent is reconstructible) while
 failing its *letter* (the referent is untracked). Recorded here rather than quietly papered over.
+
+---
+
+## 2026-07-28 — `design-implement`'s existence gate makes an EXISTENCE claim against an UNSPECIFIED tree, so on a shared checkout parked on someone else's branch it returns a confident false "net-new" and recommends building what already exists
+
+```yaml
+id: FG-2026-07-28-06
+class: gate-with-an-unspecified-evidence-source
+scope: fork
+target: custom/workflows/implement/design-implement/workflow.md  (§"Net-new / no-target preflight", probes 1-3)
+related: FG-2026-07-08-01  (stale local main drives investigation — OPEN since 2026-07-08, fix: none)
+marker: "an existence probe must name its tree"
+state: open
+fix: none
+delivery: n/a
+owner: fork-maintenance
+routing: retro-routed
+routing_note: "Logged under the standing maintenance instruction. The FIX is a workflow-contract change (which tree the gate probes) — that is closer to DESIGN than repair, so it is PROPOSED here, not shipped."
+```
+
+### Incident — twice in one session, same root
+
+**Case 1.** `design-implement` ran its net-new existence preflight for `/units/[id]` and reported: no route, no page component, no canonical read-model → **net-new surface, nothing to diff.** The owner acted on it and authorised a build. A full `quick-spec` was written before the Write tool refused `src/domain/unit-record.ts` **because the file already existed**: PR #465 had built the entire surface and merged it to `origin/main` **eight hours earlier**.
+
+**Case 2.** Same session, a `CLAUDE.md` prose audit reported that the deploy docs told agents to run a bare `railway up` and never mentioned `scripts/deploy.sh`. True of the tree that was read. False of `origin/main` — PR #500 had already corrected all three lines.
+
+Neither reached production, and neither caused rework — the read-before-write guard caught the first, a routine `git log` caught the second. Both were **confident, evidence-cited, and wrong**.
+
+### The defect is in the gate, not (only) in the operator
+
+The preflight's probes are written as filesystem questions with **no tree named**:
+
+> 1. **Route** — no route / nav entry matches the surface … in the app's router or nav config.
+> 2. **Page component** — no page / screen component file exists for the surface.
+> 3. **Backing object** — no schema table and no shared type exists … (grep the schema + shared types).
+
+`grep -n "origin/main"` over the whole skill returns **nothing** for this gate. So "exists" silently means **"exists in the current working directory"** — and in this project the working directory is a SHARED checkout that other sessions park on their own branches (at the time of Case 1 it sat on `docs/receive-v2-ad6-disposition-*`, 17 commits ahead of an *older* main and missing the merge that mattered).
+
+A gate whose entire job is to answer *"does this exist?"* must name the tree it is answering about. This one does not, and its default resolves to the least reliable tree available.
+
+### Why this is not covered by FG-2026-07-08-01
+
+That entry (`stale local main silently drives investigation / repro / sub-agents → a wrong RCA reached a partner`) is the general hazard, **open with `fix: none` since 2026-07-08** — three weeks, one recorded partner-facing harm. This is a specific, testable instance with a different consequence: not a wrong diagnosis, but **a workflow that recommends building a surface that already exists**, having produced a plausible artifact to justify it.
+
+The generality is why the general entry has no fix. This one is narrow enough to actually close.
+
+### Candidate fixes (PROPOSED, not shipped — this is a contract change)
+
+1. **Name the tree in the probes.** Resolve existence against `git ls-tree -r --name-only origin/main` and `git log origin/main -- <path>`, not the filesystem. Cheapest, and it makes the gate correct regardless of what the checkout is parked on.
+2. **Assert the premise first.** Before probing, require `git rev-parse HEAD == git rev-parse origin/main`; if not, state the drift (`git rev-list --count HEAD..origin/main`) and probe `origin/main` explicitly. Cheaper still, and it also fixes every OTHER read the run makes.
+3. **At minimum, disclose.** Have the net-new early-exit print which tree and which SHA it probed, so a wrong verdict is auditable rather than invisible.
+
+Option 2 generalises furthest: the same stale premise poisons the map step, the capability delta, and every "X does not exist" claim the run makes — not just the gate.
+
+### Honest note on attribution
+
+The operator's share is real but small: one `git log origin/main` would have caught both cases, and the second one was caught that way. But the workflow never asks for it, the harness surfaces no drift warning, and the shared checkout is mutated by other sessions between turns. Calling this a discipline failure is how it stays open for another three weeks — the same reasoning that has kept FG-2026-07-08-01 at `fix: none`.
+
+## 2026-07-28 — the net-new existence gate sits in `design-implement` (the CHEAP consumer) and not in `design-ingest` (the EXPENSIVE producer), so a full per-frame fan-out runs to completion against a surface that has no implementation
+
+```yaml
+id: FG-2026-07-28-07
+class: gate-placed-downstream-of-the-cost-it-guards
+scope: fork
+target: custom/workflows/implement/design-ingest/workflow.md  (step-01, before the per-frame fan-out)
+related: FG-2026-07-07-01 (net-new preflight, partly resolved) · FG-2026-07-11-xx (capability-granularity probe, RESOLVED 2026-07-19) · FG-2026-07-28-06 (which TREE the gate probes)
+marker: "gate the producer, not only the consumer"
+state: open
+fix: none
+delivery: n/a
+owner: fork-maintenance
+routing: retro-routed
+routing_note: "Logged under the standing maintenance instruction. The fix mirrors a gate that is already ratified and shipped in design-implement into a second workflow — coherence repair, not a new rule — but it is PROPOSED not shipped, because the owner's live instruction this session was a project build, not fork maintenance."
+```
+
+### Incident
+
+`design-ingest` was run against `/stock` (Claude Design project `f93d6a81…`) and completed a full
+8-frame fan-out, emitting a 65KB manifest with 70 enumerated sections, a linked-records
+reconciliation, and a pre-seeded grid scaffold. `design-implement` was then invoked against that
+manifest and **early-exited at its existence gate before reading a single row**: `/stock` has no
+route, no page component, and no custody projection anywhere in `src/` (verified against
+`origin/main`, per FG-2026-07-28-06). The scope register's own SR-49 row says the same thing — the
+next artifacts are `bmad-prd` → `bmad-architecture` → build.
+
+The gate worked. It fired in the right place *for design-implement*. The problem is that the
+expensive half had already run.
+
+### Why this is structural, not a one-off
+
+`design-ingest` exists **for exactly one reason**: to absorb the context-heavy ingest of a large
+bundle so `design-implement` doesn't have to. Its value proposition is that it is the costly step.
+Putting the "is there anything to implement against at all?" probe **only** in the cheap downstream
+consumer means the cost the gate is meant to avert is paid in full before the gate is reached —
+the ordering is inverted relative to the intent.
+
+This is a different axis from the three related entries. FG-2026-07-07-01 and the (resolved)
+capability-granularity work both concern *what* the gate probes and *how* it classifies;
+FG-2026-07-28-06 concerns *which tree* it reads. None of them concerns *where in the pipeline the
+gate sits*. All three leave the probe in `design-implement`'s Input Resolution.
+
+It bites hardest in the case the manifest path was designed for: the bigger the bundle, the more the
+fan-out costs, the more there is to lose when the surface turns out to be unbuilt. And a net-new
+surface is a *normal* thing to hand to `design-ingest` — you design before you build, so pointing an
+ingest at a not-yet-implemented surface is the expected order of work, not operator error.
+
+### Fix direction
+
+- **(a) Mirror the existence probe into `design-ingest` step-01**, before the fan-out — same three
+  surface probes + three capability probes, same **soft** early-exit shape (recommend + override),
+  same two determination flavours. It is the identical, already-ratified check; only its position
+  moves. Cheapest and highest-leverage.
+- **(b) Or make it advisory rather than blocking there** — `design-ingest` still runs (a manifest for
+  an unbuilt surface is genuinely useful as a build spec, which is how this one is now being used),
+  but it **stamps the manifest** with `implementation_status: net-new` so the downstream
+  `design-implement` early-exit is predicted at ingest time rather than discovered after it.
+  Strictly better than (a) if the manifest-as-build-spec use is considered legitimate — and this
+  session says it is.
+- **Priority: medium.** No data loss and no wrong output — the manifest is correct and useful. The
+  cost is purely that a large context spend happens before the check that would have re-framed it.
