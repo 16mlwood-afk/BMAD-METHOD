@@ -1433,7 +1433,20 @@ while IFS= read -r target || [[ -n "$target" ]]; do
       # --check previews the SAME predicate the write path enforces, so the two can never
       # disagree about whether a dirty skills-layout target is safe.
       if $CHECK_ONLY; then
-        echo "CHECK $(basename "$sl_proot") (skills-layout — would deliver migrated ports + bmad-shared)"
+        echo "CHECK $(basename "$sl_proot") (skills-layout — would deliver migrated ports + bmad-shared + custom skills)"
+        # Report ACTUAL drift, not just the delivery plan. This branch previously printed the
+        # line above and checked only dirtiness, so `--check` reported "All projects up to date"
+        # while a hand-authored custom skill was 5KB behind the fork (observed 2026-07-28:
+        # bmad-correct-course, installed 18,834 B vs fork 24,147 B, missing Step 4.5 entirely).
+        # deliver_skills_layout_project step 3 DOES deliver custom/skills — the write path was
+        # never the gap; the check simply never asked, so a real drift read as green. A check
+        # that cannot see what its own write path delivers is worse than no check: it is
+        # believed. Mirrors the old-layout reporting at the `skills_drift` block below.
+        sl_skills_drift=$(sync_skills_for_project "$sl_proot" "check")
+        if [[ "$sl_skills_drift" -gt 0 ]]; then
+          echo "  ↳  custom skills ($sl_skills_drift skill(s) missing/outdated)"
+          stale=$((stale + 1))
+        fi
         sl_dirty_managed="$(bmad_managed_dirty "$sl_proot")"
         if [[ -n "$sl_dirty_managed" ]] && ! $FORCE; then
           echo "  ⛔ uncommitted BMAD-managed changes — sync would SKIP this target (commit, or --force):"
