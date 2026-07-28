@@ -4681,12 +4681,29 @@ Consequences worth carrying:
 ```yaml
 id: FG-2026-07-27-07
 class: workflow-mechanism-inoperative
-status: open
+scope: fork
+target: custom/workflows/implement/design-implement/steps/step-01a-ingest-url.md
+also_target: custom/workflows/implement/design-ingest/steps/step-01-frame-inventory.md
+marker: "source mirrored via"
+state: open
+fix: none
+delivery: n/a
+owner: fork-maintenance
+# Header migrated to the current schema 2026-07-28 (mechanical, content-preserving). Every
+# field is lifted from this entry's own body — `target`/`also_target` from its "Target file:"
+# line (whose paths were themselves ROTTEN: both live under implement/, not design/, and under
+# a steps/ dir — corrected against the tree, which is why check-fork-gap-targets.sh exists),
+# `marker` from its own proposal (a), which is the string that will exist in the step
+# file once the degradation is surfaced rather than silent. No prose was changed. The earlier
+# migration attempt was reverted because this entry was then UNCOMMITTED and live in another
+# session; it is committed at HEAD now, so the collision hazard that blocked it is gone.
 routing: NOT-ROUTED — the clean fix is an upstream DesignSync change (a `localPath` sink on
   `get_file`), which is not the fork's to build. The fork-side question — what step-01b should
   instruct when the persist path does not fire — is a workflow-contract decision, so this is
   logged and proposed, not shipped.
 ```
+
+### Incident
 
 **Noticed:** 2026-07-27 (cash-recovery, `design-ingest` on Claude Design project
 `f93d6a81-e954-4d2d-9800-75a5fcfcf6ca`, target `templates/write-off-register/WriteOffRegister.html`,
@@ -4778,7 +4795,7 @@ owner: fork-maintenance
 routing: retro-routed
 routing_note: "Defect A fixed under the standing maintenance instruction (execution defect — a gate whose trigger contradicted its own verdict). Defect B is NEW DESIGN (a new manifest contract field + a new refusal branch) and is PROPOSED ONLY, per the maintenance-vs-policy split."
 contradiction_ack: "Deliberately split — defect A is fixed in the target, defect B is proposed and unbuilt. `partly` is the correct state and the prose says so per-defect."
-distribution: "git push myfork custom + sync-bmad-workflows.sh (all 14 targets) — NOT RUN; defect A fires in zero projects until both do."
+distribution: "git push myfork custom + sync-bmad-workflows.sh (all 14 targets) — NOT RUN; defect A fires in zero projects until both do. CONFIRMED BY RE-FIRING, not predicted: 2026-07-27 evening, a SECOND cash-recovery design-implement run (Claude Design paste-prompt for /users, 8 frames) hit the identical ambiguity — route + page component absent, `users` table present — and again reached the verdict only by overriding the letter of the rule. Verified at the time: the three old strings ('all three absent' / 'NONE of probes 1-3' / 'probes 1-3 find an existing surface') return 0 hits in the FIXED fork workflow.md and 3 hits in cash-recovery's .claude/skills/bmad-design-implement/SKILL.md (last synced #364). Two firings, same project, same day, hours after the fix landed. The gap is DELIVERY, not diagnosis — raising distribution priority, not re-opening defect A."
 ```
 
 ### Incident
@@ -4962,3 +4979,436 @@ vocabularies**, not only CSS.
 C: the armed schema gate lints the working tree, another session's uncommitted entry is
 non-conforming, and the only unblock is to edit that live session's work — which the collision
 doctrine forbids. Same choice the previous session made, for the same reason.
+
+## 2026-07-27 — DEPLOY READS A MUTABLE SHARED CHECKOUT: Railway is bound to the one directory that is also every session's shared desk, so non-`src` design/planning dirt blocks production deploys and is one `git add -A` from being destroyed
+
+```yaml
+id: FG-2026-07-27-10
+class: deploy-source-is-a-shared-mutable-workspace
+scope: project
+target: cash-recovery (Railway link) + docs/deployment.md + CLAUDE.md § Deployment
+marker: "railway up ships all of origin/main"
+state: fork-fixed-distribution-owed
+fix: done
+fix_note: "dedicated deploy clone at /Users/masonwood/code/cash-recovery-deploy, Railway-linked, reset --hard origin/main only"
+delivery: owed
+delivery_note: "the clone exists on ONE machine; no other project has one, and nothing enforces its single-purpose policy"
+distribution: "NOT RUN — no other project has a deploy clone and nothing enforces the single-purpose policy; standing it up per-project is a per-machine setup action, owner-gated, not a workflow sync."
+owner: mason
+# Enum conformance 2026-07-28 (mechanical): `scope` project-infra -> project (SCOPES has no
+# project-infra); the prose that sat in `fix:`/`delivery:` moved verbatim into *_note fields,
+# which is where free text belongs; `distribution:` added because state
+# fork-fixed-distribution-owed requires it. No claim, verdict or prose was altered.
+routing: maintenance
+routing_note: "Owner ruling 2026-07-27 (paste-back, 'SHARED LAUNCHPAD WORKSHOP GAP') explicitly green-lit BOTH the deploy and the scoped structural fix, and explicitly scoped CI-on-merge OUT of that session. Execution repair against a contract the deploy doc ALREADY makes ('never from a worktree, never from $HOME' — it simply never said 'never from a workspace anyone edits'). The CI end-state is named, not built: that IS a new design and stays owner-routed."
+```
+
+### Incident
+
+`railway up` **uploads a DIRECTORY, not a git commit.** Railway's link is bound per-directory, and in
+cash-recovery it was bound to `/Users/masonwood/code/cash-recovery` — which is simultaneously:
+
+- the **only** directory that can deploy (link is there; `$HOME` and worktrees resolve to a *different
+  app*, `amazon-lead-generator` — the documented footgun), and
+- the **shared desk for every parallel session**, by contract, not by accident.
+
+That second half is forced by three existing rules, each individually correct:
+
+- `.claude/wip-register.yaml` **must** be written in the main checkout — a claim written in a worktree
+  is invisible to other sessions until committed AND pushed.
+- `_bmad-output/` planning state is main-checkout-only (largely gitignored).
+- machine-local `.claude/` config must live there to be the config the running session actually reads.
+
+So design and planning sessions have no worktree to hide in: they *must* dirty the launchpad.
+
+**Observed 2026-07-27.** A production deploy carrying a merged **security** fix (SR-46 P2 — role
+re-read per request, so deactivating an operator actually stops them instead of leaving them live for
+up to the 30-day sliding token) could not run. The shared checkout was parked on another session's
+branch `docs/receive-v2-ad6-disposition-fff9d42b`, **34 commits behind `origin/main`**, with **31
+uncommitted files**, of which **10 were tracked AND differed from `origin/main`** — verified, so
+`git checkout main` would refuse outright. Deploying from it would have shipped a build missing 34
+merged commits: a regression, not a deploy.
+
+**Not one bad session.** Zero of the dirty files were `src/**` — every one was a design brief,
+`docs/design-policy.md`, the scope register, or relational edges. That is *exactly* the work the rules
+above force into the shared checkout. The dirt was legitimate; its **location** was the defect.
+
+### Why worktrees did not already solve this
+
+Worktrees isolate **code editing**. They were never applied to the **deploy source**. `deploy.sh`'s
+preflight encodes "main checkout, not a worktree" — correct as far as it goes, and it is precisely
+what makes the shared checkout the *only* legal deploy source, which is what couples the two roles.
+The guard is not wrong; its premise is that the main checkout is quiet, and in a repo with ~10
+parallel sessions merging all day it never is.
+
+**Second harm, independent of deploys:** one shared git index. Any session's `git add -A` can scoop
+another's uncommitted WIP into the wrong commit, and a forced checkout can destroy it. Already logged
+in adjacent forms (2026-07-25 shared-index entry); this entry names the root the others circle.
+
+### Fix applied (this session, owner-ruled)
+
+A **dedicated deploy clone** — a real clone, not a worktree (`.git` is a directory, so `deploy.sh`'s
+worktree check passes):
+
+    /Users/masonwood/code/cash-recovery-deploy    # railway link → cash-recovery / production
+    git fetch origin && git reset --hard origin/main && ./scripts/deploy.sh
+
+**Policy, binding:** no design/planning/WIP work there · no worktrees from it · used ONLY for
+fetch → reset → deploy. The shared checkout was **not touched** — owner ruling §3 forbade
+`checkout main`, `reset --hard`, and staging another session's WIP to "help".
+
+`scripts/deploy.sh` is the lane, never a bare `railway up`: it stamps `APP_COMMIT_SHA` from
+`git rev-parse HEAD`, which is the only reason `/api/status` can report the true running commit.
+
+### What is NOT fixed — read before assuming this is closed
+
+- **One machine, one project.** The clone exists for cash-recovery only. Every other project still
+  deploys from its shared checkout and will hit this the first time a session parks a branch there.
+- **Nothing enforces the single-purpose policy.** It is prose. A future session can create a worktree
+  from the clone, or edit in it, and no gate objects. A `deploy.sh` preflight assertion (refuse if the
+  clone has ANY tracked-file dirt, or if its path is not the sanctioned one) is the obvious
+  deterministic tier and is **not built**.
+- **The real end-state is CI-on-merge-to-main**, with protected HEAD and explicit build provenance, so
+  local checkout cleanliness stops affecting production at all. The clone is an **interim safety
+  step, not the final design.** Owner ruling §7 scoped CI explicitly OUT of that session — it crosses
+  project/tooling boundaries and needs its own design and approval path. **Do not build it off the
+  back of this entry.**
+
+---
+
+## 2026-07-27 — the `manifest_grain` contract landed HALF-synced into one project: the CONSUMER reads the field, the PRODUCER never stamps it, so a genuinely value-exact manifest is auto-demoted to `summary` and the consumer re-reads a source only the orchestrator can reach
+
+```yaml
+id: FG-2026-07-27-11
+class: split-sync-of-a-two-sided-contract + stale-status-claim
+scope: fork
+target: custom/workflows/implement/design-ingest/  (producer half — must STAMP ingest.manifest_grain)
+also_target: docs/fork-gaps.md  (FG-2026-07-25-14 FLEET STATUS note — its uniformity premise is now false)
+marker: "a two-sided contract distributed at FILE granularity can land on one side only"
+state: open
+fix: none
+delivery: n/a
+owner: fork-maintenance
+routing: retro-routed
+routing_note: "Logged under the standing maintenance instruction (coherence defect — a status claim in an existing entry is now false, with a live consequence). NOT fixed here: the fix is the fleet re-sync, which is a DISTRIBUTION stop and remains owner-gated per FG-2026-07-25-14's reaffirmed fleet STOP."
+distribution: "NOT RUN and not proposed — this entry deliberately does not touch the ⛔ fleet re-sync gate."
+```
+
+### Incident
+
+`design-implement` was invoked in **cash-recovery** against
+`_bmad-output/implementation-artifacts/design-ingest-canonical-unit-record.md`
+(`frames=unit-record,record-shell`). Intake read the grain per **MANIFEST.1a** and found
+`ingest.manifest_grain` **absent** — so, per contract, `{manifest_grain} = summary`: the manifest is
+the section denominator only and **every value must be re-read from the design source.**
+
+**The manifest is not the problem. The split is.** That manifest was produced *the same day*
+(2026-07-27) by 11 isolated agents over a byte-identical transcript-extraction mirror, cross-validated
+frame-by-frame, and its scaffold rows carry resolved values throughout
+(`pad 16px 20px`, `radius 10px --radius-lg`, `mono,600,16px`). It is value-exact in substance and
+`summary` by contract, because the field that would say so does not exist in the producer that wrote it.
+
+**Verified in-tree, both halves, same project:**
+
+| half | file | `manifest_grain` |
+|---|---|---|
+| CONSUMER | `.claude/skills/bmad-design-implement/step-01c-ingest-manifest.md` | present — MANIFEST.1a, "absent ⇒ `summary`, never inferred value-exact" |
+| PRODUCER | `.claude/skills/bmad-design-ingest/` | **zero references** (`grep -rn manifest_grain` → no hits) |
+
+The consumer file is **untracked** in cash-recovery (`?? .claude/skills/bmad-design-implement/step-01c-ingest-manifest.md`)
+— i.e. it arrived recently, on its own, without its producer counterpart.
+
+### Why this is not already covered by FG-2026-07-25-14
+
+That entry's FLEET STATUS note says `fleet: OPEN (all 13 projects still carry the OLD contract)` and
+concludes *"Treat a fleet manifest as `summary` regardless of what it says."* The conservative default
+is right and stands. **The uniformity premise underneath it is now false**, and that is the new fact:
+cash-recovery is not on the old contract, it is on BOTH — new consumer, old producer.
+
+A uniformly-old pair degrades gracefully (producer emits no grain, consumer never asks). A **split**
+pair does not: it converts every ingest→implement handoff in that project into a full source re-read,
+silently, with no diagnostic naming the cause. That is strictly worse than either uniform state, and
+nothing in the fork currently detects it.
+
+### Why the consequence bites harder than "just re-read it"
+
+The re-read is not cheap here and cannot be delegated. Per **FG-2026-07-26** (design-ingest fan-out),
+the DesignSync MCP is absent from sub-agent contexts whenever `ANTHROPIC_API_KEY` is set — this very
+manifest records a prior pass that spent **~330k subagent tokens and enumerated ZERO frames** for that
+reason. So a `summary` demotion forces the value read back into the orchestrator's own context, which
+is the exact budget the manifest path exists to protect. The demotion undoes the workflow's whole
+purpose, and it fires on a manifest that did not deserve it.
+
+### Root shape (the reusable lesson)
+
+`sync-bmad-workflows.sh` distributes at **file granularity**. `manifest_grain` is a **two-sided
+contract** — a producer that stamps and a consumer that reads — whose halves live in two different
+skill directories. Nothing declares them coupled, so a partial sync (or a hand-copied single file) can
+land one side. Any contract spanning two workflows has this exposure; grain is just the instance that
+surfaced.
+
+### What is NOT done here
+
+- **Not fixed.** The producer still does not stamp the field. The fix is the fleet re-sync, which is a
+  DISTRIBUTION action and stays behind FG-2026-07-25-14's reaffirmed owner-gated ⛔ STOP. Not run, not
+  proposed, not worked around.
+- **No detector.** A coupled-contract check (`producer stamps X` ⟺ `consumer reads X`, per project)
+  would catch this class deterministically at sync time. Not built — it is a new mechanism, which is
+  NEW DESIGN, not maintenance.
+- **The stale line in FG-2026-07-25-14 is left in place**, cross-referenced from here rather than
+  rewritten: editing another entry's status claim to match a single observation is the kind of quiet
+  history-rewrite the append-only discipline exists to prevent.
+
+## 2026-07-27 — STD-SURFACECOMPLETE-001 rule 2 halts and routes to "declare it in `relational-edges.yaml`", but NO workflow in the corpus is permitted to write that file — the remedy names a destination with no sanctioned writer
+
+```yaml
+id: FG-2026-07-27-12
+# Renumbered from FG-2026-07-27-11 on 2026-07-28: two entries claimed -11 (the other is the
+# `manifest_grain` half-sync above, which appeared first). The LATER-appended entry takes the
+# next free id; -12 was unused. Id only — no content changed, and no cross-reference to -11
+# exists in the register pointing at this entry.
+class: dead-end-redirect
+scope: fork
+target: custom/workflows/design/shared/spawned-surface-completeness.md
+also: custom/workflows/design/design-handoff/steps/step-01c-topology.md
+  custom/workflows/design/relational-coherence-audit/workflow.md
+marker: "who writes relational-edges.yaml"
+state: open
+fix: none
+delivery: n/a
+owner: fork-maintenance
+routing: NEEDS OWNER ROUTING — assigning ownership of the edge-declaration lane
+  is a lane definition, not an execution repair. Sibling FG-2026-07-27-03 (halt
+  records have no durable home) was likewise logged, not fixed.
+```
+
+### Incident
+
+A `design-handoff` on the Recovery Cross-Check (`/recovery/cross-check`, cash-recovery) halted
+correctly at step-01c §5h rule 2 — the surface displays three foreign records (eBay listing,
+reimbursement line, removal order) with neither a Drizzle FK nor an `edges:` entry in
+`docs/relational-coherence/relational-edges.yaml`. The gate did its job: it refused to let the
+workflow invent the relations.
+
+The halt diagnostic routes the operator to *"declare it in `relational-edges.yaml`, then re-run."*
+**Nothing is allowed to do that.**
+
+- `design-handoff` is explicitly forbidden — "Do NOT invent the edge into the brief" (§5h rule 2),
+  and §3a's no-guessed-edges rule says the same.
+- `relational-coherence-audit` is declared **"Detect + route only — never edits"** in its own
+  description. It *reads* the map to derive expected edges; it has no authoring mode.
+- No other workflow in the corpus names `relational-edges.yaml` as an output.
+
+So the file is a **required input to two gates and an output of nothing.** Every edge in it today was
+hand-authored by a session acting outside any workflow contract — which is also why the two edges it
+holds are richly commented and the rest of the app's relations are absent.
+
+### Why this is structural, not a one-off
+
+The gate is correct and should stay. The defect is that its remedy has no owner, which produces the
+worst available outcome: a session that hits the halt either **stalls** (correct, unhelpful) or
+**hand-edits a contract file with no workflow, no validation, and no provenance** — and the second is
+what will actually happen under delivery pressure, because the first looks like failing to deliver.
+
+It is the same shape as a `PreToolUse` deny whose message names a remedy the agent cannot perform: the
+gate converts into a bypass rather than a fix.
+
+### Not a duplicate of FG-2026-07-27-03
+
+That entry is about halt *records* having no durable home (the stop leaves no resumable trace). This
+one is about the halt's *remedy target* having no writer. A durable halt artifact would record this
+halt perfectly and still leave nobody able to clear it.
+
+### Second-order finding surfaced by the same halt
+
+Declaring the three edges is **not uniformly possible**, which is itself evidence the lane needs a
+real owner rather than an ad-hoc edit:
+
+- `reimbursements_raw` and `removal_orders` are real tables — both edges are declarable as `derived`
+  (text-key correlations, no FK), directly analogous to the two already in the file.
+- The **eBay listing has no in-app record at all** — no `listings` table exists in `src/db/schema.ts`,
+  and `/listings` is fixture-backed. Per §3a step 2 ("if no surface owns it yet… it is a plain value,
+  not a link") the correct answer may be that it is *not* a §13 relation — which would mean the
+  predecessor brief's `ebay-listing-lookup` frame should never have existed. Deciding that is a
+  product/architecture call, not a paperwork fix, and no lane currently owns making it.
+
+## 2026-07-28 — the Bash edit-guard read every `&&`-chained command after a `sed -i` as another FILE OPERAND, so a write whose only real target sat under an EXEMPT prefix was denied by the garbage tokens
+
+```yaml
+id: FG-2026-07-28-01
+class: enforcement
+scope: project
+target: cash-recovery/.claude/hooks/bash_edit_guard.py
+also: cash-recovery/.claude/hooks/test_bash_edit_guard.py
+marker: "_CMD_SEPARATORS"
+state: closed
+fix: done
+fix_note: the sed/awk operand list now stops at the first whole shell-separator token,
+  quote-aware; 5 golden cases added (S1-S5); suite 65/65, health check HEALTHY.
+delivery: done
+delivery_note: PROJECT-LOCAL BY CONSTRUCTION — the reviewed guard is wired in
+  cash-recovery ONLY (settings.local.json is gitignored and does not sync), so the fix
+  is fully delivered everywhere the guard runs. The other 12 projects still run the
+  legacy inline matcher; re-homing them is the owner-gated custom/githooks/ move already
+  blocked by FG-2026-07-26-08 — NOT a distribution owed by this entry.
+owner: fork-maintenance
+routing: retro-routed
+routing_note: owner said "go go" on this entry in-thread after the reflection prompt;
+  MAINTENANCE lane — a resolution defect in how the guard executes, not a change to what
+  the rule IS. No policy, taxonomy, or lane was touched.
+```
+
+### Incident
+
+A `design-handoff` run needed a read-only production census, and the census script lives in the
+session scratchpad (`/private/tmp/claude-501/…`) — a path the guard's `EXEMPT_SUBSTRINGS` explicitly
+allows via `/private/tmp/`. Editing it with
+
+```
+sed -i.bak 's#^import postgres.*#import postgres from "…/node_modules/postgres/src/index.js";#' \
+  /private/tmp/…/census.mts && export PGURL=$(railway variables --json | python3 -c …) \
+  && timeout 180 npx tsx /private/tmp/…/census.mts 2>&1 | tail -15
+```
+
+was **DENIED**, and the deny message listed its targets as:
+
+> `postgres.*#import, postgres, from, …/index.js";#, &&, export, PGURL=$(timeout, 90, railway,
+> variables, Postgres, |, python3, import, json,sys;, …, timeout, 180, npx, tsx, 2>&1, |, tail`
+
+Every one of those is a shell word, not a file. The one real target was exempt.
+
+### Root cause — a regex that captures to end-of-LINE, not end-of-COMMAND
+
+`_SED_I` (and `_AWK_I`) end in `(.*)$`, and `_trailing_operands` then whitespace-split that capture
+and treated each token as a file operand. So the sed *script* argument and **every subsequent
+`&&`-chained command** became "files". Those tokens are unresolvable, unresolvable fails closed by
+design — so the garbage decided the verdict while the genuinely-exempt target was never reached.
+
+This is the same **word-salad-evidence** tell already recorded for the 2026-07-26 quoted-span bug in
+this guard ("a verdict whose own evidence is word salad is a verdict to distrust"), but a *distinct*
+cause: that fix taught the guard to ignore write-verbs inside quotes; nothing bounded the operand
+list at a command separator. Same family as `FG-2026-07-16-03` (read-only `python3 -c` blocked) and
+`FG-2026-07-18-01` (read-only `env | sed -E` blocked).
+
+### Why it is structural, not a one-off
+
+The affected directory is the one the session prompt **mandates** for temp files, and CLAUDE.md's own
+deny text promises "the temp dirs are exempt". So the guard contradicted its documented contract on
+its highest-frequency benign shape — a scratch edit chained to the command that consumes it. The
+second-order cost is the documented bypass: the sanctioned reroute is to write the identical change
+through a script (invisible to the guard by design), so a false positive here converts a reviewable
+edit into an unreviewable one.
+
+### Fix, and the trap avoided
+
+`_trailing_operands` now tokenizes with `shlex` and **breaks at the first whole token** in
+`_CMD_SEPARATORS` (`; && || | & |&`). The bound must be on a whole *token*, not on the separator
+*characters*: a sed script legitimately contains all of them (`s|a|b|`, `s/a/&b/`, `s/a/b/;s/c/d/`),
+and character-splitting would truncate the script and then mistake its fragment for the filename —
+trading this false positive for a worse one. Unbalanced quotes fall back to the old whitespace split
+so an odd command still fails closed. Golden cases pin both directions: **S1** the live FP now
+ALLOWs; **S2** a `docs/` target still resolves to ASK through a chain; **S3** a real
+`> src/db/schema.ts` later in the same chain is still DENIED (the bound must not hide a real write);
+**S4/S5** pipe- and `&`/`;`-bearing sed scripts on real source still DENY.
+
+### Evidence (run, not asserted)
+
+- `python3 .claude/hooks/test_bash_edit_guard.py` → **65/65 passed** (was 60 cases; S1-S5 added, all pass).
+- `bash .claude/hooks/guard-health-check.sh` → **HEALTHY** — wiring, ALLOW probe, DENY probe, and
+  override audit-row all green through the real stdin/JSON contract.
+
+### Not fanned out
+
+The reviewed guard is wired in cash-recovery only; the other 12 projects still run the legacy inline
+matcher, so this fix fires in one project. Distribution is the owner-gated `custom/githooks/` re-homing
+already blocked by `FG-2026-07-26-08` (13/13 diverged local `main`) — not re-opened here.
+
+### This entry is UNCOMMITTED on disk — and that is the already-logged deadlock, not an omission
+
+The commit was attempted and **rejected by the pre-commit schema gate**, on *other* entries:
+`FG-2026-07-27-07` (pre-migration header — 7 errors), `FG-2026-07-27-10` (three enum violations), and
+a duplicate `FG-2026-07-27-11` id. This entry itself is schema-clean
+(`tools/check-fork-gap-schema.sh` reports zero errors against it). The condition is exactly the one
+already written up above `-07`: the gate is repo-global, so one malformed entry blocks **every**
+session's commit to the fork, and the only unblocks are to overwrite a live session's uncommitted work
+(collision doctrine hard stop) or `--no-verify` (the gate teaching its own bypass). Neither was taken,
+and the staged index was released so this file cannot be swept into another session's commit. **The
+guard fix is live and verified in cash-recovery regardless — the guard is untracked machine-local code
+that does not ride this commit.** What is owed is only the register line landing in git.
+
+## 2026-07-28 — `page_mode` is the highest-cascade decision in the gather and the ONLY major one with no derivation basis and no verification gate; a wrong value produces a coherent brief for the wrong surface and every existing gate passes it
+
+```yaml
+id: FG-2026-07-28-02
+# Renumbered from FG-2026-07-28-01 on 2026-07-28: a parallel session appended this entry
+# claiming an id already taken by the edit-guard entry above (appended first). Same rule as the
+# -11/-12 split — the LATER-appended entry takes the next free id. Id only; no content changed.
+class: unverified-cascade-input
+scope: fork
+target: custom/workflows/design/design-handoff/steps/step-01b-decide.md
+also: custom/workflows/design/design-handoff/steps/step-01c-topology.md
+  custom/workflows/design/shared/spawned-surface-completeness.md
+marker: "page_mode vs built surface shape"
+state: open
+fix: none
+delivery: n/a
+owner: fork-maintenance
+routing: NEEDS OWNER ROUTING — adding a verification gate is a new design
+  decision, not an execution repair. Log, do not ship.
+```
+
+### Incident
+
+`design-handoff` on `/recovery/cross-check` (cash-recovery) emitted a brief with
+`page_mode: detail`. The built surface is a **five-column worklist table**
+(`RecoveryCrossCheckApp.tsx:2229` — Unit · Stage · Recovery path · Recovered/recoverable · action)
+**plus a drawer stack** — i.e. the textbook `operational` shape. §5 states the rule plainly:
+*"a page that contains a worklist AND a per-row detail surface is operational; `detail` is for a page
+whose dominant (often only) job is the single record."*
+
+**Primary cause is COMPLIANCE, and this entry does not launder that.** The rule was present, clear,
+and read. The author saw the `units: XUnit[]` collection and the search input during the gather,
+noticed the tension explicitly, and resolved it the wrong way.
+
+### The structural gap, which is separate and real
+
+The wrong value was never *caught*, and could not have been, because nothing checks it:
+
+- **No derivation basis.** §3 data shape derives from the schema. §3a linked records derive from
+  `relational-edges.yaml` + FKs. §5f frames derive from §5/§5a/§3a. §5h gates completeness with a
+  HARD HALT. `page_mode` alone is selected from prose signals by judgment, with no mechanical input.
+- **No verification gate.** §5h verifies that the frames *match the edges*. Nothing verifies that
+  `page_mode` matches **the built surface's actual shape** — which, for `feature_scope: redesign`, is
+  mechanically checkable: the §3 mutation-derivation audit **already has the author grepping the
+  target's own component files**. A list/table render in those files versus `page_mode: detail` is a
+  detectable contradiction, in a file the workflow already opens.
+- **Highest blast radius of any gather field.** It drives the §5a composition default, the §5b band
+  gate (its "a single record has no aggregate dimension" shortcut), §5f frame rules 2/4/5, and the
+  §5g list-rendering gate. One wrong enum silently mis-shapes all five.
+
+### Why every gate passed it
+
+Same silent-failure family as design-policy §5 #13/#14/#15: the emitted brief was internally
+**consistent**. `detail` legitimately suppresses the drilled-drawer frame (rule 2 says for `detail`
+the primary surface IS the drawer), legitimately yields `single-render`, and legitimately resolves
+`band_provenance: none`. So §5h found no missing frame, the completeness checker found no missing
+field, and the commit gate passed — **because the brief correctly described the wrong surface.**
+Downstream, `design-synthesize` draws only enumerated frames, so the worklist would simply never have
+been drawn, and `design-implement` would have inferred it.
+
+### Second-order: predecessor page_mode is inherited with no warning
+
+The superseded brief also said `detail`, and that was a stated part of the author's reasoning. §5 says
+to decide from the dominant user task but never says **do not inherit the predecessor's mode** — even
+though this project's own design policy (§8.2e) names *"the approved design does X" is provenance, not
+evidence* as a hard rule for ergonomics claims. The same trap exists one level up, in the workflow, for
+page_mode, unguarded.
+
+### Candidate fix (NOT taken — owner routing required)
+
+A `redesign`-scope-only assertion in §5, run against files the §3 audit already opens: if the target's
+own components render a repeated row/list/table construct and `page_mode` is `detail`, HALT with
+"declared `detail` but the surface renders a list — confirm the mode." Narrow by construction (it can
+only fire on redesign, where built code exists), and cheap (no new file reads). Deliberately NOT
+authored here: adding a gate is a design decision, and a mis-tuned one on a judgment field would be
+worse than none.
