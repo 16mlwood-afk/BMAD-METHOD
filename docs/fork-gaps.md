@@ -185,6 +185,7 @@ owner: fork-maintenance
 routing: retro-routed
 routing_note: "Verify-and-close sweep 2026-07-27 (owner: 'go for it'). Entry's own status line states the fork fix is DONE at source with distribution the only residue — re-read, not grepped. Reclassified so it joins the single fleet sync instead of standing as an open investigation."
 distribution: "sync-bmad-workflows.sh fan-out to the 13 projects — rides the standing owner-gated fleet re-sync gate (STATUS 'Now')"
+see_also: "2026-07-27 UPDATE later in this file — the DesignSync `get_file` to-disk mirror this entry prescribes DID NOT FIRE at real bundle sizes. Read it before relying on that workaround."
 ```
 
 ### Incident
@@ -2843,6 +2844,7 @@ implemented_by: "session 984e3219-553a-42cb-befc-30d49a420241 (display header cl
 implemented_at: "2026-07-26T10:14:00Z"
 routing_note: "PROPERLY ROUTED BEFORE IMPLEMENTATION — this is NOT the FG-11 retro-routed case. The directive named a concrete id AND a target AND the specific schema changes ('Treat FG-2026-07-25-14 as a high-priority structural gap with target: manifest-schema.md' + 'Required schema changes: … require the component×property rows … add a manifest_grain field'), which clears the grounding bar in global-bmad-workflow.md §Autonomous-maintenance ('a concrete id AND a target'; the rejected form is 'fix the recent fork gaps'). Logging this gap earlier in the same session was NOT the authorisation — the owner's explicit directive was. Recorded because the routing gate landed (fd455e96) in the same window as this fix, so the two must not be read as in conflict."
 distribution: "custom/skills-native/ re-port DONE on disk (GENERATED tree, gitignored — tools/port-workflows-to-skills.sh) + sync-bmad-workflows.sh to the fleet NOT RUN and owner-gated: the ⛔ fleet re-sync STOP is explicitly reaffirmed by the owner (2026-07-26). Fork and fleet are INTENTIONALLY DIVERGENT until a separate 'deploy manifest-grain contract to fleet' directive."
+see_also: "later in this file, \u201cWhy this is not already covered by FG-2026-07-25-14\u201d — a sibling entry argues it is NOT covered here. Read it before closing either as a duplicate of the other."
 ```
 
 > **FLEET STATUS — read before relying on this contract downstream.** `fork: FIXED` (`aa62f02d`,
@@ -4353,6 +4355,7 @@ owner: fork-maintenance
 routing: NEEDS OWNER ROUTING — defining the halt-artifact contract is a new
   design decision, not an execution repair. Sibling FG-2026-07-27-01 was
   likewise logged, not fixed.
+see_also: "later in this file, \u201cNot a duplicate of FG-2026-07-27-03\u201d — a sibling entry distinguishes itself from this one. Read it before merging them."
 ```
 
 ### Incident
@@ -5258,6 +5261,7 @@ routing: retro-routed
 routing_note: owner said "go go" on this entry in-thread after the reflection prompt;
   MAINTENANCE lane — a resolution defect in how the guard executes, not a change to what
   the rule IS. No policy, taxonomy, or lane was touched.
+see_also: "2026-07-28 later in this file — FIXED (fork prose, step-01b \u00a75-pre) + a deterministic tier shipped per-project. IMPORTANT: enforcement-expert REJECTED the candidate fix this entry proposes (halt-on-list = the indiscriminate-detector anti-pattern) and narrowed it to a conjunction. Read the annotation before implementing the fix as written here."
 ```
 
 ### Incident
