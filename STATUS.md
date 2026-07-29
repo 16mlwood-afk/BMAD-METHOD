@@ -18,6 +18,7 @@ The compact, always-current state. The skill reads THIS block + the top of `## C
 > **⛔ OWED — cockpit rollout, DEDICATED THREAD ONLY (do NOT action from a routine cockpit session):**
 > 1. **Fleet-wide re-sync gate (STOP item) — THE SINGLE DECISION POINT for propagating `custom/` changes.** The 11 blocked projects still need `sync-bmad-workflows.sh` + committing their delivered cockpit/enforcement content — in a quiet, low-contention window, **never `--force` into live sessions**. Do NOT run the sync or commit blocked-project content except in an explicitly-opened dedicated sync session. **Owner ruling 2026-07-26: no `custom/` change gets its own sync window.** A shipped-in-fork change is batched HERE and rides this one decision; do not open a second fan-out for a single workflow update.
 >    **Batched and awaiting this window:**
+>    - `9ae1b010` — **design-handoff §1b policy-freshness gate** (FG-2026-07-28-13). `policy_version_required` was stamped from whatever tree the run occupied; cash-recovery's main checkout held design-policy **v18** while `origin/main` was **v21**, so a brief was one grep away from certifying itself against a policy nobody checked — and `brief-revision-policy.md` §2 makes consumers halt/warn on exactly that field, so the drift detector would have reported *no drift* in the case it exists to catch. Now fetch+diff before stamping, HALT naming both numbers, Open Question when offline. **Precondition before fan-out:** confirm on a live project that the HALT fires on a genuinely stale tree AND that the offline path degrades to the Open Question rather than halting — a hard halt with no remote would freeze every disconnected run.
 >    - `7ea08d76` — design-implement island check widened to any created component + the `◐ transcribed · UNROUTED` manifest disposition (FG-2026-07-26-05).
 >    - **2026-07-28** — design-implement **§3b Already-shipped recall** (step-02b) + `{prior_applied}` + §9 prior-commit attribution + step-01a's 404 target-degradation ladder (FG-2026-07-28, owner-routed "fix it now"). Closes the lifecycle asymmetry: intake could spot a HALTED run, a CHECKPOINTED run and a net-new surface, but not a design **already applied and shipped** — so a re-paste of the (stable) Claude Design prompt spent a full ingest + map + grid to rediscover the work was done and deployed.
 >      **Precondition before fan-out:** confirm on a live project that the middle verdict `prior-pass-residual-deltas` **does not exit the run** — it must CONTINUE and only re-frame the report. That is the whole point (the motivating run found a real defect *after* the design had shipped — cash-recovery PR #525); an implementation that exits there has inverted the fix into a regression, silently.
@@ -43,6 +44,34 @@ The compact, always-current state. The skill reads THIS block + the top of `## C
 
 > **Older wave one-liners moved to [`STATUS-archive.md`](./STATUS-archive.md)** (2026-07-20): `## Now` carried 21 `Latest wave`/`Prior wave` bullets against the budget gate's ceiling of 6, so the 15 oldest were moved VERBATIM to the archive's "moved out of `## Now`" section. Nothing was deleted, and the gate itself was NOT relaxed - `MAX_NOW_WAVE_BULLETS` stays 6.
 ## Changelog
+
+
+### 2026-07-28 — design-handoff policy-freshness gate + a retracted fork-gap and its real cause (`9ae1b010`)
+
+**Shipped (fork):** `design-handoff` step-01 §1b now asserts the policy tree is current before stamping
+`policy_version_required`. MAINTENANCE, not doctrine — `brief-revision-policy.md` §2 already required
+consumers to halt/warn on that field, so reading it from an unverified tree was always an execution
+defect. **Distribution owed**, batched into the standing fleet gate (no solo sync window).
+
+**Register hygiene, and the more useful half.** A same-day entry blaming tilde expansion for a guard
+false-positive was **RETRACTED**: the diagnosis was wrong, and the probe that "confirmed" it was
+**fail-open** — empty stdout read as ALLOW, with the guard path mistyped so python never opened it.
+Every case reported ALLOW and the harness nearly deleted a real observed finding as "unreproducible".
+The actual cause was that `bash_edit_guard.py` was wired **nowhere** in cash-recovery while the
+superseded 2050-char legacy blob was the live enforcement — the 2026-07-26 regression recurring,
+because `settings.local.json` is gitignored, unversioned, and rewritten by many sessions. Re-wired and
+verified (health check 4/4, suite 68/68).
+
+**Durable lesson:** a diagnostic that cannot fail is not evidence. Any probe of an enforcement
+mechanism needs controls in BOTH directions before its output may change a conclusion.
+
+**New, unfixed:** the guard suite's worktree refusal is a path substring (`/.claude/worktrees/`), so a
+worktree created elsewhere runs it and emits 25 confident false failures; the same substring drives
+both guards' worktree detection and denied a legitimate edit from inside a real worktree. Fix
+direction is a real git query, not a string match — deliberately not shipped in this wave.
+
+**Self-review:** Mode-1 pass, 0 blocking. All fork-gap linters clean (schema / targets / stale-open /
+contradiction).
 
 ### 2026-07-27 — fork-gap register schema v2: `state` split into `fix` + `delivery` (owner approved 1→2→3; all three shipped)
 
