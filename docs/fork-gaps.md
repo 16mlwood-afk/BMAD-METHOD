@@ -6610,3 +6610,62 @@ Executing the workflow literally would have produced a `material_revision` super
 **Second-order, worth naming:** the surface's actual open item is that the 2026-07-28 brief has **never been consumed** — no `design-ingest-*` and no `design-implement-grid-*` exists for it on `origin/main`. A workflow that cannot say "this is current" also cannot say "and it is unbuilt", so the re-run instinct fills the vacuum with another brief. A `no_work_required` exit that names the next unconsumed step is the useful half of this fix.
 
 **Evidence:** verified against `origin/main` — `git ls-tree` for the brief and the absent manifests; `git show origin/main:_bmad-output/implementation-artifacts/design-brief-ingestion-run-detail-2026-07-28.md` for the frontmatter; `git show origin/main:docs/design-policy.md` for v21/v22 changelog rows; `git rev-list --left-right --count HEAD...origin/main` = `26 / 116` for the checkout skew. §1a's decision table read directly from `steps/step-03-generate-brief.md:71-98`. **Nothing was changed in the fork this session** — this entry is log-only by the routing split above.
+
+---
+
+## 2026-07-29 — a SessionStart hook pointing at a TRACKED file is inert on any branch that predates the file, and its `[ -f ] || exit 0` reports that as healthy
+
+```yaml
+id: FG-2026-07-29-03
+class: enforcement-wiring-drift
+scope: project
+target: .claude/settings.local.json
+marker: "EDIT-GUARD CHECK MISSING"
+state: closed
+fix: done
+delivery: n/a   # machine-local settings; not synced, not tracked
+owner: mason
+routing: routed
+routing_note: "ROUTED by owner 2026-07-29 ('u call it' — delegated the (a)/(b) session-start choice). Option (a) wired; absence made LOUD in the same pass. Verified across three paths: absent -> warns, healthy -> silent, broken -> warns with the finding; all rc=0."
+contradiction_ack: "The hook exists to detect 'authored but firing nowhere' — and its own first cut was authored, wired, and firing nowhere, reporting green. A guard that cannot detect its own absence has the defect it was built to find."
+```
+
+### Incident
+
+Wired `guard-wiring-check.sh` into SessionStart per owner decision (a). The healthy-case
+verification PASSED — silent, rc=0 — and was a **false green**: the script had merged to
+`origin/main` (PR #544) but was **not in the main checkout's working tree**, which sits on a branch
+26 commits ahead that predates the merge. The hook's `[ -f "$S" ] || exit 0` turned that absence
+into silence, which is indistinguishable from health.
+
+### Why this is structural, not a one-off
+
+This is the third distinct mechanism in one week by which a check ends up **deployed to zero**:
+
+1. `settings.local.json` rewritten by a parallel session, dropping the hook (2026-07-26, recurred 07-28).
+2. The reviewed guard present and tested while the superseded legacy blob actually ran (07-28).
+3. **This one — the hook wired correctly, pointing at a tracked file absent from the current branch.**
+
+The common shape is not the mechanism, it is the **default**: every one of them fails *silent*, and
+silence is read as green. `[ -f "$X" ] || exit 0` is the idiom that does it, and it is everywhere —
+it is the correct idiom for an *optional* hook and exactly wrong for a *guard*, and nothing
+distinguishes the two at a glance.
+
+Branch skew makes it worse than a plain missing file: the check is present in the repo, present on
+`main`, passes review, and is genuinely absent at runtime — so every artifact says it is live.
+
+### Fix — shipped
+
+Absence is now LOUD: the hook emits a SessionStart warning naming the missing path, stating it is
+INERT, and noting the checkout is behind `origin/main`. It still exits 0 (a session-start hook must
+never block). It self-heals when the branch catches up.
+
+### Residual — NOT fixed here
+
+The warning will fire every session until `docs/receive-v2-ad6-disposition-fff9d42b` (26 commits
+ahead, undelivered) merges. That is accurate, not noise — but the underlying diverged-branch problem
+is `FG-2026-07-26-08`, not this entry. **Do not silence this warning to quiet that one.**
+
+**Generalisable check worth having:** for any hook whose job is enforcement, `[ -f "$X" ] || exit 0`
+should be `[ -f "$X" ] || warn` . A sweep of the SessionStart/PreToolUse hooks for that idiom would
+find the rest of this class; not run here.
