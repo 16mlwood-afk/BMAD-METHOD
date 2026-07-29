@@ -60,21 +60,34 @@ ls {planning_artifacts}/brand-identity.md 2>/dev/null
 - **FRESHNESS GATE — verify the tree is current BEFORE stamping (required).** `{policy_version}` is read from whatever tree this run happens to occupy. A stale checkout therefore makes the stamp **a claim the drift detector then trusts**:
 
   ```bash
-  # Three OUTCOMES, each separately reachable. Substitute the path resolved above.
-  if ! git fetch -q origin 2>/dev/null; then
-    echo UNVERIFIED-OFFLINE          # remote unreachable — the check could not RUN
-  elif ! git rev-parse --verify -q origin/HEAD >/dev/null 2>&1; then
-    echo UNVERIFIED-NO-REF           # no origin/HEAD; try the repo's default remote branch first
-  elif git diff --quiet origin/HEAD -- <resolved policy path> 2>/dev/null; then
-    echo CLEAN
+  # FOUR outcomes, each separately reachable. Substitute the path resolved above.
+  if git fetch -q origin 2>/dev/null; then
+    if ! git rev-parse --verify -q origin/HEAD >/dev/null 2>&1; then
+      echo UNVERIFIED-NO-REF         # no origin/HEAD; try the repo's default remote branch first
+    elif git diff --quiet origin/HEAD -- <resolved policy path> 2>/dev/null; then
+      echo CLEAN                     # verified against a FRESH remote read
+    else
+      echo STALE                     # the check RAN against a fresh read and found divergence
+    fi
   else
-    echo STALE                       # the check RAN and found real divergence
+    # OFFLINE. A last-known ref may still be on disk from an earlier fetch. It is weaker
+    # evidence than a fresh read, but it is not nothing — use it, and say what it is.
+    if ! git rev-parse --verify -q origin/HEAD >/dev/null 2>&1; then
+      echo OFFLINE-NO-REF
+    elif git diff --quiet origin/HEAD -- <resolved policy path> 2>/dev/null; then
+      echo OFFLINE-MATCHES-LAST-KNOWN
+    else
+      echo OFFLINE-STALE             # differs from the last ref we DID fetch — real evidence of drift
+    fi
   fi
   ```
 
   - **`CLEAN` →** stamp `{policy_version}` as read.
   - **`STALE` → HALT**, naming BOTH numbers: *"design-handoff — policy version unverifiable. `docs/design-policy.md` in this tree is v{local}; `origin/<default>` is v{remote}. Stamping v{local} would certify this brief against a policy that has since moved. Re-run from a current tree, or rebase this one, then retry."* Do **not** stamp a guessed value, and do **not** stamp the remote's number against locally-read content — a brief must be authored against the policy text it actually read.
-  - **`UNVERIFIED-*` → PROCEED (never halt)**, and record an Open Question in the brief: *"policy freshness unverified — no remote reachable; `policy_version_required: {n}` is this tree's local value."* Silence is what makes this failure invisible; a halt here would freeze every disconnected run.
+  - **`OFFLINE-STALE` → HALT.** The tree differs from the last remote state this machine actually saw. That is positive evidence of drift, not an absence of evidence, so it earns the same stop as `STALE` — name both numbers and add *"(compared against the last fetched ref; the live remote may have moved further)"*.
+  - **`OFFLINE-MATCHES-LAST-KNOWN` / `OFFLINE-NO-REF` / `UNVERIFIED-NO-REF` → PROCEED (never halt)**, and record an Open Question in the brief: *"policy freshness unverified — no fresh remote read; `policy_version_required: {n}` is this tree's local value."* A halt here would freeze every disconnected run.
+
+  **`OFFLINE-MATCHES-LAST-KNOWN` is NOT `CLEAN`, and the distinction is load-bearing.** Matching the last ref you fetched proves only *no drift since your last fetch* — it cannot see anything that landed after it. The two states are **byte-identical from offline**: measured with a tree at v21 matching its last-known ref, the verdict is the same whether the remote is still v21 or has since moved to v22. Labelling that `CLEAN` would let the run stamp `policy_version_required` with full confidence and **skip the Open Question** — which is precisely the original defect this gate exists to prevent, re-created through a label. Report what the evidence supports: *no drift since the last fetch*, not *current*.
 
   **The `||`-shorthand this replaces was WRONG, and measurably so (fixed 2026-07-29).** The first cut of this gate was `git fetch -q origin 2>/dev/null` followed by `git diff --quiet origin/HEAD -- <path> || echo STALE`. Two defects, both proven against a real git remote across four cases:
 

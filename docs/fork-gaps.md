@@ -6331,7 +6331,28 @@ exit, so `fatal: bad revision 'origin/HEAD'` — *the check could not RUN* — w
 ran and found divergence*. **A gate whose failure mode is indistinguishable from its trigger is not a
 gate.** Replaced with an explicit three-outcome branch (`UNVERIFIED-OFFLINE` / `UNVERIFIED-NO-REF` /
 `CLEAN` / `STALE`), verified against the same four cases. Precondition now PASSES; the batch may
-queue. Reproduction harness: `scratchpad/repro_freshness2.sh` (ephemeral — the four cases are
+queue.
+
+**REFINED AGAIN 2026-07-29 — the owner's A–D matrix did not match what shipped, and one cell of it is
+not knowable.** Owner restated the fixed gate as A) online+current→CLEAN · B) online+behind→STALE ·
+C) offline+behind→OFFLINE-STALE · D) offline+current→OFFLINE-CLEAN. Verified the shipped gate against
+that matrix: **A and B matched; C and D did not.** The shipped version returned a single
+`UNVERIFIED-OFFLINE` for both, discarding a distinction that IS available — a last-known ref left on
+disk by an earlier fetch still yields real evidence of drift. C is now implemented as the owner
+described (`OFFLINE-STALE`, and it HALTs — positive evidence of drift earns the same stop as `STALE`).
+
+**D is refused, deliberately, with evidence.** "Offline + actually current" is **not knowable**: a
+tree matching its last-known ref is byte-identical whether the remote is unchanged or has moved on.
+Measured — a v21 tree matching a v21 ref reports the same verdict whether the remote is still v21 or
+has advanced to v22. Labelling that `CLEAN` would let the run stamp `policy_version_required` at full
+confidence and **skip the Open Question** — the original defect re-created through a label. It reports
+`OFFLINE-MATCHES-LAST-KNOWN` and proceeds *with* the Open Question: the owner's intended ACTION
+(continue) is honoured; the unearned confidence is not.
+
+**The matrix is now a permanent, runnable check** — `tools/verify-policy-freshness-gate.sh`, which
+**extracts the gate body verbatim from the step file at run time** so it cannot certify a copy that
+has drifted from the doc. 6/6 including the D′ trap. This discharges the owner's standing rule that a
+gate touching many projects may not rest on prose alone. Reproduction harness: `scratchpad/repro_freshness2.sh` (ephemeral — the four cases are
 described above so they can be rebuilt).
 ---
 
@@ -6538,3 +6559,54 @@ The three prior double-gap incidents (`/lineage` v14, `/units/[id]` v17, `/stock
 **Deterministic upgrade, not shipped:** the quoted evidence makes this mechanically checkable for the first time — a per-project commit-time check on `design-brief-*.md` could assert `{route}` appears in the §8.1 row named by `viewport_surface_class`. That is the hooks/CI distribution track, not this sync; authoring the clause does not deploy the check.
 
 **Evidence:** verified against `origin/main` at policy v21, and against `git show origin/main:docs/design-policy.md` for v17's actual changelog entry. The two ingestion briefs re-issued this session (PR #541, merged `2320bc0b`) carry the corrected class with the §8.3e posture read verbatim.
+
+---
+
+## 2026-07-29 — `design-handoff`'s only predecessor check runs LAST and has no "already current" branch, so the workflow cannot conclude *no revision warranted* — every re-run is structurally a supersede
+
+```yaml
+id: FG-2026-07-29-02
+class: contract-dimension-gap
+scope: fork
+target: custom/workflows/design/design-handoff/steps/step-03-generate-brief.md
+marker: "already current"
+state: open
+fix: none
+owner: mason
+routing: recorded
+routing_note: "MIXED per the entry's own split — the reordering half is maintenance; the decline-to-produce half is a NEW TERMINAL STATE and is proposed, not shipped. Schema header added by a parallel session (claude-session-20260729-093853) so the shared file passes the commit gate; content untouched."
+contradiction_ack: "The predecessor check runs LAST, so by the time it could conclude 'no revision warranted' the gather has already been paid for — and there is no branch that can reach that conclusion at all, making every re-run structurally a supersede."
+```
+
+**Session:** `claude-session-20260729-101825`
+**Target files:** `custom/workflows/design/design-handoff/steps/step-03-generate-brief.md` §1a (the decision table) · `custom/workflows/design/design-handoff/steps/step-01-gather.md` (where an intake pre-check would go)
+**Routing:** MIXED — see the split at the end. The reordering half is maintenance; the decline-to-produce half is a new terminal state and is **proposed, not shipped**.
+
+### Incident
+
+`/bmad:bmm:workflows:design-handoff` was invoked on `/ingestion-runs/[runId]`. That surface already had an `active`, `verified` brief written the previous day — `design-brief-ingestion-run-detail-2026-07-28.md` on `origin/main`, `policy_version_required: 21`, 518 lines, four frames, `viewport_pending_policy: false`, lineage clean (its 2026-07-27 predecessor correctly flipped to `superseded`). Policy had since moved to v22, but v22 is a coherence repair to the §8.3 OPEN-ambition clause and states "no posture, class membership, token, hard failure or assertion changed" — it has no reachable effect on a brief in a DECIDED class. The brief was, and is, materially current.
+
+Executing the workflow literally would have produced a `material_revision` superseding a one-day-old verified brief with a near-identical replacement. The run was short-circuited by hand.
+
+### Why this is structural, not an author judgment call
+
+- **The check that disqualifies the run is the LAST thing the workflow does.** §1a lives in `step-03-generate-brief.md`. Reaching it requires completing `step-01-gather` → `step-01b-decide` → `step-01c-topology` → `step-02-audit-design` — the full data-model walk, mutation audit, DO-NOT-READ inventory, page-mode / composition / band / archetype decision stack, topology, hierarchy, spawned-surface derivation, and token audit. The disqualifying fact is one `ls` and one frontmatter read. **The cheapest check sits behind the most expensive work** — the same shape already recorded for `design-implement`'s net-new existence gate.
+- **§1a has no currency dimension at all.** Its decision table branches only on *how many* active predecessors exist and *whether the slug matches*: `0 → original`, `1 same-slug → material_revision`, `1 different-slug → HALT/rename`, `2+ → HALT`. The one-same-slug row is unconditional. It never asks how old the predecessor is, what policy version it was written against, whether that delta is impacting, or whether anything about the surface changed. **"A predecessor exists" and "a revision is warranted" are treated as the same question**, and they are not.
+- **The workflow has no no-op exit.** Every path in §1a either writes a brief or HALTs on an invariant break. There is no terminal state meaning *the active artifact is current; correctly declining to produce*. So the honest outcome of this session is not expressible in the workflow's own vocabulary — it had to be narrated in chat instead, which means the next session re-running the same command gets no benefit from this one having declined.
+- **The failure is silent and self-justifying.** A superfluous `material_revision` is indistinguishable from a warranted one by inspection: correct frontmatter, correct lineage, a real supersede, a green delivery. Nothing downstream can tell that the predecessor did not need replacing, and the churn is rewarded as a completed workflow run. Cf. the standing project rule that documents are not work.
+- **It compounds with `FG-2026-07-28-13` (same file family, same surface pair).** FG-13 is *stale tree → wrong brief resolved as active*. This checkout was 116 commits behind `origin/main` and still carried the **superseded** 2026-07-27 brief marked `active`, against policy v18 vs v22. A literal §1a run from this cwd would have found that superseded brief, called it the active predecessor, and superseded the wrong artifact — an already-superseded one — while the genuinely active brief sat unreferenced on `main`. FG-13's fix (tree-freshness reconciliation) and this one (currency + placement) do not reach each other, and both land in `design-handoff`/`design-implement` step files that should ride the same sync.
+
+### Fix direction — split by lane, deliberately
+
+**MAINTENANCE (reorder an existing check — safe, additive, no new semantics):** move the predecessor *lookup* to intake in `step-01-gather.md`, before the gather does any work. It is a directory listing plus a frontmatter parse; it needs no state the gather produces. §1a in `step-03` keeps ownership of the `change_class` decision and the supersede write — this only front-loads the read so the expensive stack is not spent before the answer is known. Must resolve against `origin/main`, not the working tree (FG-2026-07-28-13).
+
+**NEW DESIGN — PROPOSED, NOT SHIPPED (needs Mason's routing marker):** give `design-handoff` a `no_work_required` completion disposition and the currency test that reaches it. This changes what the workflow *is* — it currently cannot decline — and `completion-contract.md` (STD-COMPLETION-001) would need the disposition added to its enum, so it is a taxonomy change riding sync to 13 projects. Sketch, for the owner to accept or reject:
+
+1. At intake, when exactly one same-slug `active` predecessor exists, compute a currency verdict from three facts already cheaply available: its `policy_version_required` vs the current policy version **and whether the intervening changelog rows are impacting for this surface's class**; whether any `--refine-screen` / `--supersede` / explicit-scope directive was passed; and whether the driving code changed since `source_run_date`.
+2. Current + no directive → exit `no_work_required`, naming the active brief's path and its real next consumer, and write nothing.
+3. Anything else → today's behaviour, unchanged.
+4. The non-impacting-delta judgment is a genuine judgment (v21→v22 here) and must be *stated in the close-out*, never silent — otherwise this becomes a mechanism for skipping warranted revisions, which is a strictly worse failure than the churn it prevents.
+
+**Second-order, worth naming:** the surface's actual open item is that the 2026-07-28 brief has **never been consumed** — no `design-ingest-*` and no `design-implement-grid-*` exists for it on `origin/main`. A workflow that cannot say "this is current" also cannot say "and it is unbuilt", so the re-run instinct fills the vacuum with another brief. A `no_work_required` exit that names the next unconsumed step is the useful half of this fix.
+
+**Evidence:** verified against `origin/main` — `git ls-tree` for the brief and the absent manifests; `git show origin/main:_bmad-output/implementation-artifacts/design-brief-ingestion-run-detail-2026-07-28.md` for the frontmatter; `git show origin/main:docs/design-policy.md` for v21/v22 changelog rows; `git rev-list --left-right --count HEAD...origin/main` = `26 / 116` for the checkout skew. §1a's decision table read directly from `steps/step-03-generate-brief.md:71-98`. **Nothing was changed in the fork this session** — this entry is log-only by the routing split above.
