@@ -6311,6 +6311,28 @@ or rebase". Cheap, deterministic, fails loud in the one case that currently fail
 
 **STATUS: FIXED IN FORK 2026-07-28, DISTRIBUTION OWED** — `custom/workflows/design/design-handoff/steps/step-01-gather.md` §1b now carries a FRESHNESS GATE: fetch + diff the resolved policy path against `origin/HEAD` before stamping; HALT on divergence naming BOTH version numbers; proceed with a recorded Open Question when no remote is reachable. Confirmed MAINTENANCE not doctrine — `brief-revision-policy.md` §2 already requires consumers to halt/warn on this field, so reading it from an unverified tree was always an execution defect. **Fires in ZERO projects until a sync runs** — batched into the standing owner-gated fleet re-sync gate (STATUS.md `## Now`), per the 2026-07-26 ruling that no single `custom/` change gets its own sync window.
 
+
+**CORRECTION 2026-07-29 — the first cut of this gate WAS BROKEN, caught by the fleet-gate
+precondition before any sync.** Owner required the offline path be reproduced before queueing the
+batch. It was, against a real git remote across four cases, and the authored shorthand failed two of
+them:
+
+```
+CASE C  OFFLINE, genuinely behind, stale origin/HEAD on disk
+        authored -> STALE   (=> HALT: freezes every disconnected run)
+CASE D  OFFLINE, no origin/HEAD, tree ACTUALLY CURRENT (local v21 == remote)
+        authored -> STALE   (=> HALT on a FRESH tree — a false halt)
+```
+
+Two defects in `git fetch -q origin 2>/dev/null` + `git diff --quiet … || echo STALE`:
+**(1)** `git fetch`'s exit code was never consulted, so the prose's "no remote reachable → Open
+Question" branch was **unreachable by construction**; **(2)** `|| echo STALE` fires on ANY non-zero
+exit, so `fatal: bad revision 'origin/HEAD'` — *the check could not RUN* — was reported as *the check
+ran and found divergence*. **A gate whose failure mode is indistinguishable from its trigger is not a
+gate.** Replaced with an explicit three-outcome branch (`UNVERIFIED-OFFLINE` / `UNVERIFIED-NO-REF` /
+`CLEAN` / `STALE`), verified against the same four cases. Precondition now PASSES; the batch may
+queue. Reproduction harness: `scratchpad/repro_freshness2.sh` (ephemeral — the four cases are
+described above so they can be rebuilt).
 ---
 
 ## 2026-07-28 — project design-policy §8.3 says an undecided-owner-class handoff must HALT; workflow §3f step 3 says WARN-ONLY and "do not freeze owner work". Both are live; the agent adjudicates mid-run
@@ -6460,3 +6482,59 @@ Cheap, deterministic, and it fails loud in the one case that currently fails sil
 with FG-2026-07-28-13's fix so both halves of the shape land together — and the pair is now a strong
 candidate for promotion into the `mason-bmad-workflow-expert` root-cause catalog as
 `unverified-input-stamped-as-fact`, since this is its second independent occurrence in one day.
+
+---
+
+## 2026-07-29 — `design-handoff`'s viewport gate fails an UNRESOLVED surface class but cannot fail a WRONGLY RESOLVED one, so a guessed class citation passes every check and ships as `pending-policy`
+
+```yaml
+id: FG-2026-07-29-01
+class: unverified-input-stamped-as-fact
+scope: fork
+target: custom/workflows/design/design-handoff/steps/step-01-gather.md
+marker: "Membership is QUOTED, never asserted"
+state: closed   # fork-side gap CLOSED; distribution tracked by `delivery: owed`
+fix: done
+delivery: owed   # fires in ZERO projects until a sync runs
+distribution: "sync-bmad-workflows.sh fan-out to the 13 projects — rides the standing owner-gated fleet re-sync gate (STATUS 'Now')"
+owner: mason
+routing: needs-routing
+routing_note: "MAINTENANCE by the 2026-07-26 split — a gate making an assertion it never verifies, fixed in the same pass. Flagged needs-routing ONLY because the fix's wording forbids a workflow from repairing the policy table it reads, which brushes against policy ownership; if Mason reads that as doctrine rather than execution, the clause is the part to review."
+sibling: FG-2026-07-28-13   # same class, same file, adjacent failure — that one is a STALE tree, this one is a WRONG citation from a current tree
+contradiction_ack: "The brief that carried the guessed class was marked `pending-policy` / `unverified` — which READS as correctly-following-policy (the warn-only owner-ambition path), not as an unverified class. So the honest-looking marker was itself the camouflage: a reader checking 'is this brief verified?' gets a truthful 'no, pending the owner's mobile ambition' and never learns the class underneath it was never in the table. The gate is fine; what it measures is the wrong thing."
+```
+
+**Target file:** `custom/workflows/design/design-handoff/steps/step-01-gather.md` §3f step 1
+**Lane:** MAINTENANCE (a gate that verifies a weaker claim than the one it appears to verify)
+**Session:** `claude-session-20260728-202739`
+
+### Incident
+
+`design-brief-ingestion-run-detail-2026-07-27.md` §4g recorded:
+
+> **`viewport_surface_class: owner_dashboards_worklists`** — resolved from `docs/design-policy.md` §8.1 (mapped in policy **v17**, 2026-07-27).
+
+Policy v17 added the `/units/[id]` canonical-record-view class row and nothing else. **Neither `/ingestion-runs` nor `/ingestion-runs/[runId]` had ever appeared in §8.1** at v17 or at v18. The class was inferred from resemblance to the class's other members and then written down with a version citation.
+
+Nothing caught it:
+
+- **§3f gate (a) passed.** Its failure condition is `{viewport_surface_class}` *unresolved*. A class name was present, so it resolved. The gate has no notion of "resolved to a class that does not contain this route."
+- **The `pending-policy` warn path then took over** and produced a brief whose six viewport fields read `pending — awaiting the owner's §8.3 mobile-ambition decision`. That is the correct output *for a genuine member of an undecided class*, so the artifact looked exactly like a well-behaved brief.
+- **`design-review-pr`, `design-synthesize` and `design-implement` all read the class from the brief**, never from §8.1. The citation was the only record, and it was wrong.
+
+The three prior double-gap incidents (`/lineage` v14, `/units/[id]` v17, `/stock` v18) all HALTed correctly — because in each the author found *no* class and said so. This one is the inverse case and is the one the gate cannot see: the same missing-membership defect, resolved by guessing instead of halting, is rewarded rather than caught.
+
+### Why this is structural, not a one-off author error
+
+- **The check is cheap and was simply never asked for.** "Does this route string appear in that class's Members cell" is a substring test against a table the workflow already opens. Nothing in §3f requires it, and nothing requires the matched text to be recorded, so there is no artifact a later reader could check against.
+- **It survives the policy being corrected.** Both routes are now genuine members (`§8.3e`, owner ruling), so the citation is *retrospectively true* — which is precisely why it went unnoticed for two days and would have gone unnoticed permanently had the ruling landed differently.
+- **`pending-policy` is load-bearing camouflage.** See `contradiction_ack`. An `unverified` marker that names a *different* reason for being unverified is worse than none: it answers the question a reviewer would have asked.
+- **Same file, same class as `FG-2026-07-28-13`, different axis.** FG-13 is *stale tree, correct procedure*; this is *current tree, unverified citation*. Neither fix reaches the other, and both live in §3f/§1b of one step file — a strong argument for pairing them in the same sync.
+
+### Fix (applied this session)
+
+§3f step 1 now requires the resolution to **quote** the matched member text into `{viewport_class_evidence}`, rendered beside the class in §4g, and states that a near-miss — a sibling route, an "obviously belongs", a predecessor brief carrying the class, or a changelog that mapped a different route — is a **miss**, resolving to the existing unmappable Open Question. It also forbids the workflow from adding the missing member itself: posture is decided per class on each class's own job, so repairing the table from inside a handoff launders a guess into a citation.
+
+**Deterministic upgrade, not shipped:** the quoted evidence makes this mechanically checkable for the first time — a per-project commit-time check on `design-brief-*.md` could assert `{route}` appears in the §8.1 row named by `viewport_surface_class`. That is the hooks/CI distribution track, not this sync; authoring the clause does not deploy the check.
+
+**Evidence:** verified against `origin/main` at policy v21, and against `git show origin/main:docs/design-policy.md` for v17's actual changelog entry. The two ingestion briefs re-issued this session (PR #541, merged `2320bc0b`) carry the corrected class with the §8.3e posture read verbatim.

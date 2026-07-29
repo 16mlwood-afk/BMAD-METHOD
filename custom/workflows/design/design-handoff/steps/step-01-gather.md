@@ -60,15 +60,28 @@ ls {planning_artifacts}/brand-identity.md 2>/dev/null
 - **FRESHNESS GATE — verify the tree is current BEFORE stamping (required).** `{policy_version}` is read from whatever tree this run happens to occupy. A stale checkout therefore makes the stamp **a claim the drift detector then trusts**:
 
   ```bash
-  git fetch -q origin 2>/dev/null
-  git diff --quiet origin/HEAD -- <resolved policy path> || echo STALE
+  # Three OUTCOMES, each separately reachable. Substitute the path resolved above.
+  if ! git fetch -q origin 2>/dev/null; then
+    echo UNVERIFIED-OFFLINE          # remote unreachable — the check could not RUN
+  elif ! git rev-parse --verify -q origin/HEAD >/dev/null 2>&1; then
+    echo UNVERIFIED-NO-REF           # no origin/HEAD; try the repo's default remote branch first
+  elif git diff --quiet origin/HEAD -- <resolved policy path> 2>/dev/null; then
+    echo CLEAN
+  else
+    echo STALE                       # the check RAN and found real divergence
+  fi
   ```
 
-  (Substitute the path resolved above — `docs/design-policy.md` or the legacy `brand-identity.md`. If `origin/HEAD` is unset, use the repo's default remote branch.)
+  - **`CLEAN` →** stamp `{policy_version}` as read.
+  - **`STALE` → HALT**, naming BOTH numbers: *"design-handoff — policy version unverifiable. `docs/design-policy.md` in this tree is v{local}; `origin/<default>` is v{remote}. Stamping v{local} would certify this brief against a policy that has since moved. Re-run from a current tree, or rebase this one, then retry."* Do **not** stamp a guessed value, and do **not** stamp the remote's number against locally-read content — a brief must be authored against the policy text it actually read.
+  - **`UNVERIFIED-*` → PROCEED (never halt)**, and record an Open Question in the brief: *"policy freshness unverified — no remote reachable; `policy_version_required: {n}` is this tree's local value."* Silence is what makes this failure invisible; a halt here would freeze every disconnected run.
 
-  - **Clean →** stamp `{policy_version}` as read.
-  - **Divergent → HALT**, naming BOTH numbers: *"design-handoff — policy version unverifiable. `docs/design-policy.md` in this tree is v{local}; `origin/<default>` is v{remote}. Stamping v{local} would certify this brief against a policy that has since moved. Re-run from a current tree, or rebase this one, then retry."* Do **not** stamp a guessed value, and do **not** stamp the remote's number against locally-read content — a brief must be authored against the policy text it actually read.
-  - **No remote reachable (offline / no `origin`) →** proceed, but record an Open Question in the brief: *"policy freshness unverified — no remote reachable; `policy_version_required: {n}` is this tree's local value."* Silence is what makes this failure invisible.
+  **The `||`-shorthand this replaces was WRONG, and measurably so (fixed 2026-07-29).** The first cut of this gate was `git fetch -q origin 2>/dev/null` followed by `git diff --quiet origin/HEAD -- <path> || echo STALE`. Two defects, both proven against a real git remote across four cases:
+
+  1. **`git fetch`'s exit code was never consulted**, so the `UNVERIFIED` branch above was **unreachable by construction** — the prose offered an offline path the commands could not produce.
+  2. **`|| echo STALE` fires on ANY non-zero exit**, so *"the check could not run"* was reported as *"the check ran and found divergence."* Measured: offline with no `origin/HEAD`, `git diff` exits `fatal: bad revision 'origin/HEAD'` and the shorthand printed **STALE for a tree that was actually CURRENT** — a false HALT on a fresh checkout. Offline-but-genuinely-behind also halted, freezing a disconnected session.
+
+  **A gate whose failure mode is indistinguishable from its trigger is not a gate.** Branch on the three outcomes separately; never collapse "couldn't check" into "check failed."
 
   **Why this is a gate, not a nicety.** The failure is not "a wrong answer" — it is a brief that **certifies its own correctness against a version nobody checked**. `brief-revision-policy.md` §2 makes consumers *"halt or warn when the current policy version exceeds this"*, so a stale stamp makes that detector report **no drift in exactly the case it exists to catch**. And it is invisible at every existing gate: the brief is internally consistent, the commit-time completeness check tests presence not currency, and `design-implement` compares against the number the brief supplied — nothing re-reads the policy. **Observed 2026-07-28 (cash-recovery):** the main checkout carried policy **v18** while `origin/main` was **v21** (three versions merged by parallel sessions); the run was one incidental grep away from stamping v18 into a brief authored against v21. Structurally likely to recur wherever `_bmad-output/` artifacts live in the main checkout while a worktree mandate keeps *code* out of it — the tree workflows are told to run in is the tree most likely to be behind.
 
@@ -347,6 +360,10 @@ Fires on **every `{surface_class} == page` run** (skip for `chrome` — step-01 
 **Source of truth: the project `docs/design-policy.md §8` (surface-class → viewport policy). Never invent a breakpoint, tap target, or phone-support decision.** (If the project has no §8 viewport policy, record an Open Question — "no viewport policy in docs/design-policy.md; author §8 first" — and do not fabricate one.)
 
 1. **Resolve `{viewport_surface_class}`** — match `{route}` against policy §8.1's class→route table (e.g. `clerk_bench` | `owner_dashboards_worklists` | `owner_approvals_recovery_reimbursements` | `owner_listings_catalog`). Unmappable ⇒ record an Open Question ("route not mapped to a viewport surface-class in policy §8.1"), do NOT guess a class.
+
+   **Membership is QUOTED, never asserted (added 2026-07-29 — `FG-2026-07-29-01`).** Resolving a class means finding `{route}` **literally present** in that class's Members cell, and **copying the matched member text verbatim** into `{viewport_class_evidence}`, which §4g renders beside the class name. A class name with no quoted member string is **not a resolution** — it is an assertion, and gate (a) cannot tell the two apart: (a) fails an *unresolved* class, never a *wrongly resolved* one. **A near-miss is a MISS.** A sibling route in the class (`/foo` present, `/foo/[id]` absent), a route that "obviously belongs", a predecessor brief that already carried the class, or a changelog entry that mapped a *different* route — none of these is membership. Each resolves to **unmappable** ⇒ the step-1 Open Question, exactly as if no class existed. **Do not repair the policy from inside this workflow:** adding the missing member is a policy edit with its own owner-ruling discipline (posture is decided per class, on each class's own job), and doing it here launders a guess into a citation.
+
+   *Observed 2026-07-28: a brief recorded `viewport_surface_class: owner_dashboards_worklists` "resolved from §8.1 (mapped in policy v17)". v17 mapped a different route and nothing else — neither ingestion route had ever been in §8.1. Gate (a) passed (a class WAS named), the brief shipped `pending-policy` — which reads as correctly-following-policy, not as unverified — and every downstream consumer inherited a guessed posture. The route was later mapped by a genuine owner ruling, which is what makes the original citation checkable at all.*
 2. **Decided class → AUTO-FILL from policy §8.2 (whatever posture it decided — do NOT assume desktop-only).** If the resolved class is DECIDED in policy §8.2, fill all six fields from THAT class's §8.2 block **verbatim**. A decided class can be any posture, e.g.:
    - a **desktop-only** bench class (e.g. grading/scanning/reconciliation): `{primary_viewport_class}` = `desktop-only`, `{viewport_breakpoints}` = `desktop-only ≥1280px, landscape`, keyboard + hardware scanner, `{viewport_min_tap_target}` = n/a, `{viewport_device_exclusions}` = `phone, tablet — a mobile/faux-mobile UI here is a policy VIOLATION` (cite the project's clerk-web-mode hard-failure);
    - a **handheld-first / mobile-primary** class (e.g. a roaming receiving clerk): `{primary_viewport_class}` = `mobile-first`, phone viewport / portrait / one-handed, mobile scanner, offline-capable if the policy says so, desktop **additive-only** (a desktop-only mouse-dependent layout is the VIOLATION here), `{viewport_min_tap_target}` from policy.
