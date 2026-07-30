@@ -6731,9 +6731,13 @@ class and left the quiet half open: *file missing* is now visible; *file wrong v
 That is not a defect in the hardening — it is a different question (identity, not existence) and it
 wants a different mechanism: a version/hash assertion against `origin/main`, in the same family as
 `design-handoff`'s policy-freshness gate (`FG-2026-07-28-13`), which had to solve exactly this
-"the tree you are standing in is not the tree you think it is" problem. Not attempted here; the
-parallel session recorded it `unrouted` because every available fix touches shared state under
-active contention, and that judgement is respected rather than overridden.
+"the tree you are standing in is not the tree you think it is" problem. Not attempted here.
+
+**OWNER RULING 2026-07-30 (now recorded on `FG-2026-07-30-01`):** staging the updated hook on the
+diverged branch is **FORBIDDEN**. The acceptable fixes are (a) land the branch, or (b) a version
+assertion against `origin/main` as a separate owner-gated change. The sweep is closed as the
+**missing/crashing** class only — the **stale** class is a different question (identity, not
+existence) and must not be folded back into it.
 
 ---
 
@@ -6749,7 +6753,9 @@ state: open
 fix: none
 delivery: n/a   # machine-local hook + working-tree copy; not synced
 owner: mason
-routing: unrouted   # MAINTENANCE lane by the split, but every available fix touches shared state under active contention — see "Why not fixed here"
+routing: routed   # OWNER RULING 2026-07-30 — see routing_note. Was `unrouted`; the owner has now
+                  # named the acceptable fixes and FORBIDDEN one, so this is no longer an open question.
+routing_note: "OWNER RULING 2026-07-30, verbatim intent: (1) DO NOT fix this by staging on the diverged branch — that is explicitly forbidden, not merely discouraged, and it is the fix a cold session will reach for first because it is the only one available from inside the tree. (2) The right fix is EITHER land the branch that carries the updated hooks, OR add a version assertion against origin/main as a SEPARATE, OWNER-GATED change. (3) The 2026-07-29 guard sweep closes the MISSING/CRASHING hook class ONLY; this STALE hook class stays open and wants its own version gate. Do not re-open the sweep to cover it — different question (identity, not existence), different mechanism."
 contradiction_ack: "FG-2026-07-28-10 is recorded FIXED with a commit sha and 27 passing tests. The fix is real and merged. It fired on ZERO claims written today, because the hook that actually runs is resolved from the working tree, and this tree is 127 commits behind the fix. FIXED and firing-nowhere are the same state to every reader of the ledger."
 ```
 
@@ -6845,3 +6851,88 @@ hard stop rather than on permission:
 .claude/wip-register.yaml` (6 claims, all `PENDING-STAMP`); `cat` of the ingestion-run-detail manifest
 lock for the foreign `session_id`; `git rev-list --count HEAD..origin/main` = 127.
 **Nothing was changed in the fork or the project this session** — log-only, per the blast-radius stops above.
+
+---
+
+## FG-2026-07-30-09 — `buildable-scope` inverts the one case that matters: a DELIVERED artifact that is itself a `ready-for-dev` spec is reported as "close, do not rebuild"
+
+```yaml
+id: FG-2026-07-30-09
+class: contract-dimension-gap
+scope: project
+target: scripts/buildable-scope.ts
+marker: "DELIVERED_OPEN"
+state: open
+fix: none
+delivery: n/a   # project script; fork-destined but distribution HELD
+owner: mason
+routing: recorded
+routing_note: "MAINTENANCE per the entry's own lane call — an execution defect against a standard the repo already states. Schema header added by a parallel session (claude-session-20260730-221347) so the shared file passes the commit gate; the entry's content is untouched and its routing is the author's, not mine."
+contradiction_ack: "classify() ends on a bare existence test, so a DELIVERED artifact that IS a ready-for-dev spec is reported as 'close, do not rebuild' — the detector inverts precisely the case it exists to surface."
+```
+
+**Target file:** `scripts/buildable-scope.ts` (on `origin/main` in cash-recovery; fork-destined per the
+`state-model-fix-outcome-dod-stage-surfacer` memory, distribution still HELD). Lane: **MAINTENANCE** —
+this is an execution defect against a standard the repo already states, not a new rule.
+
+### Incident
+
+A `buildable-scope` run reported a row as "close, do not rebuild" when the artifact it pointed at
+was itself a `ready-for-dev` spec — i.e. the one state the detector exists to surface as buildable
+was the state it suppressed. (Incident heading added by a parallel session to satisfy the schema
+gate; the description is drawn from this entry's own body, nothing new is asserted.)
+
+**The defect.** `classify()` ends on a single existence test:
+
+```
+artifactExists(path) ? verdict "DELIVERED_OPEN" (`${path} exists — this row needs CLOSING, not building`)
+                     : verdict "BUILDABLE"     (`${path} was promised and does not exist`)
+```
+
+So "buildable" is defined as *the artifact is owed and missing*. But for the `R2-bounded-local` /
+quick-spec route, the delivered artifact **is a tech-spec whose `status:` is `ready-for-dev`** — an
+artifact that exists precisely so it can be built from. The detector reads its existence as completion
+and files it under a heading printed verbatim as *"Delivered but still open — close, do not rebuild"*.
+
+This contradicts `CLAUDE.md` STD-SCOPEREG-001's own actionability table, which defines **SHAPED** as
+"a story file at `ready-for-dev` · a quick-spec …" and *"actionable for the named consumer, with no
+further scope decision"*. The register cell for the row below literally reads
+`**SHAPED — ready for `quick-dev`**` and the detector still says close it.
+
+**Evidence — observed this session, not theorised.**
+- SessionStart printed: `BUILDABLE SCOPE: 1 row(s) could be started now.` naming **SR-35** only, with
+  `21 delivered-but-open`.
+- **SR-59** (the design-progress ledger) sits in that delivered-but-open bucket:
+  `next_artifact:` **DELIVERED — tech-spec-design-progress-ledger-2026-07-30.md**, disposition accepted,
+  route `R2-bounded-local`, cell state `SHAPED — ready for quick-dev`.
+- The spec is merged on `origin/main` (`status: ready-for-dev`, PR #577) and **zero implementation
+  exists**: `git log origin/main -- scripts/build-surface-register.ts` last touches `1e2a2d7`, which
+  predates the spec; no `Robyn` agent in `_bmad/bmm/agents/`.
+- Consequence, and the reason this is worth logging: the owner opened the session asking *"did we end up
+  making the ledger?"* and the answer had to be reconstructed by grepping raw session JSONL under
+  `~/.claude/projects/-Users-masonwood-code-cash-recovery/`. The register held the answer; the surfacer
+  told the session to close it.
+
+**Why it is not simply "add a verdict".** The file's own design note is explicit that dropping the empty
+path prefix once "made 20 already-delivered rows report as buildable in testing, which is precisely the
+false-positive rate that gets a detector switched off for good." Any fix has to keep that discipline —
+the population being re-classified is narrow (delivered artifact whose frontmatter `status` is
+`ready-for-dev`), not "delivered rows generally".
+
+**Fix candidates — owner picks; a new verdict name is a taxonomy call, not a session's.**
+1. **Read the delivered artifact's frontmatter.** If `status: ready-for-dev` (or the row's own cell says
+   `SHAPED`), classify **BUILDABLE** with `because: "<path> exists and is ready-for-dev — build it"`.
+   Narrowest change, uses a field the artifacts already carry, no new vocabulary.
+2. **Split the bucket** into `DELIVERED_OPEN` (close it) vs a new `SHAPED_UNSTARTED` (build it). Clearer
+   report, but it is a taxonomy addition and changes the printed contract — owner's call.
+3. **Leave the classifier alone and make the report honest**: keep `DELIVERED_OPEN` but stop printing
+   "close, do not rebuild" over a population that provably contains ready-to-build specs.
+
+**Evidence — what was actually run this session.** `git show origin/main:_bmad-output/implementation-artifacts/tech-spec-design-progress-ledger-2026-07-30.md`
+(exists, `status: ready-for-dev`); `git log --oneline -5 origin/main -- scripts/build-surface-register.ts`
+(last `1e2a2d7`, pre-spec); `ls _bmad/bmm/agents/` (no Robyn); `grep -n "SR-59" _bmad-output/planning-artifacts/scope-register.md`
+(line 123, `SHAPED — ready for quick-dev`); `sed -n '200,285p' scripts/buildable-scope.ts` (the
+`classify()` branch quoted above); `git ls-tree -r origin/main --name-only | grep buildable-scope`
+(tracked on main; absent from this working tree, which is behind).
+**Nothing was changed in the detector this session** — log-only; the fix touches a false-positive-sensitive
+classifier and options 2 and 3 are the owner's to pick.
