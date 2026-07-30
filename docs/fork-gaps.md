@@ -6669,3 +6669,179 @@ is `FG-2026-07-26-08`, not this entry. **Do not silence this warning to quiet th
 **Generalisable check worth having:** for any hook whose job is enforcement, `[ -f "$X" ] || exit 0`
 should be `[ -f "$X" ] || warn` . A sweep of the SessionStart/PreToolUse hooks for that idiom would
 find the rest of this class; not run here.
+
+### SWEEP RUN AND COMPLETE — 2026-07-30
+
+The sweep this entry called for was run, and it found the class was **larger than one hook**.
+
+**The owner's grep returned clean, and that was a false all-clear** — it searched `.git/hooks/ hooks/
+scripts/ --include="*.sh"`, but `hooks/` does not exist here, 19 of the 22 enforcement hooks are
+`.py`, and 39 hook commands live INLINE inside `settings.local.json` where no file grep can see them.
+Swept properly: **25 inline commands carried the idiom, and 5 of 6 enforcement hooks exited `rc=0`,
+silent, when their script was absent** (measured by simulating absence, not inferred).
+
+All five are now hardened, each with its own wiring suite (**99 assertions total**):
+
+| guard | absent | crash |
+|---|---|---|
+| prod-mutation-guard | warn | warn |
+| deploy_lane_guard | warn | warn |
+| bash_edit_guard | warn (30-min throttle) | **ask** |
+| collision_guard | warn (30-min throttle) | warn |
+| collision_stamp | warn | warn |
+
+**The rule the sweep produced, owner-approved and now the governing constraint:**
+
+> **The absent/crash tier may never EXCEED the present tier.** Absence must not become a promotion
+> mechanism for an enforcement tier the owner has not approved.
+
+It is not cosmetic — it forced the `prod-mutation-guard` absent path back from `ask` to `warn` (the
+guard is warn-only when present, so asking made it *stronger while missing than while working*), and
+it is asserted in every suite rather than left as prose.
+
+**Three findings worth carrying forward:**
+
+1. **The right hardening is guard-specific, and a uniform patch would have been wrong.**
+   `deploy_lane_guard`'s entire value is quote-awareness, so any inline fallback matcher would fire on
+   every commit message mentioning `railway up` — it got *no* matcher. `collision_stamp`'s real gate
+   (`touched_register`) IS cheaply reproducible, so it got a faithful copy and needs no throttle,
+   while `bash_edit_guard`'s (write-target resolution against an allowlist) is not, so it got a
+   throttle instead.
+2. **Volume is a safety property.** An absent-notice on every command is how a hook gets deleted —
+   which is the failure being fixed. Two guards needed throttling for that reason alone.
+3. **The suites caught two real defects before they shipped** — a cooldown marker rooted at a
+   hardcoded path that need not exist (throttle silently degraded to spam), and a stale assertion in
+   an already-merged suite that only grepped `'ERRORED'` and so sailed through a tier change without
+   noticing. *A test that cannot see the thing it claims to check is the same defect class as the
+   guards it is testing.*
+
+Delivered: PRs #565, #567, #571, #575.
+
+**LIMITATION OF THIS SWEEP, FOUND THE SAME DAY — it detects MISSING, not STALE.**
+A parallel session logged `FG-2026-07-30-01` while this was landing, and it is the sharper
+variant: `collision_stamp.py` is **present in the working tree but 127 commits out of date**, so
+the `PENDING-STAMP` fix (`FG-2026-07-28-10`, merged, 27 passing tests) has been firing nowhere for
+two days. Measured today: placeholders in the live register have grown **41 → 74** since the fix
+merged.
+
+Every absent-path added by this sweep tests `[ -f "$S" ]`. A stale-but-present file passes that
+test, so **none of the five hardened guards can see this**. The sweep closed the loud half of the
+class and left the quiet half open: *file missing* is now visible; *file wrong version* is not.
+
+That is not a defect in the hardening — it is a different question (identity, not existence) and it
+wants a different mechanism: a version/hash assertion against `origin/main`, in the same family as
+`design-handoff`'s policy-freshness gate (`FG-2026-07-28-13`), which had to solve exactly this
+"the tree you are standing in is not the tree you think it is" problem. Not attempted here; the
+parallel session recorded it `unrouted` because every available fix touches shared state under
+active contention, and that judgement is respected rather than overridden.
+
+---
+
+## 2026-07-30 — a hook resolved from the WORKING TREE runs the PRE-FIX version of a tracked guard on any branch that predates the fix, so a gap the ledger records as FIXED is silently regressed — presence passes `[ -f ]`, currency is never checked
+
+```yaml
+id: FG-2026-07-30-01
+class: enforcement-wiring-drift
+scope: project
+target: .claude/hooks/collision_stamp.py   # + the PostToolUse wiring in .claude/settings.local.json
+marker: "claimed_by_session_id: \"PENDING-STAMP\""
+state: open
+fix: none
+delivery: n/a   # machine-local hook + working-tree copy; not synced
+owner: mason
+routing: unrouted   # MAINTENANCE lane by the split, but every available fix touches shared state under active contention — see "Why not fixed here"
+contradiction_ack: "FG-2026-07-28-10 is recorded FIXED with a commit sha and 27 passing tests. The fix is real and merged. It fired on ZERO claims written today, because the hook that actually runs is resolved from the working tree, and this tree is 127 commits behind the fix. FIXED and firing-nowhere are the same state to every reader of the ledger."
+```
+
+### Incident
+
+`design-ingest` step-01 §5a (concurrent-run check) fired correctly on `/listings` and stopped the run
+before the fan-out. But the field it is designed to key on was unusable: **every claim in the register
+written today carries `claimed_by_session_id: "PENDING-STAMP"`** — six of them, `08:12:43Z` through
+`08:36:52Z`, three of which appeared *while this session was working*. `claimed_by` was no help either:
+the colliding claim's display header was **byte-identical to this session's own** (`claude-session-
+20260730-091903` — the documented non-unique timestamp label), so the register alone could not answer
+"is this claim mine?"
+
+Ownership was ultimately established from an **unrelated mechanism**: a manifest lock
+(`.claude/manifest-locks/design-ingest-ingestion-run-detail.md.lock.json`) carrying
+`session_id: 7c5e1fd3-186d-4ecb-9341-c3b5d930af44` against this session's `674eff67-…`. That is a
+side-channel, and it only worked because the other session happened to hold a lock on a *different*
+manifest. Had it not, §5a's own rule — *"an ambiguous own-identity is UNKNOWN, not clear — warn and
+continue"* — would have licensed spending a full three-frame fan-out and then racing another session's
+write to the same manifest path. The check would have fired, failed open, and lost exactly the spend it
+exists to protect.
+
+### Root cause — presence is not currency
+
+`.claude/settings.local.json:335` resolves the stamper from the working tree:
+
+```
+S="${CLAUDE_PROJECT_DIR:-$PWD}/.claude/hooks/collision_stamp.py"; [ -f "$S" ] || exit 0; exec python3 "$S"
+```
+
+The file **exists** (9091 bytes, dated 20 Jul), so `[ -f ]` passes and the hook runs. It is the
+**pre-fix** version:
+
+| | working tree (what runs) | `origin/main` (the fix) |
+|---|---|---|
+| ownership test | `already_owned = bool(fields.get("claimed_by_session_id", "").strip())` | `_PLACEHOLDER_OWNERS = frozenset({"", "pending-stamp", "pending", "tbd", "none", "-"})` → `already_owned = bool(owner_raw.strip()) and not placeholder` |
+| forgery guard | absent | `introduced_here` (surface string must appear in this write) |
+
+`"PENDING-STAMP"` is a non-empty string, so the old line reads it as an owner and never stamps — the
+precise defect FG-2026-07-28-10 diagnosed and fixed. `git diff --stat origin/main --
+.claude/hooks/collision_stamp.py` = `4 insertions, 77 deletions`: the tree is 77 lines of fix behind.
+
+### Why this is a NEW entry and not a duplicate of FG-2026-07-29-03
+
+That entry is the same *family* — "deployed to zero" — and its fix makes a **missing** guard file LOUD
+at session start. It cannot reach this case, because nothing is missing. This is the fourth distinct
+mechanism in the family and the first where the guard is **present, wired, executing, and stale**:
+
+1. `settings.local.json` rewritten by a parallel session, dropping the hook (07-26, recurred 07-28).
+2. Reviewed guard present and tested while the superseded legacy blob actually ran (07-28).
+3. Hook wired correctly at a tracked file **absent** from the current branch (07-29) — now warns.
+4. **This one — hook wired correctly at a tracked file PRESENT but at a pre-fix revision.**
+
+`[ -f "$X" ] || warn` (the generalisable check 07-29 proposed) is blind to #4 by construction. The
+distinguishing question is not *does the file exist* but *does it match `origin/main`* — and no
+mechanism in the fork asks it for any hook.
+
+**Ledger integrity is the real cost.** A gap marked FIXED with a sha and a green suite is, to every
+future reader, closed. There is no state in the schema for "fixed on main, regressed in the tree that
+runs it", so this failure is invisible until something downstream needs the field — which is what
+happened today, at the one step designed to prevent a duplicated multi-agent spend.
+
+### Why not fixed here (blast radius, not authorisation)
+
+The MAINTENANCE lane would normally say fix it in the same pass. Every available fix is blocked on a
+hard stop rather than on permission:
+
+- **Copy `origin/main`'s hook into this working tree** — a tracked-file write on a branch carrying 30
+  undelivered commits, while the register shows another session actively claiming and writing every few
+  minutes. Overwriting another session's work is a named hard stop.
+- **Rebase / merge the 127-commit skew** — that is `FG-2026-07-26-08` (all 13 repos diverged), owner-gated.
+- **Author a currency detector** — the useful general fix, but it is a new mechanism plus 14-project
+  distribution: two stops.
+
+### Fix candidates — for the owner to pick, not for a session to choose
+
+1. **Currency check, not presence check.** For each enforcement hook, compare the working-tree file to
+   `git show origin/main:<path>` at SessionStart and warn on divergence. Cheap (`git hash-object` vs
+   `git rev-parse origin/main:<path>`), no new semantics, and it catches #3 and #4 with one mechanism.
+   Extend `guard-wiring-check.sh` rather than adding a sibling.
+2. **Resolve enforcement hooks from `origin/main`, not the working tree.** Removes the skew class
+   entirely and is a deliberate behaviour change: a hook fix would then land for every session on merge,
+   and a local hook edit would stop taking effect. Genuinely a doctrine call.
+3. **Backfill nothing, but make the placeholder loud.** `PENDING-STAMP` is currently indistinguishable
+   from a stamped id at a glance; §5a could treat an all-placeholder register as `unknown (probe
+   degraded)` and say so, instead of failing open silently into a full spend.
+
+**Evidence — what was actually run this session.** `grep -n 'collision_stamp' .claude/settings.local.json`
+(line 335, wired); `grep -nE 'already_owned|placeholder|PENDING' .claude/hooks/collision_stamp.py`
+(old line 130 only, no placeholder set); `git show origin/main:.claude/hooks/collision_stamp.py | grep`
+(`_PLACEHOLDER_OWNERS` line 104, `introduced_here` line 180); `git diff --stat origin/main --
+.claude/hooks/collision_stamp.py` (4/-77); `grep -n 'claimed_at: "2026-07-30' -A1 -B1
+.claude/wip-register.yaml` (6 claims, all `PENDING-STAMP`); `cat` of the ingestion-run-detail manifest
+lock for the foreign `session_id`; `git rev-list --count HEAD..origin/main` = 127.
+**Nothing was changed in the fork or the project this session** — log-only, per the blast-radius stops above.
