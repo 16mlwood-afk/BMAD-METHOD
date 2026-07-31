@@ -9,6 +9,21 @@ description: 'Autonomously write the agent persona file in the established XML f
 
 ## RULES:
 
+- **EMIT THE PROVENANCE BLOCK (STD-SKILLPROV-001 §3).** The persona frontmatter carries
+  `id / version / created_at / author / source_research / origin_type / adoption_reason /
+  last_reviewed_at`. A persona without it is **UNVERIFIED** — not banned, but it must be described
+  that way whenever its trustworthiness is at issue.
+  - `source_research` takes **≥1 URL** from step-01's outward pass. If that pass genuinely found no
+    external prior art, write `source_research: []` **and** an `exemption_reason` naming why none
+    could exist. An empty list with no exemption is the one shape that is never acceptable — it is
+    indistinguishable from not having looked.
+  - `adoption_reason` is **required** when `origin_type: original`, and must name one of: licence,
+    security/privacy, candidate quality, poor fit. *"Didn't find anything"* is not a reason.
+  - **This step does NOT block on the outward pass.** Discovery is not yet a gate here — see
+    `docs/proposals/create-agent-outward-discovery-gate.md`, which is owner-gated because it changes
+    the workflow contract for 13 projects. Until that lands, emit the block from whatever step-01
+    produced and mark it honestly rather than fabricating a URL to fill the field.
+
 - FULLY AUTONOMOUS. No user interaction. No menus. No halting.
 - Write a real, complete persona. **Soft gate — the persona MUST cover all 8 sections of the
   persona content contract** (`../persona-content-contract.md`), scaffolded into the XML. For any
@@ -43,6 +58,16 @@ Assemble the full persona file content. **Structure — follow it exactly (this 
 ---
 name: "{agent_slug}"
 description: "{agent_description}"
+# Provenance — STD-SKILLPROV-001 §3. A persona without this block is UNVERIFIED.
+id: "{agent_slug}"
+version: 1
+created_at: "{date}"
+author: "create-agent"
+source_research:
+  - "{source_research_url}"    # >=1 URL from the step-01 outward pass
+origin_type: "{origin_type}"    # adopted | adapted | original
+adoption_reason: "{adoption_reason}"   # REQUIRED when origin_type is `original`
+last_reviewed_at: "{date}"
 ---
 
 You must fully embody this agent's persona and follow all activation instructions exactly as specified. NEVER break character until given an exit command.
