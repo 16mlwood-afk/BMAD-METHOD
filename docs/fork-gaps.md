@@ -6973,6 +6973,18 @@ and per the fork-gaps routing split a NEW mechanism is proposed, never shipped u
 precedent (`deploy_script_freshness_guard.py`) exists and is deliberately not generalised pending
 that call.
 
+**OWNER RULING 2026-07-31 — the call above is ANSWERED; do not re-raise it.** Mason: *"Treat the
+manifest-based currency check as proposed-only for now. Don't generalise it to `.claude/hooks/**`
+until I explicitly call for it; for this fork, deploy.sh freshness + the existing guards are
+enough."*
+
+So: the proposal above **stays a proposal**, and the one-file `deploy_script_freshness_guard.py`
+is the intended end state for now — not an interim step awaiting generalisation. A session that
+reads this entry and starts building the manifest sweep is acting against an explicit ruling.
+Re-opening requires Mason calling for it by name. The underlying gap remains OPEN and correctly
+logged (the class is real and wider than hooks); what is closed is the question of what to DO about
+it in this fork today.
+
 ---
 
 ## FG-2026-07-30-09 — `buildable-scope` inverts the one case that matters: a DELIVERED artifact that is itself a `ready-for-dev` spec is reported as "close, do not rebuild"
