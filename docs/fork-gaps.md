@@ -6902,6 +6902,41 @@ hard stop rather than on permission:
 lock for the foreign `session_id`; `git rev-list --count HEAD..origin/main` = 127.
 **Nothing was changed in the fork or the project this session** — log-only, per the blast-radius stops above.
 
+**UPDATE 2026-07-31 (cash-recovery — the class is WIDER than hooks, and it has now cost an autonomy grant).**
+Two further files in the same checkout were found running pre-fix versions from the identical root
+cause (working-tree resolution; `[ -f ]` passes; currency never checked), so this entry's scope is not
+"hooks" but **any tracked file the session's behaviour depends on**:
+
+1. **`scripts/deploy.sh`** — the working tree carries the PRE-#607 version: it still refuses to run in
+   a worktree (`die "this is a WORKTREE"`) and still requires a branch literally named `main`.
+   `origin/main` removed BOTH. This checkout sits on `docs/receive-v2-ad6-disposition`, so the worktree
+   test AND the branch test both fail: **every deploy path in the tree is closed.** The cost is not a
+   failed deploy — it is that the refusal reads as a real blocker, so an agent escalates a decision the
+   owner already delegated (`deploy.autonomous: true`). That is FG-2026-07-31-04's contradiction
+   recurring *after* its script fix merged, purely because the fix is invisible from here.
+2. **`.claude/hooks/guard-wiring-check.sh`** — reported ABSENT by this session's own SessionStart
+   banner, in as many words: *"merged on origin/main — this checkout is behind… nothing verifies the
+   edit-guard is wired."* The system detected its own staleness and the only consumer was a human
+   reading a banner.
+
+**A NARROW instance of the ruled-on fix now exists, deliberately not generalised.**
+`cash-recovery/.claude/hooks/deploy_script_freshness_guard.py` (PreToolUse Bash, warn-only,
+permanently `deny_eligible: False`, 33-case suite + verified live fire) asserts currency for
+**`scripts/deploy.sh` only** — `git diff origin/main` plus two literal greps, naming which removed
+precondition the stale copy still carries. Built under the owner's standing recurring-autonomy-friction
+rule (build the smallest local reversible gate rather than re-litigate a granted autonomy).
+
+**This does NOT close the entry, and the general fix stays owner-gated.** The `routing_note` above names
+a version assertion against `origin/main` as *"a SEPARATE, OWNER-GATED change"*; that is respected —
+nothing was built that sweeps `.claude/hooks/**`, and the explicitly FORBIDDEN fix (staging on the
+diverged branch) was not taken. The adjacency is flagged rather than assumed away.
+**Owner call outstanding:** does the one-file precedent generalise to a currency assertion over
+`.claude/hooks/**`, or stay a one-off? Until he rules, currency is checked for exactly one file in
+exactly one project.
+
+**Distribution reality, unchanged:** the guard is wired in machine-local `settings.local.json`, so it
+fires in cash-recovery on this machine and nowhere else — the same ceiling as everything else here.
+
 ---
 
 ## FG-2026-07-30-09 — `buildable-scope` inverts the one case that matters: a DELIVERED artifact that is itself a `ready-for-dev` spec is reported as "close, do not rebuild"
