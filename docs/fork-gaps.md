@@ -7161,3 +7161,68 @@ marker; correcting a rotted input is not.
 them) — only that their elapsed times are days-to-weeks, which no live interactive session has.
 That is sufficient to call the input rotted; it is not sufficient to auto-reap them, and this
 entry does not propose reaping.
+
+## FG-2026-07-31-02 — the `buildable-scope` banner reports register state with no provenance, so the same tool prints different "project truth" per branch
+
+```yaml
+id: FG-2026-07-31-02
+class: reporting-provenance-gap
+scope: project
+target: scripts/buildable-scope.ts
+marker: "BUILDABLE SCOPE:"
+state: open
+fix: none
+delivery: n/a   # project script; fork-destined, distribution HELD (same lane as FG-2026-07-30-09)
+owner: mason
+routing: recorded
+routing_note: "MAINTENANCE — an execution defect in a report, not a change to any rule. Sibling of FG-2026-07-30-09 (same target file); that one was about the VERDICT, this one is about the report's silence on which tree produced it."
+contradiction_ack: "formatReport() prints counts as authoritative project state while naming neither the register path it read, the git ref it was computed against, nor whether that tree was dirty."
+```
+
+**Target file:** `scripts/buildable-scope.ts` — `formatReport()`.
+
+### Incident
+
+The SessionStart banner opened this session with:
+
+```
+BUILDABLE SCOPE: 1 row(s) could be started now.
+  22 delivered-but-open · 1 parked · 35 undecided · 0 unverifiable · 1 UNPARSED
+```
+
+The identical tool, run minutes later against `origin/main`, reported **12 buildable · 10
+delivered-but-open · 32 undecided · 2 UNPARSED**. Neither output is wrong: the banner ran in the main
+checkout, parked on a branch **43 commits behind `main`** with an uncommitted `scope-register.md`;
+the second ran in a worktree at the remote tip. Both printed their numbers in the same authoritative
+voice, with nothing to tell them apart.
+
+**The cost, concretely.** A fix to `classify()` landed in the same session. Comparing the banner's
+`1` against the post-fix `14` would have reported the change as *"1 → 14 buildable"* — a ~14×
+overstatement. The true delta, measured old-code vs new-code against **one** register, is **12 → 14**
+(exactly two rows: SR-28, SR-60). The false version was avoided only because the before/after was run
+deliberately on a single file; nothing in the tool's output would have flagged it.
+
+### Why it is structural, not a one-off
+
+This is the surfacing sibling of the stale-`main` gap already open in this file, but it is not the
+same defect and the stale-branch fix does not close it. That gap says *don't reason from a stale
+tree*; this one says the **report gives you no way to know that you are**. A session cannot comply
+with the first rule using this tool's output, because the output withholds the one fact the rule
+turns on. The banner is the first thing a cold session reads and the thing it is most likely to quote
+back as project state — the worst possible place for an unstamped number.
+
+It is also self-inflicted in a way worth naming: `buildable-scope`'s own header commits to being
+*"conservative, but never silent"*, and lists silent omission as "the one failure this tool cannot
+afford". Omitting the provenance of every number it prints is that failure at the report layer.
+
+### Shape of the fix (not applied)
+
+One line at the head of `formatReport()`, from data the caller already has: the resolved register
+path, `git rev-parse --short HEAD` + `--abbrev-ref`, its distance from `origin/main`, and whether the
+register is dirty. Cheap, and it converts a silent disagreement into a visible one. Deliberately NOT
+a refusal-to-run when the tree is behind: a detector that goes quiet on a stale branch is silent
+exactly when it is most needed.
+
+**Honest limit:** the SessionStart invoker was not located this session — it is wired through
+machine-local `.claude/settings.local.json`, which does not sync, so any provenance line added to
+`formatReport()` reaches the banner on this machine only until distribution is resolved.
