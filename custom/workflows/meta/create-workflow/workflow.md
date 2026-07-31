@@ -2,6 +2,15 @@
 name: create-workflow
 description: 'Create a new BMAD workflow from a short brainstorm. Autonomously builds all files, steps, templates, and sync config. Use when the user says "create a workflow" or "I want a workflow that does X". If the new flow will OWN POLICY (necessity, materiality, domain ownership, safety/correctness) or act as a ROUTER between skills, step-03b additionally applies the policy-skill/router quality rules and calls the policy-skills-healthcheck skill (read-only) on the affected skills.'
 main_config: '{project-root}/_bmad/bmm/config.yaml'
+metadata:
+  # Backfilled 2026-07-31. These workflows predate provenance stamping; `unknown` is the honest
+  # value, not a placeholder to fill in later. Anything authored from now on is stamped by
+  # create-workflow at build time (STD-SKILLPROV-001 §3).
+  created_at: 'unknown'
+  authored_by: 'unknown'
+  discovery_performed: false
+  source_research: []
+  override_reason: 'backfilled — authored before create-workflow stamped provenance'
 ---
 
 # Create Workflow

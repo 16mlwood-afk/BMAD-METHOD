@@ -14,6 +14,15 @@ apply_design_policy_change: '{project-root}/_bmad/bmm/workflows/meta/apply-desig
 create_design_policy: '{project-root}/_bmad/bmm/workflows/design/create-design-policy/workflow.md'
 modify_design_policy: '{project-root}/_bmad/bmm/workflows/design/modify-design-policy/workflow.md'
 analytics_placement_triage: '{project-root}/_bmad/bmm/workflows/design/analytics-placement-triage/workflow.md'
+metadata:
+  # Backfilled 2026-07-31. These workflows predate provenance stamping; `unknown` is the honest
+  # value, not a placeholder to fill in later. Anything authored from now on is stamped by
+  # create-workflow at build time (STD-SKILLPROV-001 §3).
+  created_at: 'unknown'
+  authored_by: 'unknown'
+  discovery_performed: false
+  source_research: []
+  override_reason: 'backfilled — authored before create-workflow stamped provenance'
 ---
 
 # Design Router Workflow

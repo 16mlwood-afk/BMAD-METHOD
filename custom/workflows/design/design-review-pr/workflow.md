@@ -1,6 +1,15 @@
 ---
 name: design-review-pr
 description: 'Checklist-driven enforcement of the project design policy at PR time. Ingests review-checklist.md, classifies rules into source-grep / dom-render / human-judgment lanes, executes each lane, and produces a structured findings report ready to post as a PR comment.'
+metadata:
+  # Backfilled 2026-07-31. These workflows predate provenance stamping; `unknown` is the honest
+  # value, not a placeholder to fill in later. Anything authored from now on is stamped by
+  # create-workflow at build time (STD-SKILLPROV-001 §3).
+  created_at: 'unknown'
+  authored_by: 'unknown'
+  discovery_performed: false
+  source_research: []
+  override_reason: 'backfilled — authored before create-workflow stamped provenance'
 ---
 
 # Design Review (PR) Workflow

@@ -2,6 +2,15 @@
 name: file-de-vat
 description: 'Single front door for the quarterly German VAT filing session via the avask-filing MCP tools. Fixed announced phase contract: pre-flight PASS/FAIL → data pull → validation → portal fill → HALT human review → submit → confirmation receipt. Use when the user says "file German VAT", "start the German filing", "file de vat", "start a VAT filing session", or wants to begin the quarterly AVASK portal filing.'
 main_config: '{project-root}/_bmad/bmm/config.yaml'
+metadata:
+  # Backfilled 2026-07-31. These workflows predate provenance stamping; `unknown` is the honest
+  # value, not a placeholder to fill in later. Anything authored from now on is stamped by
+  # create-workflow at build time (STD-SKILLPROV-001 §3).
+  created_at: 'unknown'
+  authored_by: 'unknown'
+  discovery_performed: false
+  source_research: []
+  override_reason: 'backfilled — authored before create-workflow stamped provenance'
 ---
 
 # File DE VAT Workflow

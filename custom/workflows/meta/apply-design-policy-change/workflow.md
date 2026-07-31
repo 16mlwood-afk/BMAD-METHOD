@@ -7,6 +7,15 @@ main_config: '{project-root}/_bmad/bmm/config.yaml'
 design_handoff_workflow: '{project-root}/_bmad/bmm/workflows/design/design-handoff/workflow.md'
 design_tuning_workflow: '{project-root}/_bmad/bmm/workflows/design/design-tuning/workflow.md'
 create_design_policy_workflow: '{project-root}/_bmad/bmm/workflows/design/create-design-policy/workflow.md'
+metadata:
+  # Backfilled 2026-07-31. These workflows predate provenance stamping; `unknown` is the honest
+  # value, not a placeholder to fill in later. Anything authored from now on is stamped by
+  # create-workflow at build time (STD-SKILLPROV-001 §3).
+  created_at: 'unknown'
+  authored_by: 'unknown'
+  discovery_performed: false
+  source_research: []
+  override_reason: 'backfilled — authored before create-workflow stamped provenance'
 ---
 
 # Apply Design Policy Change Workflow

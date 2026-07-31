@@ -6,6 +6,15 @@ main_config: '{project-root}/_bmad/bmm/config.yaml'
 # Related workflows
 design_implement_workflow: '{project-root}/_bmad/bmm/workflows/implement/design-implement/workflow.md'
 design_synthesize_workflow: '{project-root}/_bmad/bmm/workflows/design/design-synthesize/workflow.md'
+metadata:
+  # Backfilled 2026-07-31. These workflows predate provenance stamping; `unknown` is the honest
+  # value, not a placeholder to fill in later. Anything authored from now on is stamped by
+  # create-workflow at build time (STD-SKILLPROV-001 §3).
+  created_at: 'unknown'
+  authored_by: 'unknown'
+  discovery_performed: false
+  source_research: []
+  override_reason: 'backfilled — authored before create-workflow stamped provenance'
 ---
 
 # Design Ingest Workflow

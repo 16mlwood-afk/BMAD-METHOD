@@ -1,6 +1,15 @@
 ---
 name: relational-coherence-audit
 description: 'Read-only audit of §13 cross-surface relational coherence across a SET of pages — the linkage GRAPH, not one page in isolation. Derives the EXPECTED edges from the app''s own schema (Drizzle FKs) plus a declared relational-edges.yaml for the derived/correlated relationships the schema doesn''t encode, then walks each edge against the live surface: is the foreign record displayed, is it a navigable §13 lookup (expand-in-context, quiet), are the mandated inline lookups resolved, does it round-trip both ways, is the identifier canonical. Separates a MISSING-REQUIRED LINK (the surface doesn''t express the relationship at all → re-design) from an UNRESOLVED LOOKUP (the link is there, the inline fields aren''t → mechanical fix) from an OUT-OF-SCOPE CANDIDATE (a schema edge the surface never displays → named, not failed). Also audits CO-VIEW siblings — two surfaces over the SAME record type, partitioned (a master view + a status-filtered partition view) — for whether they actually communicate: a per-row link between an entry''s two views (both ways), reconciling counts, a consistent handler-split IA, and one shared status vocabulary. Detect + route only — never edits.'
+metadata:
+  # Backfilled 2026-07-31. These workflows predate provenance stamping; `unknown` is the honest
+  # value, not a placeholder to fill in later. Anything authored from now on is stamped by
+  # create-workflow at build time (STD-SKILLPROV-001 §3).
+  created_at: 'unknown'
+  authored_by: 'unknown'
+  discovery_performed: false
+  source_research: []
+  override_reason: 'backfilled — authored before create-workflow stamped provenance'
 ---
 
 # Relational Coherence Audit Workflow

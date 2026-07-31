@@ -42,8 +42,31 @@ Create the main workflow file with:
 name: '{wf_name}'
 description: '{wf_description}'
 main_config: '{project-root}/_bmad/bmm/config.yaml'
+metadata:
+  # MACHINE-GENERATED — this workflow writes these; never hand-authored.
+  id: '{wf_name}'
+  version: 1
+  created_at: '{date}'
+  authored_by: 'create-workflow'
+  discovery_performed: false
+  # SELF-ASSERTED (STD-SKILLPROV-001 §3).
+  source_research: []
+  override_reason: 'create-workflow has no outward-discovery pass; not searched'
 ---
 ```
+
+**EMIT THE PROVENANCE BLOCK (STD-SKILLPROV-001 §3) — verbatim, every time.** Without it a created
+workflow is untraceable: nothing records what made it, when, or on what basis, so usage volume and
+repair rate are unmeasurable by construction. The values above are FIXED, not judgement calls:
+
+- `discovery_performed: false` is the **honest** answer — unlike `create-agent`, this workflow runs
+  no outward search, so `false` + `override_reason` is the standard's prescribed shape for
+  "did not search". **Never** write `true` here, and never invent a `source_research` URL to make
+  the block look complete: a false record is worse than an honest gap. If an outward pass is ever
+  added to step-01, that step sets these — this step stamps what it is given, and re-derives nothing.
+- Emit `created_at` as the resolved `{date}`, never the literal `{date}`.
+- **OMIT an optional key rather than emitting `''` or a `{placeholder}`** — a blank that looks filled
+  defeats the reader's ability to tell skipped from searched.
 
 Add workflow-specific frontmatter fields as needed (following peer patterns).
 
@@ -121,6 +144,10 @@ Before proceeding, verify:
 - [ ] Template exists if `{wf_needs_template}` (with all variable placeholders)
 - [ ] Checklist exists if `{wf_needs_checklist}` (with measurable criteria)
 - [ ] No placeholder text, TODOs, or incomplete sections in any file
+- [ ] **Provenance block present and resolved** — run these against the new `workflow.md`:
+      `grep -c "^  authored_by: 'create-workflow'"` MUST be 1 ·
+      `grep -c "^  discovery_performed:"` MUST be 1 ·
+      `grep -nE "^\s+\w+: *'?\{[a-z_]+\}'?"` MUST be empty (no unresolved `{date}`/`{wf_name}`)
 - [ ] **Context budget respected** — no step carries more than ~10 hard must-dos or inlines a large corpus it could point to; load-bearing constraints sit at the top + point of use, not buried mid-step; read-heavy steps delegate rather than inline
 
 ### 7. Proceed to Adversarial Review

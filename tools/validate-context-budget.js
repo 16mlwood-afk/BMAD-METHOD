@@ -13,6 +13,10 @@
  *   1. RUNAWAY CEILING — any step file past an absolute size ceiling.
  *   2. STEP-3B GATE-GUARD — create-workflow must keep its adversarial review
  *      gate (step-03b-review.md present AND referenced by step-03-build.md).
+ *   3. CALIBRATION — the soft must-do ceiling here must equal the number
+ *      create-workflow's own prose states. A gate quietly calibrated looser
+ *      than its doctrine is the exact failure mode this file guards against,
+ *      turned on itself (it ran at 14 vs a stated ~10 until 2026-07-31).
  *
  * WARN only (exit 0) — surfaced, not blocked, because the fork's house style
  * routinely writes 400-900-line steps; hard-gating the real budget would block
@@ -38,7 +42,27 @@ const RUNAWAY_MAX_LINES = 1100; // absolute ceiling — catches a ballooning ste
 const RUNAWAY_MAX_BYTES = 95_000;
 const BUDGET_LINES = 350; // soft per-step budget (warn)
 const BUDGET_BYTES = 28_000; // ~7k tokens (warn)
-const DENSITY_MUSTDO = 14; // soft must-do-count ceiling per step (warn); principle says ~10
+// Soft must-do-count ceiling per step (warn). This MUST equal the number the doctrine prose states
+// in create-workflow — it was 14 while the prose said ~10, so the gate enforced a weaker rule than
+// the doctrine and the weaker one won (2026-07-31 creator audit). Check 3 below asserts the two
+// agree, in BOTH directions: edit this constant without the prose, or the prose without this
+// constant, and the linter fails naming both.
+const DENSITY_MUSTDO = 10;
+
+// The doctrine anchors check 3 parses. Keyed to exact sentences so the failure message can quote
+// them; a moved/reworded anchor fails loudly rather than silently un-asserting the rule.
+const DOCTRINE_ANCHORS = [
+  {
+    file: path.join('meta', 'create-workflow', 'steps', 'step-03-build.md'),
+    re: /≤\s*~(\d+)\s+hard must-dos per step/,
+    quote: '≤ ~N hard must-dos per step',
+  },
+  {
+    file: path.join('meta', 'create-workflow', 'steps', 'step-03b-review.md'),
+    re: /more than ~(\d+) is `overdense-step`/,
+    quote: 'more than ~N is `overdense-step`',
+  },
+];
 
 const STRICT = process.argv.includes('--strict');
 
@@ -108,6 +132,39 @@ if (fs.existsSync(cwSteps)) {
     failures.push(
       `GATE     create-workflow/steps/step-03-build.md no longer routes to step-03b — the adversarial ` +
         `review gate is orphaned. step-03 must point at step-03b before wiring.`,
+    );
+  }
+}
+
+// --- check 3: gate-vs-doctrine calibration (HARD) ---------------------------
+// A gate calibrated looser than the rule it enforces is the failure this whole file exists to
+// prevent, applied to itself. Assert the linter's soft ceiling equals the number create-workflow's
+// own prose states. Fails on: a missing/reworded anchor, a prose number this constant doesn't
+// match, or two anchors that disagree with each other.
+for (const anchor of DOCTRINE_ANCHORS) {
+  const file = path.join(WF_DIR, anchor.file);
+  if (!fs.existsSync(file)) {
+    failures.push(
+      `CALIBRATION  doctrine anchor file missing: ${anchor.file}. DENSITY_MUSTDO (${DENSITY_MUSTDO}) ` +
+        `can no longer be checked against the rule it enforces.`,
+    );
+    continue;
+  }
+  const match = anchor.re.exec(fs.readFileSync(file, 'utf8'));
+  if (!match) {
+    failures.push(
+      `CALIBRATION  ${anchor.file} no longer states its must-do ceiling in the expected form ` +
+        `("${anchor.quote}"). Restore the wording or update DOCTRINE_ANCHORS — do not leave the ` +
+        `linter asserting nothing.`,
+    );
+    continue;
+  }
+  const stated = Number.parseInt(match[1], 10);
+  if (stated !== DENSITY_MUSTDO) {
+    failures.push(
+      `CALIBRATION  gate/doctrine drift: ${anchor.file} states ~${stated} must-dos, ` +
+        `DENSITY_MUSTDO is ${DENSITY_MUSTDO}. The gate must not be calibrated differently from the ` +
+        `rule. Change both, or neither.`,
     );
   }
 }

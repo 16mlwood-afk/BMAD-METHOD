@@ -1,6 +1,15 @@
 ---
 name: data-quality-audit
 description: 'Read-only audit of a controlled-vocabulary dimension (supplier, marketplace, currency, status, …) for data-quality defects. Runs production values through the APP''S OWN canonical normalizer — never hand-rolled SQL — then classifies each finding (fall-through, ambiguous-lane, cross-field mismatch, source rot) and, crucially, separates a RENDER GAP (data is fine, the UI hides the distinguishing field) from DATA ROT (the values are actually wrong). Routes render gaps to the design/wire lane and data rot to the producer-fix lane. Detection + routing only — never edits data.'
+metadata:
+  # Backfilled 2026-07-31. These workflows predate provenance stamping; `unknown` is the honest
+  # value, not a placeholder to fill in later. Anything authored from now on is stamped by
+  # create-workflow at build time (STD-SKILLPROV-001 §3).
+  created_at: 'unknown'
+  authored_by: 'unknown'
+  discovery_performed: false
+  source_research: []
+  override_reason: 'backfilled — authored before create-workflow stamped provenance'
 ---
 
 # Data Quality Audit Workflow

@@ -8,6 +8,15 @@ quick_dev_workflow: '{project-root}/_bmad/bmm/workflows/implement/quick-dev/work
 # Design-shaped clusters dispatch to design-router (the design-lane single source of
 # routing truth) — maintenance-triage no longer re-derives a design route map itself.
 design_router_workflow: '{project-root}/_bmad/bmm/workflows/design/design-router/workflow.md'
+metadata:
+  # Backfilled 2026-07-31. These workflows predate provenance stamping; `unknown` is the honest
+  # value, not a placeholder to fill in later. Anything authored from now on is stamped by
+  # create-workflow at build time (STD-SKILLPROV-001 §3).
+  created_at: 'unknown'
+  authored_by: 'unknown'
+  discovery_performed: false
+  source_research: []
+  override_reason: 'backfilled — authored before create-workflow stamped provenance'
 ---
 
 # Maintenance Triage Workflow

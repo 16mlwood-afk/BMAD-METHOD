@@ -2,6 +2,15 @@
 name: design-implement
 description: 'Implement a Claude Design artifact with pixel-level precision. Fetches the design bundle, reads every CSS value, builds a component-by-component comparison grid against the existing implementation, then fixes all deltas.'
 main_config: '{project-root}/_bmad/bmm/config.yaml'
+metadata:
+  # Backfilled 2026-07-31. These workflows predate provenance stamping; `unknown` is the honest
+  # value, not a placeholder to fill in later. Anything authored from now on is stamped by
+  # create-workflow at build time (STD-SKILLPROV-001 §3).
+  created_at: 'unknown'
+  authored_by: 'unknown'
+  discovery_performed: false
+  source_research: []
+  override_reason: 'backfilled — authored before create-workflow stamped provenance'
 ---
 
 # Design Implement Workflow

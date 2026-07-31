@@ -2,6 +2,15 @@
 name: create-agent
 description: 'Create a new BMAD agent persona from a short brainstorm AND auto-wire its slash-command wrapper. Autonomously builds the persona file and the command wrapper so the agent is invokable the moment the workflow finishes. Use when the user says "create an agent" or "I want a named agent that fronts X"'
 main_config: '{project-root}/_bmad/bmm/config.yaml'
+metadata:
+  # Backfilled 2026-07-31. These workflows predate provenance stamping; `unknown` is the honest
+  # value, not a placeholder to fill in later. Anything authored from now on is stamped by
+  # create-workflow at build time (STD-SKILLPROV-001 §3).
+  created_at: 'unknown'
+  authored_by: 'unknown'
+  discovery_performed: false
+  source_research: []
+  override_reason: 'backfilled — authored before create-workflow stamped provenance'
 ---
 
 # Create Agent

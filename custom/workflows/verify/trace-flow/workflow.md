@@ -1,6 +1,15 @@
 ---
 name: trace-flow
 description: 'Trace data flow through a page, endpoint, or feature. Produces a human-readable pipeline diagram showing every stage from DB/source to UI render, with live data values at each stage. Optionally audits for gaps and dead fields.'
+metadata:
+  # Backfilled 2026-07-31. These workflows predate provenance stamping; `unknown` is the honest
+  # value, not a placeholder to fill in later. Anything authored from now on is stamped by
+  # create-workflow at build time (STD-SKILLPROV-001 §3).
+  created_at: 'unknown'
+  authored_by: 'unknown'
+  discovery_performed: false
+  source_research: []
+  override_reason: 'backfilled — authored before create-workflow stamped provenance'
 ---
 
 # Trace Flow Workflow

@@ -1,6 +1,15 @@
 ---
 name: scrape-coverage-audit
 description: 'Read-only audit of a scraper''s record set for silent data loss. Derives the extraction contract — the fields a scraper is supposed to populate per record — from the app''s own export schema / record type (never a hand-invented list), runs a live scrape sample into a per-field coverage matrix (X/N populated), and surfaces silent gaps: a whole-column-empty (0/N) field is flagged P1, never normalized away. For each gap it drives Chrome to the live source page and renders a null-conflation verdict — present-but-dropped (extractor missed it → producer fix), genuinely-absent-on-source (benign → document), or fetch-failure/stub (load-error/JS-shell/deals-carousel → retry-fallback lane). Every field gets an explicit disposition. Detection + routing only — never edits the scraper or data.'
+metadata:
+  # Backfilled 2026-07-31. These workflows predate provenance stamping; `unknown` is the honest
+  # value, not a placeholder to fill in later. Anything authored from now on is stamped by
+  # create-workflow at build time (STD-SKILLPROV-001 §3).
+  created_at: 'unknown'
+  authored_by: 'unknown'
+  discovery_performed: false
+  source_research: []
+  override_reason: 'backfilled — authored before create-workflow stamped provenance'
 ---
 
 # Scrape Coverage Audit Workflow
