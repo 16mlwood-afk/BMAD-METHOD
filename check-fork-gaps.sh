@@ -39,10 +39,33 @@ STAMP="$HOME/bmad-method-v6/.fork-gaps-last-scan"
 [ -f "$F" ] || exit 0
 
 python3 - "$F" "$STAMP" <<'PY' 2>/dev/null || true
-import json, os, re, sys, time
+import json, os, re, subprocess, sys, time
 
 text = open(sys.argv[1], encoding="utf-8").read()
 stamp = sys.argv[2]
+
+
+# WRITTEN IS NOT LOGGED (2026-07-31). This surfacer reads the WORKING TREE, so an entry that
+# was authored and never committed is announced every session as a live open gap — identical
+# in the banner to one that is safely in git. That is a false green, and it is the one that
+# hid the 2026-07-30/31 stall: three finished entries sat uncommitted for two days while being
+# reported as logged. An uncommitted entry exists on ONE machine, is invisible to every other
+# session, and dies to a single `git checkout`.
+#
+# So: diff the live ids against HEAD's and name the ones that were never committed. FAILS
+# OPEN AND SILENT — if git cannot be read we say nothing about commit state rather than guess.
+# Claiming "uncommitted" about a committed entry would be its own false alarm, and this hook's
+# whole value is that it is quiet when there is nothing to say.
+def committed_ids(register_path):
+    root = os.path.dirname(os.path.dirname(os.path.abspath(register_path)))
+    try:
+        r = subprocess.run(["git", "show", "HEAD:docs/fork-gaps.md"],
+                           cwd=root, capture_output=True, text=True, timeout=15)
+    except Exception:
+        return None
+    if r.returncode != 0:
+        return None
+    return set(re.findall(r"(?m)^id: (FG-[\d-]+)", r.stdout))
 
 entries = []  # [title, body_lines]
 cur = None
@@ -110,6 +133,30 @@ for t, b in entries:
     (owed if field(b, "state") == "fork-fixed-distribution-owed" else investigations).append((t, b))
 
 parts = []
+
+# Lead with it: an entry that is not committed is not logged, whatever the count says.
+known = committed_ids(sys.argv[1])
+if known is not None:
+    uncommitted = []
+    for t, b in entries:
+        if not is_open(t, b):
+            continue
+        gid = field(b, "id")
+        if gid and gid not in known:
+            uncommitted.append(gid)
+    if uncommitted:
+        parts.append(
+            "🚨 %d fork-gap entry/entries exist ONLY in this working tree — WRITTEN, NOT "
+            "COMMITTED: %s. They are being counted as 'open gaps' below, but they are on this "
+            "machine alone: invisible to every other session, absent from myfork/custom, and "
+            "destroyed by one `git checkout`. This exact false green hid a two-day logging "
+            "stall on 2026-07-30/31. Commit them by explicit path — `git add docs/fork-gaps.md` "
+            "— NEVER `git add -A` (the register takes concurrent writes and you would scoop "
+            "another session's in-flight entry). If a commit is rejected, read the finding: "
+            "since 2026-07-31 only a defect in an entry YOU added or edited can block you."
+            % (len(uncommitted), ", ".join(uncommitted))
+        )
+
 if investigations:
     listed = " · ".join(short(t) for t, _ in investigations)
     parts.append(
