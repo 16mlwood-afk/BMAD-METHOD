@@ -39,6 +39,14 @@
 //       `--all`) the check degrades to a full audit — scoping must never be the reason a real
 //       finding goes unenforced.
 //
+//   I6. THE SCAFFOLD CANNOT MANUFACTURE A HOLLOW ENTRY.
+//       `new-entry` lowers authoring cost, which is the real lever on logging rate. But a
+//       scaffold whose placeholders satisfy the rules is worse than none — `marker: "TODO"`
+//       is four chars and passes everything. Every slot emits `<<FILL: …>>` and schema
+//       rejects that token in any field or body prose. Matched IN FULL: a bare `<<`
+//       false-fired on a real entry quoting a shell heredoc. The scaffold never writes, and
+//       a missing register is empty rather than an error (else it cannot produce entry #1).
+//
 // Hermetic: builds a throwaway fork-shaped tree and points the REAL linter at it via
 // FORK_GAP_ROOT, so no assertion depends on live fork content. Also binds to the real source
 // so a future edit that weakens an invariant fails here.
