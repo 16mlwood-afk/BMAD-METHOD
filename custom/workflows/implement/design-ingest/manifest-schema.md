@@ -25,6 +25,7 @@ ingest:
   supersede_status: {active | superseded | no_brief | ambiguous}   # resolved in design-ingest step-01 by matching target_slug against briefs in implementation_artifacts; design-ingest TOLERATES every value (never refuses) — it stamps so design-implement can explain a no-op and guard re-applying stale design. brief-revision-policy.md §8.
   superseded_by: {successor brief filename | empty}                # set iff supersede_status == superseded
   source_brief: {matched brief filename | none}                    # the brief this handoff traces to (none on a no_brief raw-URL run)
+  surface_existence: {brownfield | net-new-surface | unknown}      # resolved in design-ingest step-01 §5b by probing origin/main (NEVER the working tree) for a route + page component for target_slug. `net-new-surface` means there is nothing to diff against — design-implement will soft-exit at its own existence gate. TERMINAL FOR PRESENTATION: a manifest carrying `net-new-surface` is a CATALOGUE and must never be handed off, summarised, or stamped as ready to implement. ABSENT ⇒ a consumer MUST read it as `unknown`, never as `brownfield`. (FG-2026-07-28-07)
   layout_constraints:                   # design-implement step-03 §2d denominator; sourced from docs/design-policy.md (authoritative) per design-implement URL.2
     source: {policy | README-generated | bundle-wrapper}
     assertion: {verbatim framing rule}

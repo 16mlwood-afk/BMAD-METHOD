@@ -86,6 +86,30 @@ test -e "{implementation_artifacts}/design-ingest-{target_slug}.md" && \
 
 **Do NOT hand-write a claim into the register from here.** Claim writes are harness-stamped by contract (`claimed_by_session_id` and `claimed_at` are written by the mediating writer, never self-reported) — an agent appending a claim by hand produces exactly the unattributable claim the register cannot honour. Read-only here is deliberate.
 
+## 5b. Net-new existence probe — is there anything to implement against at all?
+
+`design-implement` already runs this probe and **soft-exits on it before reading a single row**. Running it only there means the *cheap* consumer refuses what the *expensive* producer has already paid for in full. This workflow is deliberately routed the LARGEST surfaces (the size preflight sends anything >=5 frames / >=60KB here), so the ordering is inverted against the operator exactly as it is for §5a — same cost curve, same fix. The slug is already in hand; probe here, one step before the fan-out.
+
+**Why this exists (2026-07-28 `/stock`; again 2026-07-31 `intake-pilot-console`).** Both completed a full ingest — 8 frames / 70 sections, then 9 frames / 65 sections — and both were soft-exited by `design-implement` at its existence gate before it read a row. The second cost *more* than a normal ingest: its per-frame fan-out could not run (sub-agents cannot reach the design MCP — `FG-2026-07-26-01` / `-06`), so every source module came through a single orchestrator context. And it had already computed the answer — the manifest carried a hand-written `F-NET-NEW` flag saying *"design-implement would be NET-NEW CREATION, not a delta apply"* — while still handing off as ready to implement. **The fact was in the artifact; nothing made it terminal.** That is the half this section fixes, and it is smaller than "teach ingest to detect net-new."
+
+Three probes, `ls`-class, **run against `origin/main`, not the working tree** (`FG-2026-07-28-06`). A long-lived branch reports a false ABSENCE, and false-absence is the direction that fires this gate — so probing the checkout would make the gate fire on surfaces that exist.
+
+1. **Route** — no route / nav entry matches `{target_slug}` or its route in the app's router or nav config.
+2. **Page component** — no page / screen component file exists for the surface.
+3. **Backing object** — no schema table and no shared type exists for the surface's primary object.
+
+**Verdict — probes 1–2 decide it; probe 3 never vetoes.** A backing object alone is not a surface, and this section's own recommended path CREATES the schema-present / route-absent state — so an all-three-absent trigger would disarm the gate for precisely the operator who followed the advice.
+
+- **Probes 1–2 both absent** → `{surface_existence} = net-new-surface`. Record what probe 3 found: it scopes the *recommendation* (the backend step may already be done), never the *verdict*.
+- **Probes 1–2 present** → `{surface_existence} = brownfield`. Continue normally.
+- **Probe unresolvable** → `{surface_existence} = unknown (probe failed, failed open)`. Warn in one line and continue. Unreadable is UNKNOWN, not clear — same discipline as §5a.
+
+Do **not** re-run `design-implement`'s capability-granularity probes (4–6) here. Those classify a capability layered on an *existing* surface and need the brief/spec pair the consumer resolves; duplicating them would let the two gates drift apart, which is the failure this repair closes.
+
+**On `net-new-surface`, STOP before step-02 — soft, never a hard refuse.** Ingest is the tolerant half (workflow Critical Rules) and the operator keeps the wheel, exactly as in `design-implement`'s early-exit. Say it plainly: this surface has no route and no page component, so a full enumeration would catalogue against something that cannot be applied yet. Name the onboarding path (build the minimal backend → brownfield `design-handoff` → `design-synthesize` → `design-implement`), name whichever of those steps probe 3 shows is already done, and offer to continue deliberately.
+
+**If the operator continues anyway, the determination is TERMINAL for how the manifest PRESENTS ITSELF.** Carry `{surface_existence}` into the receipt (`ingest.surface_existence`, `manifest-schema.md`) and into the step-03 pause. A manifest built over a net-new surface may be handed off as a **catalogue**; it may **not** be handed off as ready to implement. Writing the fact into a flag while the handoff still reads READY is precisely what happened on 2026-07-31 — a determination the artifact records but the handoff contradicts is not a gate.
+
 ## 6. Tell the user what you found, then hand to step-02
 
 Say it conversationally — lead with a sentence a colleague would say, not a table. Name the screens plainly (the worklist, the order drawer, the lookups), how many there are, and which are actually drawn vs. only referenced. If a screen that should be there looks missing, or something seems off, say so and tell them you'll keep an eye on it. **If `{handoff_supersede_status} == superseded`, flag it here too** — a quick "heads up, this handoff looks superseded by `{superseded_by}`; I'll still build the manifest but I'll walk you through that at the end" — so it isn't a surprise at the pause. Then say you're about to go through each screen in turn to list its sections.
@@ -112,4 +136,5 @@ Read fully and follow: `{project-root}/_bmad/bmm/workflows/implement/design-inge
 - `{design_tokens}` non-empty with resolved values.
 - `{target_slug}` derived and `{handoff_supersede_status}` resolved to one of `active | superseded | no_brief | ambiguous` (with `{superseded_by}` / `{source_brief}` captured) — never left unset, never refused.
 - The §5a concurrent-run check RAN before handing to step-02, and its verdict is recorded (`no-collision | prior-manifest (re-ingest) | concurrent-detected | unknown (probe failed, failed open)`). A `concurrent-detected` verdict STOPPED the run before the fan-out — the spend is the thing being protected, so detecting the collision after step-02 is a failure even if the manifest is later correct.
+- The §5b net-new existence probe RAN before handing to step-02, against `origin/main`, and `{surface_existence}` is set to one of `net-new-surface | brownfield | unknown (probe failed, failed open)` — never left unset. A `net-new-surface` verdict STOPPED the run before the fan-out unless the operator explicitly continued; if they continued, the verdict is carried into the receipt and the step-03 pause, and the handoff does NOT read as ready to implement.
 - NO section enumeration attempted in this step (that is step-02's fan-out — keeping the whole bundle out of one context is the point).

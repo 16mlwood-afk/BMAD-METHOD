@@ -46,6 +46,39 @@ The compact, always-current state. The skill reads THIS block + the top of `## C
 ## Changelog
 
 
+### 2026-07-31 — design-ingest gains the net-new existence probe, and the verdict is made terminal (`FG-2026-07-28-07`)
+
+**Shipped (fork):** `design-ingest` step-01 **§5b** probes for a route + page component on
+`origin/main` BEFORE the step-02 fan-out, on the slug §5 already resolved. `design-implement`
+has run this probe since 2026-07-28 and soft-exits on it — so the CHEAP consumer was refusing
+what the EXPENSIVE producer had already paid for in full, on a workflow deliberately routed the
+largest surfaces. MAINTENANCE, not doctrine: the gate is already ratified, this mirrors it into
+the workflow that pays the cost.
+
+**The second half is the one the recurrence exposed.** On 2026-07-31 `intake-pilot-console`
+ingested 9 frames / 65 sections *with the answer already in hand* — a hand-written `F-NET-NEW`
+flag saying "design-implement would be NET-NEW CREATION" — and handed off as `READY FOR
+IMPLEMENT` anyway. So `{surface_existence}` is now carried into the receipt
+(`ingest.surface_existence`; absent ⇒ `unknown`, never `brownfield`) and **terminal for
+presentation**: a net-new manifest is handed off as a CATALOGUE, with the onboarding path as the
+headline next step, never the `design-implement` command. A determination the artifact records
+and the handoff contradicts is not a gate. That run also cost *more* than a normal ingest — its
+fan-out could not run (`FG-2026-07-26-01`/`-06`), so every module came through one orchestrator
+context.
+
+**Scope held deliberately:** `design-implement`'s capability-granularity probes (4–6) are NOT
+duplicated here — they need the brief/spec pair the consumer resolves, and a second copy is how
+the two gates drift apart. `check-ingest-manifest.js` was NOT armed on the new field: every
+existing manifest lacks it, so enforcing it would fail the corpus.
+
+**Verified:** markdownlint 0 errors across 4 changed files + `fork-gaps.md`;
+`npm run test:ingest-manifest` 13/13 (schema change is additive, both directions still pinned).
+**NOT verified by a live run** — no net-new surface has been ingested since the change, so the
+probe's real-world firing is UNPROVEN; the next net-new ingest is the test.
+
+**Distribution owed**, batched into the standing fleet gate (no solo sync window, per the
+2026-07-26 owner ruling). Fires in ZERO projects until that window runs.
+
 ### 2026-07-28 — design-handoff policy-freshness gate + a retracted fork-gap and its real cause (`9ae1b010`)
 
 **Shipped (fork):** `design-handoff` step-01 §1b now asserts the policy tree is current before stamping
