@@ -7479,3 +7479,56 @@ flag is `-c`, recurse into the quoted string and classify it as shell rather tha
 data. Bound it to that exact shape — a general "look inside quotes" change reinstates the
 `python3 -c` false positive the rule was written to kill. Owes golden cases in both directions
 (`bash -c` write → classified; `python3 -c` mention → still allowed) before it is trusted.
+
+## FG-2026-07-31-07 — per-id scoping cannot attribute an entry that has no id, so one yaml-less entry still blocks every session's commit
+
+```yaml
+id: FG-2026-07-31-07
+class: enforcement-scoping-gap
+scope: fork
+target: tools/lib/fork_gap_lint.py
+marker: "_is_blocking invariant 3 — unattributable entries fail closed"
+state: open
+fix: none
+delivery: n/a
+owner: mason
+routing: maintenance
+routing_note: "Observed behaviour + fix direction only, per the owner's instruction. No implementation plan and no enforcement design — the positional-attribution change is NOT to be built until he asks for it explicitly."
+```
+
+### Incident
+
+**Symptom.** A single fork-gap entry written without a ```yaml block blocks the commit of *every*
+session touching `docs/fork-gaps.md`, not just its author's — despite the per-id scoping that
+exists to prevent exactly that.
+
+**Cause.** `_is_blocking()` in `tools/lib/fork_gap_lint.py`:
+
+```python
+if not eid or not ID_RE.match(eid):
+    return True   # invariant 3 — unattributable entries fail closed
+```
+
+Scoping is keyed on the entry id. An entry with no yaml block has no id, so it can never be
+attributed to a commit, and the fail-closed branch makes it blocking for everyone.
+
+**Impact.** It reproduces the incident pattern the scoping was introduced to end: one malformed
+entry freezes gap logging across sessions. Missing the yaml block is also the most likely
+hand-authored malformation, so the residual case is the common one, not an exotic one.
+
+**Context recorded deliberately:**
+
+- Scoping-by-id was added **earlier the same day** (2026-07-31) precisely to stop global freezes —
+  the file's own header notes three stranded entries and logging falling from 12–14/day to 1–4/day.
+- This is the one residual malformed case that still escapes that scoping. Every other kind of rot
+  is correctly scoped and harmless to bystanders.
+- Observed live: commit `d5ca04ac` (the FG-2026-07-31-05 entry, all pre-commit gates green) could
+  only be landed after a *different* session's yaml-less entry was repaired. **Correction to the
+  instruction that requested this entry:** `d5ca04ac` is that fork-gap entry, not a deploy-SHA guard
+  fix. The deploy-path gap is FG-2026-07-31-04, whose script fix shipped separately in cash-recovery
+  PR #607 (`a535695`). Recorded accurately rather than as dictated.
+
+**Fix direction.** Make an id-less entry attributable by **position**: diff its line range against
+HEAD and treat it as touched only when this commit's staged change overlaps that range. Keep
+fail-closed semantics everywhere else — failing closed is correct when a finding genuinely cannot be
+attributed; the gap is that position makes this case attributable.
