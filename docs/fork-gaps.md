@@ -7289,7 +7289,7 @@ sync, so any fix reaches cash-recovery only.
 logging bug. It is only misleading in combination with the Edit deny, which is why this is filed
 as a guard-disagreement rather than a logging gap.
 
-## FG-2026-07-31-01 — the deploy path was gated on a precondition only the OWNER could clear, silently converting an autonomous deploy into his decision
+## FG-2026-07-31-04 — the deploy path was gated on a precondition only the OWNER could clear, silently converting an autonomous deploy into his decision
 
 ```yaml
 id: FG-2026-07-31-04
