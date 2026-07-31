@@ -1,6 +1,6 @@
 // Golden-case regression lock for the fork-gap register tooling (fork-gap 2026-07-20).
 //
-// FIVE STRUCTURAL INVARIANTS are locked here. I1 and I2 predate schema v1 and are carried
+// SIX STRUCTURAL INVARIANTS are locked here. I1 and I2 predate schema v1 and are carried
 // forward unchanged in meaning; I3 and I4 arrive with the write-time gate (2026-07-25); I5
 // arrives with entry-scoped blocking (2026-07-31).
 //
@@ -306,6 +306,64 @@ try {
     })(),
   );
   fs.rmSync(g, { recursive: true, force: true });
+
+  // ----------------------------------------------------------------- I6
+  //   I6. THE SCAFFOLD CANNOT MANUFACTURE A HOLLOW ENTRY.
+  //       `new-entry` exists because authoring cost is the lever on logging rate — the
+  //       register is strict and offered only a validator that judges an entry AFTER it was
+  //       hand-built. But a scaffold whose placeholders satisfy the rules is worse than no
+  //       scaffold: `marker: "TODO"` is four characters and passes every mechanical check.
+  //       So every slot emits `<<FILL: …>>` and schema REJECTS any field or body prose still
+  //       carrying that token. Tightening, not relaxation, and it can only fire on the entry
+  //       the author is adding.
+  //
+  //       The token is matched IN FULL. A bare `<<` false-fired immediately on a real entry
+  //       whose prose quotes a shell heredoc (`python3 - <<'PY'`) — the indiscriminate-
+  //       detector anti-pattern, caught by the live register on the first run. Both
+  //       directions are locked below so neither regresses.
+  const sc = sandbox();
+  const scReg = path.join(sc, 'docs', 'fork-gaps.md');
+  const HEAD_ONLY = ['# Fork Gaps', '', '## Open', ''].join('\n');
+
+  fs.writeFileSync(scReg, HEAD_ONLY + run(sc, 'new-entry', ['--title', 'unfilled']));
+  ok('I6 an UNFILLED scaffold is rejected by schema', exitCodeOf(sc, 'schema') === 1);
+
+  const filled = run(sc, 'new-entry', [
+    '--title',
+    'a real defect',
+    '--class',
+    'pointer-rot',
+    '--scope',
+    'fork',
+    '--target',
+    'custom/workflows',
+    '--marker',
+    'a real marker',
+  ]).replaceAll(/<<FILL:[\s\S]*?>>/g, 'real evidence the author wrote.');
+  fs.writeFileSync(scReg, HEAD_ONLY + filled);
+  ok('I6 a FILLED scaffold passes schema and targets', exitCodeOf(sc, 'schema') === 0 && exitCodeOf(sc, 'targets') === 0);
+
+  // Prose quoting a heredoc must not read as a placeholder.
+  fs.writeFileSync(
+    scReg,
+    HEAD_ONLY +
+      entry({ id: 'FG-2026-02-02-01', target: 'custom/workflows', marker: 'heredoc case' }).replace(
+        'fixture evidence.',
+        "A session ran `python3 - <<'PY'` and it mattered. Prose, not a placeholder.",
+      ),
+  );
+  ok('I6 prose quoting a heredoc is NOT a placeholder (no bare `<<` match)', exitCodeOf(sc, 'schema') === 0);
+
+  // The scaffold must never write — the file-level no-mutation invariant.
+  const beforeScaffold = fs.readFileSync(scReg, 'utf8');
+  run(sc, 'new-entry', ['--title', 'does not write']);
+  ok('I6 the scaffold never mutates the register', fs.readFileSync(scReg, 'utf8') === beforeScaffold);
+
+  // Ids must not collide with entries already dated today.
+  fs.writeFileSync(scReg, HEAD_ONLY + entry({ id: 'FG-2026-03-03-01', target: 'custom/workflows', marker: 'taken' }));
+  const nextId = (run(sc, 'new-entry', ['--title', 'x', '--date', '2026-03-03']).match(/^id: (FG-\S+)/m) || [])[1];
+  ok('I6 the next id skips ids already taken on that date', nextId === 'FG-2026-03-03-02');
+  fs.rmSync(sc, { recursive: true, force: true });
 
   // (e) BOUND: the gate must keep firing only when the register is staged. If that guard is
   //     ever removed, every fork commit inherits the register's historical rot again.

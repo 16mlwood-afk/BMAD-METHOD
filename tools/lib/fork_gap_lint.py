@@ -54,8 +54,19 @@ class Entry:
 
 
 def parse(path: str = GAPS):
-    """Yield an Entry per `## ` block after the `## Open` marker."""
-    return parse_text(open(path).read())
+    """Yield an Entry per `## ` block after the `## Open` marker.
+
+    A MISSING register is empty, not an error: `new-entry` must work in a project that has
+    no register yet — refusing to scaffold the first entry because there is no file to
+    scaffold it into is the bootstrap deadlock, the same shape as the collision guard's
+    claim-required-to-write-the-claim-file carve-out. The checks then run over zero entries
+    and pass, which is correct: nothing has been asserted.
+    """
+    try:
+        text = open(path).read()
+    except FileNotFoundError:
+        return iter(())
+    return parse_text(text)
 
 
 def parse_text(text: str):
@@ -97,6 +108,129 @@ def _build(heading: str, line_no: int, body: str) -> Entry:
     return Entry(heading, line_no, header, body, "### Incident" in body)
 
 
+# ---------------------------------------------------------------------------
+# NEW-ENTRY SCAFFOLD — cut the cost of the thing we want to happen more often
+# ---------------------------------------------------------------------------
+# The register is strict by design: seven required fields, a conditional field per state, an
+# enum pair, a >=3-char marker, an `### Incident` block, and an id that must be unique and
+# correctly dated. Until now the ONLY machine-readable affordance was a validator that tells
+# you the entry is wrong AFTER you have hand-built it. That is backwards for the one activity
+# the whole register depends on, and it is a real tax at exactly the moment a session is
+# already tired and about to close out. (The identical gap is logged against the scope
+# register at tools/check-scope-register.js — same shape, same cause.)
+#
+# TWO PROPERTIES THAT MATTER MORE THAN CONVENIENCE:
+#
+#   1. IT DOES NOT WRITE. The file-level invariant is that nothing here mutates the register,
+#      and a scaffold is not a good enough reason to break it — an appender would need to
+#      choose an insertion point in a file many sessions are editing concurrently, which is
+#      the read-modify-write race the manifest contract already documents. It prints to
+#      stdout; the author appends. Composes with `>>` if you want it to.
+#
+#   2. AN UNFILLED SKELETON IS INVALID BY CONSTRUCTION. Every slot the author must supply is
+#      emitted as `<<FILL: ...>>`, and the schema check now REJECTS any field still carrying
+#      `<<`. Without that, a scaffold is a machine for producing hollow entries that pass every
+#      mechanical rule — `marker: "TODO"` is four characters and would sail through. This is a
+#      TIGHTENING, not a relaxation: it can only ever fire on an entry the author is adding,
+#      and it fires on exactly the failure the scaffold would otherwise introduce.
+
+# The FULL token, not a bare `<<`. The first cut matched `<<` and immediately false-fired on
+# FG-2026-07-25-02, whose prose quotes a shell heredoc (`python3 - <<'PY'`) — an
+# indiscriminate detector, caught by the live register on its first run. `<<FILL:` is emitted
+# only by the scaffold below, so a hit means an unfilled slot and nothing else.
+PLACEHOLDER = "<<FILL:"
+
+SCAFFOLD_HELP = {
+    "class": "the failure CLASS, not the symptom — e.g. detector-input-rot, pointer-rot, "
+             "contract-dimension-gap, silent-partial-implementation, context-budget-overflow",
+    "target": "the load-bearing pointer a cold session opens days later. A real path, "
+              "scope-prefixed if not in the fork (project:… / machine:… / harness:…)",
+    "marker": "a string that will EXIST in the target once this is fixed. It is how the "
+              "stale-open detector later asks 'did this land?' — so make it specific enough "
+              "that its presence means something",
+}
+
+
+def _next_id(entries, date_str: str) -> str:
+    used = {e.header.get("id", "") for e in entries}
+    for n in range(1, 100):
+        cand = f"FG-{date_str}-{n:02d}"
+        if cand not in used:
+            return cand
+    return f"FG-{date_str}-99"
+
+
+def new_entry(entries, argv) -> int:
+    import argparse
+    import datetime
+    ap = argparse.ArgumentParser(prog="new-fork-gap", add_help=True)
+    ap.add_argument("--title", default=None, help="one line: the DEFECT, not the area")
+    ap.add_argument("--class", dest="klass", default=None)
+    ap.add_argument("--scope", default=None, choices=sorted(SCOPES))
+    ap.add_argument("--target", default=None)
+    ap.add_argument("--marker", default=None)
+    ap.add_argument("--state", default="open", choices=sorted(STATES))
+    ap.add_argument("--owner", default="mason")
+    ap.add_argument("--date", default=None, help="YYYY-MM-DD (defaults to today, UTC)")
+    a = ap.parse_args(argv)
+
+    date_str = a.date or datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
+    eid = _next_id(entries, date_str)
+    fill = lambda v, k: v if v else f"<<FILL: {SCAFFOLD_HELP.get(k, k)}>>"
+    title = a.title or "<<FILL: one line naming the DEFECT, not the area it lives in>>"
+
+    lines = [
+        "",
+        f"## {eid} — {title}",
+        "",
+        "```yaml",
+        f"id: {eid}",
+        f"class: {fill(a.klass, 'class')}",
+        f"scope: {a.scope or '<<FILL: fork | project | machine-local | harness>>'}",
+        f"target: {fill(a.target, 'target')}",
+        f'marker: "{a.marker}"' if a.marker else f'marker: "{fill(None, "marker")}"',
+        f"state: {a.state}",
+        "fix: none          # none | partial | done — `partial` MUST enumerate what remains",
+        "delivery: n/a      # n/a | owed | done — meaningless while fix is `none`",
+        f"owner: {a.owner}",
+    ]
+    if a.state == "blocked":
+        lines.append("blocked_by: <<FILL: an OBSERVABLE condition, not a feeling>>")
+    if a.state == "superseded":
+        lines.append("superseded_by: <<FILL: the FG id that replaces this>>")
+    if a.state == "fork-fixed-distribution-owed":
+        lines.append("distribution: <<FILL: the exact command owed, and to how many targets>>")
+    lines += [
+        "```",
+        "",
+        "### Incident",
+        "",
+        "<<FILL: what was OBSERVED — the run, the date, the exact output. Evidence, not a",
+        "theory. A gap logged from a hunch is the one nobody can act on later.>>",
+        "",
+        "### Why it's structural",
+        "",
+        "<<FILL: why this recurs by construction rather than being a one-off mistake. If you",
+        "cannot answer this, it may be a bug report rather than a fork gap.>>",
+        "",
+        "### Fix candidates",
+        "",
+        "<<FILL: concrete options. Say which are MAINTENANCE (execution defect — fix now) and",
+        "which are NEW DESIGN/POLICY (changing what a rule IS — propose, do not ship).>>",
+        "",
+    ]
+    print("\n".join(lines))
+    print("# ---", file=sys.stderr)
+    print(f"# Scaffold for {eid}. NOTHING WAS WRITTEN — append it yourself, e.g.", file=sys.stderr)
+    print("#   python3 tools/lib/fork_gap_lint.py new-entry --title '...' >> docs/fork-gaps.md",
+          file=sys.stderr)
+    print("# Every <<FILL:…>> is REJECTED by check-fork-gap-schema, so an unfilled skeleton",
+          file=sys.stderr)
+    print("# cannot be committed. Fill them, then: bash tools/check-fork-gap-schema.sh",
+          file=sys.stderr)
+    return 0
+
+
 # --------------------------------------------------------------------- checks
 
 def _checkable(target: str) -> bool:
@@ -133,6 +267,19 @@ def check_schema(entries, touched=None) -> int:
         for f in REQUIRED:
             if f not in e.header:
                 add(f"{eid}: missing required field `{f}`")
+
+        # An UNFILLED SCAFFOLD SLOT. Mechanical, like every other rule here, and the reason
+        # `new-entry` can exist safely: without it the scaffold would be a machine for hollow
+        # entries that satisfy every rule (`marker: "TODO"` is 4 chars and passes). Checked on
+        # the header AND the body, because the prose sections carry FILL slots too and an
+        # entry with an empty ### Incident is exactly the un-actionable gap we keep finding.
+        stale_slots = sorted(k for k, v in e.header.items() if PLACEHOLDER in str(v))
+        if stale_slots:
+            add(f"{eid}: unfilled scaffold placeholder in field(s): {', '.join(stale_slots)} "
+                "— fill them or delete the entry; a `<<FILL:…>>` slot is not a value")
+        if PLACEHOLDER in e.body.split("```")[-1]:
+            add(f"{eid}: unfilled scaffold placeholder in the body prose "
+                "(Incident / Why it's structural / Fix candidates) — evidence is the entry")
         hid = e.header.get("id", "")
         if hid and not ID_RE.match(hid):
             add(f"{eid}: id `{hid}` is not FG-YYYY-MM-DD-NN")
@@ -808,6 +955,8 @@ def main() -> int:
         return check_report(entries)
     if mode == "derive":
         return check_derive(entries)
+    if mode == "new-entry":
+        return new_entry(entries, sys.argv[2:])
     print(f"unknown mode: {mode}", file=sys.stderr)
     return 2
 
