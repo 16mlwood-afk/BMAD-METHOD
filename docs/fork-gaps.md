@@ -6936,3 +6936,228 @@ the population being re-classified is narrow (delivered artifact whose frontmatt
 (tracked on main; absent from this working tree, which is behind).
 **Nothing was changed in the detector this session** — log-only; the fix touches a false-positive-sensitive
 classifier and options 2 and 3 are the owner's to pick.
+
+## FG-2026-07-30-10 — quick-dev Mode A treats a tech-spec's own completion claims as resume state, and nothing checks them against the repo
+
+```yaml
+id: FG-2026-07-30-10
+class: contract-dimension-gap
+scope: fork
+target: custom/workflows/implement/quick-dev/steps/step-01-mode-detection.md
+marker: "stepsCompleted / '- [x] Task N' / a prose DONE banner"
+state: open
+fix: none
+delivery: n/a
+owner: mason
+routing: needs-marker
+routing_note: "The LOG is maintenance. The FIX is a new workflow step (verify a claimed-done task against the repo before resuming past it), which is NEW DESIGN — proposed, not shipped."
+contradiction_ack: "step-01 pins {tech_spec_slug} to detect a mid-run SWAP of the spec file, but nothing detects a spec that is simply WRONG about what already landed — so a resumed run starts past a precondition that does not exist."
+```
+
+**Target file:** `custom/workflows/implement/quick-dev/steps/step-01-mode-detection.md` (Mode A load), with the
+consuming read in `step-03-execute.md`. Lane: **log = MAINTENANCE, fix = NEW DESIGN → owner marker.**
+
+### Incident
+
+`quick-dev _bmad-output/implementation-artifacts/tech-spec-listings-live-wiring.md`, invoked with the
+owner's framing *"It starts at task 4"*. The spec's own correction banner states, in bold:
+
+> **Tasks 1-3 are DONE and merged (PR #566, `5c87ea58`).**
+
+`git show --stat 5c87ea5` returns **exactly two files** — `src/domain/ebay/listings-projection.ts` and
+its test. **Task 1 — relocating `BLOCKER_META` / `STATE_META` out of the fixture — never landed.** Both
+components were still importing `LISTINGS` from `src/components/listings/data.ts` at module scope, which
+is the precise coupling Task 12's fixture demotion has to remove. Had the run honoured "start at task 4",
+Task 12 would have stranded the label/tone/rank tables the worklist and drawers read, and the surface
+would have shipped broken.
+
+Caught only because the session read the components before editing them and noticed
+`LX.BLOCKER_META` still resolving to the fixture. That is a habit, not a mechanism.
+
+### Root cause — three "done" vocabularies in one artifact, none verified
+
+The spec carries completion state in **three** independent places, and quick-dev trusts all of them:
+
+1. `stepsCompleted: [1, 2, 3, 4]` in frontmatter — a **quick-spec authoring** field (which *drafting*
+   steps finished), trivially misread as which *implementation tasks* finished;
+2. `- [ ] Task N` checkboxes in the Implementation Plan;
+3. free prose in a correction banner asserting a PR number and a SHA.
+
+Nothing reconciles any of them against the repository. The named PR and SHA were right there in the
+artifact and were never dereferenced — `git show --stat <sha>` is a one-line check that would have
+falsified the claim instantly.
+
+This is the failure shape the fork already knows by name: **authored, documented as live, delivered to
+zero** (`FG-2026-07-25-09`; the `bash_edit_guard` wiring correction in cash-recovery `CLAUDE.md`). The
+new dimension is that here the false claim sits in the **resume state a workflow reads to decide what
+to skip** — so it does not merely mislead a reader, it steers execution past a precondition.
+
+### Why the existing guard does not cover it
+
+step-01 already pins `{tech_spec_slug}` at load, explicitly so step-04 can detect a parallel session
+**swapping** the shared `_bmad-output/` file mid-run. That defends the artifact's *identity*. It says
+nothing about the artifact's *accuracy*. A spec that is stably itself and stably wrong passes every
+check the workflow has.
+
+### Fix candidates — owner picks; this is a new step, not a repair
+
+1. **Dereference the claim (narrowest).** When a Mode A spec asserts a task/PR/SHA is merged, run
+   `git show --stat <sha>` (or `gh pr view <n> --json files`) and compare against that task's declared
+   `File:` list. Mismatch → surface it and re-open the task rather than resuming past it. Cheap, uses
+   data the artifact already carries, and would have caught this exactly.
+2. **Collapse the vocabularies.** Make the task checkboxes the single completion record and rename or
+   drop `stepsCompleted` so an authoring field cannot be read as an implementation field. Clearer, but
+   it changes the spec schema and touches quick-spec too.
+3. **Verify by effect, not by claim.** Before skipping a task, check its declared target files exist
+   and contain the symbol the task was supposed to produce. Strongest, and the most likely to
+   false-positive on legitimately renamed files.
+
+### Evidence — what was run this session
+
+`git show --stat 5c87ea5` (two files: `listings-projection.ts`, `listings-projection.test.ts`);
+`grep -rn "BLOCKER_META\|STATE_META" src/components/listings/` (defined in `data.ts` lines 45 and 60,
+read as `LX.BLOCKER_META` / `EX.STATE_META` in `ListingsWorklist.tsx` and `ListingsDrawers.tsx`);
+`ls src/components/listings/` (no `meta.ts`). Task 1 was then performed in the delivery
+(cash-recovery PR #580, `src/components/listings/meta.ts`) and the discrepancy recorded on the spec
+itself and in the PR body. **No fork file was changed this session** — log-only, per the routing note.
+
+---
+
+## FG-2026-07-30-11 — the blast-radius ceiling and an owner-locked "land as ONE commit" spec rule can contradict, and only the migration case has a carve-out
+
+```yaml
+id: FG-2026-07-30-11
+class: contract-dimension-gap
+scope: fork
+target: custom/workflows/shared/blast-radius-eligibility.md
+marker: "size HARD trigger 5 / Mode-A gated-migration carve-out"
+state: open
+fix: none
+delivery: n/a
+owner: mason
+routing: needs-marker
+routing_note: "Extending or generalising a carve-out is a taxonomy change — NEW DESIGN, proposed not shipped. The backstop fired, was recorded honestly, and was not bypassed."
+contradiction_ack: "The fragment recognises exactly one shape where a Mode-A spec legitimately exceeds a HARD trigger (a pre-planned migration, trigger 1). A spec that pre-plans an ATOMIC COMMIT hits trigger 5 with no equivalent path, so the run must either break the owner-locked rule or knowingly exceed the ceiling."
+```
+
+**Target file:** `custom/workflows/shared/blast-radius-eligibility.md` (HARD trigger 5 + the Mode-A
+carve-out section), with the deterministic half at `scripts/quick-dev-blast-radius-check.sh`.
+Lane: **log = MAINTENANCE, fix = NEW DESIGN → owner marker.**
+
+### Incident
+
+`tech-spec-listings-live-wiring` carries five owner-locked rules, of which **rule 3** is:
+
+> **Tasks 4-12 land as ONE commit** — reader + four actions + prop threading + route swap.
+> No half-wired surface, and no fixture/live split ever visible to a user.
+
+That rule exists for a real reason: `check-fixture-disclosure` is a required check that blocks the
+dangerous shape (fixture import + no marker + no banner), so the marker/banner removal and the live
+reader **must** be in the same commit or the gate is wrong in one direction or the other. AC 19 makes
+it an acceptance criterion.
+
+The resulting commit was **19 files / 2908 lines**, against `quick_dev.max_files: 15` and
+`max_diff_lines: 600`. `scripts/quick-dev-blast-radius-check.sh` duly fired:
+
+```
+files=19 (max 15)  diff-lines=2908 (max 600)  mode=warn
+⚠ HARD trigger(s) — size over threshold
+→ quick-dev ships small, decided work. Consider rerouting to quick-spec/PRD.
+```
+
+The advice is unfollowable **by construction**: rerouting to `quick-spec` produces the spec already in
+hand, and splitting the commit to satisfy the ceiling breaks an owner-locked rule and an AC.
+
+### Root cause — the carve-out is shape-specific, and only one shape is enumerated
+
+The fragment already concedes this class of mis-fire and solves it once, for migrations:
+
+> When that spec **already contains the migration plan** the reroute would force you to go produce,
+> HARD trigger 1 firing `not-quick-dev` sends you to `quick-spec` to generate a plan you are already
+> holding — a deterministic mis-fire on a legitimately quick-dev-shaped input.
+
+The reasoning transfers verbatim to an atomicity rule, but the carve-out's condition 2 is explicit that
+it applies when **schema/migration is the ONLY HARD trigger that fired** and "does NOT loosen triggers
+2-5". So trigger 5 has no path. There is a documented `QUICK_DEV_OVERRIDE` env var, but the fragment
+scopes it to the migration carve-out; using it for size would be inventing a second carve-out in the
+moment, which is exactly the thing a session should not decide for the owner.
+
+Worth stating plainly: **the size trigger was RIGHT about the number.** 19 files is genuinely large.
+The gap is not that the threshold is wrong — it is that there is no legible way to record *"this
+exceeded because a higher, owner-locked rule required it"* in the mechanism itself, so the signal
+degrades to a warning a session talks past. `mode: warn` is what kept this non-blocking; under
+`mode: gate` the run would have been wedged between two contradictory mandates with no exit.
+
+### Fix candidates — owner picks
+
+1. **Generalise the carve-out to "Mode-A pre-planned atomicity".** Same four conditions as the
+   migration case (Mode A · size is the only HARD trigger · the spec explicitly mandates one commit
+   and says why · otherwise `contained-feature`), with the same mandatory `QUICK_DEV_OVERRIDE` reason
+   so the gate still **fires-and-records** rather than being defeated.
+2. **Exclude tests and artifacts from the size count.** ~700 of the 2908 lines were the two new test
+   files and the spec markdown. Narrower, but it weakens a signal that is currently honest, and it
+   rewards padding a change with tests.
+3. **Leave it and make the message honest.** Keep the trigger, but stop printing "consider rerouting to
+   quick-spec" when the run is already Mode A holding a completed spec — the advice is a no-op there
+   regardless of which trigger fired.
+
+### Evidence — what was run this session
+
+`bash scripts/quick-dev-blast-radius-check.sh` against `origin/main..HEAD` (output quoted above, run
+twice — once pre-commit, reporting "no code changes detected", once post-commit); `_bmad/bmm/config.yaml`
+`quick_dev: {mode: warn, max_files: 15, max_diff_lines: 600}`; the rule-3 text quoted from the spec's
+correction banner. The trigger was **recorded, not bypassed** — surfaced in the commit message, the PR
+body (#580), the WIP-register release note, and to the owner in-session. **No fork file was changed.**
+
+## FG-2026-07-31-01 — the worktree/collision guards key on a `claude` process COUNT that is dominated by weeks-old leaked processes, so every session sees a phantom collision risk
+
+```yaml
+id: FG-2026-07-31-01
+class: detector-input-rot
+scope: fork
+target: .claude/hooks/bash_edit_guard.py
+marker: "N parallel claude sessions detected and you are NOT in a worktree"
+state: open
+fix: none
+delivery: n/a
+owner: mason
+routing: maintenance-candidate
+routing_note: "The DETECTION change (liveness-filter the count) is execution-defect maintenance. Any change to the deny/ask THRESHOLD is a policy change and would need a marker. Logged, not fixed, because the two are easy to conflate in one patch."
+```
+
+### Incident
+
+**Observed 2026-07-31, cash-recovery.** The guard blocked a one-line `.gitignore` edit in the
+main checkout with *"24 parallel claude sessions detected"*. `ps -axo pid,etime` on the same 24
+PIDs: elapsed times of **33 days, 24d, 24d, 22d, 20d, 20d, 19d, 19d, 19d, 13d, 12d, 9d, 5d, 4d,
+4d, 3d, 3d, 3d, 2d…** — and exactly **one** process under ten minutes old. The real concurrent
+session count was 1. The other 23 are the leaked-process class the global CLAUDE.md already
+documents (*"a single `wrangler pages dev` left running for 10 days"*), now feeding a safety gate.
+
+**Why this is a gap and not a tuning nit.** The count is the *sole input* to the guard's risk
+model, and it only ever ratchets up: dead sessions never decrement it, so the number drifts
+monotonically away from reality until the machine is rebooted. Three consequences, all live:
+
+1. **Every main-checkout edit is blocked** on evidence that is ~96% stale, which is precisely the
+   condition under which `BMAD_ALLOW_MAIN_EDIT=1` stops being an exception and becomes the
+   workflow — the outcome the override's own audit script exists to detect.
+2. **CLAUDE.md's stated justification no longer holds.** It says the count is *"intentionally
+   conservative — false positive (forced worktree when unnecessary) is safer than false
+   negative"*. That trade is sound when the count is roughly true. At 24-vs-1 the guard is not
+   conservative, it is uninformative: it returns the same verdict whether or not a second session
+   exists, so it has stopped carrying signal about collisions at all.
+3. **It silently inflates every OTHER guard's story.** The same count gates the Bash arm and the
+   Edit/Write arm, and the collision-guard promotion criteria (WARN→DENY) are written in terms of
+   "sessions that actually triggered a claim-required zone". A phantom-inflated denominator makes
+   that ladder unclimbable for reasons unrelated to the guard's real quality.
+
+**Cheapest correct fix (detection only):** filter the PID list by liveness before counting — drop
+any `claude` process whose elapsed time exceeds a sane session ceiling, or better, whose
+controlling TTY is gone. Both are one `ps` field. **Do NOT bundle a threshold change with it:**
+lowering/raising the count at which the guard blocks is a policy decision and needs an owner
+marker; correcting a rotted input is not.
+
+**Honest limit of this entry:** I did not verify that all 23 are truly dead (no attempt to signal
+them) — only that their elapsed times are days-to-weeks, which no live interactive session has.
+That is sufficient to call the input rotted; it is not sufficient to auto-reap them, and this
+entry does not propose reaping.
