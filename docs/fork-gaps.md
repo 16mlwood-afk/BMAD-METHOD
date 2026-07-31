@@ -6937,6 +6937,42 @@ exactly one project.
 **Distribution reality, unchanged:** the guard is wired in machine-local `settings.local.json`, so it
 fires in cash-recovery on this machine and nowhere else — the same ceiling as everything else here.
 
+### PROPOSED FIX ACTION 2026-07-31 — a SCOPED currency assertion (not shipped; owner call)
+
+The `routing_note` names "a version assertion against origin/main" as the right fix but does not say
+what it asserts *over*, and that omission is the whole design problem. Making it concrete:
+
+**Mechanism.** A `SessionStart` hook — `currency-check.sh` — that, for each path in a declared
+manifest, runs `git diff --quiet origin/main -- <path>` and reports the stale ones with
+`git rev-list --count HEAD..origin/main` for context. Non-blocking; `additionalContext` only.
+SessionStart is the correct moment because staleness is a property of the CHECKOUT, known before any
+tool call, and the cost of learning it late is a whole session reasoning from a pre-fix rule.
+
+**The load-bearing decision is the MANIFEST, not the diff.** A naive "assert the tree matches
+origin/main" fires on every branch, always — this repo's checkout is 49 commits ahead today — so it
+would be muted within a day and take the real signal with it. Scope it instead to a declared list of
+files whose *currency changes agent behaviour*, e.g. `.claude/hooks/**`, `scripts/deploy.sh`,
+`.claude/settings.json`. Same shape as `scripts/reachability-allowlist.json`: a small, reviewed,
+declared set, where an entry that stops describing reality is itself reported.
+
+**Why this is quiet by construction.** Enforcement files change rarely and are edited deliberately.
+A branch that touches none of them produces zero output — which is the normal case, and the property
+that keeps the check alive long enough to matter.
+
+**What it does NOT do, on purpose.** It does not fix, stage, checkout, or restore anything — the
+owner ruling FORBIDS staging on the diverged branch, and a hook that auto-restored files would be
+doing exactly that. It reports; the human or the session decides. It also says nothing about whether
+`origin/main`'s version is *correct* — only whether the tree is running it.
+
+**Evidence it would have caught all three known instances:** `collision_stamp.py` (77 lines behind,
+the original entry), `scripts/deploy.sh` (pre-#607, this update), `guard-wiring-check.sh` (absent).
+Three for three, from one manifest of ~3 globs.
+
+**Status: PROPOSED, NOT BUILT.** Per this entry's own routing this is a separate owner-gated change,
+and per the fork-gaps routing split a NEW mechanism is proposed, never shipped unasked. The one-file
+precedent (`deploy_script_freshness_guard.py`) exists and is deliberately not generalised pending
+that call.
+
 ---
 
 ## FG-2026-07-30-09 — `buildable-scope` inverts the one case that matters: a DELIVERED artifact that is itself a `ready-for-dev` spec is reported as "close, do not rebuild"
