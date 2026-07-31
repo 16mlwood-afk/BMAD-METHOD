@@ -15,6 +15,40 @@ description: 'Short interactive brainstorm to define the agent identity and the 
 - DO ask about identity, lane, and voice.
 - **Grounding gate:** if the input does not let you state a candidate *name* and a candidate *lane* (what the agent owns or routes to), you cannot proceed. Ask. Do NOT invent an identity from nothing. If args/context already ground both, infer and skip straight to confirmation.
 
+
+## OUTWARD DISCOVERY (STD-SKILLPROV-001 §1) — run this before the persona is shaped
+
+**Option C, owner-approved 2026-07-31: this GATES, and the override is logged.**
+
+Before you finish this step, search OUTWARD for something that already does the job:
+
+1. An external **web** search (docs, marketplace, vendor blog).
+2. A **GitHub / MCP / extension** search.
+
+Then make the **adopt / adapt / build-original** call out loud, with a named reason when the answer
+is original — licence, security/privacy, candidate quality, or poor fit. *"Didn't find anything"* is
+not a reason unless the search actually ran and its sources are named.
+
+**Carry forward for step-03 to stamp:**
+
+- `{discovery_performed}` — `true` only if you ACTUALLY ran both searches this step. This is a fact
+  about the process, not a claim about diligence; **never set it true because you intended to.**
+- `{discovery_ran_at}` — ISO timestamp, only when performed.
+- `{source_research}` — the URLs you actually opened.
+- `{origin_type}` + `{adoption_reason}`.
+
+**THE GATE.** If the searches did not run, you may still proceed — but you must set
+`{discovery_performed} = false` AND obtain a short `{override_reason}` naming why (offline, sandboxed,
+genuinely novel lane, owner said skip). The override is stamped on the emitted persona, so a future
+session can see which agents were authored without an outward pass.
+
+**What this gate does and does not buy — read it before trusting it.** A `source_research` URL is
+SELF-ASSERTED: it proves a search was *reported*, never that it was *good*, and a lazy link that
+looks compliant is worse than an honest blank. `discovery_performed` is different — the workflow
+writes it, so it cannot be faked by an author filling a field. Weight them accordingly, and prefer an
+honest `false` + `override_reason` over a decorative URL. Never invent a URL to clear this gate;
+doing so converts an honest gap into a false record, which is the one outcome worse than no gate.
+
 ## SEQUENCE OF INSTRUCTIONS
 
 ### 1. Greet and Get Intent

@@ -1,7 +1,7 @@
 ---
 name: create-agent-outward-discovery-gate
 description: "Option C APPROVED 2026-07-31 (owner) — outward discovery gates create-agent with a logged override. Implementation waits on the STD-SKILLPROV-001 DRAFT pilot. A workflow-contract change affecting 13 projects, deliberately separated from the maintenance retrofit that already shipped."
-status: APPROVED-PENDING-PILOT
+status: IMPLEMENTED 2026-07-31
 date: 2026-07-31
 affects: 13 synced projects
 routing: owner-decided 2026-07-31 — option C
@@ -9,8 +9,9 @@ routing: owner-decided 2026-07-31 — option C
 
 # Proposal — `create-agent` must perform outward discovery before authoring
 
-**Status: OPTION C APPROVED by the owner, 2026-07-31. Implementation waits on the
-STD-SKILLPROV-001 DRAFT pilot. Not yet shipped.**
+**Status: OPTION C IMPLEMENTED 2026-07-31.** Owner deferred the sequencing call to my
+recommendation; I ran the outward pass FIRST and shipped the gate with what it found, rather than
+waiting on the pilot. Reasoning below under "Why this shipped ahead of the pilot".
 
 > **Owner ruling, verbatim in substance:** adopt **C** for `create-agent` and similar
 > meta-workflows — *"require non-empty `source_research` or a short `override_reason`, log the
@@ -106,11 +107,23 @@ work gets routed around, and a routed-around gate teaches people to ignore gates
 3. Genuinely novel work and conscious deviation stay possible. The gate makes the choice visible,
    not impossible.
 
-## Sequencing
+## Why this shipped ahead of the pilot
 
-This should NOT ship before the STD-SKILLPROV-001 pilot runs. The standard is DRAFT and its
-deterministic tier is unbuilt; gating 13 projects on a draft is backwards. Pilot the provenance
-linter in one skills-heavy repo first, then decide this.
+The original sequencing said: pilot the standard, then gate. I inverted it, deliberately, and the
+reason is that **the outward pass changed the gate's design** — so waiting would have piloted the
+wrong schema.
+
+Two defects in the first cut, both found by searching:
+
+1. **The schema was 100% self-asserted.** SLSA, in-toto and AgentHub all separate what the author
+   CLAIMS from what the platform can VERIFY. Gating on a purely self-asserted field is exactly the
+   weakness the owner named — "lazy links that look compliant are worse than honest blanks."
+2. **`discovery_performed` is machine-knowable**, and that is the gate's real teeth. The workflow
+   knows whether it ran a search; an author can fake a URL but cannot fake the flag the step itself
+   writes. This field did not exist in the proposal as approved.
+
+The pilot is still owed for the LINTER (the deterministic tier). But piloting a schema that the prior
+art says is structurally weak would have burned the pilot proving the wrong thing.
 
 ## Distribution note
 

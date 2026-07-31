@@ -19,10 +19,12 @@ description: 'Autonomously write the agent persona file in the established XML f
     indistinguishable from not having looked.
   - `adoption_reason` is **required** when `origin_type: original`, and must name one of: licence,
     security/privacy, candidate quality, poor fit. *"Didn't find anything"* is not a reason.
-  - **This step does NOT block on the outward pass.** Discovery is not yet a gate here — see
-    `docs/proposals/create-agent-outward-discovery-gate.md`, which is owner-gated because it changes
-    the workflow contract for 13 projects. Until that lands, emit the block from whatever step-01
-    produced and mark it honestly rather than fabricating a URL to fill the field.
+  - **Nested under `metadata:`, not top-level** — the Agent Skills standard keeps non-spec fields
+    there for cross-tool portability.
+  - **`discovery_performed` and `discovery_ran_at` come from step-01 and are MACHINE facts.** Stamp
+    what step-01 actually did. Never set `discovery_performed: true` because a search was intended,
+    and never invent a `source_research` URL to make the block look complete — a false record is
+    worse than an honest `false` with an `override_reason`.
 
 - FULLY AUTONOMOUS. No user interaction. No menus. No halting.
 - Write a real, complete persona. **Soft gate — the persona MUST cover all 8 sections of the
@@ -58,16 +60,21 @@ Assemble the full persona file content. **Structure — follow it exactly (this 
 ---
 name: "{agent_slug}"
 description: "{agent_description}"
-# Provenance — STD-SKILLPROV-001 §3. A persona without this block is UNVERIFIED.
-id: "{agent_slug}"
-version: 1
-created_at: "{date}"
-author: "create-agent"
-source_research:
-  - "{source_research_url}"    # >=1 URL from the step-01 outward pass
-origin_type: "{origin_type}"    # adopted | adapted | original
-adoption_reason: "{adoption_reason}"   # REQUIRED when origin_type is `original`
-last_reviewed_at: "{date}"
+metadata:
+  # MACHINE-GENERATED — this workflow writes these; never hand-authored.
+  id: "{agent_slug}"
+  version: 1
+  created_at: "{date}"
+  authored_by: "create-agent"
+  discovery_performed: {discovery_performed}
+  discovery_ran_at: "{discovery_ran_at}"
+  # SELF-ASSERTED — the author's claims, recorded as claims (STD-SKILLPROV-001 §3).
+  source_research:
+    - "{source_research_url}"
+  origin_type: "{origin_type}"
+  adoption_reason: "{adoption_reason}"
+  override_reason: "{override_reason}"
+  last_reviewed_at: "{date}"
 ---
 
 You must fully embody this agent's persona and follow all activation instructions exactly as specified. NEVER break character until given an exit command.
