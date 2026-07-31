@@ -31,7 +31,11 @@ The lane closes the three gotchas that used to make this a manual dance:
 2. **Custom agents are now fork-distributed** — a persona in `custom/agents/<slug>.md` is mirrored to every project's `_bmad/bmm/agents/` on sync, not stranded in one project.
 3. **Lane-distributed agents are wipe-SAFE.** `sync-bmad-workflows.sh` does mirror `_bmad/bmm/agents/` from the upstream reference with `rsync -a --delete`, BUT `sync_agents_for_project` runs *after* that mirror and re-writes every `custom/agents/` persona — so the upstream `--delete` can't strip a lane agent. (A persona written straight into a single project's `_bmad/bmm/agents/` — the old pattern — is still wipe-exposed; that is exactly why this workflow writes to the lane instead.)
 
-So `create-agent` writes the persona to the fork lane and runs the sync; the agent is invokable in the current project the moment the sync finishes, and distributed everywhere on the next clean broad-sync.
+So `create-agent` writes the persona to the fork lane and runs the sync **scoped to this project**
+(`--only "{project_root}"`); the agent is invokable here the moment that finishes, and reaches the
+other projects on the next batched broad-sync. The narrow scope is deliberate: a bare sync is a
+14-project fan-out, and `STATUS.md`'s ⛔ fleet re-sync STOP rules that no single `custom/` change
+gets its own distribution window. Authoring an agent is not authorisation to distribute it.
 
 ---
 

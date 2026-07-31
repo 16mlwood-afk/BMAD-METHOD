@@ -115,8 +115,9 @@ Present a concise summary (not a menu, not a checklist — a paragraph):
 Got it. I'll build {agent_name} — a {kind} agent ({title}, {icon}) who {one-sentence job}.
 {agent_name} {routes to / owns} {the named workflows or lane}.
 Voice: {one-line personality}.
-I'll write the persona to the fork's custom/agents/ lane and sync — that distributes it to
-every project AND auto-generates the command wrapper, so /bmad:bmm:agents:{agent_slug} resolves.
+I'll write the persona to the fork's custom/agents/ lane and sync it into THIS project —
+that auto-generates the command wrapper, so /bmad:bmm:agents:{agent_slug} resolves here.
+The other projects pick it up on the next batched sync.
 
 Building it now.
 ```
