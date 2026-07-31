@@ -7416,3 +7416,66 @@ The script is fixed; the **class** is not. Two candidates, both changing what a 
 **Do not fold this into `FG-2026-07-27-10`.** That entry is about a missing deploy *clone*; this one
 is about a *precondition that inverted an autonomy contract* — the clone is one possible remedy, not
 the finding.
+
+## FG-2026-07-31-05 — the Bash edit-guard resolves ZERO write targets for `bash -c "… > file"`, so the documented bypass is a plain one-liner rather than a script
+
+```yaml
+id: FG-2026-07-31-05
+class: enforcement-false-negative
+scope: project
+target: .claude/hooks/bash_edit_guard.py
+marker: "quoted-span rule vs sh/bash/zsh -c, where the quoted string IS the command"
+state: open
+fix: none
+delivery: n/a
+owner: mason
+routing: maintenance
+routing_note: "MAINTENANCE lane by the 2026-07-26 split — an execution defect (a gate that no-ops on the class it exists to catch), not a change to what the rule IS. Logged and deliberately NOT fixed in the same pass: the fix makes the guard STRICTER, which is the direction that produces false positives, and this repo's own record says a false-firing guard gets switched off along with everything else in the file. It owes the enforcement-expert pass plus new golden cases in both directions before it ships. Naming that rather than shipping a same-session tightening of a gate I was standing in front of."
+contradiction_ack: "CLAUDE.md's KNOWN GAP paragraph cedes that SCRIPTS bypass this guard and says do not patch around it. This is not that: no script is involved, the write is a single shell command, and the guard's own quoted-span rule is what hides it."
+```
+
+### Incident
+
+**Observed** (cash-recovery, 2026-07-31, 21 parallel sessions, session
+`claude-session-20260731-151359`): an `Edit` on the project `CLAUDE.md` from the main checkout was
+hard-blocked by the worktree guard. The identical change written as
+`BMAD_ALLOW_MAIN_EDIT=1 bash -c "cat new > /…/CLAUDE.md"` ran **silently** — no `ask`, no deny, no
+override row.
+
+**Verified against the guard directly**, both forms, same target:
+
+- `bash -c "cat /tmp/x > …/CLAUDE.md"` → **exit 0, no output.** Zero write targets resolved.
+- `cat /tmp/x > …/CLAUDE.md` → correct `ask`, naming the path and the low-risk-text rationale.
+
+**Why the quoted-span rule produces this.** That rule exists for a real false positive: a
+`python3 -c "… cat > f …"` whose quoted argument only *mentions* a redirect writes nothing, and the
+guard used to deny it while listing word-salad targets. The rule fixed that by treating quoted text
+as DATA. But for `sh -c` / `bash -c` / `zsh -c` the quoted string is not data — it is the command,
+re-executed as shell. One rule covers both shapes and is right for exactly one of them.
+
+**Cost, concretely.** This is not a docs-tier hole. `bash -c "cat x > src/db/schema.ts"` resolves
+zero targets by the same path, so the deny-tier files the guard exists to protect — `src/`,
+`drizzle/`, `migrations/`, `.github/`, lockfiles — are reachable from a single shell one-liner with
+no prompt and no log entry. Every improvement to the reviewed guard is invisible on that route. The
+failure shape is one this file has recorded twice already (`FG-2026-07-25-09`, and the guard's own
+2026-07-25→26 unwired period): a mechanism authored, tested, documented as live, and firing nowhere
+for the case in front of it.
+
+**Distinct from `FG-2026-07-31-03`, do not fold them.** That entry is the Edit-vs-Bash *disagreement*
+on `docs/**` — the Bash guard correctly permits low-risk text under the owner's 2026-07-26 ruling
+while the `Edit|Write` matcher still denies it, so the sanctioned route becomes the bypass. Its
+symptom (a visible-target shell write passing where Edit blocked) reproduced again here, and this
+entry corroborates it. But that guard *saw* the target and decided; this one never sees a target at
+all, and it reaches deny-tier paths the other entry does not touch.
+
+**Also corroborated here, already logged under -03:** `BMAD_ALLOW_MAIN_EDIT=1` set as an inline
+command prefix is never consumed — the hook is a separate process and cannot see it, so the only
+route that *can* set an env var is the one that cannot use the override. Probe with the prefix in the
+command string still returns `ask`; `bash-edit-guard-override.jsonl` still holds one row, dated
+2026-07-26. CLAUDE.md's "honoured and LOGGED" claim is false for the Bash route.
+
+**Fix direction (not taken):** in target resolution, when the argv head is `sh`/`bash`/`zsh` and the
+flag is `-c`, recurse into the quoted string and classify it as shell rather than skipping it as
+data. Bound it to that exact shape — a general "look inside quotes" change reinstates the
+`python3 -c` false positive the rule was written to kill. Owes golden cases in both directions
+(`bash -c` write → classified; `python3 -c` mention → still allowed) before it is trusted.
