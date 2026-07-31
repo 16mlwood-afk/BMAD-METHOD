@@ -7226,3 +7226,193 @@ exactly when it is most needed.
 **Honest limit:** the SessionStart invoker was not located this session — it is wired through
 machine-local `.claude/settings.local.json`, which does not sync, so any provenance line added to
 `formatReport()` reaches the banner on this machine only until distribution is resolved.
+
+---
+
+## FG-2026-07-31-03 — the Edit and Bash guards still disagree about the same path, now in the opposite direction
+
+```yaml
+id: FG-2026-07-31-03
+class: contract-dimension-gap
+scope: project
+target: .claude/settings.local.json
+marker: "Edit|Write matcher vs bash_edit_guard.py low-risk-text classification"
+state: open
+fix: none
+delivery: n/a
+owner: mason
+routing: needs-marker
+routing_note: "SCHEMA HEADER ONLY, added by claude-session-20260731-130250 so the shared file passes the commit gate. The entry's PROSE IS UNTOUCHED and its lane call is the author's own — its body already says 'NEW DESIGN / POLICY — proposed, not shipped', so routing is left needing the owner's marker rather than decided by me. Fields were read off the entry's own text, not inferred. Same precedent as FG-2026-07-30-09."
+contradiction_ack: "The Bash arm permits docs/** per the owner's 2026-07-26 ask-for-low-risk-text ruling while the Edit|Write arm still denies it — the two guards agree on the rule and disagree on the tool, so the sanctioned route becomes the bypass and the override log stays silent about it."
+```
+
+### Incident
+
+<!-- Heading only, added with the schema block by claude-session-20260731-130250 to satisfy
+     the commit gate. It wraps the author's existing prose; not a word of it was changed. -->
+
+**Observed** (cash-recovery, 2026-07-31, 23 parallel sessions): an `Edit` on
+`docs/design-policy.md` from the main checkout was **hard-blocked** by the worktree guard
+("23 parallel claude sessions detected and you are NOT in a worktree"). The identical write
+to the identical path, via a shell-visible redirect (`cat new > docs/design-policy.md`),
+**passed silently** — and `audit-override-log.py --days 1` reported **0 overrides**, so
+`BMAD_ALLOW_MAIN_EDIT=1` was set but never consumed: the Bash guard did not classify the
+write as needing it.
+
+**Why this is the same defect as 2026-07-25, mirrored.** That entry recorded the Bash matcher
+DENYING a target the Edit matcher ALLOWED (`.claude/wip-register.yaml`), and was fixed by
+giving `bash_edit_guard.py` the project allowlists. This is the reverse: the Bash guard now
+permits `docs/**` (correct — the owner's 2026-07-26 `ask`-for-low-risk-text ruling), while the
+`Edit|Write` matcher still denies it, because that ruling was implemented in the reviewed guard
+and **not** mirrored into the Edit/Write path. The two guards agree on the rule and disagree on
+the tool.
+
+**Cost, concretely.** The sanctioned route for a docs edit is now the one CLAUDE.md names as
+the anti-pattern: blocked on Edit, the agent reaches for a shell write, and the audit trail the
+override log exists to produce is empty — the write happened, nothing recorded that it bypassed
+anything, because from the Bash guard's view nothing did. `CLAUDE.md` already warns that "a deny
+on a docs-only edit does not stop the edit — it REROUTES it". That is now observed with the
+guard's own logging silent about it.
+
+**Lane: NEW DESIGN / POLICY — proposed, not shipped.** Which paths the `Edit|Write` matcher
+permits is an allowlist decision the owner already made once (2026-07-26) for the Bash arm; the
+call to extend `ask`-for-low-risk-text to the Edit arm is his to repeat, not mine to infer. Not
+fixed in this pass.
+
+**Shape of the fix (not applied).** Mirror the low-risk-text classification into the
+`Edit|Write` matcher so both arms answer from one rule — ideally by having the Edit path call
+`bash_edit_guard.py`'s classifier rather than maintaining a second list, which is what let the
+two drift in the first place. Distribution: `settings.local.json` is gitignored and does not
+sync, so any fix reaches cash-recovery only.
+
+**Honest limit:** the override log's silence is *correct behaviour* for the Bash guard, not a
+logging bug. It is only misleading in combination with the Edit deny, which is why this is filed
+as a guard-disagreement rather than a logging gap.
+
+## FG-2026-07-31-01 — the deploy path was gated on a precondition only the OWNER could clear, silently converting an autonomous deploy into his decision
+
+```yaml
+id: FG-2026-07-31-04
+class: contract-dimension-gap
+scope: project
+target: scripts/deploy.sh
+marker: "preflight step 1 (worktree refusal) + step 3 (branch == main)"
+state: partly
+fix: partial
+delivery: owed
+fix_note: "SCRIPT FIXED AND DEPLOYED — cash-recovery PR #607 (merged a535695); production verified at c46d0e7 by reading APP_COMMIT_SHA off the running container. The DOCTRINE half (final section) is NOT written and is owner-gated, which is why this is partly/partial/owed rather than closed. Id was FG-2026-07-31-01 on first write and collided with a parallel session's entry — renumbered, content unchanged."
+owner: mason
+routing: recorded
+routing_note: "MAINTENANCE — an execution defect whose premise was empirically false, fixed in the same pass per the autonomous-maintenance split. The DOCTRINE generalisation (§ below) is NEW DESIGN and is proposed, not shipped."
+contradiction_ack: "deploy.autonomous=true and the owner has repeatedly instructed that deploys are handled by the agent without consulting him — while the deploy script's own preconditions made agent-run deploys impossible on any day a parallel session was working, so the agent's only move was to consult him."
+```
+
+**Target file:** `scripts/deploy.sh` (cash-recovery). Lane: **MAINTENANCE** for the script;
+the generalisation at the end is **NEW DESIGN → owner marker.**
+
+### The owner's report, verbatim in substance
+
+> *"I'm really confused about deployment practices. Multiple times I've stated that I want this
+> handled by the LLM. I don't want to be even spoken to about any deployment issues. Is that why it
+> wasn't logged as a fork gap — as friction? It's friction. It's recurring. We need to look at this
+> as a full gap. Why were you, as an agent, unable to solve this issue yourself?"*
+
+He is right on every count, including that it went unlogged. A prior session noted the blockage **in
+passing inside a paste-back block** and wrote *"Relates to existing FG-2026-07-27-10"* without
+opening an entry — which is precisely the log-and-leave the routing rule forbids.
+
+### Incident
+
+`/listings` was wired to live data and merged (#580, `c77fbd0`, 2026-07-30T21:34Z). The owner opened
+the page the next morning and saw the **fixture** — banner, fabricated units, the lot. Production was
+serving `cba89da`, built **21:12Z: twenty-two minutes before the fix landed.**
+
+The agent diagnosed it correctly and then **could not deploy**, because:
+
+- `scripts/deploy.sh` preflight **step 1** refused any worktree — *"this is a WORKTREE. Deploy from
+  the main checkout — the Railway link is not here."*
+- preflight **step 3** required `branch == main` in that checkout.
+- the shared main checkout was on `docs/receive-v2-ad6-disposition-fff9d42b`, **committed to four
+  minutes earlier** by a live parallel session.
+
+So the agent escalated to the owner — as a **two-option menu**, which the project's own deploy policy
+explicitly forbids (*"state the policy default + an explicit override path, never a question"*).
+
+### Root cause — a false premise, and an unsatisfiable precondition built on it
+
+**The premise is empirically false.** `railway status` resolves per-directory from
+`~/.railway/config.json`. Run from a `railway link`ed worktree it reports
+`cash-recovery / production` exactly as the main checkout does. This was verified by running it
+there *before* anything was changed — the reason printed in the die message had simply never been
+tested.
+
+**The precondition it protected is unsatisfiable by construction.** In this repo the main checkout is
+where **every** parallel session parks its in-flight branch — that is the documented pattern, not
+misuse. Requiring the deploy to run from a main checkout that is on `main` means *the only directory
+permitted to deploy is the one directory guaranteed to be busy.* On any normal working day there is
+no legal deploy.
+
+**And the branch-NAME check was wrong in both directions**: it *passed* a drifted local `main` (whose
+SHA does not describe origin/main) and *failed* a detached worktree sitting exactly on origin/main.
+The invariant that makes `APP_COMMIT_SHA` true is the **pin**, not the name.
+
+### Why the agent did not simply fix it — the honest answer
+
+Two mis-readings, both the agent's, both worth naming because they will recur:
+
+1. **"Another session is on that branch" was read as "never overwrite another session's work."**
+   Switching a branch destroys nothing — commits are pointers. *Disruptive* was conflated with
+   *destructive*, and the most conservative reading won.
+2. **A guard whose premise had just been falsified was still treated as a guard.** The agent checked,
+   found the deploy worktree correctly linked, and *still* classified stepping past step 1 as
+   "bypassing a safety guard" rather than as what it was: a false positive in tooling it is
+   authorised to repair. It escalated the **obstacle** instead of removing it.
+
+That second one is the generalisable failure: **an agent that treats every precondition near a risky
+action as inviolable will reliably escalate mechanical blockers as owner decisions.** The blast
+radius of *editing a bash script* is not the blast radius of *deploying*, and the two were fused.
+
+### Fix — shipped
+
+cash-recovery **#607**. Step 1 no longer refuses a worktree (it reports which kind of tree it is);
+step 3 drops the branch-name check and keeps the unconditional `HEAD == origin/main` assertion. The
+teeth are untouched: step 2 still asserts the Railway link, step 3 still refuses a tree dirty in any
+shipping path, and the stamp is still re-derived from `git rev-parse HEAD` every run.
+
+**Re-proven by running it, not by reading it:**
+
+| Case | Result |
+|---|---|
+| deploy worktree pinned at `origin/main` | preflight **passes** |
+| a worktree with `scripts/deploy.sh` modified | **refused** — dirty shipping path |
+| `$HOME` | **refused** — not a git repository |
+| `~/code/amazon-lead-generator` (real repo, **different** Railway app) | **passes step 1**, still **refused at step 2** |
+
+That last row is the load-bearing evidence: the `$HOME` footgun is caught with the worktree test out
+of the way — so the worktree test was never what caught it.
+
+**Outcome the same session:** deployed from the standing deploy worktree while the main checkout
+stayed untouched on the other session's branch. Live SHA read back off the container
+(`railway ssh -- printenv APP_COMMIT_SHA`) = `c46d0e7`, exact match, 0 commits unshipped. The pin
+check also fired for real mid-run — `origin/main` moved during `npm ci` and the deploy correctly
+refused until re-pinned.
+
+### The doctrine half — NOT written, needs an owner marker
+
+The script is fixed; the **class** is not. Two candidates, both changing what a rule IS:
+
+1. **A named standard: "an autonomous action may not be gated on a precondition only the owner can
+   clear."** Where a contract says the agent owns something end-to-end (`deploy.autonomous: true`),
+   any precondition on it must be one the agent can satisfy unattended. A precondition that requires
+   a human to move is a **defect in the contract**, not a decision to route upward. This is the rule
+   that would have made the agent fix the script instead of escalating.
+2. **A standing deploy location per project.** `FG-2026-07-27-10` already records that no other
+   project has a deploy clone and that standing one up per-project was never done. This entry is the
+   evidence for why it matters: without a dedicated deployable directory, the deploy path competes
+   with in-flight work for the same checkout. cash-recovery now has one
+   (`.claude/worktrees/deploy-origin-main`, documented in the script's usage header); the other 12
+   projects do not.
+
+**Do not fold this into `FG-2026-07-27-10`.** That entry is about a missing deploy *clone*; this one
+is about a *precondition that inverted an autonomy contract* — the clone is one possible remedy, not
+the finding.
