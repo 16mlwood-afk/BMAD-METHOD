@@ -105,21 +105,40 @@ case "$cmd" in
   enrich)
     wt="${3:-}"; desc="${4:-}"
     [ -z "$wt" ] && { echo "wip-register enrich: worktree_path required" >&2; exit 2; }
-    [ -f "$reg" ] || exit 0
-    python3 - "$reg" "$wt" "$desc" <<'PY' || true
+    [ -f "$reg" ] || { echo "wip-register enrich: no register at $reg" >&2; exit 3; }
+    # Exit 3 = matched no claim row. This USED to rewrite the file unchanged and
+    # exit 0, so "enriched it" and "there was nothing to enrich" were the same
+    # observable to the caller — and because nothing auto-writes the bare claim
+    # (no WorktreeCreate hook is wired anywhere), the silent case was the COMMON
+    # one: a session followed quick-dev step-03's documented procedure, saw
+    # success, and held no claim at all. FG-2026-07-31-08.
+    # The `|| true` is gone with it — an interpreter failure was being folded
+    # into that same success.
+    python3 - "$reg" "$wt" "$desc" <<'PY'
 import re, sys
 reg, wt, desc = sys.argv[1], sys.argv[2], sys.argv[3]
 lines = open(reg, encoding="utf-8").read().splitlines()
 needle = f'worktree: "{wt}"'
 esc = desc.replace("\\", "\\\\").replace('"', '\\"')
 out = []
+matched = 0
 for ln in lines:
     if needle in ln:
+        matched += 1
         if "description:" in ln:
             ln = re.sub(r'description: "[^"]*"', 'description: "%s"' % esc, ln)
         else:
             ln = ln.rstrip("}") + ', description: "%s"}' % esc
     out.append(ln)
+if not matched:
+    sys.stderr.write(
+        "wip-register enrich: no claim row for %s — NOTHING was enriched.\n"
+        "  Nothing auto-creates the bare claim. Write the claim first, in the\n"
+        "  MAIN CHECKOUT .claude/wip-register.yaml, then enrich it.\n" % wt
+    )
+    # Deliberately do NOT rewrite: a no-op write on a shared register that
+    # takes concurrent edits is pure risk with no upside.
+    sys.exit(3)
 open(reg, "w", encoding="utf-8").write("\n".join(out) + "\n")
 PY
     ;;

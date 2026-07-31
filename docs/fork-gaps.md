@@ -5815,12 +5815,34 @@ scope: fork
 target: custom/workflows/implement/design-ingest/workflow.md  (step-01, before the per-frame fan-out)
 related: FG-2026-07-07-01 (net-new preflight, partly resolved) · FG-2026-07-11-xx (capability-granularity probe, RESOLVED 2026-07-19) · FG-2026-07-28-06 (which TREE the gate probes)
 marker: "gate the producer, not only the consumer"
-state: open
-fix: none
-delivery: n/a
+state: fork-fixed-distribution-owed
+fix: done
+delivery: owed
+distribution: "sync-bmad-workflows.sh (all 14 targets) — BATCHED into the standing fleet re-sync gate (STATUS.md `## Now`), per the owner ruling 2026-07-26 that no single `custom/` change gets its own sync window. Fires in ZERO projects until that window runs."
+fix_note: |
+  design-ingest step-01 §5b — net-new existence probe, run BEFORE the step-02 fan-out on the
+  slug §5 already resolved. Probes route + page component against origin/main (never the working
+  tree, FG-2026-07-28-06); probe 3 (backing object) scopes the recommendation and never vetoes
+  the verdict. SOFT stop, mirroring design-implement's early-exit — ingest is the tolerant half
+  and never hard-refuses. Plus the half the second instance exposed: the verdict is TERMINAL FOR
+  PRESENTATION. New `{surface_existence}` state var (workflow.md), new `ingest.surface_existence`
+  receipt field (manifest-schema.md, absent => `unknown`, never `brownfield`), and a step-03 rule
+  that a net-new manifest is handed off as a CATALOGUE with the onboarding path as the headline
+  next step — not with the design-implement command. Success metrics + a failure mode added to
+  both step files.
+  Deliberately NOT done: design-implement's capability-granularity probes (4-6) are not
+  duplicated here — they need the brief/spec pair the consumer resolves, and a second copy would
+  let the two gates drift, which is the failure this repair closes. check-ingest-manifest.js was
+  NOT armed on the new field: every existing manifest lacks it, so enforcing it would fail the
+  corpus; absence defaults to `unknown` instead.
+verified: |
+  npx markdownlint-cli2 on all 4 changed files + fork-gaps.md — 0 errors.
+  npm run test:ingest-manifest — 13 passed, 0 failed (schema change is additive; both directions
+  still pinned). NOT verified by a live design-ingest run — no net-new surface was ingested after
+  the change, so the probe's real-world firing is UNPROVEN. Next net-new ingest is the real test.
 owner: fork-maintenance
 routing: retro-routed
-routing_note: "Logged under the standing maintenance instruction. The fix mirrors a gate that is already ratified and shipped in design-implement into a second workflow — coherence repair, not a new rule — but it is PROPOSED not shipped, because the owner's live instruction this session was a project build, not fork maintenance."
+routing_note: "Logged under the standing maintenance instruction; SHIPPED 2026-07-31 on an explicit owner 'do it anyway'. Coherence repair — it mirrors a gate already ratified and shipped in design-implement into the workflow that pays the cost, and adds no new rule. The earlier note said PROPOSED-not-shipped because the session's live instruction was a project build; the owner then overrode that."
 ```
 
 ### Incident
@@ -5848,6 +5870,34 @@ This is a different axis from the three related entries. FG-2026-07-07-01 and th
 capability-granularity work both concern *what* the gate probes and *how* it classifies;
 FG-2026-07-28-06 concerns *which tree* it reads. None of them concerns *where in the pipeline the
 gate sits*. All three leave the probe in `design-implement`'s Input Resolution.
+
+### Second instance — 2026-07-31, `intake-pilot-console` (evidence only; no re-diagnosis)
+
+Fired again, unchanged, three days later. `design-ingest` completed a **9-frame / 65-section**
+manifest for `/intake` (same Claude Design project `f93d6a81…`) and stamped it
+`handoff_status: READY_WITH_SCOPE_LIMITS` + body `STATUS: READY FOR IMPLEMENT` — *while carrying its
+own `F-NET-NEW` flag saying "design-implement would be NET-NEW CREATION, not a delta apply."*
+`design-implement` then early-exited at the existence gate before reading a row (`/intake`: no route,
+no page component on `origin/main` @ `f221d4d`).
+
+Two details this instance adds that the `/stock` one did not:
+
+- **The cost was higher than a normal ingest.** The per-frame fan-out did **not** run — the manifest's
+  own `enumeration_method` records `orchestrator-inline` because sub-agents cannot reach the design
+  MCP (`FG-2026-07-26-01` / `-06`). So all four source modules were pulled through a single
+  orchestrator context. The producer paid the *worst-case* ingest cost for a surface the consumer
+  refuses in three `ls`-class probes.
+- **The producer already knew.** `F-NET-NEW` is not a fact `design-ingest` lacked — it enumerated it,
+  wrote it into `carried_flags`, and proceeded to `READY FOR IMPLEMENT` anyway. So the fix is not
+  "teach design-ingest to detect net-new"; it is **make the flag it already computes terminal** (or at
+  minimum, make `handoff_status` unable to read READY while `F-NET-NEW` is carried). That is a smaller
+  change than the original entry assumed.
+
+A second, independent blocker also applied here and is worth recording because it is invisible to any
+existence probe: the scope register **parks the build lane** (SR-61 routes the DESIGN lane only; SR-23
+stays `INTENTIONALLY PARKED` behind the SR-24 proving run, `outcome_items_end_to_end: 0`). No fork gate
+reads the scope register, so neither workflow could have known. Not proposed as a gate — noted so the
+fix direction is not over-scoped into "read the register too".
 
 It bites hardest in the case the manifest path was designed for: the bigger the bundle, the more the
 fan-out costs, the more there is to lose when the surface turns out to be unbuilt. And a net-new
@@ -7417,6 +7467,69 @@ The script is fixed; the **class** is not. Two candidates, both changing what a 
 is about a *precondition that inverted an autonomy contract* — the clone is one possible remedy, not
 the finding.
 
+---
+
+## FG-2026-07-31-06 — the whole design lane is silently unreachable when `ANTHROPIC_API_KEY` is set, and no workflow preflights it
+
+```yaml
+id: FG-2026-07-31-06
+class: missing-preflight
+scope: fork
+target: custom/workflows/implement/design-ingest/workflow.md
+marker: "step-00 design-MCP reachability preflight"
+state: open
+fix: none
+delivery: n/a
+owner: mason
+routing: maintenance
+routing_note: "SCHEMA HEADER ONLY, added by claude-session-20260731-151639. The entry's PROSE IS UNTOUCHED and its lane call is the author's own — its body already says routing: MAINTENANCE, so nothing was inferred. Every field was read off the entry's own text (fix direction (a) names the design-ingest/design-implement step-00 preflight; 'not taken this session' => fix: none; 'all 13 projects' => scope: global). Same precedent as the header added to FG-2026-07-31-03. Added because the missing block was the sole error failing tools/check-fork-gap-schema.sh, which reads the file on DISK — so it blocked every other session's commit to this shared file, not just the author's."
+id_collision_note: "RENUMBERED -04 -> -06 by claude-session-20260731-151639. The id collided with the already-committed FG-2026-07-31-04 ('the deploy path was gated on a precondition only the OWNER could clear', 705f7336), and the lint rejects a duplicate id. Renumbering on collision is this file's own established remedy — the deploy entry carries the identical note, having been renumbered from -01 for the same reason. CONTENT UNCHANGED: only the heading id, the header id, and scope (`global` -> `fork`, an invalid value the lint's SCOPES enum rejects) were touched. Not one word of the author's prose was altered."
+```
+
+**routing:** MAINTENANCE (missing preflight the design workflows already depend on)
+
+### Incident
+
+**Friction (cash-recovery, 2026-07-31 — owner asked to implement a Claude Design artifact):** the
+owner handed a `claude.ai/design/p/<uuid>` URL and named the `claude_design` MCP + `/design-login`.
+No design MCP was reachable. `claude mcp list` reported, as a **warning line above the server
+list**: `claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set
+and takes precedence over your claude.ai login`. `ANTHROPIC_API_KEY` is exported from `~/.secrets`
+and injected into **every** session by the global SessionStart hook — so on this machine the
+claude.ai-backed design connector is disabled by default, permanently, in all 13 projects, and
+`/design-login` cannot fix it while the var is present.
+
+**Why structural, not a one-off config slip:**
+
+1. **The disabling condition is invisible until you try.** Nothing at session start says the design
+   lane is unreachable. The warning only appears if a session happens to run `claude mcp list`.
+2. **`design-ingest` and `design-implement` have no MCP-reachability preflight.** Both name a Claude
+   Design URL as their primary input kind and neither checks that a design MCP is *present* before
+   beginning. The failure surfaces mid-workflow, after the run has already been framed and (per the
+   manifest contract) possibly after a marker has been acquired.
+3. **The nearest tool is a decoy.** `DesignSync` IS registered and IS design-named, but it syncs a
+   design-**system** component library (list/get/write files in a design-system project). It cannot
+   read a design *artifact* URL for implementation. A session that pattern-matches on the name will
+   reach for the wrong tool and produce something plausible.
+4. **The two secrets rules collide.** `~/.secrets` auto-load exists so credentials are never
+   hardcoded; it is also what disables the connector. There is no per-project or per-session opt-out,
+   so "use the design lane" and "have API auth loaded" are mutually exclusive on this machine with no
+   documented way to hold both.
+
+**Related, distinct:** `FG-2026-07-26` (design-ingest fans out to subagents that cannot reach the
+design MCP) is about **subagents** losing a connection the parent has. This is the parent never
+having one. Do not fold them together — the sub-agent entry assumes a working connector.
+
+**Fix direction (not taken this session — owner was blocked and waiting):**
+(a) a **preflight in `design-ingest` / `design-implement` step-00** that asserts a design MCP tool is
+callable and HALTs with the exact remedy if not — the cheapest and most targeted; (b) a SessionStart
+line that reports connector-disabled state once, so the condition is legible before a workflow
+commits to it; (c) document the `ANTHROPIC_API_KEY`-vs-connectors tradeoff in the fork's design-lane
+docs, since the remedy (drop the var, restart, `/design-login`) is not discoverable from the error.
+
+**Priority: high for (a).** The design lane is a primary delivery path in this project and it
+currently fails late rather than refusing early.
+
 ## FG-2026-07-31-05 — the Bash edit-guard resolves ZERO write targets for `bash -c "… > file"`, so the documented bypass is a plain one-liner rather than a script
 
 ```yaml
@@ -7532,3 +7645,146 @@ hand-authored malformation, so the residual case is the common one, not an exoti
 HEAD and treat it as touched only when this commit's staged change overlaps that range. Keep
 fail-closed semantics everywhere else — failing closed is correct when a finding genuinely cannot be
 attributed; the gap is that position makes this case attributable.
+
+## FG-2026-07-31-09 — quick-dev step-03 tells the agent to ENRICH a WIP claim that nothing ever creates, and the helper reports success when it enriched nothing
+
+```yaml
+id: FG-2026-07-31-09
+class: no-op-recipe
+scope: fork
+target: custom/workflows/quick-dev/step-03-execute.md + wip-register.sh (enrich)
+marker: "enrich matches `worktree: \"<path>\"` — no claim row, no match, exit 0"
+state: partly
+fix: partial
+fix_note: "wip-register.sh enrich now exits 3 with a message when it matches no claim row, and no longer swallows interpreter failure. The doc-vs-reality half (step-03 asserts an auto-claim hook that is not wired) is a PROPOSAL, not shipped — it is a design choice and step-03 is sync-carried."
+delivery: n/a
+delivery_note: "wip-register.sh lives at the fork root, not under custom/, so it is not sync-carried and no project fan-out is owed. Id was FG-2026-07-31-08 on first write and collided with a parallel session's entry — renumbered, content unchanged."
+owner: mason
+routing: maintenance
+routing_note: "Execution defect — a documented step whose precondition nothing creates, plus a helper that swallows its own no-op. Logged and the silent-success half fixed in the same pass per the 2026-07-26 ruling. The DESIGN half (wire a WorktreeCreate auto-claim hook, or delete the claim-exists premise from step-03) is deliberately NOT decided here."
+```
+
+### Incident
+
+**Symptom.** Followed quick-dev step-03's WIP-register instructions verbatim during a normal
+`fix/ebay-comparable-relevance` run. The step states, as settled fact:
+
+> "Entering the worktree auto-wrote a bare claim into `<main-repo>/.claude/wip-register.yaml`
+> (the EnterWorktree hook). Two cheap follow-ups... **Enrich it**..."
+
+Ran the prescribed `wip-register.sh enrich ...`. It printed nothing and exited 0. A subsequent
+`grep` for the branch name in the register returned **nothing**: no bare claim, no enriched claim.
+The session held **no claim at all** while having executed the documented claim procedure
+successfully. The only reason a claim exists for this run is that I grepped to check rather than
+trusting the exit code.
+
+**Cause — two independent halves, both required for the silence.**
+
+1. **Nothing writes the bare claim.** `grep -rl "WorktreeCreate" ~/.claude/settings.json
+   .claude/settings*.json` → `NONE WIRED`. There is no auto-claim hook in this project, so
+   step-03's premise is false wherever it is read.
+2. **`enrich` cannot distinguish "enriched" from "matched nothing."** `wip-register.sh:105`:
+
+```sh
+enrich)
+  wt="${3:-}"; desc="${4:-}"
+  [ -f "$reg" ] || exit 0
+  python3 - "$reg" "$wt" "$desc" <<'PY' || true
+```
+
+The python loops for a line containing `worktree: "<path>"`, rewrites the file unchanged when no
+line matches, and returns 0. The `|| true` then swallows a genuine python failure as well. Three
+separate outcomes — enriched, no such claim, interpreter crashed — are **indistinguishable at the
+call site**, and all three read as success.
+
+**Why this is structural, not a one-off.** It is the same shape the register itself exists to
+prevent, one level up: a claim protocol whose *automatic* half is inert and whose *manual* half
+cannot report failure means every compliant session believes it is claimed and is not. The
+collision guard then correctly fires `warn-missing-claim` — and an agent that just "successfully"
+enriched a claim has every reason to read that warning as a false positive. The two mechanisms
+actively teach the agent to distrust the one that is telling the truth.
+
+**Ancillary observation, NOT fixed here (bigger, and someone else's call).** The register currently
+holds **121** occurrences of `claimed_by_session_id: "PENDING-STAMP"`. That is the field the
+collision gate is designed to key on and the field `CLAUDE.md` calls "the ONLY field the gate
+compares." The placeholder is the norm across the file rather than a transient state, so
+ownership comparison is largely unavailable in practice. Recorded here because it was measured in
+passing; it deserves its own entry and its own investigation rather than being folded into this one.
+
+### Fix applied this pass
+
+`wip-register.sh` `enrich` now exits **3** with `wip-register enrich: no claim row for <path>` when
+it matches no claim, and no longer swallows interpreter failure. Silent-success is gone; the
+caller can tell the three outcomes apart.
+
+**Verified by running it**, not asserted:
+
+- `enrich` against a path with no claim row → `exit 3`, message on stderr (was: exit 0, silent).
+- `enrich` against a real claim row → `exit 0`, description written (unchanged behaviour).
+
+### Deliberately not decided
+
+Whether the answer is to **wire a `WorktreeCreate` auto-claim hook** (making step-03's text true)
+or to **delete the auto-claim premise from step-03** (making the agent write its own claim
+explicitly, as I ended up doing) is a design choice about where claim creation belongs. Both are
+defensible; picking one changes the contract, so it is proposed, not shipped. `step-03-execute.md`
+is also sync-carried into 13 projects, so editing it is a distribution-adjacent change and stops
+here regardless.
+
+## FG-2026-07-31-08 — `revision_mode` has no value for a spec-derived brief revised after a partial implementation of it landed
+
+```yaml
+id: FG-2026-07-31-08
+class: taxonomy-gap
+scope: fork
+target: custom/workflows/design/shared/brief-revision-policy.md
+marker: "revision_mode enum — {workflow_generated | manual_minor_revision | spec_derived}"
+state: open
+fix: none
+delivery: n/a
+owner: mason
+routing: NEEDS-OWNER-ROUTING
+routing_note: "Changing an enum is a taxonomy change = NEW DESIGN / DOCTRINE lane, so this is PROPOSED, not shipped. Observed defect + the two candidate directions only; the policy file is untouched."
+```
+
+### Incident
+
+**Symptom.** Issuing `design-brief-intake-pilot-console-2026-07-31-v2.md` (a `material_revision`
+of the `/intake` brief) had no honest `revision_mode` to declare.
+
+- `manual_minor_revision` is barred: invariant 3 pins it to `change_class: clarification`, and this
+  is material (frame inventory 9 → 12).
+- `workflow_generated` means "produced by `design-handoff` **reading built code**". No automated
+  run read built code — and it must not, because the built code is a partial implementation of
+  *this brief's own predecessor*, so reading it would be circular and would breach the workflow's
+  Anti-Bias Principle.
+- `spec_derived` is defined as the greenfield hand, "**because no built code exists yet**". As of
+  PR #616 that clause is literally false for `/intake`.
+
+So all three values are wrong, and the invariants force a choice among them. `spec_derived` was
+selected as the least dishonest (the brief IS derived from the interaction spec + design policy)
+and the reasoning was written into the brief itself rather than left implicit.
+
+**Cause.** The enum encodes *greenfield vs brownfield* as a property of the **repo** at authoring
+time. It is actually a property of the **source the brief was derived from** — and those come
+apart the moment a surface is built FROM a spec-derived brief, which is the normal lifecycle here,
+not an edge case. `/intake` reached it in one day: v1 spec-derived → pass-1 built from v1 → v2 owed.
+
+**Why it matters beyond bookkeeping.** Consumers (`design-artifact-loop`, `design-synthesize`)
+validate this block at intake and halt on invariant breaks, and `revision_mode` is what invariant 8
+keys `last_modified_by` on. A field with no correct value pushes every author toward whichever
+wrong value passes validation — which makes the provenance record quietly untrustworthy at exactly
+the point it is meant to be load-bearing.
+
+**Not speculative.** Observed while executing the owner-instructed material revision on 2026-07-31,
+not inferred from reading the policy. Related: the v1 brief carried **no** `revision_mode`,
+`source_workflow`, `source_run_date` or `last_modified_*` at all — a producer-side omission
+back-filled per §1b during this run. Whether `design-handoff`'s greenfield path actually emits the
+block it promises is a **separate, unverified** question and is deliberately not asserted here.
+
+### Candidate directions (NOT chosen — owner's call)
+
+1. **Add a value** — e.g. `spec_derived_revision`: derived from specs/policy, on a surface that now
+   has code deliberately excluded as a source. Cheapest; grows the enum.
+2. **Split the field** — `derived_from: {built_code | specs}` × `produced_by: {workflow | human}`.
+   Says the true thing; touches every consumer's validation and every existing brief.
