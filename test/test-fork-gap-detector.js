@@ -1,7 +1,8 @@
 // Golden-case regression lock for the fork-gap register tooling (fork-gap 2026-07-20).
 //
-// FOUR STRUCTURAL INVARIANTS are locked here. I1 and I2 predate schema v1 and are carried
-// forward unchanged in meaning; I3 and I4 arrive with the write-time gate (2026-07-25).
+// FIVE STRUCTURAL INVARIANTS are locked here. I1 and I2 predate schema v1 and are carried
+// forward unchanged in meaning; I3 and I4 arrive with the write-time gate (2026-07-25); I5
+// arrives with entry-scoped blocking (2026-07-31).
 //
 //   I1. THE REGISTER MUST NEVER COUNT ITSELF AS EVIDENCE.
 //       fork-gaps.md lives under docs/, so an entry whose target is the broad `docs/`
@@ -28,6 +29,15 @@
 //       So the archiver is an explicit human-invoked command with a dry run by default, and
 //       the gate's only role is to notice and say so. `partly` / `blocked` /
 //       `fork-fixed-distribution-owed` all name owed work and stay live.
+//
+//   I5. A FINDING BLOCKS ONLY THE COMMIT THAT CAUSED IT.
+//       The register is one append-only file written by many sessions, so failing the whole
+//       commit on any finding anywhere in it let one bad entry freeze gap logging for
+//       everyone. Blast radius shrank; the rules did not. A finding on an entry the commit
+//       created OR edited still blocks; one on an untouched historical entry is printed in
+//       full and does not. When touched-ness is undeterminable (no staged register, or
+//       `--all`) the check degrades to a full audit — scoping must never be the reason a real
+//       finding goes unenforced.
 //
 // Hermetic: builds a throwaway fork-shaped tree and points the REAL linter at it via
 // FORK_GAP_ROOT, so no assertion depends on live fork content. Also binds to the real source
@@ -208,6 +218,98 @@ try {
 
   const hook = fs.readFileSync(path.join(FORK, '.githooks', 'pre-commit'), 'utf8');
   ok('I4 bound: the mutating archiver is NOT wired into the commit gate', !/archive-fork-gaps/.test(hook));
+
+  // ----------------------------------------------------------------- I5
+  //   I5. A FINDING BLOCKS ONLY THE COMMIT THAT CAUSED IT.
+  //       fork-gaps.md is one append-only file written by many sessions. When ANY finding
+  //       anywhere in it failed the whole commit, one bad entry froze gap logging for
+  //       everyone: a session authored a valid entry, hit a wall left days earlier by
+  //       someone else, abandoned the commit, and left its entry dirty. Three entries were
+  //       stranded that way on 2026-07-30/31 and the logging rate fell from 12-14/day to
+  //       1-4/day.
+  //
+  //       The rules did NOT get weaker — the blast radius got smaller. A finding on an
+  //       entry the commit created or edited still blocks. A finding on an untouched
+  //       historical entry is printed in full and does not block. And when touched-ness
+  //       cannot be determined (no staged register — a manual sweep, or `--all`) the check
+  //       degrades to the FULL audit it has always been, so scoping can never be the reason
+  //       a real finding goes unenforced.
+  const git = (root, ...args) => execFileSync('git', args, { cwd: root, stdio: 'pipe', encoding: 'utf8' });
+
+  // `run` throws on a non-zero exit, and half of these cases exit 1 BY DESIGN — the whole
+  // point is asserting what a blocking run prints. Capture stdout either way.
+  const runOut = (root, mode, args = []) => {
+    try {
+      return run(root, mode, args);
+    } catch (error) {
+      return error.stdout || '';
+    }
+  };
+
+  function gitSandbox(entries) {
+    const root = sandbox();
+    git(root, 'init', '-q', '.');
+    git(root, 'config', 'user.email', 't@t');
+    git(root, 'config', 'user.name', 't');
+    fs.writeFileSync(path.join(root, 'docs', 'fork-gaps.md'), `# Fork Gaps\n\n## Open\n\n${entries}`);
+    git(root, 'add', '-A');
+    git(root, 'commit', '-qm', 'baseline');
+    return root;
+  }
+
+  // Baseline: one historical entry whose scope:fork target rotted long ago.
+  const ROTTED = entry({ id: 'FG-2026-01-01-01', target: 'custom/workflows/gone.md', marker: 'rotted marker' });
+  const HEALTHY = entry({ id: 'FG-2026-01-01-02', target: 'custom/workflows', marker: 'healthy marker' });
+
+  // (a) a VALID new entry lands even though the register already carries rot.
+  let g = gitSandbox(`${ROTTED}\n${HEALTHY}`);
+  const NEW_OK = entry({ id: 'FG-2026-01-02-02', target: 'custom/workflows', marker: 'brand new marker' });
+  fs.appendFileSync(path.join(g, 'docs', 'fork-gaps.md'), `\n${NEW_OK}`);
+  git(g, 'add', 'docs/fork-gaps.md');
+  const outA = runOut(g, 'targets');
+  ok('I5 pre-existing rot does NOT block a commit that did not touch it', exitCodeOf(g, 'targets') === 0);
+  ok('I5 …and that rot is still REPORTED, not silently dropped', /FG-2026-01-01-01/.test(outA) && /pre-existing/.test(outA));
+  fs.rmSync(g, { recursive: true, force: true });
+
+  // (b) a NEW entry with a schema defect still blocks — strictness unchanged.
+  g = gitSandbox(`${ROTTED}\n${HEALTHY}`);
+  fs.appendFileSync(
+    path.join(g, 'docs', 'fork-gaps.md'),
+    `\n${entry({ id: 'FG-2026-01-02-03', target: 'custom/workflows', marker: 'x' })}`.replace('### Incident\nfixture evidence.\n', ''),
+  );
+  git(g, 'add', 'docs/fork-gaps.md');
+  ok('I5 a NEW entry with a schema defect still BLOCKS', exitCodeOf(g, 'schema') === 1);
+  fs.rmSync(g, { recursive: true, force: true });
+
+  // (c) EDITING an existing entry into a broken state blocks — "touched" is new OR edited.
+  g = gitSandbox(`${ROTTED}\n${HEALTHY}`);
+  const gp = path.join(g, 'docs', 'fork-gaps.md');
+  fs.writeFileSync(gp, fs.readFileSync(gp, 'utf8').replace('target: custom/workflows\n', 'target: custom/workflows/newly-rotted.md\n'));
+  git(g, 'add', 'docs/fork-gaps.md');
+  const outC = runOut(g, 'targets');
+  ok('I5 EDITING an entry into pointer rot BLOCKS (touched = new OR edited)', exitCodeOf(g, 'targets') === 1);
+  ok('I5 …and the untouched historical rot stays advisory in the same run', /pre-existing/.test(outC));
+  fs.rmSync(g, { recursive: true, force: true });
+
+  // (d) no staged register -> FULL audit. This is what keeps a manual sweep a real sweep;
+  //     if this ever flips, scoping has become a way to hide findings.
+  g = gitSandbox(`${ROTTED}\n${HEALTHY}`);
+  const outD = runOut(g, 'targets');
+  ok('I5 no staged register => FULL audit, historical rot blocks', exitCodeOf(g, 'targets') === 1);
+  ok('I5 …and the run says so rather than claiming a scope', /full audit \(unscoped\)/.test(outD));
+  ok(
+    'I5 --all forces the full audit even with a staged register',
+    (() => {
+      fs.appendFileSync(path.join(g, 'docs', 'fork-gaps.md'), `\n${NEW_OK}`);
+      git(g, 'add', 'docs/fork-gaps.md');
+      return exitCodeOf(g, 'targets', ['--all']) === 1;
+    })(),
+  );
+  fs.rmSync(g, { recursive: true, force: true });
+
+  // (e) BOUND: the gate must keep firing only when the register is staged. If that guard is
+  //     ever removed, every fork commit inherits the register's historical rot again.
+  ok('I5 bound: the register gate still fires only when fork-gaps.md is staged', /grep -qx 'docs\/fork-gaps\.md'/.test(hook));
 
   console.log(`\n  ${passed} passed, ${failed} failed`);
   if (failed) process.exit(1);

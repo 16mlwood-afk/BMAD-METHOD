@@ -55,7 +55,13 @@ class Entry:
 
 def parse(path: str = GAPS):
     """Yield an Entry per `## ` block after the `## Open` marker."""
-    text = open(path).read()
+    return parse_text(open(path).read())
+
+
+def parse_text(text: str):
+    """Same parse, from a string — so a git blob (HEAD's or the staged version of the
+    register) can be parsed without being written to disk. Used by the touched-entry
+    scoping below."""
     lines = text.split("\n")
     try:
         start = next(i for i, l in enumerate(lines) if l.strip() == "## Open")
@@ -112,46 +118,49 @@ def _checkable(target: str) -> bool:
     return "/" not in t and t.endswith(".sh")
 
 
-def check_schema(entries) -> int:
+def check_schema(entries, touched=None) -> int:
+    # (id, message) — the id decides whether a finding may BLOCK; the rules are unchanged.
     errors, seen_ids = [], set()
     for e in entries:
         eid = e.id
+        add = lambda msg, _eid=e.header.get("id", ""): errors.append((_eid, msg))
         if HEADING_BLOB_RE.search(e.heading):
-            errors.append(f"{eid}: heading carries a state blob — move it to the Work Status line")
+            add(f"{eid}: heading carries a state blob — move it to the Work Status line")
         if not e.header:
-            errors.append(f"{eid}: no ```yaml header block")
+            # No header means no id, so this can never be attributed — invariant 3 blocks it.
+            errors.append(("", f"{eid}: no ```yaml header block"))
             continue
         for f in REQUIRED:
             if f not in e.header:
-                errors.append(f"{eid}: missing required field `{f}`")
+                add(f"{eid}: missing required field `{f}`")
         hid = e.header.get("id", "")
         if hid and not ID_RE.match(hid):
-            errors.append(f"{eid}: id `{hid}` is not FG-YYYY-MM-DD-NN")
+            add(f"{eid}: id `{hid}` is not FG-YYYY-MM-DD-NN")
         if hid in seen_ids:
-            errors.append(f"{eid}: duplicate id")
+            add(f"{eid}: duplicate id")
         seen_ids.add(hid)
 
         state, scope = e.header.get("state", ""), e.header.get("scope", "")
         if state and state not in STATES:
-            errors.append(f"{eid}: unknown state `{state}` (allowed: {', '.join(sorted(STATES))})")
+            add(f"{eid}: unknown state `{state}` (allowed: {', '.join(sorted(STATES))})")
         if scope and scope not in SCOPES and scope != "unknown":
-            errors.append(f"{eid}: unknown scope `{scope}`")
+            add(f"{eid}: unknown scope `{scope}`")
 
         marker = e.header.get("marker", "")
         if marker == "n/a":
             if scope != "harness":
-                errors.append(f"{eid}: `marker: n/a` is legal ONLY with scope: harness (this is {scope or 'unset'})")
+                add(f"{eid}: `marker: n/a` is legal ONLY with scope: harness (this is {scope or 'unset'})")
         elif len(marker.strip()) < 3:
-            errors.append(f"{eid}: marker must be >=3 non-space chars (blank/short markers match every file)")
+            add(f"{eid}: marker must be >=3 non-space chars (blank/short markers match every file)")
 
         if state == "superseded" and not e.header.get("superseded_by"):
-            errors.append(f"{eid}: state superseded requires superseded_by")
+            add(f"{eid}: state superseded requires superseded_by")
         if state == "blocked" and not e.header.get("blocked_by"):
-            errors.append(f"{eid}: state blocked requires blocked_by naming an OBSERVABLE condition")
+            add(f"{eid}: state blocked requires blocked_by naming an OBSERVABLE condition")
         if state == "fork-fixed-distribution-owed" and not e.header.get("distribution"):
-            errors.append(f"{eid}: state fork-fixed-distribution-owed requires distribution")
+            add(f"{eid}: state fork-fixed-distribution-owed requires distribution")
         if not e.has_incident:
-            errors.append(f"{eid}: no `### Incident` block")
+            add(f"{eid}: no `### Incident` block")
 
         # --- fix + delivery axes (schema v2, docs/proposals/fork-gap-axes-v2.md) ---------
         # MIGRATION WINDOW: `state` remains a deprecated alias and stays REQUIRED, so a
@@ -161,17 +170,17 @@ def check_schema(entries) -> int:
         # but you may never write a value that means nothing.
         fix, delivery = e.header.get("fix"), e.header.get("delivery")
         if fix is not None and fix not in FIX_VALUES:
-            errors.append(f"{eid}: unknown fix `{fix}` (allowed: {', '.join(sorted(FIX_VALUES))})")
+            add(f"{eid}: unknown fix `{fix}` (allowed: {', '.join(sorted(FIX_VALUES))})")
         if delivery is not None and delivery not in DELIVERY_VALUES:
-            errors.append(f"{eid}: unknown delivery `{delivery}` (allowed: {', '.join(sorted(DELIVERY_VALUES))})")
+            add(f"{eid}: unknown delivery `{delivery}` (allowed: {', '.join(sorted(DELIVERY_VALUES))})")
         # `delivery` is meaningless while nothing is built — §2 of the proposal.
         if fix == "none" and delivery not in (None, "n/a"):
-            errors.append(f"{eid}: fix `none` with delivery `{delivery}` — nothing is built, so there "
+            add(f"{eid}: fix `none` with delivery `{delivery}` — nothing is built, so there "
                           "is nothing to deliver. Set `delivery: n/a`.")
         # The value that rotted the old field: `partial` with no enumeration of what remains.
         if fix == "partial" and not re.search(r"\bNOT taken\b|\bstill (?:open|owed)\b|\bremain(?:s|ing)\b|"
                                               r"\bowed\b|\bnot done\b|\bunbuilt\b", e.body, re.I):
-            errors.append(f"{eid}: fix `partial` but the body never names what is OUTSTANDING. "
+            add(f"{eid}: fix `partial` but the body never names what is OUTSTANDING. "
                           "`partly` with no enumeration is exactly what rotted the old single field — "
                           "name the residue, or the honest value is `none` or `done`.")
 
@@ -181,20 +190,21 @@ def check_schema(entries) -> int:
     # set. Terminal entries left in the live file erode that quietly, so NOTICE them here.
     # WARN, never error: archiving MUTATES, and this tooling does not mutate the register.
     terminal = [e.id for e in entries if e.header.get("state") in ("closed", "superseded")]
-    for msg in errors:
-        print(f"  ✗ {msg}")
-    print(f"check-fork-gap-schema: {len(errors)} error(s) across {len(entries)} entry/entries.")
+    rc = _emit(errors, touched, "check-fork-gap-schema", len(entries))
     if unknowns:
         print(f"  ⚠ {unknowns} field(s) still `unknown` — declared debt, not a blocker. Fill when known.")
     if terminal:
         print(f"  ⚠ {len(terminal)} terminal entry/entries still in the live register "
               f"({', '.join(terminal[:4])}{'…' if len(terminal) > 4 else ''}).")
         print("    Run: python3 tools/archive-fork-gaps.py --write   (explicit, never automatic)")
-    return 1 if errors else 0
+    return rc
 
 
-def check_targets(entries) -> int:
-    errors = warns = 0
+def check_targets(entries, touched=None) -> int:
+    # scope:fork rot is an ERROR (blocking only on a touched entry); every other scope stays a
+    # WARN exactly as before — a project/machine-local/harness target legitimately does not
+    # resolve from the fork tree, so it never blocks anyone regardless of who touched it.
+    errors, warns = [], 0
     for e in entries:
         target, scope = e.header.get("target", ""), e.header.get("scope", "")
         if not _checkable(target):
@@ -202,13 +212,137 @@ def check_targets(entries) -> int:
         if os.path.exists(os.path.join(ROOT, target)):
             continue
         if scope == "fork":
-            print(f"  ✗ {e.id}: scope:fork target does not resolve — `{target}` (pointer rot)")
-            errors += 1
+            errors.append((e.header.get("id", ""),
+                           f"{e.id}: scope:fork target does not resolve — `{target}` (pointer rot)"))
         else:
             print(f"  ⚠ {e.id}: target does not resolve here — `{target}` (scope: {scope or 'unset'})")
             warns += 1
-    print(f"check-fork-gap-targets: {errors} error(s), {warns} warning(s).")
-    return 1 if errors else 0
+    rc = _emit(errors, touched, "check-fork-gap-targets", len(entries))
+    if warns:
+        print(f"  ⚠ {warns} non-fork-scope target(s) unresolvable here — expected, never blocking.")
+    return rc
+
+
+# ---------------------------------------------------------------------------
+# TOUCHED-ENTRY SCOPING — which findings may BLOCK this commit
+# ---------------------------------------------------------------------------
+# WHY. fork-gaps.md is one append-only file written by many sessions, and `schema` and
+# `targets` rejected the whole COMMIT on any finding anywhere in it. So one malformed or
+# rotted entry froze gap logging for EVERYONE: a session would author a perfectly valid
+# entry, hit a wall left by a previous session days earlier, abandon the commit, and leave
+# its entry dirty in the working tree. The next session did the same. The pile grew with
+# nobody consciously deciding not to log.
+#
+# Observed 2026-07-31: three finished entries stranded uncommitted since 07-30 — one blocked
+# by its own missing `### Incident`, the other two blocked by FG-2026-07-30-10's `target:`
+# pointing at a path that stopped existing in a directory reorg. Logging rate over the same
+# window: 12-14/day on 07-25..28, then 3, 4, 1.
+#
+# THE FIX IS SCOPE, NOT STRICTNESS. Every rule stays exactly as strict; what changes is WHICH
+# findings are allowed to block. A finding on an entry this commit touched blocks, as before.
+# A finding on an untouched historical entry is printed just as loudly and does not block —
+# you cannot be held responsible at commit time for rot you did not write and are not editing.
+#
+# THREE INVARIANTS:
+#   1. TOUCHED = new OR edited. Not "new" (an edit that breaks an entry must still block) and
+#      not "appears in the + lines" (a reformat re-adds every line and would scope to
+#      everything — the same trap _staged_new_ids documents).
+#   2. UNDETERMINABLE => EVERYTHING BLOCKS. No staged register, unreadable git, or a
+#      pre-schema pre-image means we cannot tell touched from historical, so the check
+#      degrades to the FULL audit it has always been. Scoping may never be the reason a real
+#      finding goes unenforced — that would relax the gate, which is explicitly not the ask.
+#      This is also what keeps a manual `bash tools/check-fork-gap-schema.sh` and `npm test`
+#      a whole-file audit: neither has a staged blob, so neither is scoped.
+#   3. AN UNATTRIBUTABLE ENTRY IS TOUCHED. An entry with no id, or an id that does not parse,
+#      cannot be proven historical — and a brand-new entry missing its id is exactly the case
+#      this gate exists to catch. Fail closed.
+
+def _register_blobs():
+    """(head_text, staged_text) for docs/fork-gaps.md, or None if not determinable."""
+    try:
+        head = subprocess.run(["git", "show", "HEAD:docs/fork-gaps.md"],
+                              cwd=ROOT, capture_output=True, text=True, timeout=30)
+        staged = subprocess.run(["git", "show", ":docs/fork-gaps.md"],
+                                cwd=ROOT, capture_output=True, text=True, timeout=30)
+    except Exception:
+        return None
+    if staged.returncode != 0:
+        return None                      # nothing staged -> not a commit of this file
+    return (head.stdout if head.returncode == 0 else ""), staged.stdout
+
+
+def _touched_ids():
+    """Ids whose entry block differs between HEAD and the staged register.
+
+    Returns a set, or None meaning "cannot tell — treat every finding as blocking".
+    """
+    blobs = _register_blobs()
+    if blobs is None:
+        return None
+    before_text, after_text = blobs
+    if not before_text.strip():
+        return None                      # no pre-image to diff against
+    # `git show :<path>` succeeds for ANY tracked file — an unmodified one just returns HEAD's
+    # blob. So a zero-diff index is NOT "a commit that touches nothing"; it is "this run is not
+    # a commit of the register at all" (a manual sweep, npm test, or a commit of other files).
+    # Treating it as scoped-to-zero would silently pass a broken register — the exact
+    # relaxation this change must not make. Invariant 2: undeterminable => full audit.
+    if before_text == after_text:
+        return None
+    def blocks(text):
+        out = {}
+        for e in parse_text(text):
+            if e.heading.strip() == "## Open":
+                continue
+            hid = e.header.get("id")
+            if hid:
+                # Heading + body: an edit to either is a real change to the entry.
+                out[hid] = e.heading.strip() + "\n" + e.body.strip()
+        return out
+    before, after = blocks(before_text), blocks(after_text)
+    # Invariant 2: a pre-image carrying no ids is the schema migration itself — every entry
+    # would look new. Novelty undeterminable -> full audit.
+    if not before:
+        return None
+    touched = {hid for hid, blk in after.items() if before.get(hid) != blk}
+    # The register changed but no ENTRY did — the edit was to the preamble, the `## Open`
+    # marker, or some other non-entry prose. Nothing is attributable, so fall back to the full
+    # audit rather than scoping to nothing. Fail closed, same as invariant 3.
+    return touched or None
+
+
+def _is_blocking(eid: str, touched) -> bool:
+    """touched is None (full audit) or a set of ids this commit created/edited."""
+    if touched is None:
+        return True
+    if not eid or not ID_RE.match(eid):
+        return True                      # invariant 3 — unattributable entries fail closed
+    return eid in touched
+
+
+def _emit(findings, touched, check_name: str, entry_count: int) -> int:
+    """Print blocking findings as errors and untouched ones as advisory. Exit 1 iff blocking.
+
+    Advisory findings are printed in FULL, never summarised to a count — the whole point is
+    that pre-existing rot stays visible so it can be cleaned up deliberately, instead of
+    being discovered the next time it blocks somebody.
+    """
+    blocking = [(eid, m) for eid, m in findings if _is_blocking(eid, touched)]
+    advisory = [(eid, m) for eid, m in findings if not _is_blocking(eid, touched)]
+    for _eid, msg in blocking:
+        print(f"  ✗ {msg}")
+    if advisory:
+        print(f"  ── {len(advisory)} pre-existing finding(s) on entries this commit did NOT touch "
+              "— reported, NOT blocking:")
+        for _eid, msg in advisory:
+            print(f"     · {msg}")
+        print("     These are real and still want fixing; they are simply not this commit's to fix.")
+        print("     Sweep them with:  bash tools/check-fork-gap-schema.sh  (unscoped, audits everything)")
+    scope_note = "full audit (unscoped)" if touched is None else \
+                 f"scoped to {len(touched)} touched entry/entries"
+    print(f"{check_name}: {len(blocking)} error(s), {len(advisory)} pre-existing, "
+          f"across {entry_count} entry/entries · {scope_note}.")
+    return 1 if blocking else 0
 
 
 def _staged_new_ids() -> set:
@@ -658,10 +792,12 @@ def check_orphan_annotation(entries) -> int:
 def main() -> int:
     mode = sys.argv[1] if len(sys.argv) > 1 else "schema"
     entries = [e for e in parse() if e.heading.strip() != "## Open"]
-    if mode == "schema":
-        return check_schema(entries)
-    if mode == "targets":
-        return check_targets(entries)
+    # Scoping applies to the two BLOCKING checks only, and only when a staged register exists
+    # (i.e. we are in a pre-commit for this file). `--all` forces the full audit explicitly.
+    if mode in ("schema", "targets"):
+        touched = None if "--all" in sys.argv else _touched_ids()
+        return check_schema(entries, touched) if mode == "schema" \
+            else check_targets(entries, touched)
     if mode == "stale-open":
         return check_stale_open(entries, creation_mode="--creation-mode" in sys.argv)
     if mode == "orphan-annotation":
