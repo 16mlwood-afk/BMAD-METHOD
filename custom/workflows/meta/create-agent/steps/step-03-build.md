@@ -10,8 +10,9 @@ description: 'Autonomously write the agent persona file in the established XML f
 ## RULES:
 
 - **EMIT THE PROVENANCE BLOCK (STD-SKILLPROV-001 §3).** The persona frontmatter carries
-  `id / version / created_at / author / source_research / origin_type / adoption_reason /
-  last_reviewed_at`. A persona without it is **UNVERIFIED** — not banned, but it must be described
+  MACHINE half — `id / version / created_at / authored_by / discovery_performed / discovery_ran_at`;
+  SELF-ASSERTED half — `source_research / origin_type / adoption_reason / exemption_reason /
+  override_reason / last_reviewed_at`. A persona without it is **UNVERIFIED** — not banned, but it must be described
   that way whenever its trustworthiness is at issue.
   - `source_research` takes **≥1 URL** from step-01's outward pass. If that pass genuinely found no
     external prior art, write `source_research: []` **and** an `exemption_reason` naming why none
@@ -25,6 +26,15 @@ description: 'Autonomously write the agent persona file in the established XML f
     what step-01 actually did. Never set `discovery_performed: true` because a search was intended,
     and never invent a `source_research` URL to make the block look complete — a false record is
     worse than an honest `false` with an `override_reason`.
+  - **OMIT an unset optional key entirely — never emit an empty string or a `{placeholder}`.**
+    `override_reason: ""` and `override_reason: "{override_reason}"` both read as a filled field to
+    every future reader and to any linter. Omit the key; write `source_research: []` when the list is
+    genuinely empty. Only `discovery_performed` is mandatory on every persona.
+  - **FAIL CLOSED if step-01 left the gate unresolved.** This step cannot halt (autonomy contract),
+    so it must not paper over the gap: stamp `discovery_performed: false` and
+    `override_reason: "UNRECORDED — step-01 did not resolve the discovery gate"`, and name it in the
+    final summary. That string is deliberately greppable — an honest, findable defect beats a blank
+    that looks compliant.
 
 - FULLY AUTONOMOUS. No user interaction. No menus. No halting.
 - Write a real, complete persona. **Soft gate — the persona MUST cover all 8 sections of the
@@ -66,14 +76,16 @@ metadata:
   version: 1
   created_at: "{date}"
   authored_by: "create-agent"
-  discovery_performed: {discovery_performed}
-  discovery_ran_at: "{discovery_ran_at}"
+  discovery_performed: {discovery_performed}     # mandatory — always emitted
+  discovery_ran_at: "{discovery_ran_at}"         # omit the key when discovery_performed is false
   # SELF-ASSERTED — the author's claims, recorded as claims (STD-SKILLPROV-001 §3).
-  source_research:
+  # OMIT any key below that has no value. Never emit "" or a literal {placeholder}.
+  source_research:                               # [] when genuinely empty — then exemption_reason is required
     - "{source_research_url}"
   origin_type: "{origin_type}"
-  adoption_reason: "{adoption_reason}"
-  override_reason: "{override_reason}"
+  adoption_reason: "{adoption_reason}"           # required when origin_type is `original`
+  exemption_reason: "{exemption_reason}"         # searched, but no prior art could exist
+  override_reason: "{override_reason}"           # did NOT search — why
   last_reviewed_at: "{date}"
 ---
 
@@ -165,11 +177,20 @@ grep -c "<activation" "{agent_file}"
 grep -c "<menu>" "{agent_file}"
 grep -c "<style-examples>" "{agent_file}"
 grep -n "TODO(persona)" "{agent_file}"   # surface any soft-gate breadcrumbs left behind
+
+# Provenance block (STD-SKILLPROV-001 §3) — the machine flag is mandatory on every persona
+grep -c "^  discovery_performed:" "{agent_file}"          # MUST be 1
+grep -nE '^\s+\w+: *"?\{[a-z_]+\}"?' "{agent_file}"     # MUST be empty — unresolved placeholders
+grep -nE '^\s+(source_research|origin_type|adoption_reason|exemption_reason|override_reason): *""' "{agent_file}"  # MUST be empty — omit, do not blank
+grep -n "UNRECORDED — step-01" "{agent_file}"             # fail-closed marker, if any
 ```
 
 Confirm: frontmatter has `name` + `description`; exactly one `<agent>` open tag; an `<activation>`
-block; a `<menu>` block; a `<style-examples>` block (real or TODO'd). If any structural check fails,
-re-render and re-write before proceeding. Any `TODO(persona)` lines are expected only for genuinely
+block; a `<menu>` block; a `<style-examples>` block (real or TODO'd); **`discovery_performed` present
+exactly once, no unresolved `{placeholder}` in the frontmatter, and no empty-string provenance
+values.** If any structural check fails, re-render and re-write before proceeding. A persona carrying
+the `UNRECORDED — step-01` marker is not a failure to re-render — it is an honest record, and it MUST
+be surfaced in the final summary. Any `TODO(persona)` lines are expected only for genuinely
 un-inferable sections — they do NOT block the run, but report them in the final summary so {user_name}
 knows what to fill in.
 
@@ -187,7 +208,9 @@ Read fully and follow: `{project-root}/_bmad/bmm/workflows/meta/create-agent/ste
 - **Human-tone floor present** — the 3 always-do principles + 3 never-do rules are baked in, never TODO'd
 - Middle block matches `{agent_kind}` (routing for router, ownership for owner, neither for advisor)
 - No INVENTED facts (workflow names, fake style exchanges) — an un-inferable section is TODO'd, not fabricated
-- Verification greps all pass; any TODO breadcrumbs are reported in the final summary
+- Verification greps all pass — including `discovery_performed` present, zero unresolved
+  `{placeholder}`s, and zero empty-string provenance values
+- Any TODO breadcrumbs, and any `UNRECORDED — step-01` marker, are reported in the final summary
 
 ## FAILURE MODES
 
@@ -195,5 +218,9 @@ Read fully and follow: `{project-root}/_bmad/bmm/workflows/meta/create-agent/ste
 - **Inventing content to avoid a TODO** (a fake style example, a guessed escalation target) — the soft gate exists precisely so un-inferable content is marked, not fabricated
 - **TODO'ing an inferable section** — scope, tone, knowledge, the human-tone floor are all inferable from the lane; a TODO there means you skipped the inference, not that it was un-inferable
 - Halting mid-build to ask the user to fill a section — the gate is a SCAFFOLD, never an interactive wizard; build it, mark the gap, report it at the end
+- **Emitting `override_reason: ""` or a literal `{override_reason}`** — a blank that looks filled is
+  worse than an omitted key; it defeats the reader's ability to tell skipped from searched
+- **Silently rendering a persona when step-01 left the gate unresolved** — fail closed with the
+  `UNRECORDED` marker instead, and say so in the summary
 - Writing a routing block for an owner/advisor (wrong shape) or omitting it for a router
 - Leaving the persona in the lane and calling the workflow done — it is NOT invokable until the sync runs; step 4 (sync + verify) is mandatory

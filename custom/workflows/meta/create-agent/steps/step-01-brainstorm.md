@@ -37,10 +37,29 @@ not a reason unless the search actually ran and its sources are named.
 - `{source_research}` — the URLs you actually opened.
 - `{origin_type}` + `{adoption_reason}`.
 
-**THE GATE.** If the searches did not run, you may still proceed — but you must set
-`{discovery_performed} = false` AND obtain a short `{override_reason}` naming why (offline, sandboxed,
-genuinely novel lane, owner said skip). The override is stamped on the emitted persona, so a future
-session can see which agents were authored without an outward pass.
+**Two different empty cases — do NOT collapse them into one field.** They mean opposite things and a
+future reader must be able to tell them apart:
+
+| case | `discovery_performed` | field to set |
+|---|---|---|
+| searched, found candidates | `true` | `{source_research}` — the URLs |
+| **searched, genuinely nothing exists** | `true` | `{exemption_reason}` — why no prior art *could* exist |
+| **did not search** | `false` | `{override_reason}` — why the pass was skipped |
+
+An empty `{source_research}` with neither reason is indistinguishable from not having looked, which is
+the exact ambiguity this standard exists to remove.
+
+**THE GATE — this is a HALT, and it is the only new halt in this workflow.** Before you leave this
+step, ONE of these three must hold:
+
+1. `{source_research}` is non-empty, **or**
+2. `{discovery_performed} = true` with an `{exemption_reason}`, **or**
+3. `{discovery_performed} = false` with an `{override_reason}`.
+
+If none holds, **HALT here and ask the user for the override reason** — do NOT proceed into step-02.
+This is the one place a halt is legal (step-01 is the only interactive step; steps 2–4 are
+autonomous by contract and must never block). The override is stamped on the emitted persona, so a
+future session can see which agents were authored without an outward pass.
 
 **What this gate does and does not buy — read it before trusting it.** A `source_research` URL is
 SELF-ASSERTED: it proves a search was *reported*, never that it was *good*, and a lazy link that
@@ -121,6 +140,9 @@ Extract and store:
 - `{agent_cast}` — existing cast it joins (Devon/Rowan/Jules) or `standalone`.
 - `{agent_escalation}` — (optional, contract §4) escalation target the user volunteered, or empty → step-03 TODOs it for owner/advisor.
 - `{agent_style_example}` — (optional, contract §6) a "good reply sounds like…" snippet the user volunteered, or empty → step-03 TODOs it.
+- `{discovery_performed}` / `{discovery_ran_at}` / `{source_research}` / `{origin_type}` /
+  `{adoption_reason}` / `{exemption_reason}` / `{override_reason}` — the provenance set resolved by
+  the outward-discovery gate above. Step-03 stamps these verbatim; it does not re-derive them.
 - `{agent_file}` — `{bmad_root}/custom/agents/{agent_slug}.md` (the fork lane — the one file this workflow authors; the sync mirrors it to every project's `_bmad/bmm/agents/` and generates the wrapper)
 
 ### 5. Proceed to Investigation
@@ -136,10 +158,20 @@ Read fully and follow: `{project-root}/_bmad/bmm/workflows/meta/create-agent/ste
 - Agent asked at most 2-3 clarifying questions
 - Summary was confirmed in a single exchange
 - All state variables captured (name is a human name, slug is kebab-case)
-- Total interaction: under 4 messages
+- **The discovery gate resolved** — one of: non-empty `{source_research}` · `discovery_performed: true`
+  + `{exemption_reason}` · `discovery_performed: false` + `{override_reason}`
+- `{discovery_performed}` reflects what actually ran, not what was intended
+- Total interaction: under 4 messages, plus the outward searches (which are tool calls, not exchanges)
 
 ## FAILURE MODES
 
 - Inventing a name/lane the user never grounded (grounding-gate violation — ask instead)
 - Capturing a function label ("the-router") as `{agent_name}` instead of a human name
 - Asking about XML/activation/wrapper internals — those are your job, not the user's
+- **Leaving step-01 with the discovery gate unresolved** — step-03 cannot halt, so an unresolved gate
+  becomes a permanently un-auditable persona
+- **Setting `discovery_performed: true` without having run both searches** — it is the one field a
+  reader is entitled to trust, because the workflow writes it; falsifying it destroys the only
+  non-self-asserted signal in the block
+- **Filling `{source_research}` with a plausible-looking URL to clear the gate** — an honest
+  `override_reason` is worth more than a decorative link
