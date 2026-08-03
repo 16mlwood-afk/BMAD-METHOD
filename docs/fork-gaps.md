@@ -8053,9 +8053,19 @@ class: guard-resolution-defect
 scope: project
 target: project:cash-recovery/.claude/hooks/bash_edit_guard.py (per-project; the cash-recovery copy is authoritative) + its suite project:cash-recovery/.claude/hooks/test_bash_edit_guard.py
 marker: "a leading `cd ~/…` expands to the real home during base resolution, with golden cases in both directions"
-state: open
+state: closed
+state_note: "NOT A DEFECT. Theory retracted; re-tested after the FG-2026-08-03-14 rewire and the behaviour is correct. Enum-normalised from a prose `CLOSED — …` so the entry stops blocking every session's commit; the author's wording is preserved verbatim here."
 fix: none
+fix_note: "none needed — `resolution_base()` already calls `os.path.expanduser` (bash_edit_guard.py:155) and golden case A4 already covers a tilde target"
 delivery: n/a
+retraction: "The tilde theory in the Incident below is FALSE and is retracted. It was read off CLAUDE.md's
+         documented behaviour table instead of probed, and the entry flagged its own evidence as
+         UNVERIFIED BY EXECUTION. The real cause is FG-2026-08-03-14: the reviewed guard was not wired
+         at all, so the LEGACY blob emitted the deny — which is why it named no resolved target and told
+         a fork path to enter a worktree, neither of which the reviewed guard can do. Retained rather
+         than deleted because the transferable lesson is the diagnostic order: PROBE THE WIRING BEFORE
+         THEORISING ABOUT THE LOGIC. Verified 2026-08-03 by a live `cd ~/bmad-method-v6 && printf '' >>
+         docs/.guard-probe-scratch` after the rewire — it runs."
 owner: mason
 date: 2026-08-03
 project: cash-recovery
@@ -8064,6 +8074,8 @@ routing: maintenance — a false positive in an existing, already-fixed defect f
 supersede_note: "SEE FG-2026-08-03-14 (logged later the same day, verified by guard-health-check.sh): bash_edit_guard.py is NOT WIRED in cash-recovery — settings.local.json still invokes the legacy inline regex blob. So the deny observed here did NOT come from this target file, and tilde-expansion may already be correct in the reviewed guard. RE-TEST AFTER THE REWIRE before spending work here."
 schema_note: "yaml FENCE + the required id/scope/marker/state/owner fields retro-added 2026-08-03 by a later session. The author's fields and prose are UNALTERED — only additive."
 ```
+
+### Incident
 
 **Observed 2026-08-03**, immediately after the entry above — while trying to log it.
 
@@ -8110,9 +8122,12 @@ class: enforcement
 scope: project
 target: project:cash-recovery/.claude/settings.local.json (the wiring) + project:cash-recovery/CLAUDE.md §§ "Worktree Enforcement Hooks" / "Edit guard" (the false claim). Fork-side: none — this is project-local wiring, which is exactly why it rots unseen.
 marker: "`bash_edit_guard.py` present in cash-recovery/.claude/settings.local.json AND the legacy inline regex blob absent from it — both asserted by guard-health-check.sh"
-state: open
-fix: none
-delivery: n/a
+state: partly
+state_note: "fixed-half — wiring REPOINTED and verified live; the SessionStart-detector half is NOT closed (see Resolution). Enum-normalised from `fixed-half` to the legal `partly` so the entry stops blocking every session's commit; the author's wording is preserved verbatim here."
+fix: partial
+fix_note: "PreToolUse[8] matcher=Bash: legacy 2050-char inline blob REPLACED (-> 1106 chars) with an invocation of .claude/hooks/bash_edit_guard.py, mirroring the collision_guard.py worktree-root idiom. Backup: .claude/settings.local.json.bak-preguardwire-20260803-130349"
+delivery: done
+delivery_note: "applied 2026-08-03 by claude-session-20260803-135730 on the owner's explicit 'fix this fork gap now'. Machine-local config — NO commit, NO PR, NO sync possible (settings.local.json is gitignored by owner ruling 2026-07-26)"
 owner: mason
 date: 2026-08-03
 project: cash-recovery (live /receive incident session)
@@ -8121,7 +8136,14 @@ routing: MAINTENANCE for both halves — re-point the PreToolUse Bash matcher at
          guard, and wire guard-health-check.sh into SessionStart warn-only. The rewire was
          deliberately NOT applied here on BLAST RADIUS (27 live sessions share that gate
          mid-flight), not on lane; it wants a quiet moment.
+deferral_overridden: "The blast-radius deferral above was a sound call and is NOT being second-guessed
+         — it was overridden by an explicit owner instruction ('fix this fork gap now'), on a change
+         that is one backed-up config string, reversible in seconds, and that makes the gate MORE
+         permissive-where-correct (the register carve-out and fork allowlist the legacy blob lacks)
+         rather than more blocking. Rollback = restore the named backup."
 ```
+
+### Incident
 
 **What fought us.** A live-incident session (a clerk frozen at `/receive` on a real parcel) tried to
 write its WIP claim with `cat >> .claude/wip-register.yaml` **from the main checkout** and was
@@ -8183,3 +8205,40 @@ whether it ever runs is not.
 tilde-resolution entry immediately above. All are downstream symptoms of this one wiring line, and
 several may be **already fixed in `bash_edit_guard.py` and simply never running** — re-test them
 *after* the rewire rather than investigating them before it.
+
+### Resolution — rewire APPLIED and verified 2026-08-03 (`claude-session-20260803-135730`)
+
+Owner instruction: *"fix this fork gap now."* Applied by a **second session that reached the same
+diagnosis independently** — it had filed the tilde theory as `-13`, probed instead of trusting it, and
+landed on this entry's finding. Two sessions, same day, same wiring line, from opposite directions.
+
+**What changed.** `PreToolUse[8]` (matcher `Bash`) — the 2050-char legacy inline blob replaced (→1106
+chars) with an invocation of `.claude/hooks/bash_edit_guard.py`, mirroring the `collision_guard.py`
+entry's worktree-root idiom (`R=CLAUDE_PROJECT_DIR`, re-based out of `/.claude/worktrees/`, `$HOME`
+fallback). Added: a throttled once-per-30-min notice if the guard file is ever absent, and an explicit
+*"ERRORED — treat as unchecked"* fallback so a crash can never read as permission. File backed up to
+`.claude/settings.local.json.bak-preguardwire-20260803-130349` and JSON parse-checked before going live.
+
+**Verified by execution, both directions — the distinction this entry exists to enforce:**
+
+| Check | Result |
+|---|---|
+| `guard-health-check.sh` | **5/5** — invokes the reviewed guard · legacy blob absent · ALLOW probe · DENY probe · override probe writes its audit row |
+| `test_bash_edit_guard.py` (main checkout) | **60/60** (the suite has grown from the 47 this entry cites) |
+| LIVE ALLOW — `cd ~/bmad-method-v6 && printf '' >> docs/.guard-probe-scratch` | **ran**; scratch removed. This is the exact command shape blocked ~40 minutes earlier |
+| LIVE DENY — `echo probe > src/db/schema.ts` | **blocked**, and the message now **names exactly one resolved target** plus the exemptions — the reviewed guard's diagnostic, not the legacy one's. That difference is itself the proof of which code ran |
+
+**`-13` is CLOSED as not-a-defect by this run.** Its `supersede_note` asked for a re-test after the
+rewire before spending work on tilde expansion. Done: the LIVE ALLOW probe above *is* a `cd ~/…` +
+relative-target command, and it passes. `resolution_base()` already calls `os.path.expanduser`
+(`bash_edit_guard.py:155`), and golden case `A4` already covers a tilde target. There was never a
+tilde defect — only the legacy blob answering in the reviewed guard's place.
+
+**STILL OPEN — do not read this entry as fully closed.** Item 2 above (the durable, self-checking half)
+is *partly* built and **not proven**: `guard-wiring-check.sh` **is** already wired at `SessionStart[2]`
+and it is **correct** — replayed against the pre-fix backup in an isolated tree it prints both findings
+and exits 1, which is exactly what the hook's `||` branch keys on. **It did not surface at this
+session's start.** Candidates, untested: the SessionStart entry was added by a parallel session *after*
+this session booted, or its output was not surfaced. No hook-execution log exists to settle it.
+**A detector that is correct and silent is a bigger finding than the wiring bug it missed** — that half
+stays open and owns the next pass.
