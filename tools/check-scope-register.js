@@ -203,14 +203,79 @@ function lintRegister(file) {
   const byId = new Map();
   const add = (id, frag) => byId.set(id, (byId.get(id) || '') + '\n' + frag);
 
-  for (const line of text.split('\n')) {
+  /*
+   * DUPLICATE-ID DETECTION (2026-08-03) — and why it could not exist before.
+   *
+   * The merge below is correct and stays: one row's information legitimately spans a
+   * table line, a narrative block and a routing-index line. But `byId` is a MAP KEYED
+   * ON THE ID, so two DIFFERENT rows that both claim `SR-49` are silently concatenated
+   * into one body before any check runs. The data structure erased the evidence, so no
+   * downstream rule could ever see a collision — this register takes concurrent writes
+   * from many sessions and nothing anywhere stopped two of them picking the same number.
+   *
+   * The header of this file already names "THE FAILURE THIS EXISTS FOR (2026-07-28,
+   * cash-recovery SR-49/SR-50)". On its first run this check found that BOTH of those
+   * ids still carry two different items apiece, with different routes, undetected since.
+   * The tool documented the incident and could not see the wreckage it left.
+   *
+   * THE DISCRIMINATOR — and the false positive it is built to avoid. "The id appears
+   * twice" is NOT a collision: an id appears once in the routing-index table and once in
+   * the main table BY DESIGN (55 of them do in the live cash-recovery register), and
+   * flagging that would fire on nearly every correctly-recorded row in the file — the
+   * indiscriminate-detector anti-pattern that gets a gate switched off. What is never
+   * legitimate is the same id twice in the SAME section. So table fragments are counted
+   * per (id, enclosing H2 section) and only a repeat WITHIN one section is reported.
+   *
+   * KNOWN LIMIT, stated rather than discovered later: this sees collisions INSIDE the
+   * register. It cannot see an id cited by a commit message, spec or merged PR that the
+   * register later reassigned — that citation lives in git history, which no linter here
+   * reads, and a squash-merge makes it uncorrectable. Renumber the row, never the history.
+   */
+  const seen = new Map(); // `${id} ${section}` -> [lineNo, ...]
+  let section = '(top of file)';
+
+  const lines = text.split('\n');
+  for (const [i, line] of lines.entries()) {
+    const h2 = /^##\s+(.*)$/.exec(line);
+    if (h2) section = h2[1].trim();
     const m = /^\|\s*`?(SR-\d+)`?\s*\|(.*)$/.exec(line);
-    if (m) add(m[1], line);
+    if (!m) continue;
+    add(m[1], line);
+    const key = `${m[1]} ${section}`;
+    if (!seen.has(key)) seen.set(key, []);
+    seen.get(key).push(i + 1);
   }
+
+  for (const [key, at] of seen) {
+    if (at.length < 2) continue;
+    const [id, sec] = key.split(' ');
+    note(
+      'fail',
+      `${path.basename(file)} ${id}`,
+      `DUPLICATE ID — ${at.length} rows claim \`${id}\` in the same section ("${sec}"), at lines ${at.join(', ')}. ` +
+        `Two sessions picked the same number; nothing in the register stops that. Read both rows: they are ` +
+        `usually DIFFERENT items with different routes, not fragments of one. Renumber the later one to a free ` +
+        `id and record the lineage in its row. Do NOT renumber a row whose id is already cited by a merged ` +
+        `commit, spec or PR — that citation cannot be corrected after a squash-merge, so the OTHER row moves.`,
+    );
+  }
+
   // Narrative blocks: from an `**SR-NN` heading to the next SR heading / H2.
+  const narrativeCount = new Map();
   for (const block of text.split(/\n(?=\*\*`?SR-\d+|## )/)) {
     const m = /^\*\*`?(SR-\d+)\b/.exec(block);
-    if (m) add(m[1], block);
+    if (!m) continue;
+    add(m[1], block);
+    narrativeCount.set(m[1], (narrativeCount.get(m[1]) || 0) + 1);
+  }
+  for (const [id, n] of narrativeCount) {
+    if (n < 2) continue;
+    note(
+      'fail',
+      `${path.basename(file)} ${id}`,
+      `DUPLICATE ID — ${n} narrative blocks open with \`${id}\`. A row has ONE narrative; two means two ` +
+        `different items are wearing the same number.`,
+    );
   }
 
   const rows = [...byId.entries()].map(([id, body]) => ({ id, body })).sort((a, b) => Number(a.id.slice(3)) - Number(b.id.slice(3)));
