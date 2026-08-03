@@ -7427,6 +7427,63 @@ Machine-local fix, so `delivery: n/a` — `settings.local.json` is gitignored an
 
 **Marker:** `` bash_edit_guard.py ``
 
+## FG-2026-08-03-05 — scope-register ids are allocated by `max(id)+1` read-modify-write, so parallel sessions silently overwrite each other's rows
+
+```yaml
+id: FG-2026-08-03-05
+class: shared-artifact-race
+scope: fork
+target: tools/check-scope-register.js --new-row (the "next free SR id" derivation) + custom/workflows/shared/scope-register-routing.md
+marker: "an SR id is ALLOCATED rather than derived by max(id)+1, so two concurrent sessions cannot receive the same number"
+state: open
+fix: none
+delivery: n/a
+owner: mason
+see_also: "FG-2026-08-03-09 — the DETECTION half. This entry is why two sessions pick the same id; that one is why nothing notices afterwards."
+schema_note: "yaml block retro-added 2026-08-03 for schema compliance (a headerless entry has no id, so it blocks EVERY session's commit unconditionally). Prose below is the author's, UNALTERED. Conservative defaults where the prose did not state a field."
+```
+
+### Incident
+
+**Class:** shared-artifact-race · **Fix scope:** fork-level (the register contract + its tooling) · **State:** open — owner-routed to its own maintenance item, deliberately NOT fixed inside the workstream that found it · **Routing:** owner instruction 2026-08-03 (*"treat 'id allocation as max(id)+1 read-modify-write under parallel sessions' as a fork gap to fix, but not inside this imagery lane… spin the register-id issue into its own design/maintenance item so we can fix it once, deliberately"*)
+
+**What fought us.** Every session that files a scope-register row picks its id by grepping the highest existing `SR-NN` and adding one. That is a read-modify-write with no lock, on a file every parallel session edits. On 2026-08-03 it cost **three separate row losses in a single session**, each verified by grepping for the row's distinctive content rather than assumed:
+
+1. A row filed as `SR-69` (an approve-without-price question) was overwritten by another session's `SR-69`.
+2. Re-filed as `SR-73`; a later owner-sanctioned renumbering moved *different* work onto `SR-73`/`SR-74`, overwriting a **design-policy row** that had been written to `SR-74` minutes earlier.
+3. Both routing-index rows for `SR-75`/`SR-76` were dropped when that same renumbering rewrote the index table.
+
+The work itself survived each time — the artifacts were on disk and the code was merged — but the *scope record* did not, which is precisely the state the register exists to prevent. **A row that silently disappears is scope nobody can see**, the same failure family as the invisibility work being done in the same session one level up.
+
+**Why it is structural, not carelessness.** There is **no allocator anywhere in the fork** — verified, not assumed: no `max(id)`, `nextSrId`, or `SR-${…}` construction exists under `~/bmad-method-v6/tools` or `~/bmad-method-v6/custom`. The register is a markdown table with two separate row lists (a routing index and a register table) that must be kept in sync **by hand**, in a file with no locking, edited concurrently. `check-scope-register.js` validates row *shape* and never *identity*, so a duplicate id and a clobbered row both pass it silently. Compounding it: the register lives in `_bmad-output/`, which is **untracked**, so there is no git history to recover a lost row from and no diff to notice one going missing.
+
+**Target files:** `~/bmad-method-v6/custom/workflows/shared/scope-register-routing.md` (STD-SCOPEREG-001 — the contract that tells sessions to pick an id) and `~/bmad-method-v6/tools/check-scope-register.js` (which could detect, though not prevent, the damage).
+
+**Deliberately NOT designed here — this is the gap statement, not the fix.** The owner asked for it to be fixed once and deliberately, and the obvious candidates all have real costs that deserve weighing rather than a snap choice: a duplicate-id + orphaned-row check in the linter (cheap, detects only, cannot prevent); session-scoped id prefixes (prevents collision, makes ids non-sequential and harder to reference); one-row-per-file with an assembled index (kills the race outright, is a large migration and changes every consumer); tracking the register in git (restores recoverability and diffs, but `_bmad-output/` is untracked by deliberate policy and that is its own decision). **Route it through `enforcement-expert` before anyone writes code** — the detect-vs-prevent split is exactly what that skill exists to classify, and shipping the linter check alone would leave the race intact while making it *look* handled.
+
+**Cheapest interim mitigation, stated so the gap is not a blocker:** the linter can flag duplicate `SR-NN` ids and rows present in one table but not the other. That would have caught all three losses **after** the fact, which is strictly better than the current silence, and it is not a fix.
+
+**Marker:** `` SR-id-allocation ``
+
+**OWNER ROUTING, 2026-08-03 (added same day).** Mason has made the sibling half of this — an
+ownership gate — the **next piece of work**, ahead of a queued multi-surface feature push:
+
+> *"I want a gate in the workflow so a new branch/PR for a given spec cannot start unless the
+> scope/register says that spec is unowned or explicitly handed over. The exact mechanism can vary
+> (script, hook, check in your deploy path), but the outcome is: no more duplicate implementations of
+> the same spec in parallel."*
+
+**Treat these as TWO mechanisms under one design pass, not one fix.** This entry covers lost/overwritten
+ROWS (id allocation). The owner's gate covers duplicate BUILDS (spec ownership). **Unique ids would not
+have prevented either duplicate build recorded on 2026-08-03** — two sessions can pick perfectly
+distinct ids and still implement the same surface twice — and an ownership gate would not have stopped
+the row overwrites. Designing one and declaring the other handled is the trap.
+
+Project-side record, with the evidence and the owed register row:
+`~/code/cash-recovery/_bmad-output/planning-artifacts/routing-decision-collision-gate-2026-08-03.md`.
+**Design is NOT started** — owner deferred it explicitly, and it routes through `enforcement-expert`
+first.
+
 ## 2026-08-03 — worktrees symlink the MAIN checkout's node_modules, so a main checkout that is merely BEHIND silently downgrades every worktree's dependencies — and an install driven from main strips packages a worktree just added
 
 ```yaml
@@ -7646,3 +7703,483 @@ from `e.heading` and error when it is present and unequal to `e.header["id"]`. M
 judgement, same tier as every other rule in that function — and it would additionally have caught
 the original duplicate, because two entries sharing a heading id fail the comparison even when one
 of them has no yaml block at all.
+
+## FG-2026-08-03-AUTO — 1 WIP-register claim(s) written this session are gone from the register
+
+```yaml
+id: FG-2026-08-03-11
+class: coordination-loss-detected
+scope: project
+target: .claude/wip-register.yaml + .claude/hooks/claim-receipt.py
+marker: "claim-receipt.py"
+state: open
+fix: none
+delivery: n/a
+owner: mason
+see_also: "FG-2026-07-31-12 — the incident that motivated the receipts hook; this row is that hook firing as designed."
+schema_note: "yaml block retro-added 2026-08-03. The heading id was the non-conforming literal `FG-2026-08-03-AUTO` emitted by the generator; assigned the next free conforming id (-11; -10 was taken by a parallel session mid-write while this line was being typed — the same collision class this entry is about). THE GENERATOR STILL EMITS `-AUTO` and will keep producing unparseable, commit-blocking entries until it allocates a real id — that is the fix this row now needs in its own right."
+```
+
+### Incident
+
+**Logged automatically by `claim-receipt.py`, not by an agent noticing.** That is the point:
+FG-2026-07-31-12 exists because six claims were destroyed and nothing recorded it until the
+owner asked. This row is the mechanical replacement for that memory.
+
+**Session:** `44f67c3c-bcfe-488b-a9a5-389ce0fb22f2`
+**Claims present when written, absent at Stop:**
+  - `DEPLOY origin/main to Railway production — barcode candidate-choice + post-capture set`
+
+**What this does and does not establish.** The claim TEXT is gone from
+`.claude/wip-register.yaml`. It does not say who removed it, whether it was deliberate
+(an owner compaction looks identical), or whether the underlying WORK survived — claims are
+coordination metadata and the commits are the durable record. Check `git log` for the work
+before treating this as a loss of anything but the record.
+
+**Most likely mechanism, from the 07-31 case:** claims are written to the MAIN CHECKOUT so
+peers see them immediately, which means they are UNCOMMITTED, which means a concurrent
+session's checkout over the tracked path erases them. Visibility and durability are in
+tension and the doctrine only names the first.
+
+## FG-2026-08-03-08 — an MCP server that is dead at session start is indistinguishable, from inside the session, from one whose tools simply "load at session start" — and the only route back to its tools bypasses the protocol entirely
+
+```yaml
+id: FG-2026-08-03-08
+class: undiagnosable-state
+scope: project
+target: .mcp.json (cash-recovery-photo-batch) + the session-start MCP health surface
+marker: "a session can distinguish a DEAD MCP server from one that merely has not loaded yet"
+state: open
+fix: none
+delivery: n/a
+owner: mason
+schema_note: "yaml block retro-added 2026-08-03 for schema compliance (a headerless entry has no id, so it blocks EVERY session's commit unconditionally). Prose below is the author's, UNALTERED. Conservative defaults where the prose did not state a field."
+```
+
+### Incident
+
+2026-08-03, cash-recovery. All six `cash-recovery-photo-batch` tools were absent from a
+**fresh** session. The session reasoned from the true-but-irrelevant note *"MCP servers load
+at session start"* to *"ask the owner to restart"*. The owner pushed back — correctly: a fresh
+session should already have them. Root cause was project state, not session timing:
+`node_modules` existed but held **zero entries**, so every `npx tsx` entry point in the repo
+was dead and the server crashed on `ERR_MODULE_NOT_FOUND 'drizzle-orm'`. `npm ci` (lockfile
+intact) fixed it in 7s. A restart would have restarted into the identical broken state.
+
+**The structural part is what happens next.** Once the server is fixed mid-session, its tools
+stay invisible for the remainder of that session — binding happens once, at start. The owner
+then (reasonably) forbade further restart requests for this project. That leaves exactly one
+route to the tools: importing `handleRequest` from `src/mcp/server.ts` and hand-constructing
+the JSON-RPC envelopes the protocol would have sent. It works, and it is not a supported path.
+
+**Three ways that bypass is worse than it looks:**
+
+1. **It can impersonate the bug it works around.** Module resolution follows cwd, so running
+   the harness from a scratchpad directory reproduces `ERR_MODULE_NOT_FOUND 'drizzle-orm'` —
+   byte-identical to the empty-`node_modules` failure. Observed in this session; it cost a
+   re-diagnosis of an already-diagnosed problem.
+2. **`.mcp.json` env does not come with it.** The registration carries
+   `DATABASE_URL: "${DATABASE_PUBLIC_URL:-${DATABASE_URL}}"` — a property of the MCP config,
+   not of the server. The bypass inherits the session's `DATABASE_URL`
+   (`postgres.railway.internal`, unreachable from the laptop), so the first intake run failed
+   its DB write while returning protocol-level success.
+3. **The failure is soft.** `photo_batch_intake` returned `batch: {status: "unavailable",
+   reason: "Failed query: insert into raw_intake_batch ..."}` — a raw Postgres error pasted
+   into a JSON field, inside an otherwise successful response. Nothing at the protocol layer
+   says the write was lost. A skim reads "bundles returned" as "intake worked".
+
+**Compounding, same session:** the main checkout's `node_modules` was emptied **twice** in ten
+minutes (13:09 pre-existing, 13:34 — minutes after a successful `npm ci`), with no install
+process running at either observation, while several long-lived sessions (pids 19274 ~2d,
+17723 ~5d) and worktrees whose `node_modules` symlink to main were live. Second `npm ci`
+reported 342 packages vs 611 on the first. Any long-running operation in this repo can be
+killed mid-flight by a peer session, for reasons unrelated to the operation.
+
+### What this establishes
+
+The absence of a tool has two causes that look identical from inside a session — the server
+crashed, or the tools bound before a fix — and only one of them is checkable. `claude mcp list`
+distinguishes them in one line and was not consulted for the first several turns. That is the
+cheap, deterministic diagnostic and nothing currently points an agent at it.
+
+routing: MAINTENANCE for the diagnostic habit (recorded as a cash-recovery project memory,
+`mcp-tools-missing-check-deps-not-restart`, done). NEW DESIGN for anything that would make
+mid-session MCP rebinding possible, or that would harden the bypass into a sanctioned path —
+both are owner calls, neither shipped here.
+
+Related: the soft-failure and the `bundle.directory` chain gap are cash-recovery `src/mcp`
+defects, not fork defects — they route to that project's quick-spec lane and are NOT fixed here.
+
+## FG-2026-08-03-09 — the scope-register linter keys rows into a Map by id, so two sessions claiming the same SR number are silently merged and no rule can see the collision
+
+```yaml
+id: FG-2026-08-03-09
+class: detector-blind-spot
+scope: fork
+target: tools/check-scope-register.js — lintRegister(); the `byId` Map + the `add()` merge
+marker: "table fragments are counted per (id, enclosing H2 section) and a repeat WITHIN one section is reported as a DUPLICATE ID finding"
+state: open
+fix: done
+delivery: n/a
+owner: mason
+routing: maintenance — owner instruction 2026-08-03 ("lock down as a fork gap and fix it now")
+see_also: "FG-2026-08-03-05 — the ALLOCATION half of the same problem (ids assigned by max(id)+1 read-modify-write). That entry explains how two sessions come to pick the same number; THIS one is why nothing notices afterwards. Neither fixes the other: an allocator without a detector leaves every historical collision invisible, and a detector without an allocator reports collisions it cannot prevent."
+```
+
+### Incident
+
+**Four id collisions in ONE day** (cash-recovery, 2026-08-03), each costing real rework:
+
+1. **SR-69** — a row filed in the morning was overwritten by a parallel session writing its own SR-69.
+   The loss was verified, not assumed (grep for the row's distinctive evidence returned only unrelated
+   mentions), and it was re-filed as **SR-73**.
+2. **SR-73** — later reassigned by another session to a different item; the original re-filed again as
+   **SR-74**.
+3. **SR-77** — taken by a design-policy row while a quick-spec, a commit message and a **merged PR**
+   already cited SR-77 for the custody-writer fix.
+4. And the register still holds **SR-49**, **SR-50** and **SR-12** duplicated from 2026-07-28.
+
+**Why nothing caught any of it.** `lintRegister()` merges a row's fragments with
+`byId.set(id, (byId.get(id) || '') + '\n' + frag)`. The merge is CORRECT and must stay — a row's
+information legitimately spans a routing-index table line, a main-table line and a narrative block.
+But the container is a **Map keyed on the id**, so two different rows claiming `SR-49` are
+concatenated into one body *before any check runs*. Every downstream rule then inspects a single
+Frankenstein row and reports it as fine. **The data structure erased the evidence.**
+
+The sharpest part: this file's own header names *"THE FAILURE THIS EXISTS FOR (2026-07-28,
+cash-recovery SR-49/SR-50)"* — and on the very first run of the new check, **both of those ids still
+carry two different items apiece, with different routes**. The tool documented the incident and was
+structurally incapable of seeing the wreckage it left behind.
+
+**The discriminator, and the false positive it is built to avoid.** "The id appears twice" is NOT a
+collision: an id appears once in the routing-index table and once in the main table BY DESIGN — **55
+ids do exactly that** in the live register — so flagging repeats outright would fire on nearly every
+correctly-recorded row and get the check switched off (the indiscriminate-detector anti-pattern).
+What is never legitimate is the same id twice in the SAME section. Fragments are therefore counted
+per `(id, enclosing H2 section)`.
+
+**Verified before shipping, not after.** The rule was simulated against the live register first:
+**3 real collisions found (SR-49, SR-50, SR-12), 0 false positives across the 55 ids that legitimately
+span two sections.** Then applied and re-run through the real tool — same three, `exit 0`.
+
+### Enforcement tier, honestly
+
+**DETERMINISTIC for the question it asks** — the script decides, mechanically, and cannot be talked
+out of it. But the tool is **WARN-ONLY and armed in no gate** (`process.exit(STRICT && fails.length)`,
+and no caller passes `--strict`; `package.json` runs it bare). So this **reports** collisions; it does
+not **prevent** them. Preventing one needs an allocator — a "next free SR id" helper, or an id the
+harness stamps rather than the agent choosing — which is a **design change and is NOT taken here**.
+
+**KNOWN LIMIT, deliberate.** This sees collisions INSIDE the register. It cannot see an id cited by a
+commit, spec or merged PR that the register later reassigned — that citation lives in git history,
+which no linter here reads, and a squash-merge makes it uncorrectable. Hence the finding's own advice:
+renumber the row, never the history, and move the row that ISN'T already cited.
+
+**Distribution:** none owed. `tools/` is fork-local (`FORK_LOCAL_PREFIXES`) — consumed from the fork,
+no project copy to sync.
+
+---
+
+## FG-2026-08-03-10 — a cwd reset silently invalidates every verification command in a worktree session, and an invalid run is indistinguishable from a real green
+
+```yaml
+id: FG-2026-08-03-10
+class: silent-environment-drift
+scope: fork
+target: custom/workflows/design/design-implement/steps/step-06 + custom/workflows/4-implementation/quick-dev/steps/step-05 — every emitted bare `npx tsc --noEmit` / `npm run test` / `npx eslint` recipe
+marker: "emitted verification commands are SELF-LOCATING (cd to the worktree root, or resolve it) rather than bare, so a cwd reset cannot silently redirect them at the main checkout"
+state: open
+fix: none
+delivery: n/a
+owner: mason
+date: 2026-08-03
+project: cash-recovery (worktree session, `design-implement` apply on the Intake Pilot console)
+priority: medium
+routing: MAINTENANCE for the recipe fix (make emitted verification commands self-locating).
+         NEW DESIGN for any deterministic detector — shape recorded below, deliberately NOT
+         shipped; it needs an owner call and is not obviously worth its false-positive cost.
+schema_note: "yaml FENCE + the required class/scope/marker/state/owner fields retro-added 2026-08-03 by another session. The author's fields and prose are UNALTERED — only additive. Reason: an entry whose header is unfenced parses as having NO id, and an unattributable finding blocks EVERY session's commit unconditionally (not just its author's), so this one entry was holding up the register for everyone."
+```
+
+### Incident
+
+**What fought us.** Mid-session a system message printed `Shell cwd was reset to
+/Users/masonwood/code/cash-recovery`. The Bash tool documents that "working directory persists
+between calls", so a session that ran `cd <worktree> && …` once reasonably treats later bare
+commands as still being in that worktree. They were not. `npx tsc --noEmit`, `npx eslint`,
+`npx vitest run` and a `git stash` / `git stash pop` all executed in the MAIN CHECKOUT — which in
+this project is parked on a detached HEAD ~10 commits behind `origin/main` and contained none of
+the session's edits.
+
+**Why this is structural, not a slip.** The failure has no tell:
+
+1. **A green is a green.** `tsc` exited 0, eslint exited 0, vitest reported `3369 passed`. Every one
+   of those is a true statement about a tree nobody was working on. No output names the directory it
+   ran in.
+2. **The count discrepancy was the only signal, and it was ambiguous.** 3369 against the handoff's
+   stated 3409 read exactly like "the brief's baseline is a little stale" — the benign reading, and
+   in this case the likelier one, since a handoff number written against a different base commit is
+   routine. Re-running in the worktree gave 3408. Had the two trees happened to agree, an invalid
+   verification would have been reported as fact.
+3. **`git stash` is the dangerous member of the set.** It ran against a shared main checkout holding
+   another concern's dirty coordination files (`.claude/wip-register.yaml`,
+   `_bmad-output/planning-artifacts/scope-register.md`). It popped cleanly, so no harm — but that is
+   precisely the "never `git stash` while another session's edits are dirty in this shared checkout"
+   hazard cash-recovery's CLAUDE.md already names, reached by accident rather than by a decision
+   anyone made.
+4. **Worktrees are MANDATORY in this project**, so every editing session is exposed. Combined with
+   the same-day finding that a worktree's `node_modules` symlinks to main's, "which tree am I in" is
+   load-bearing for both dependency state and verification truth — and is surfaced by neither.
+
+**What this establishes.** "The command succeeded" and "the command ran against my work" are two
+different claims, and the fork's verification steps only ever check the first. In a repo where the
+harness may relocate the shell between calls, a verification recipe that does not pin its own
+working directory is not a verification recipe.
+
+**MAINTENANCE fix — in lane, NOT YET APPLIED.** Flagged rather than half-done at the end of a session
+that had already delivered two PRs and an owner-ruled domain decision; it is a small mechanical edit
+and should be taken in the next fork-maintenance pass. Make emitted recipes self-locating rather than
+positional: `cd "$(git rev-parse --show-toplevel)" && <cmd>`. Correct in a worktree AND in a main
+checkout, needs no branch, costs nothing. Honest tier: PROBABILISTIC — it makes the *emitted* recipe
+safe; it cannot stop a session hand-typing a bare command.
+
+**NEW DESIGN — proposed, not shipped.** A deterministic tier would be a PreToolUse Bash check firing
+when a build/test/git-mutating command resolves to the MAIN checkout while the session has an active
+worktree claim. Recording the shape so nobody re-derives it, with why it was not taken: the matcher
+needs a narrow command allowlist (`tsc` / `vitest` / `eslint` / `stash` / `commit`) or it becomes the
+indiscriminate-detector anti-pattern that gets the whole hook file switched off, and "this session
+has a worktree" is not a fact any hook can currently read. The cheaper honest move may simply be for
+the cwd-reset message to say what it costs — a harness change, not a fork one.
+
+**Evidence.** All four checks re-run in the worktree with an explicit `cd`: `tsc` exit 0, eslint exit
+0, `3408 passed / 264 files`, `check-reachability` clean — and the pre-change baseline measured in
+the SAME tree was also 3408, i.e. a 0 delta, which is the number that should have been reported all
+along. Work delivered as PR #708 (`b6e0144`). Main checkout confirmed byte-identical to session start
+after the misplaced stash/pop.
+
+**Filed as `-10`, not `-09`.** `-09` was claimed by a concurrent session whose edit was still
+uncommitted; the collision-risk hook surfaced it before the write. Noting it because today's file
+already carries a duplicated `-05` and no `-04`/`-06` — the exact `max(id)+1` race that
+`FG-2026-08-03-05` (the scope-register one) and `FG-2026-08-03-07` describe, now demonstrated in
+this file too.
+
+---
+
+## FG-2026-08-03-12 — `design-handoff` step-04 §0 halts on `status: active` with no liveness test, so an abandoned claim deadlocks the workflow permanently
+
+```yaml
+id: FG-2026-08-03-12
+class: contract-dimension-gap
+scope: fork
+target: custom/workflows/design/design-handoff/steps/step-04-deliver.md §0 — sibling home custom/workflows/shared/parallel-sessions.md §C4 (Dead-claim detection)
+marker: "step-04 §0 applies a LIVENESS test before halting on an active claim, per parallel-sessions.md §C4"
+state: open
+fix: none
+delivery: n/a
+owner: mason
+date: 2026-08-03
+project: cash-recovery
+priority: medium
+routing: maintenance — coherence repair (applies an EXISTING fork rule to a step that omitted it; no new rule)
+schema_note: "yaml FENCE + the required id/scope/marker/state/owner fields retro-added 2026-08-03 by a later session. The author's fields and prose are UNALTERED — only additive. Same reason as FG-2026-08-03-10: an unfenced header parses as having NO id, and that blocks EVERY session's commit, not just its author's."
+```
+
+### Incident
+
+**Observed 2026-08-03**, on a `design-handoff` material revision of `/receive` in cash-recovery.
+
+step-04 §0 (Live-Apply Check) said: read the register, and if an ACTIVE `design-implement` /
+`design-ingest` / apply claim on the surface is held by another `claimed_by_session_id`, **HALT**. It
+gave that instruction with **no liveness qualifier at all** — `status: active` was treated as
+dispositive.
+
+The register held `/receive clerk single-touch station — design-implement, SECOND session`,
+`status: active`, `claimed_at: 2026-07-20T16:02:00Z`. Read literally, step-04 §0 halts. But the claim
+was **abandoned, not live**, on every available signal:
+
+- its branch `feat/receive-station-implement` had not moved off `272b22e` in **14 days**;
+- it targeted the **superseded v1** manifest (`Process Station Single-Touch.dc.html`, 13 frames);
+- its own note says *"If a5d818bf ships first, THIS branch is the one to bin"* — a5d818bf shipped (#352);
+- the successor v2 apply chain has since run to exhaustion and been gated (#528);
+- no manifest current-editor marker was held on any `clerk-receive` manifest.
+
+**Why this is structural, not a one-off.** Nothing in the protocol ever *releases* an abandoned claim —
+release is voluntary and a dead session cannot perform it — so `active` rows accumulate monotonically.
+A halt keyed on `active` alone therefore **deadlocks `design-handoff` permanently on any surface that
+was ever claimed**, and `/receive` alone carries ~18 historical apply claims. That is a stuck ladder,
+not a safety property. Worse, the resulting behaviour is the one the register most needs to avoid: an
+instruction that always fires trains sessions to stop reading the register at all, which is exactly how
+the five same-day collisions of 2026-07-20 became possible.
+
+**The rule already existed and was not reached.** `shared/parallel-sessions.md` §C4 owns dead-claim
+detection for the fork — three liveness signals (claiming worktree/branch still exists · holding
+process still running · recent `at` **and** evidence of progress), an explicit zombie shape, and a
+conservatism rule for genuine ambiguity. step-04 §0 simply never pointed at it. Two parts of one system
+disagreeing about the same question, with the blocking one carrying no escape.
+
+**Fix applied in this pass (fork-local).** step-04 §0 now resolves its ACTIVE check *through* §C4
+rather than treating `active` as dispositive, with a three-row mapping of §C4's signals onto the
+apply-claim shape (branch advanced since `claimed_at` · manifest current-editor marker held · within
+the freshness window and the targeted manifest not superseded / successor chain not merged). Any signal
+live ⇒ HALT unchanged. §C4's conservatism rule is carried explicitly. Proceeding past a
+dead-on-every-signal claim now *requires* naming the row, its age and each signal checked in the
+close-out, and recommends the owner release it. Unparseable / missing / future-dated `claimed_at` is
+UNKNOWN ⇒ LIVE ⇒ halt. **Reference-not-restate:** §C4's test is pointed at, not copied, so the two
+cannot drift.
+
+**Evidence for the fix (stated, not implied).** The repair is prose in a step file — there is no
+runnable gate to execute, so it is **UNVERIFIED BY EXECUTION** and verified only by reading: §C4 exists
+at `custom/workflows/shared/parallel-sessions.md:161` with the three signals and the conservatism rule
+quoted above, and the new §0 text cites that section rather than restating it. The live case that
+motivated it was worked by hand this session and is recorded in the cash-recovery register's
+`design-handoff:clerk-receive` release note with the same five signals.
+
+**Distribution: OWED, NOT DONE.** Fork-local only. Per STATUS.md's owner ruling (2026-07-26) no
+`custom/` change gets its own sync window — this batches with the held cockpit/fan-out queue and rides
+that single decision. Until then it fires in **zero** projects.
+
+**Risk of recurrence elsewhere: YES.** Any workflow step that halts on a register claim without routing
+through §C4 has the same defect. Candidates to check in the same pass as the fan-out: `design-ingest`
+step-01, `design-implement` step-01 SHARED.1a, and any `--apply`-class precondition that reads
+`status: active` directly.
+
+---
+
+## FG-2026-08-03-13 — the Bash edit-guard does not expand `~` in a leading `cd`, so an allowlisted fork edit is denied
+
+```yaml
+id: FG-2026-08-03-13
+class: guard-resolution-defect
+scope: project
+target: project:cash-recovery/.claude/hooks/bash_edit_guard.py (per-project; the cash-recovery copy is authoritative) + its suite project:cash-recovery/.claude/hooks/test_bash_edit_guard.py
+marker: "a leading `cd ~/…` expands to the real home during base resolution, with golden cases in both directions"
+state: open
+fix: none
+delivery: n/a
+owner: mason
+date: 2026-08-03
+project: cash-recovery
+priority: low
+routing: maintenance — a false positive in an existing, already-fixed defect family
+supersede_note: "SEE FG-2026-08-03-14 (logged later the same day, verified by guard-health-check.sh): bash_edit_guard.py is NOT WIRED in cash-recovery — settings.local.json still invokes the legacy inline regex blob. So the deny observed here did NOT come from this target file, and tilde-expansion may already be correct in the reviewed guard. RE-TEST AFTER THE REWIRE before spending work here."
+schema_note: "yaml FENCE + the required id/scope/marker/state/owner fields retro-added 2026-08-03 by a later session. The author's fields and prose are UNALTERED — only additive."
+```
+
+**Observed 2026-08-03**, immediately after the entry above — while trying to log it.
+
+`cd ~/bmad-method-v6 && cat >> docs/fork-gaps.md <<'EOF' …` was **DENIED** with the parallel-sessions
+"call EnterWorktree" message. The fork is explicitly hook-allowlisted (`/Users/*/bmad-method-v6/`,
+CLAUDE.md § Cross-Repo Edits), and the identical write through the `Edit` tool passed — the same
+Bash-vs-Edit disagreement `FG-2026-07-25-02` fixed for four other resolution cases.
+
+**The specific gap.** The 2026-07-26 pass taught the guard to honour a **leading `cd <dir> &&`** when
+re-basing a relative target — but only for a **literal** path. `~` is a shell expansion, not a literal,
+so `cd ~/bmad-method-v6` leaves the base unresolved and the relative `docs/fork-gaps.md` re-bases onto
+`CLAUDE_PROJECT_DIR` instead. The guard then judges `<cash-recovery>/docs/fork-gaps.md` — **a path the
+command never touches** — which is the same "verdict about a path that does not exist" shape as the
+three defects already fixed in that family, arriving through a case the fix did not cover. `$HOME` and
+`${HOME}` are presumably the same hole; `$VAR`-assigned-to-a-literal was covered, but neither `~` nor
+an env var inherited from the environment was.
+
+**Why it matters beyond the annoyance.** The sanctioned route becomes the bypass: denied on Bash, the
+agent reaches for `Edit`, which succeeds — so the guard buys nothing on this path and costs a tool
+swap. That is precisely the reasoning behind the 2026-07-26 `ask`-for-low-risk-text ruling, and this
+case slips it because the deny fires before the low-risk-text classification can help.
+
+**Proposed fix (NOT applied — the guard is per-project code with a golden suite, and this session was a
+design-handoff, not a guard pass).** Expand a leading `~` / `~/` and `$HOME` / `${HOME}` to the real
+home directory during `cd`-base resolution, exactly as literal paths already are — **fail closed on any
+other expansion** (command substitution, globs, unset vars), per the existing rule. Add golden cases in
+both directions: `cd ~/bmad-method-v6 && cat >> docs/x.md` must be ALLOWED (fork allowlist reached), and
+`cd ~/code/cash-recovery && cat >> src/db/schema.ts` must still be DENIED (a tilde must not launder a
+protected path).
+
+**Evidence: UNVERIFIED BY EXECUTION.** The deny was observed live this session; the cause above is read
+off the documented behaviour table in CLAUDE.md § "Edit guard" rather than from a run of
+`test_bash_edit_guard.py`. Confirm against the suite before implementing.
+
+**Distribution.** `bash_edit_guard.py` is per-project and does **not** ride the workflow sync; a fix
+lands in cash-recovery only unless deliberately fanned out. Related open entries in the same family:
+`FG-2026-07-16-03`, `-18-01`, `-21-02`, `-25-02`.
+
+## FG-2026-08-03-14 — the reviewed Bash edit-guard is still NOT wired in cash-recovery, and three artifacts say it is
+
+```yaml
+id: FG-2026-08-03-14
+class: enforcement
+scope: project
+target: project:cash-recovery/.claude/settings.local.json (the wiring) + project:cash-recovery/CLAUDE.md §§ "Worktree Enforcement Hooks" / "Edit guard" (the false claim). Fork-side: none — this is project-local wiring, which is exactly why it rots unseen.
+marker: "`bash_edit_guard.py` present in cash-recovery/.claude/settings.local.json AND the legacy inline regex blob absent from it — both asserted by guard-health-check.sh"
+state: open
+fix: none
+delivery: n/a
+owner: mason
+date: 2026-08-03
+project: cash-recovery (live /receive incident session)
+priority: medium
+routing: MAINTENANCE for both halves — re-point the PreToolUse Bash matcher at the reviewed
+         guard, and wire guard-health-check.sh into SessionStart warn-only. The rewire was
+         deliberately NOT applied here on BLAST RADIUS (27 live sessions share that gate
+         mid-flight), not on lane; it wants a quiet moment.
+```
+
+**What fought us.** A live-incident session (a clerk frozen at `/receive` on a real parcel) tried to
+write its WIP claim with `cat >> .claude/wip-register.yaml` **from the main checkout** and was
+hard-blocked: *"BLOCKED: 26 parallel claude sessions detected and you are NOT in a worktree… Call
+EnterWorktree"*. The identical target then passed via the Edit tool. That is the already-logged
+Bash-vs-Edit split (`FG-2026-07-25-02`; register carve-out ask at `FG-2026-07-16-03` (d)) — the **new**
+fact is *why* it still happens.
+
+**Second hit, same session, ~40 minutes later:** appending **this entry** to
+`~/bmad-method-v6/docs/fork-gaps.md` was blocked by the same guard — a **fork path CLAUDE.md states is
+explicitly allowlisted** (*"Fork edits (`~/bmad-method-v6/`) are explicitly allowlisted by the hook — you
+can Edit/Write fork files directly"*). So the guard currently blocks the act of logging the gap about
+the guard. Both writes had to route through the Edit tool.
+
+**The new fact, verified by execution.** `bash .claude/hooks/guard-health-check.sh`, cash-recovery,
+2026-08-03:
+
+```
+✗ settings.local.json does NOT invoke bash_edit_guard.py — the legacy inline regex is
+    probably still live. This is the exact 2026-07-26 finding: green suite, zero wiring.
+✗ the LEGACY regex blob is still present in settings.local.json — it is superseded and
+    must not run anywhere new (CLAUDE.md § Worktree Enforcement Hooks).
+✓ ALLOW probe / ✓ DENY probe / ✓ override probe
+```
+
+The reviewed guard — 47 golden cases, four resolution defects fixed, the `ask`-for-low-risk-text ruling,
+the `BMAD_ALLOW_MAIN_EDIT` audit log — is running **nowhere**. The legacy blob is, and it has none of
+that: no wip-register carve-out, no fork-path allowlist that actually holds, no `cd`-base resolution, no
+override logging, no low-risk-text `ask`. Every documented improvement since 2026-07-25 is inert here.
+
+**Why this is structural, not a one-off.** `CLAUDE.md` asserts the opposite in three places — *"Now
+genuinely wired (`PreToolUse` Bash -> `bash_edit_guard.py`)"*, *"verified with LIVE probes rather than
+the suite alone"*, and a correction paragraph that exists **specifically to record that this same guard
+once sat unwired for a day while artifacts asserted it was live**. The paragraph documenting the failure
+has been falsified by a recurrence of the identical failure. The named shape — *authored, measured,
+documented as live, deployed to zero* — recurring **on the artifact that names it** is the strongest
+available argument that a prose assertion of wiring is worthless: only the health check is evidence.
+
+The root cause is distribution, and CLAUDE.md states it itself: `settings.local.json` is gitignored and
+machine-local, so the wiring has no history, no diff against a source of truth, and nothing that notices
+a revert. The 2026-07-26 owner ruling (*track the GUARD, never the SETTINGS*) is right, and is precisely
+what leaves the wiring untracked — the guard file is version-controlled and the one line deciding
+whether it ever runs is not.
+
+**Proposed fix — two parts; the first is deliberately not applied.**
+
+1. Re-point the `PreToolUse` Bash matcher at `bash_edit_guard.py` and drop the legacy blob.
+   **NOT DONE THIS SESSION:** 27 parallel sessions were live, and this edit changes the gate every one
+   of their Bash calls flows through, mid-flight. That is the *"overwriting / disturbing another
+   session's work"* stop — blast radius, not a lane question. It wants a quiet moment and a
+   `guard-health-check.sh` run either side.
+2. The durable half: make the wiring **self-checking rather than self-asserting** — run
+   `guard-health-check.sh` from `SessionStart`, warn-only, so a reverted or never-applied wiring
+   announces itself at session start instead of surfacing as a blocked write weeks later. It is the
+   only tier that can catch this class: the failure is the *absence of a config line*, which no
+   PreToolUse hook can observe, because the missing hook is the thing that would have observed it.
+
+**Related open entries in the same family:** `FG-2026-07-16-03`, `-18-01`, `-21-02`, `-25-02`, and the
+tilde-resolution entry immediately above. All are downstream symptoms of this one wiring line, and
+several may be **already fixed in `bash_edit_guard.py` and simply never running** — re-test them
+*after* the rewire rather than investigating them before it.
