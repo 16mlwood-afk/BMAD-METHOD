@@ -317,7 +317,35 @@ Rules:
 
 **Why this is a rule.** `{delta_count}` is the one number in the grid that is not itself evidence — everything else is a row with two values beside it. And step-04 §5 requires `A + D + X == {delta_count}`, so a low count does not merely misreport: it **licenses a short apply ledger**, and the run then reports "41/41 applied" over a 74-row grid. That is exactly the "shipping a count like 47/47 while the grid under-enumerated" failure step-04 exists to prevent, arriving by a route step-04 cannot see — not a skipped apply, but a **denominator that was already wrong when the apply started.** Observed 2026-08-03 (cash-recovery `/dashboard`, owner four-ledger dashboard): summary said 41, tables carried 74 — a 45% under-count, caught only because the apply ledger's arithmetic forced a re-enumeration. Nothing in step-03 had asked for one.
 
-**Enforcement honesty:** PROBABILISTIC — prose telling you to derive rather than estimate. Nothing parses the artifact's tables and compares them to its own frontmatter. The deterministic tier is a small linter over `design-implement-grid-*.md` (count non-`✓` body cells, assert `delta_count` matches); **proposed, not built**, and it belongs to the per-project checklist lane rather than this file.
+**Then RUN THE CHECKER — do not trust your own re-count either:**
+
+```bash
+node ~/bmad-method-v6/tools/check-design-implement-grid.js --grid {artifact_path}
+```
+
+It walks every Delta-columned table, excludes the routed rows by their own named tokens
+(`CONTENT-LANE-UNVERIFIED`, `CEDED`, `FRAME NOT DRAWN`, …), adds the §5b logged deviations, and
+compares the result against `delta_count`, the tier table, and step-04's `A + D + X`. Same posture
+as its sibling `check-ingest-manifest.js`: it **never writes the number** — you declare it and the
+tool disagrees, because two independent derivations that must match is the only thing that catches
+this. Re-run it after step-04 writes the ledger.
+
+**A hand re-count is not the fix — the checker is.** On the run that produced this rule, the first
+figure (41, estimated) was corrected by hand to 74 — and 74 was *also* wrong, by 16 rows, because
+the hand-count skipped both Section-coverage blocks. A careful re-count made immediately after being
+burned by a careless one still missed a sixth of the grid. The derived figure was 93.
+
+**Notation matters, because the checker reads it literally.** A row you consider resolved must carry
+a clean `✓` in its Delta cell. Prose like `present — swept below` or `acceptable once S1 lands — ✓`
+reads as an open delta and inflates the count. If the row is closed, close it.
+
+**Enforcement honesty:** now **DETERMINISTIC for the arithmetic** — the checker decides, and
+`--strict` exits non-zero. It remains PROBABILISTIC that anyone RUNS it: it is a documented command,
+not a hook (a grid artifact is written by an ordinary `Write`, and gating every markdown write on a
+grid-shaped parse is the indiscriminate-detector anti-pattern). And a green run means **the artifact
+does not contradict itself — never that the grid enumerated everything the design contains.** That
+is §2f/§2f-bis's job, and no arithmetic can check it: an under-enumerated grid is perfectly
+self-consistent.
 
 ### 4. Classify Deltas by Severity
 
