@@ -174,6 +174,10 @@ The named gate `design-implement` adds (step-03): **every (frame, section) row i
 
 This is deliberately weaker than the §5 consumer *refuse* contract: a cataloguer that pauses for review only needs to tell the truth loudly, not block.
 
+**The stamp is resolved ONCE, for the manifest being written — which leaves one path that defeats it.** A re-ingest that ARCHIVES the prior manifest under a discriminated filename (rather than overwriting it) produces a file whose `supersede_status` says `active` while the brief behind it is superseded, because nothing re-resolves an existing manifest's stamp. A later session that opens the archived file reads `active` and `design-implement` proceeds normally — the exact silent apply this stamp exists to prevent. So the archiving run MUST restamp it: `supersede_status: superseded`, `superseded_by: <successor BRIEF filename>` (per the field table above — a brief, never the successor manifest), plus `successor_manifest:` naming the run that archived it. Procedure and the accompanying inbound-reference report: `steps/step-01-frame-inventory.md` § "Restamp the archived manifest".
+
+**An archived manifest is not inert.** It remains the only provenance for rows already applied from it, so it is retained, not deleted — and its applied rows do **not** transfer to the successor grid when `bundle_shape` differs (`legacy_jsx` vs `dc_html` catalogue different documents). State the transfer verdict on the archived file; rows that look transferable and are not are how a superseded design gets re-applied under a green grid.
+
 ### Multi-writer contract — who may write this file, when, and what a second writer must do
 
 **The manifest is a SHARED, multi-writer artifact, and multi-writer is its DESIGNED operating mode** — the resumable-apply rule exists precisely because a large surface needs many passes across many sessions. This schema defines the artifact's *fields*; the authorship rules are in **`docs/manifest-contract.md`** (fork docs) and are binding on every writer. The short form, because the silence here is what let two sessions each believe they were the only writer:
