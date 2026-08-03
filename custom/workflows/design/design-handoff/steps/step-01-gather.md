@@ -396,6 +396,72 @@ This pass produces **no new frames** — it is a cross-cutting page-shell viewpo
 
 **§ Enforcement tier (honest — do not overclaim).** Mechanisms 1–5 here are **PROBABILISTIC** (workflow prose the model executes; they ship via the fork sync). The **DETERMINISTIC** companion is a per-project CI/pre-commit validator on the emitted brief artifact (surface_class present · six fields complete · consistent with `design-policy.md §8` · bench-class not mobile-marked) — it is code, distributed on the separate per-project hooks/CI track, and does NOT ship via the workflow sync. Authoring this pass does not deploy a hard gate; the validator is the hard gate.
 
+### 3g. Ledger-archetype pass — is this a LEDGER, and which view (conditional pre-filter, every page)
+
+**Ask on any surface where `{is_finance_surface}` is true, OR whose rows are quantity/stock MOVEMENTS
+(inventory in/out, receipts/issues, adjustments) even with no money on the page.** Finance-shaped is the
+PRE-FILTER for asking the question — it is **not** the answer: a ledger need not carry money (quantity
+movements accumulate the same way), and most finance surfaces are plain worklists. Skip entirely on a
+surface with neither.
+
+**The archetype test (the ONLY test — apply it to what the rows ARE, never to the route's name):** a
+surface is a ledger when its rows are **movements over time on an account** AND a column is **meant to be
+summed or accumulated**. A table that merely sorts by a date is a worklist. A route called `/lineage`,
+`/ledger` or `/register` is *naming*, not evidence — cash-recovery's `/lineage` is called a ledger in its
+own code header and in its policy class name, and is not one (identity links, nothing accumulates).
+
+**1. Set `{is_ledger_surface}` and `{ledger_view}` as a STRUCTURED VALUE, never a yes/no.** Emit exactly
+one of three:
+
+| `{ledger_view}` | When | Sort |
+|---|---|---|
+| `not-a-ledger` | rows are not movements, or no column accumulates | per the project's default (§F most-recent-first) |
+| `register` | movements over time, **no** running balance shown | most-recent-first — the default; no exception applies |
+| `running-balance` | movements over time **with** a cumulative column | **oldest-first (date-ascending)** — the cumulative only builds correctly reading DOWN |
+
+`not-a-ledger` is a **first-class, legal, common answer** — it is the expected value on most finance
+surfaces and is never a failure. Do NOT phrase this to yourself as *"is this a ledger?"* and answer yes/no:
+a challenge-shaped self-question produces capitulation rather than judgement. Apply the test, emit the value.
+
+**2. Resolve whether a ledger ARCHETYPE exists in this project's policy chain — two reads, no project list.**
+Set `{ledger_archetype_policy_source}` to the file that defines it, or empty:
+
+```
+# i. the project policy itself (you have already read it at §1)
+grep -nE '^(##+ )?.*(Ledger (&|and) register|Ledger surfaces)' {project-root}/docs/design-policy.md
+# ii. the overlay it NAMES as its parent — read the `Inherits`/`inherits:` line, follow it, and check
+#     that file's frontmatter for `declares_archetypes:` (authoritative) or its own ledger section
+grep -nE 'declares_archetypes|^## §M\.' <the-overlay-path-the-policy-names>
+```
+
+**Key on what the policy DECLARES, never on a hardcoded family or project list** — a third project that
+starts inheriting the overlay is then picked up the day it does, with no edit here. Prefer the frontmatter
+`declares_archetypes:` marker over heading-text matching; heading text drifts and a project's own section
+name is project-specific (cash-recovery's is `§3a`, not `§M`).
+
+**3. Branch on what resolved:**
+- **An archetype resolved AND `{ledger_view}` ≠ `not-a-ledger`** → the view declaration is **REQUIRED** in
+  the brief (rendered at §2d; gate class **(g)** in step-03). Read that policy section and carry its
+  concrete rules into §2d verbatim — do not paraphrase them from memory.
+- **An archetype resolved AND `{ledger_view}` = `not-a-ledger`** → render §2d with the classification only.
+  One line. This is the common case and it is cheap on purpose.
+- **NO archetype resolved** → set `{ledger_view}` anyway (the classification is true regardless of which
+  policy a project inherits) and **record an Open Question** — *"no ledger archetype in this project's
+  design-policy chain; the view is classified but no archetype rules exist to apply"* — then proceed. **Do
+  NOT fabricate ledger rules, and do NOT import another project's §M text.** Same discipline as the missing
+  §8 viewport policy at §3f: record it, never invent it. A brief field whose rules no consumer defines is a
+  reader with no writer — the exact shape the invisibility policy exists to catch.
+
+**§ Enforcement tier (honest — do not overclaim).** This pass is **PROBABILISTIC**: it is workflow prose
+the model executes, and it ships via the fork sync. Gate class (g) in step-03 is a workflow halt (tier 3),
+the same tier as classes (e)/(f). **What cannot be enforced at all: whether the rendered comp obeys the
+archetype's rules — a comp is not a tool call, so no hook can block one**, the identical ceiling to the
+canonical-viewport passes. The strongest additional tier is the `design-review-pr` brief check, which reads
+TEXT and can only ever confirm the brief SAID the right thing. A commit-time validator on the emitted brief
+is **deliberately NOT proposed here** — the existing brief gate documents its own blindness to NEW briefs
+in a repo whose artifacts dir is gitignored, and duplicating that placement would ship a check that reports
+green from seeing nothing.
+
 ### 4. Capture Feature Purpose
 
 Write `{feature_purpose}`:

@@ -7,6 +7,12 @@ created: 2026-06-17
 last_updated: 2026-06-28
 change_log:
   - v2 (2026-06-28): Promoted two inbound-flow §15/§17 sections into the family floor in source-agnostic form (both tagged "shared product-family value → propagate" in inbound-flow's own change log). **(1) New §M — Ledger & register surfaces.** The running-record archetype (per-account/per-currency running balance or none; oldest-first running-balance exception to §F; money direction by two-column / `Dr`–`Cr`, never colour alone; multi-currency native column carries no total; append-only §J-linked corrections; `0.00` vs `—` honesty). **(2) Extended §K** with the net (VAT-exclusive) per-unit derivation-provenance depth — net shown directly + per unit, the `from source` / `derived −{rate}%` (names rate + shows the gross) / `no VAT line` tags, and the never-fabricate-a-net boundary — plus four new §K hard failures. Project exemplars (named ledger surfaces, sourcing VAT lanes, reference components) stay tier-3 residue (§Z). Inheriting projects (cash-recovery, accounting-tools) pick both up on next sync with no per-project edit.
+declares_archetypes:
+  # Machine-readable declaration of the surface ARCHETYPES this overlay defines rules for.
+  # design-handoff step-01 §3g keys the ledger view-declaration requirement on THIS field —
+  # never on a hardcoded family or project list — so any project that starts inheriting this
+  # overlay is picked up the day it does, with no edit to the workflow.
+  - ledger        # §M. Ledger & register surfaces (running records)
 inherited_by:
   - inbound-flow        # Amazon FBA inbound & inventory operations
   - accounting-tools    # VAT / accounting tool

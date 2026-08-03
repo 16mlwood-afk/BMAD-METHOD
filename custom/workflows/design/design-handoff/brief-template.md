@@ -236,7 +236,49 @@ or as workflow questions):**
 
 **Terminology — use consistently:** {finance_terminology}
 
+
 ---
+{endif}
+
+{if {ledger_view}}
+## 2d. Ledger archetype — which view this is
+
+**This surface is: `{ledger_view}`** — one of `not-a-ledger` · `register` · `running-balance`.
+
+*The archetype test that produced it: are the rows **movements over time on an account**, and is a column
+**meant to be summed**? A table that merely sorts by a date is a worklist, and a route's NAME is not evidence.*
+
+{if {ledger_archetype_policy_source}}
+Archetype rules are defined in **`{ledger_archetype_policy_source}`** and apply to this surface in full.
+Read that section — it is the source of truth; the notes below are the shape, not a substitute.
+
+{if ledger_view == "running-balance"}
+- **Sort: OLDEST-FIRST (date-ascending).** A cumulative column only builds correctly reading DOWN the page.
+  This is the one sanctioned exception to a most-recent-first default — state it on the artifact.
+- **The running balance is per-account, per-currency, chronological — or it is not shown.** Where the active
+  sort or a mixed account/currency would make it wrong, show the honest not-applicable token, never a
+  confidently-wrong number.
+{endif}
+{if ledger_view == "register"}
+- **Sort: MOST-RECENT-FIRST**, and **no running balance is shown, by design.** Say so on the artifact —
+  a suppressed balance that is merely absent reads as an oversight. Do not add a cumulative column without
+  re-testing it against the per-account / per-currency rule.
+{endif}
+
+- **Money and balance columns:** right-aligned, monospace, `tabular-nums`, fixed decimals — the decimal
+  points must form ONE vertical rule. That alignment is what makes it read as a ledger and not a grid.
+- **A true zero and a not-applicable are DIFFERENT FACTS** and must render differently. A blank that could
+  mean either is dishonest.
+- **Corrections are appended, never applied in place.** A wrong line is corrected by a NEW entry that points
+  back at what it corrects; the design must have somewhere for that linkage to be seen. A correction that
+  does not point back is an orphaned figure.
+- **Direction is never carried by colour alone** — two columns, or Dr/Cr, or parentheses. Colour-only fails
+  the status system and WCAG 1.4.1.
+{else}
+**No ledger archetype is defined in this project's design-policy chain.** The classification above is
+recorded because it is true regardless of policy; **no archetype rules are asserted here**, and none have
+been imported from another project. See Open Questions.
+{endif}
 {endif}
 
 {if {is_live_process_surface}}

@@ -64,6 +64,28 @@ Set in step-01 §3b only when the surface is finance-shaped; empty/absent otherw
 - `{finance_must_not_infer}` — accounting-truth acceptance constraints (no invented figures, account mappings, or valuation methods; missing → mark, never impute).
 - The pass's `must_preserve_capabilities` fold into `{must_support_capabilities}`; `dropped_capability_flags` cross-check into `{dropped_capabilities}`; `implied_surfaces` feed `{spawned_surfaces}` via §5f — capability/surface outputs travel the existing vars, no new ones needed.
 
+## Ledger-archetype pass (`{is_ledger_surface}` / `{ledger_view}`) — classify the archetype, never the layout
+
+Set in step-01 §3g. Asked whenever `{is_finance_surface}` is true OR the rows are quantity/stock movements
+(finance-shaped is the PRE-FILTER for asking, never the answer — a ledger need not carry money, and most
+finance surfaces are worklists). Captures WHICH ARCHETYPE the surface is, never how to draw it:
+
+- `{is_ledger_surface}` — `true` iff rows are **movements over time on an account** AND a column is meant
+  to be **summed/accumulated**. A table that merely sorts by a date is a worklist. A route NAME is never
+  evidence.
+- `{ledger_view}` — a STRUCTURED VALUE, never a yes/no: `not-a-ledger` | `register` (movements, no running
+  balance, most-recent-first) | `running-balance` (cumulative column, **oldest-first** — the one sanctioned
+  exception to a most-recent-first default). `not-a-ledger` is a first-class, legal, expected answer.
+  Rendered at brief §2d; gate class **(g)** in step-03 fires on ABSENCE of the field, never on a value.
+- `{ledger_archetype_policy_source}` — the file in this project's policy chain that DEFINES the ledger
+  archetype (the project `docs/design-policy.md` section, or the overlay it names as parent), or empty when
+  none resolves. **Detected from what the policy DECLARES** (frontmatter `declares_archetypes:`, falling back
+  to a ledger section heading), **never from a hardcoded family or project list** — so a project that starts
+  inheriting the overlay is picked up the day it does.
+- **Empty source ⇒ classify anyway, then record an Open Question.** The classification is true regardless of
+  which policy a project inherits; the archetype RULES are not. Never fabricate rules and never import another
+  project's ledger text — a brief field whose rules no consumer defines is a reader with no writer.
+
 ## Live-process pass (`{is_live_process_surface}` + `{runtime_behavior_contract}`) — capture time, never widgets
 
 Set in step-01 §3c only when the surface's primary job is watching/controlling a long-running in-flight process (a scrape/download run, an import, a sweep, a sync, a batch job); `false`/empty for CRUD and finished-output surfaces. Closes the runtime-behavior contract-dimension-gap (`docs/fork-gaps.md` 2026-07-03): the gather's other axes are all *static*, so a surface whose whole job is change over time handed the designer a data shape and the temporal contract never entered the design lane — the redesign depicted one moment of a process. Captured inline (no skill yet — extract to one if a second caller appears):
