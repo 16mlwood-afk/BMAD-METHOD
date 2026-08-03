@@ -54,6 +54,31 @@ caught only because the session happened to read the register first — judgment
 remains on S *or its sibling surfaces*, then regenerate. Sequencing is the **owner's** call — a
 handoff may not resolve it by proceeding.
 
+**`status: active` is NOT the same as LIVE — run dead-claim detection before halting.** Nothing
+releases an abandoned claim, so `active` rows accumulate indefinitely and a literal read of the
+paragraph above deadlocks this workflow **permanently** on any surface that was ever claimed. That is
+a stuck ladder, not a safety property, and it is what makes agents stop reading the register at all.
+So the ACTIVE check above resolves through **`{project-root}/_bmad/bmm/workflows/shared/parallel-sessions.md` §C4
+(Dead-claim detection — zombie vs genuine in-progress)**, which already owns this question for the
+fork. Do not restate its test here and do not invent a second one; apply §C4's liveness signals to the
+apply-claim shape:
+
+| §C4 signal | Its apply-claim form |
+|---|---|
+| claiming worktree / branch still exists | the claimed branch or worktree exists **and has advanced since `claimed_at`** |
+| holding process still running | a manifest **current-editor marker** is held on the surface's manifest (`.claude/manifest-locks/`) |
+| recent `at` **AND** evidence of progress | within §C4's freshness window **and** the targeted manifest/artifact has not been superseded, nor its successor chain merged |
+
+**Any signal live ⇒ the claim is LIVE ⇒ HALT exactly as above.** §C4's **conservatism rule** binds
+here too: on genuine ambiguity, prefer to halt — refusing costs one re-run, proceeding past a live
+apply costs somebody's build.
+
+When you do proceed past a claim that is dead on every signal, that judgement is yours to own:
+**name the row, its age, and each signal you checked in the close-out**, and recommend the owner
+release it. Never proceed silently. Never rewrite or release another session's claim to clear your own
+path — §C4 permits *reclaim* by the story-claim protocol, not unilateral release by a handoff.
+An unparseable, missing, or future-dated `claimed_at` is UNKNOWN, never young: treat as LIVE and halt.
+
 **What to do instead of halting silently:** report the conflicting claim (surface, `claimed_by`,
 `claimed_by_session_id`), and message the holding session via the agent mailbox with anything that
 changes their in-flight work — e.g. a policy version that moved under them. Then stop and let the
