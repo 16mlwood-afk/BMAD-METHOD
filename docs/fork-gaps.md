@@ -7593,3 +7593,56 @@ The three fork files are fixed on `custom`; `git push myfork custom` + `sync bma
 **Distribution owed.** `git push myfork custom` + `sync bmad` — until both run, all 14 projects keep the un-restamped behaviour. Not done this session (distribution is a blast-radius stop).
 
 **Marker:** `` Restamp the archived manifest ``
+
+## FG-2026-08-03-07 — the schema linter never compares an entry's `##` heading id against its yaml `id:`, so a renumber can desynchronise the human index from the machine one and stay green
+
+```yaml
+id: FG-2026-08-03-07
+class: detector-blind-spot
+scope: fork
+target: tools/lib/fork_gap_lint.py — check_schema(); the heading is parsed (Entry.heading) and only ever tested by HEADING_BLOB_RE
+marker: "the heading's FG-id is compared against the yaml `id:` and a mismatch is an error"
+state: open
+fix: none
+delivery: n/a
+owner: mason
+routing: needs-routing
+routing_note: >-
+  MAINTENANCE by shape — a gate that no-ops on a case it looks like it covers — but deliberately
+  NOT shipped in this session. The linter backs the pre-commit register gate, and other sessions
+  were observably committing to docs/fork-gaps.md minutes before this was written; adding a new
+  blocking condition to a shared gate mid-flow would refuse THEIR commits for a defect they did
+  not introduce. Same reasoning as the 2026-07-31 scoping change that made findings block only
+  the entries a commit touches. Fix wants its own pass with the golden cases green.
+see_also: "FG-2026-07-31-15 / -18 — the collision that produced this evidence"
+```
+
+### Incident
+
+**Observed 2026-08-03, in this register, live.** Two entries both carried the heading
+`## FG-2026-07-31-15`, written by different sessions. A parallel session repaired it by retro-adding
+a yaml block to the headerless one and renumbering it to `-18`, recording the reason in a
+`renumbered_note`. That repair is correct and honest.
+
+**But it only renumbered the machine-readable half.** After the fix, `docs/fork-gaps.md` still
+contains two lines beginning `## FG-2026-07-31-15` — the yaml ids are now `-18` and `-15`, and the
+headings are both `-15`. `bash tools/check-fork-gap-schema.sh` reports **`0 error(s), 0
+pre-existing, across 108 entries · full audit`**.
+
+**Why the check cannot see it.** `check_schema()` reads the heading into `Entry.heading` and tests
+it against exactly one pattern — `HEADING_BLOB_RE`, the migrated-away state blob. The duplicate-id
+rule keys on `e.header.get("id")`, so two identical headings over two distinct yaml ids is not a
+collision by any rule present. Nothing compares the two.
+
+**Why it matters more than a cosmetic mismatch.** The heading is the human index: it is what a
+reader scrolls, what `grep '^## FG-'` returns, and what cross-references cite in prose. This file
+already contains such a citation — *"the likely mechanism is already logged next door as
+**`FG-2026-07-31-15`**"* — which now resolves to two different entries depending on which half of
+the file you trust. A register whose stated purpose is auditability has a green gate over an index
+that points two ways.
+
+**Cheapest real fix (not built here).** In `check_schema()`, extract the `FG-\d{4}-\d{2}-\d{2}-\d{2}`
+from `e.heading` and error when it is present and unequal to `e.header["id"]`. Mechanical, no
+judgement, same tier as every other rule in that function — and it would additionally have caught
+the original duplicate, because two entries sharing a heading id fail the comparison even when one
+of them has no yaml block at all.
