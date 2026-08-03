@@ -307,13 +307,17 @@ Rules:
 - **Treatment rows still apply normally.** A foundation drift does NOT block the rest of the grid — other (component, state, property) deltas are applied as usual. §2i forbids "fixing" the *foundation* per-component and routes that one class of defect to the migration owner; it does not freeze the pass.
 - **Foundation drift makes component type/radius matches MOOT — and the run must say so.** When `app-violates-policy` fires on the type scale, every component font-size that "matched" matched at the wrong absolute size. The §9 report must state: "components were compared at the app's foundation scale, which diverges from the design system / policy; the foundation must be reconciled (apply-design-policy-change) before component-level type parity means anything" — never imply the green type rows are real parity.
 
-### 3. Count Deltas
-
-Count the number of rows where the Delta column is NOT `✓`:
+### 3. Count Deltas — DERIVE the figure from the tables; never hand-write it
 
 ```
 {delta_count} = number of rows with a non-✓ delta
 ```
+
+**Walk the emitted per-section tables and count, section by section** — page shell, each frame's section-coverage block, each component block, each frame-composition row — then sum. **Assert the §6 summary and the frontmatter equal that sum before writing the artifact**, and say in §6 that the number was *counted from the tables, not estimated*. If they ever disagree, **the tables win**: correct the summary and record the correction in the artifact rather than silently overwriting it.
+
+**Why this is a rule.** `{delta_count}` is the one number in the grid that is not itself evidence — everything else is a row with two values beside it. And step-04 §5 requires `A + D + X == {delta_count}`, so a low count does not merely misreport: it **licenses a short apply ledger**, and the run then reports "41/41 applied" over a 74-row grid. That is exactly the "shipping a count like 47/47 while the grid under-enumerated" failure step-04 exists to prevent, arriving by a route step-04 cannot see — not a skipped apply, but a **denominator that was already wrong when the apply started.** Observed 2026-08-03 (cash-recovery `/dashboard`, owner four-ledger dashboard): summary said 41, tables carried 74 — a 45% under-count, caught only because the apply ledger's arithmetic forced a re-enumeration. Nothing in step-03 had asked for one.
+
+**Enforcement honesty:** PROBABILISTIC — prose telling you to derive rather than estimate. Nothing parses the artifact's tables and compares them to its own frontmatter. The deterministic tier is a small linter over `design-implement-grid-*.md` (count non-`✓` body cells, assert `delta_count` matches); **proposed, not built**, and it belongs to the per-project checklist lane rather than this file.
 
 ### 4. Classify Deltas by Severity
 
