@@ -213,7 +213,21 @@ If neither refusal fires, set `{design_dir} = {bundle_dir}` and `{design_file}` 
 
 **This check runs FIRST, before every other intake check, because it is the cheapest** — it keys on the raw input string, so it needs no `{target_slug}`, no frame inventory, no fetch, no bundle on disk.
 
-1. Glob `{implementation_artifacts}/design-implement-preflight-*.md`.
+1. Enumerate `design-implement-preflight-*.md` in `{implementation_artifacts}` — **from `origin/main` as well as the working tree, never the working tree alone.**
+
+   ```bash
+   git fetch -q origin
+   { ls "{implementation_artifacts}"/design-implement-preflight-*.md 2>/dev/null
+     git ls-tree -r --name-only origin/main -- "{implementation_artifacts}" 2>/dev/null \
+       | grep 'design-implement-preflight-.*\.md$'
+   } | sort -u
+   ```
+
+   Read a hit that exists only on `origin/main` with `git show origin/main:<path>`.
+
+   **Why this is not belt-and-braces.** A checkout that is behind produces a false **ABSENCE**, and absence is this check's only SILENT outcome — it prints nothing, so a stale tree does not look like a failed lookup, it looks like *"no prior halt."* That is the one answer that costs a full re-derivation, and it is indistinguishable from the true negative. The **net-new preflight below already states this rule for itself** (*"`ls`-class, against `origin/main` (a stale checkout reports a false absence, which is the direction that fires it)"*); two intake checks in one file must not disagree about where truth lives.
+
+   **Observed 2026-08-04 (cash-recovery `/held`, FG-2026-08-04-02).** The working-tree glob returned nothing and the run reported "no prior halt" while a matching preflight sat on `origin/main` — the checkout was **159 commits behind**. The prior halt's three blockers (a dropped write-off eligibility disclosure, a doctrine-forbidden class label, and an added action with no destination) were all still live in the redesign, so the run did not merely re-spend the ingest: it proceeded believing no prior verdict existed, and the artifact that would have told it otherwise was one `git show` away.
 2. Match each artifact's frontmatter `design_source` against the incoming `{design_url}` / `{bundle_dir}` / `{ingest_manifest_path}` — **normalized**: compare scheme + host + path and the URL-decoded `file=` value, ignoring query-param ORDER and unrelated params. Fall back to a `design_file` match when `design_source` is absent (a pre-contract artifact).
 3. On a hit, compute a **still-valid?** signal — `git log <baseline_commit>..origin/main -- <the paths the halt named as blocking>`. **Empty ⇒ nothing has moved on the blocking paths, so the prior halt almost certainly still holds.** Non-empty ⇒ the blocker may have cleared; name the intervening commits so the operator can judge.
 
