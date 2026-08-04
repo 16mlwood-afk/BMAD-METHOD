@@ -7611,10 +7611,10 @@ None of it was offered a reflection, because the one sample had already been spe
 
 **Marker:** `` friction reflect fire-once ``
 
-## FG-2026-08-03-05 — design-ingest resolves `supersede_status` only for the manifest it WRITES, so a re-ingest that archives its predecessor leaves that file reading `active` forever
+## FG-2026-08-03-22 — design-ingest resolves `supersede_status` only for the manifest it WRITES, so a re-ingest that archives its predecessor leaves that file reading `active` forever
 
 ```yaml
-id: FG-2026-08-03-05
+id: FG-2026-08-03-22
 class: gate-that-no-ops
 scope: fork
 target: "custom/workflows/implement/design-ingest/ — steps/step-01-frame-inventory.md (restamp block), steps/step-03-emit-manifest-and-handoff.md (pause + completeness), manifest-schema.md (§ Supersede stamp)"
@@ -7704,20 +7704,18 @@ judgement, same tier as every other rule in that function — and it would addit
 the original duplicate, because two entries sharing a heading id fail the comparison even when one
 of them has no yaml block at all.
 
-## FG-2026-08-03-AUTO — 1 WIP-register claim(s) written this session are gone from the register
+## FG-2026-08-03-11 — 1 WIP-register claim(s) written by session 44f67c3c are gone from the register
 
 ```yaml
 id: FG-2026-08-03-11
-class: coordination-loss-detected
+class: enforcement
 scope: project
-target: .claude/wip-register.yaml + .claude/hooks/claim-receipt.py
-marker: "claim-receipt.py"
+target: .claude/wip-register.yaml (cash-recovery)
+marker: "Session:** `44f67c3c-bcfe-488b-a9a5-389ce0fb22f2`"
 state: open
 fix: none
 delivery: n/a
 owner: mason
-see_also: "FG-2026-07-31-12 — the incident that motivated the receipts hook; this row is that hook firing as designed."
-schema_note: "yaml block retro-added 2026-08-03. The heading id was the non-conforming literal `FG-2026-08-03-AUTO` emitted by the generator; assigned the next free conforming id (-11; -10 was taken by a parallel session mid-write while this line was being typed — the same collision class this entry is about). THE GENERATOR STILL EMITS `-AUTO` and will keep producing unparseable, commit-blocking entries until it allocates a real id — that is the fix this row now needs in its own right."
 ```
 
 ### Incident
@@ -7729,6 +7727,9 @@ owner asked. This row is the mechanical replacement for that memory.
 **Session:** `44f67c3c-bcfe-488b-a9a5-389ce0fb22f2`
 **Claims present when written, absent at Stop:**
   - `DEPLOY origin/main to Railway production — barcode candidate-choice + post-capture set`
+
+
+### Why it's structural
 
 **What this does and does not establish.** The claim TEXT is gone from
 `.claude/wip-register.yaml`. It does not say who removed it, whether it was deliberate
@@ -8242,3 +8243,741 @@ session's start.** Candidates, untested: the SessionStart entry was added by a p
 this session booted, or its output was not surfaced. No hook-execution log exists to settle it.
 **A detector that is correct and silent is a bigger finding than the wiring bug it missed** — that half
 stays open and owns the next pass.
+
+## FG-2026-08-03-21 — 2 WIP-register claim(s) written by session 44f67c3c are gone from the register
+
+```yaml
+id: FG-2026-08-03-21
+class: enforcement
+scope: project
+target: .claude/wip-register.yaml (cash-recovery)
+marker: "Session:** `44f67c3c-bcfe-488b-a9a5-389ce0fb22f2`"
+state: open
+fix: none
+delivery: n/a
+owner: mason
+```
+
+### Incident
+
+**Logged automatically by `claim-receipt.py`, not by an agent noticing.** That is the point:
+FG-2026-07-31-12 exists because six claims were destroyed and nothing recorded it until the
+owner asked. This row is the mechanical replacement for that memory.
+
+**Session:** `44f67c3c-bcfe-488b-a9a5-389ce0fb22f2`
+**Claims present when written, absent at Stop:**
+  - `DEPLOY origin/main to Railway production — missing-components counter fix (PR #69`
+  - `Catalog imagery Part C remainder`
+
+
+### Why it's structural
+
+**What this does and does not establish.** The claim TEXT is gone from
+`.claude/wip-register.yaml`. It does not say who removed it, whether it was deliberate
+(an owner compaction looks identical), or whether the underlying WORK survived — claims are
+coordination metadata and the commits are the durable record. Check `git log` for the work
+before treating this as a loss of anything but the record.
+
+**Most likely mechanism, from the 07-31 case:** claims are written to the MAIN CHECKOUT so
+peers see them immediately, which means they are UNCOMMITTED, which means a concurrent
+session's checkout over the tracked path erases them. Visibility and durability are in
+tension and the doctrine only names the first.
+
+## FG-2026-08-03-18 — 2 WIP-register claim(s) written by session 44f67c3c are gone from the register
+
+```yaml
+id: FG-2026-08-03-18
+class: enforcement
+scope: project
+target: .claude/wip-register.yaml (cash-recovery)
+marker: "Session:** `44f67c3c-bcfe-488b-a9a5-389ce0fb22f2`"
+state: open
+fix: none
+delivery: n/a
+owner: mason
+```
+
+### Incident
+
+**Logged automatically by `claim-receipt.py`, not by an agent noticing.** That is the point:
+FG-2026-07-31-12 exists because six claims were destroyed and nothing recorded it until the
+owner asked. This row is the mechanical replacement for that memory.
+
+**Session:** `44f67c3c-bcfe-488b-a9a5-389ce0fb22f2`
+**Claims present when written, absent at Stop:**
+  - `DEPLOY origin/main to Railway production — SR-75 imagery`
+  - `§4b click-to-preview gallery on /clerk grading`
+
+
+### Why it's structural
+
+**What this does and does not establish.** The claim TEXT is gone from
+`.claude/wip-register.yaml`. It does not say who removed it, whether it was deliberate
+(an owner compaction looks identical), or whether the underlying WORK survived — claims are
+coordination metadata and the commits are the durable record. Check `git log` for the work
+before treating this as a loss of anything but the record.
+
+**Most likely mechanism, from the 07-31 case:** claims are written to the MAIN CHECKOUT so
+peers see them immediately, which means they are UNCOMMITTED, which means a concurrent
+session's checkout over the tracked path erases them. Visibility and durability are in
+tension and the doctrine only names the first.
+
+## FG-2026-08-03-15 — after `EnterWorktree`, a stale ABSOLUTE path silently reads the MAIN checkout while relative tools read the worktree, so two tools disagree about "the file" with no error
+
+```yaml
+id: FG-2026-08-03-15
+class: worktree-sync-drift
+scope: harness
+target: ~/.claude/hooks/ (PostToolUse notice on EnterWorktree — named by this entry's own "Target files:" line)
+marker: "stale absolute path resolves to the MAIN checkout after EnterWorktree"
+state: open
+fix: none
+delivery: n/a
+owner: mason
+```
+
+**Distinct from FG entries about reading BEFORE entering a worktree** (e.g. the `design-implement`
+step-02/step-04 split around line 1467). Those are step-ORDERING problems. This one fires *after*
+`EnterWorktree` has succeeded and the session is correctly inside the worktree.
+
+### Incident
+
+**What fought us (cash-recovery, `design-handoff` on handheld grading, 2026-08-03).** Reconnaissance
+ran in the main checkout before the worktree existed — normal, and correct: `EnterWorktree` had not
+been called yet because the decision to edit had not been made. That phase produced absolute paths
+(`/Users/masonwood/code/cash-recovery/docs/design-policy.md`). After `EnterWorktree`, the same
+absolute path still resolves — **to the main checkout**, silently, with no warning. Meanwhile
+`grep`/`sed` run through Bash resolve against the session cwd, which IS the worktree.
+
+The observable symptom: `grep -n "8.2b Clerk GRADING" docs/design-policy.md` reported line 749, and
+`Read` on the absolute path returned a completely different line 749 (a table row from another
+section). Two tools, one session, one apparent filename, two different files, **no error from
+either**. The mismatch was only caught because the returned content was obviously wrong for the
+line number.
+
+**Why this is dangerous and not merely annoying, in this repo specifically.** The main checkout is
+the PARKED one — detached HEAD, historically 161 commits behind `origin/main`, and the subject of an
+unresolved owner-gated divergence (`git-remote-divergence`). An `Edit` on the stale absolute path
+would have (a) written to the tree nobody delivers from, (b) succeeded silently, (c) left the
+worktree branch — the one that becomes the PR — unchanged, and (d) produced a PR whose diff omitted
+the edit while the session believed it had applied it. The failure is invisible at every step except
+a post-hoc diff read.
+
+**Why structural, not a one-off.** The gather-then-edit shape is *inherent* to `design-handoff` and
+every workflow like it: you must read the repo to decide whether there is anything to edit, and
+`EnterWorktree` is correctly called only once that decision is made. So every such run crosses a
+boundary where pre-worktree absolute paths become wrong without becoming invalid. Nothing in the
+harness marks the transition, and the paths keep working — they just point at the wrong tree.
+
+**Compounding it, same session:** the `UNDELIVERED WORK` prompt hook reported the branch as
+"171 commits ahead of main" when it was exactly `origin/main` + 1 commit, because it measures against
+the stale LOCAL `main`. A session that trusted that number would have concluded its worktree was
+catastrophically diverged. Same root: local `main` used as a reference point in a repo where it is
+known-parked.
+
+**Candidate fixes, in preference order (none shipped — this is a report):**
+1. **`EnterWorktree` PostToolUse notice naming the rewrite rule** — "absolute paths under
+   `<main-checkout>/` gathered before this call now point at the OLD tree; re-anchor to
+   `<worktree>/`". Cheap, deterministic-delivery, no false positives, fires exactly once at the
+   dangerous moment.
+2. **A `PreToolUse` warn on `Edit`/`Write`** when the session is in a worktree and the target
+   absolute path is under the main checkout but NOT under `.claude/worktrees/` — with the deliberate
+   carve-out that `.claude/wip-register.yaml` is *supposed* to be written in the main checkout
+   (cash-recovery CLAUDE.md's claim-visibility contract), so that path must be exempt or the fix
+   breaks the claim protocol. This is the one with real teeth and the one that needs care.
+3. Make the undelivered-work hook measure against `origin/main`, not local `main`.
+
+**Target files:** `~/.claude/hooks/` (a new PostToolUse notice on `EnterWorktree`, and/or a
+PreToolUse warn on `Edit|Write`); the undelivered-work prompt hook for the third item.
+
+**Routing:** MAINTENANCE lane by the split — this is a defect in how the tooling EXECUTES, not a new
+doctrine. **Not fixed in this pass** because option 2 needs the wip-register carve-out designed
+properly (an over-broad matcher would deadlock the claim protocol exactly as the collision guard's
+bootstrap problem did), and authoring a hook is `enforcement-expert`'s lane, not a side-effect of a
+design-handoff run. Logged with evidence rather than half-fixed.
+
+**Enforcement honesty:** today this is prose in a gap log — awareness only. The observation itself
+was caught by a human-noticeable content mismatch, which is luck, not a mechanism.
+
+
+---
+
+## FG-2026-08-03-17 — §3f halts a handoff on an unmapped route, but nothing keeps the viewport-class table in step with shipped surfaces, so the gap is always found LATE by a workflow instead of early by a check
+
+```yaml
+id: FG-2026-08-03-17
+class: late-discovery-no-companion-detector
+scope: fork
+target: custom/workflows/design/design-handoff/steps/step-01-gather.md
+marker: "§3f step 1 — Unmappable ⇒ record an Open Question, do NOT guess a class"
+state: open
+fix: none          # NEW DETECTOR — proposal only, owner-gated (see Fix candidates)
+delivery: n/a
+owner: mason
+distribution: n/a
+```
+
+### Incident
+
+cash-recovery, `/held`, `design-handoff`, 2026-08-03. The gate worked exactly as written:
+`/held` is live, owner-only, in the nav and registered `built-no-brief`, and it appears in
+`docs/design-policy.md` v32 only as PROSE — so §3f validation gate (a) HARD-FAILED and no
+brief was produced. Correct behaviour, and the halt record is a good artifact
+(`_bmad-output/implementation-artifacts/design-handoff-halt-held-2026-08-03.md`, SR-85).
+
+**But this is the SEVENTH identical halt**, all on one cause: `/lineage` (policy v14), SR-39
+(v16), `/units/[id]` (v18), `/receiving-summary` (v19), `/users` (v20), `/stock` (v21),
+`/held` (v32). Seven is a pattern, not a coincidence.
+
+### Why it's structural
+
+The gate is a **reader with no matching writer.** §3f can only detect the omission at the
+moment someone happens to run `design-handoff` on the route — here, months after the surface
+shipped and entered the owner's nav. Nothing reconciles *"surfaces that exist"* against
+*"routes carrying a viewport class"*, even though both inventories are already maintained in
+machine-readable form (`docs/surface-register.md` and §8.1's member table), and the project
+already runs `npm run surface-register` over one of them.
+
+So the cost is not the halt — it is that a surface can ship, be adopted, be used daily, and
+only then be found to have no declared posture. §3f rightly forbids the workflow repairing the
+policy itself, so each of the seven became an owner ruling authored under time pressure at the
+moment somebody wanted a brief.
+
+This compounds a second, separate condition: the halt is only discoverable from a **current**
+tree. In this incident the main checkout was six policy versions behind (`v26` local vs `v32`
+on `origin/main`), so §1b's freshness gate fired first and the §3f verdict had to be derived by
+reading the remote.
+
+### Fix candidates
+
+1. **Project-local reconciliation check (preferred, cheap).** Extend the existing
+   `npm run surface-register` to join its route inventory against §8.1's member cells and
+   report routes present in one and absent from the other. Both sides are parsed or parseable;
+   this is a set difference, not a judgement, so it can be deterministic and WARN-only from
+   day one. It answers *"which shipped surfaces have no declared posture?"* before anyone
+   wants a brief.
+2. **Fork-side prose only.** Have §3f, on a gate-(a) failure, name the reconciliation check in
+   its halt text so the halt teaches the systemic fix and not just the local one. No new
+   mechanism; strictly weaker than (1).
+
+**Deliberately NOT proposed:** letting `design-handoff` add the missing member itself. That is
+the exact repair §3f forbids, and for good reason — posture is decided per class on each class's
+own job, and an agent adding a member launders a guess into a citation.
+
+### Enforcement honesty
+
+Nothing here is enforced today and this entry does not change that. §3f is a **workflow halt**
+(PROBABILISTIC — it fires only if the workflow runs). Candidate (1) would be the first
+DETERMINISTIC tier on this question, but it is **unbuilt**, it is a **new detector rather than a
+repair of an existing one**, and choosing its enforcement level is a design call — so it is
+logged as a proposal and not shipped from inside a `design-handoff` run. Candidate (1) is also
+**project-local** (`surface-register` is a cash-recovery script), so it would not reach the other
+13 projects without a separate decision.
+
+## FG-2026-08-03-16 — `delta_count` is hand-written, so a design-implement grid can under-count its own tables and license a short apply ledger
+
+```yaml
+id: FG-2026-08-03-16
+class: silent-partial-implementation
+scope: fork
+target: custom/workflows/implement/design-implement/steps/step-03-build-grid.md
+marker: "DERIVE the figure from the tables"
+state: fork-fixed-distribution-owed
+fix: done          # step-03 §3 prose + tools/check-design-implement-grid.js (deterministic tier) + step-04 §5 wiring
+delivery: owed
+owner: mason
+distribution: "bash sync-bmad-workflows.sh — 14 targets. BATCHED behind the STATUS `## Now` fleet-wide re-sync gate (owner ruling 2026-07-26: no custom/ change gets its own window). Rides alongside 9ae1b010, 7ea08d76 and the 2026-07-28 §3b work."
+```
+
+### Incident
+
+cash-recovery, `/dashboard` owner four-ledger dashboard, `design-implement` URL path, 2026-08-03
+(`claude-session-20260803-161520`, merged `da322df`).
+
+step-03 §3 said only *"Count the number of rows where the Delta column is NOT `✓`."* I wrote **41**
+into the grid artifact's `## Delta summary` and its frontmatter `delta_count`. The ten per-section
+tables I had emitted moments earlier carried **74** non-`✓` rows — a **45% under-count**. Nothing in
+step-03 asked me to reconcile the two, and nothing downstream reads the tables.
+
+It was caught only at step-04 §5, where the apply ledger requires `A + D + X == {delta_count}` and I
+had to enumerate the rows to disposition them. Had I applied the whole grid without stopping to
+enumerate, the arithmetic would have closed against 41 and the run would have reported **"41/41
+applied" over a 74-row grid** — green, complete-looking, and wrong by a third of the work.
+
+The correction is visible in the shipped artifact
+(`_bmad-output/implementation-artifacts/design-implement-grid-owner-four-ledger-dashboard-2026-08-03.md`):
+the Delta summary now carries *"Counted from the per-section tables, not estimated — the first pass
+through this summary said 41 and the tables actually carry 74 non-✓ rows"*, and the ledger closes
+73 + 7 + 0 = 80 against the corrected total.
+
+### Why it's structural
+
+`{delta_count}` is **the one number in a grid that is not itself evidence.** Every other cell is a
+value beside another value, diffable by anyone re-reading the artifact. The summary figure is a
+restatement — and nothing, in a workflow built entirely around exhaustive enumeration, checked the
+restatement against the enumeration.
+
+The consequence is worse than a misreport because of what consumes it. step-04 §5's
+`A + D + X == {delta_count}` invariant is the apply's own integrity check, and it is only as good as
+its denominator. **An under-counted `delta_count` does not fail that check — it satisfies it early.**
+So the defect arrives by the single route step-04 is structurally blind to: not a skipped apply, but
+a denominator that was already wrong when the apply began. step-04 §16 names this exact shape
+(*"shipping a count like 47/47 while the grid under-enumerated"*) and places the guard on the apply,
+where it cannot see the cause.
+
+It recurs by construction because the incentive runs the wrong way: the summary is written at the
+end of a long, context-heavy enumeration, at the moment a session is least inclined to re-count, and
+a plausible number is indistinguishable from a correct one to every later reader.
+
+### Fix candidates
+
+1. **MAINTENANCE — APPLIED THIS PASS.** step-03 §3 retitled *"DERIVE the figure from the tables;
+   never hand-write it"* and now requires: walk the emitted tables section by section and sum; assert
+   the §6 summary AND the frontmatter both equal that sum before writing the artifact; state in §6
+   that the figure was *counted from the tables, not estimated*; and on disagreement **the tables
+   win** — correct the summary and RECORD the correction rather than silently overwriting it.
+   Applied to both copies (verified byte-identical in that region by `grep` before editing):
+   `custom/workflows/implement/design-implement/steps/step-03-build-grid.md` (tracked) and
+   `custom/skills-native/bmad-design-implement/step-03-build-grid.md` (**gitignored — see below**).
+
+2. **MAINTENANCE — BUILT, on owner instruction "fix this now".**
+   `tools/check-design-implement-grid.js`, a sibling of `check-ingest-manifest.js` and invoked the
+   same way (`node ~/bmad-method-v6/tools/… --grid <path>`), so it needs **no sync** to reach a
+   project. Checks G1 (`delta_count` == derived non-✓ rows + §5b deviations), G2 (tier table agrees),
+   G3 (`A + D + X == delta_count`), G4 (`fixed_count` == the ledger's Applied), G5 (no bare
+   `deferred`/`dropped`). Wired into step-03 §3 and step-04 §5. Like its sibling it **never writes
+   the number** — the agent declares it and the tool disagrees; a self-stamping counter would erase
+   the disagreement that catches the error.
+
+   **It immediately found a SECOND under-count in the very artifact that motivated it.** The
+   hand-correction of 41 → 74 was itself wrong: 74 skipped both Section-coverage blocks and the
+   Frame-coverage block, and the derived figure is **93** (87 non-✓ rows + 6 deviations). A careful
+   re-count, made minutes after being burned by a careless one and while specifically attending to
+   this defect, still missed a sixth of the grid. That is the strongest available evidence that the
+   prose tier alone was never going to hold — and it is why the fix ships as a tool rather than a
+   sharper instruction. Artifact corrected on cash-recovery with the correction recorded in the open,
+   per the §3 rule.
+
+3. **WITHDRAWN — `custom/skills-native/` is GENERATED, not untracked source.** This entry originally
+   proposed tracking it as an owner-gated decision, reasoning by analogy to the `bash_edit_guard.py`
+   ruling. **That was wrong, and checking cost one `grep`:** the tree is produced by
+   `tools/port-workflows-to-skills.sh` and regenerated by `sync-bmad-workflows.sh` (its
+   `generate-ports` phase), so `.gitignore` is correct and tracking it would commit build output.
+   The "no history, no rollback" concern does not apply — the SOURCE
+   (`custom/workflows/implement/design-implement/steps/step-03-build-grid.md`) is tracked, and the
+   port carries the fix forward on the next sync. The edit made to the generated copy is ephemeral
+   and harmless. **Lesson worth keeping: an analogy to a prior ruling is not evidence about a
+   different directory** — the shape matched (`gitignored`, `the copy that actually runs`) and the
+   cause did not.
+
+### Enforcement honesty
+
+**DETERMINISTIC for the arithmetic** — `check-design-implement-grid.js` decides, `--strict` exits
+non-zero, and it was validated by finding a real second defect rather than by passing on a file
+built to please it.
+
+**PROBABILISTIC that anyone RUNS it.** It is a documented command in two workflow steps, not a hook.
+A grid artifact is written by an ordinary `Write`, so gating it would mean parsing every markdown
+write for grid shape — the indiscriminate-detector anti-pattern, which gets the whole hook file
+switched off. A `PostToolUse` keyed on the `design-implement-grid-*.md` filename is the honest
+upgrade if misses accumulate; **not built**, because one run is not evidence of a rate.
+
+**And a green run is consistency, never coverage.** It proves the artifact does not contradict
+itself; it cannot prove the grid enumerated everything the design contains. An under-enumerated grid
+is perfectly self-consistent — that is §2f/§2f-bis's territory and no arithmetic reaches it. The tool
+prints this caveat on every green run rather than leaving it to be remembered.
+
+## FG-2026-08-03-19 — 1 WIP-register claim(s) written by session 44f67c3c are gone from the register
+
+```yaml
+id: FG-2026-08-03-19
+class: enforcement
+scope: project
+target: .claude/wip-register.yaml (cash-recovery)
+marker: "Session:** `44f67c3c-bcfe-488b-a9a5-389ce0fb22f2`"
+state: open
+fix: none
+delivery: n/a
+owner: mason
+```
+
+### Incident
+
+**Logged automatically by `claim-receipt.py`, not by an agent noticing.** That is the point:
+FG-2026-07-31-12 exists because six claims were destroyed and nothing recorded it until the
+owner asked. This row is the mechanical replacement for that memory.
+
+**Session:** `44f67c3c-bcfe-488b-a9a5-389ce0fb22f2`
+**Claims present when written, absent at Stop:**
+  - `DEPLOY origin/main to Railway p`
+
+
+### Why it's structural
+
+**What this does and does not establish.** The claim TEXT is gone from
+`.claude/wip-register.yaml`. It does not say who removed it, whether it was deliberate
+(an owner compaction looks identical), or whether the underlying WORK survived — claims are
+coordination metadata and the commits are the durable record. Check `git log` for the work
+before treating this as a loss of anything but the record.
+
+**Most likely mechanism, from the 07-31 case:** claims are written to the MAIN CHECKOUT so
+peers see them immediately, which means they are UNCOMMITTED, which means a concurrent
+session's checkout over the tracked path erases them. Visibility and durability are in
+tension and the doctrine only names the first.
+
+## FG-2026-08-03-20 — 2 WIP-register claim(s) written by session 44f67c3c are gone from the register
+
+```yaml
+id: FG-2026-08-03-20
+class: enforcement
+scope: project
+target: .claude/wip-register.yaml (cash-recovery)
+marker: "Session:** `44f67c3c-bcfe-488b-a9a5-389ce0fb22f2`"
+state: open
+fix: none
+delivery: n/a
+owner: mason
+```
+
+### Incident
+
+**Logged automatically by `claim-receipt.py`, not by an agent noticing.** That is the point:
+FG-2026-07-31-12 exists because six claims were destroyed and nothing recorded it until the
+owner asked. This row is the mechanical replacement for that memory.
+
+**Session:** `44f67c3c-bcfe-488b-a9a5-389ce0fb22f2`
+**Claims present when written, absent at Stop:**
+  - `DEPLOY origin/main to Railway production — /inbound#received thumbnails`
+  - `§4b read-model wiring — /reimbursements (re-point to ledgerUnits) and /approvals`
+
+
+### Why it's structural
+
+**What this does and does not establish.** The claim TEXT is gone from
+`.claude/wip-register.yaml`. It does not say who removed it, whether it was deliberate
+(an owner compaction looks identical), or whether the underlying WORK survived — claims are
+coordination metadata and the commits are the durable record. Check `git log` for the work
+before treating this as a loss of anything but the record.
+
+**Most likely mechanism, from the 07-31 case:** claims are written to the MAIN CHECKOUT so
+peers see them immediately, which means they are UNCOMMITTED, which means a concurrent
+session's checkout over the tracked path erases them. Visibility and durability are in
+tension and the doctrine only names the first.
+
+## FG-2026-08-04-05 — 1 WIP-register claim(s) written by session 44f67c3c are gone from the register
+
+```yaml
+id: FG-2026-08-04-05
+class: enforcement
+scope: project
+target: .claude/wip-register.yaml (cash-recovery)
+marker: "Session:** `44f67c3c-bcfe-488b-a9a5-389ce0fb22f2`"
+state: open
+fix: none
+delivery: n/a
+owner: mason
+```
+
+### Incident
+
+**Logged automatically by `claim-receipt.py`, not by an agent noticing.** That is the point:
+FG-2026-07-31-12 exists because six claims were destroyed and nothing recorded it until the
+owner asked. This row is the mechanical replacement for that memory.
+
+**Session:** `44f67c3c-bcfe-488b-a9a5-389ce0fb22f2`
+**Claims present when written, absent at Stop:**
+  - `DEPLOY origin/main to Railway production — 26 commits behind`
+
+
+### Why it's structural
+
+**What this does and does not establish.** The claim TEXT is gone from
+`.claude/wip-register.yaml`. It does not say who removed it, whether it was deliberate
+(an owner compaction looks identical), or whether the underlying WORK survived — claims are
+coordination metadata and the commits are the durable record. Check `git log` for the work
+before treating this as a loss of anything but the record.
+
+**Most likely mechanism, from the 07-31 case:** claims are written to the MAIN CHECKOUT so
+peers see them immediately, which means they are UNCOMMITTED, which means a concurrent
+session's checkout over the tracked path erases them. Visibility and durability are in
+tension and the doctrine only names the first.
+
+## FG-2026-08-04-06 — 2 WIP-register claim(s) written by session 44f67c3c are gone from the register
+
+```yaml
+id: FG-2026-08-04-06
+class: enforcement
+scope: project
+target: .claude/wip-register.yaml (cash-recovery)
+marker: "Session:** `44f67c3c-bcfe-488b-a9a5-389ce0fb22f2`"
+state: open
+fix: none
+delivery: n/a
+owner: mason
+```
+
+### Incident
+
+**Logged automatically by `claim-receipt.py`, not by an agent noticing.** That is the point:
+FG-2026-07-31-12 exists because six claims were destroyed and nothing recorded it until the
+owner asked. This row is the mechanical replacement for that memory.
+
+**Session:** `44f67c3c-bcfe-488b-a9a5-389ce0fb22f2`
+**Claims present when written, absent at Stop:**
+  - `DEPLOY origin/main to Railway production — OWN`
+  - `/inbound#received — count-grain rows draw a placeholder`
+
+
+### Why it's structural
+
+**What this does and does not establish.** The claim TEXT is gone from
+`.claude/wip-register.yaml`. It does not say who removed it, whether it was deliberate
+(an owner compaction looks identical), or whether the underlying WORK survived — claims are
+coordination metadata and the commits are the durable record. Check `git log` for the work
+before treating this as a loss of anything but the record.
+
+**Most likely mechanism, from the 07-31 case:** claims are written to the MAIN CHECKOUT so
+peers see them immediately, which means they are UNCOMMITTED, which means a concurrent
+session's checkout over the tracked path erases them. Visibility and durability are in
+tension and the doctrine only names the first.
+
+## FG-2026-08-04-07 — 1 WIP-register claim(s) written by session 44f67c3c are gone from the register
+
+```yaml
+id: FG-2026-08-04-07
+class: enforcement
+scope: project
+target: .claude/wip-register.yaml (cash-recovery)
+marker: "Session:** `44f67c3c-bcfe-488b-a9a5-389ce0fb22f2`"
+state: open
+fix: none
+delivery: n/a
+owner: mason
+```
+
+### Incident
+
+**Logged automatically by `claim-receipt.py`, not by an agent noticing.** That is the point:
+FG-2026-07-31-12 exists because six claims were destroyed and nothing recorded it until the
+owner asked. This row is the mechanical replacement for that memory.
+
+**Session:** `44f67c3c-bcfe-488b-a9a5-389ce0fb22f2`
+**Claims present when written, absent at Stop:**
+  - `DEPLOY origin/main to Railway production — count-grain imagery fix`
+
+
+### Why it's structural
+
+**What this does and does not establish.** The claim TEXT is gone from
+`.claude/wip-register.yaml`. It does not say who removed it, whether it was deliberate
+(an owner compaction looks identical), or whether the underlying WORK survived — claims are
+coordination metadata and the commits are the durable record. Check `git log` for the work
+before treating this as a loss of anything but the record.
+
+**Most likely mechanism, from the 07-31 case:** claims are written to the MAIN CHECKOUT so
+peers see them immediately, which means they are UNCOMMITTED, which means a concurrent
+session's checkout over the tracked path erases them. Visibility and durability are in
+tension and the doctrine only names the first.
+
+## FG-2026-08-04-01 — BMAD_ALLOW_MAIN_EDIT=1 is unreachable in-band, so every real override is an unlogged human approval
+
+```yaml
+id: FG-2026-08-04-01
+class: enforcement
+scope: project
+target: .claude/hooks/bash_edit_guard.py (cash-recovery)
+marker: "Set BMAD_ALLOW_MAIN_EDIT=1 for a LOGGED main-checkout maintenance edit"
+state: open
+fix: none
+delivery: n/a
+owner: mason
+```
+
+### Incident
+
+2026-08-04, session `759ec45a-3889-4c3e-b566-0c3a406013d0`, in `/Users/masonwood/code/cash-recovery`.
+
+Adding one row to the required-emissions table in `cash-recovery/CLAUDE.md` was denied to the
+Edit tool. The deny text names the sanctioned route verbatim: *"Set BMAD_ALLOW_MAIN_EDIT=1 for
+a LOGGED main-checkout maintenance edit."* Running exactly that —
+`BMAD_ALLOW_MAIN_EDIT=1 tee <path> < staged` — wrote the file and logged nothing.
+
+Both directions probed against `.claude/hooks/bash_edit_guard.py` rather than inferred:
+
+- env var as a COMMAND PREFIX → `permissionDecision: ask`, no row in
+  `~/.claude/logs/bash-edit-guard-override.jsonl`.
+- same command with the var in the HOOK PROCESS's own environment → allow, and a correct row
+  (`"targets":["…/CLAUDE.md"], "via":"env"`).
+
+The override code is correct. It is simply unreachable from anywhere an agent can set a
+variable: the prefix binds to the spawned command, while the `PreToolUse` hook is a separate
+process that has already made its decision by then.
+
+### Why it's structural
+
+`cash-recovery/CLAUDE.md` states this is "a REAL override — logged, exact-match" and "the ONLY
+override mechanism until a richer scheme is deliberately chosen". The Edit tool cannot set env
+vars — that limitation is already documented and is the stated reason the var exists. This
+finding closes the other half: the Bash route cannot set it either, for the *governed* process.
+
+So the guard falls through to `ask`, a human approves, and the audit trail stays empty by
+construction. The failure is not that overrides are hard — it is that the path documented as
+the ACCOUNTABLE one cannot be taken accountably, so every legitimate override is invisible to
+the audit that exists to review them. Same family as the earlier finding that this var was
+"named in deny messages and honoured by no guard": that version was inert, this one is
+unreachable.
+
+### Fix candidates
+
+1. **Accept and re-document — NEW DESIGN.** Drop the "logged override" claim; state that the
+   accountable path is the `ask` prompt and approvals are not machine-logged. Makes the docs
+   true; forfeits the trail deliberately rather than accidentally.
+2. **Log the `ask` decisions themselves — NEW DESIGN (smallest honest option).** The guard
+   already resolves targets; append a `"via":"ask"` row whenever it returns `ask` on a
+   protected path. Restores the audit trail, adds no override, and cannot be self-granted
+   because it grants nothing.
+3. **Honour a leading `BMAD_ALLOW_MAIN_EDIT=1` in the command string — NEW DESIGN, listed to
+   be argued with, not recommended.** Reachable in-band, but it lets the governed agent unlock
+   the guard from inside the command being judged. That is the self-granting property for
+   which the marker-file override was already considered and REJECTED ("two mechanisms are the
+   ceiling").
+
+All three change what the rule IS, so none was shipped in this pass. Not the same as
+`FG-2026-07-25-02`, which is about WHICH paths are protected; this is about whether the escape
+hatch from that protection can be used at all.
+
+
+## FG-2026-08-04-02 — design-implement's prior-halt recall reads the working tree, so a stale checkout returns a false ABSENCE
+
+```yaml
+id: FG-2026-08-04-02
+class: contract-dimension-gap
+scope: fork
+target: custom/workflows/implement/design-implement/workflow.md
+marker: "git ls-tree -r --name-only origin/main"
+state: fork-fixed-distribution-owed
+fix: done
+delivery: owed
+distribution: "batches onto the pending fleet-wide re-sync gate in STATUS.md Now — owner ruling 2026-07-26, no custom/ change gets its own sync window. Until it runs, the 14 project copies still carry the working-tree-only glob."
+owner: mason
+```
+
+### Incident
+
+2026-08-04, cash-recovery `/held`. The Prior-halt recall globbed
+`{implementation_artifacts}/design-implement-preflight-*.md` in the WORKING TREE only. The main
+checkout was **159 commits behind `origin/main`**; the glob returned nothing, the run reported
+*"no prior halt"*, and a matching preflight artifact was on `origin/main` the whole time.
+
+### Why it is structural
+
+Absence is this check's only SILENT outcome. Every other result prints something; a miss prints
+nothing, so a stale tree does not look like a failed lookup — it looks exactly like the true
+negative. Nothing inside the run can tell them apart. And it fails in the expensive direction: the
+check exists to avoid re-deriving a costly verdict, so its false negative buys a full ingest + map.
+
+### Why this is maintenance, not design
+
+The **net-new preflight in the same file** already states the rule for itself — *"`ls`-class, against
+`origin/main` (a stale checkout reports a false absence, which is the direction that fires it)"*. Two
+intake checks in one workflow disagreed about where truth lives. The fix adopts the rule the file
+already holds; it invents nothing.
+
+### Cost of the observed miss
+
+Not merely a re-spent ingest. All three of that prior halt's blockers — a dropped write-off
+eligibility disclosure, a doctrine-forbidden class label, and an added action with no destination —
+were STILL LIVE in the redesign. The run proceeded believing no prior verdict existed, and the
+artifact that would have said otherwise was one `git show` away.
+
+---
+
+## FG-2026-08-04-03 — the deploy-script drift hook downgrades a 256-line safety deletion to "FYI only", because its severity test is an allow-list of known removals
+
+```yaml
+id: FG-2026-08-04-03
+class: enforcement
+scope: machine-local
+target: ~/.claude/hooks/ deploy-script-drift notice (PreToolUse)
+marker: "unknown — severity rule not yet designed"
+state: open
+fix: none
+delivery: n/a
+owner: mason
+```
+
+### Incident
+
+2026-08-04, deploying cash-recovery `/held`. The hook warned that the main checkout's
+`scripts/deploy.sh` differs from `origin/main` and classified it **"FYI only"** because *"the drift
+is not one of the known removed preconditions."* The actual drift was **1 insertion, 256 deletions** —
+a stripped 191-line local copy against the delivered 447-line script, missing the entire **SR-90
+concurrency-verdict layer** (the ancestry check that narrows the check-then-act race, and the
+post-upload convergence check that makes a race impossible to miss).
+
+### Why it is structural
+
+The severity test is an ALLOW-LIST of known-removed preconditions, so anything it does not recognise
+is downgraded to FYI. That is inverted: the larger and more novel the drift, the quieter the warning.
+A 256-line deletion removing a safety layer is exactly the case that should shout, and exactly the
+case an allow-list is least able to recognise.
+
+### Not fixed, deliberately
+
+Two candidate fixes, both outside the maintenance lane:
+
+1. **Refresh the main checkout** — blocked. That checkout is the parked two-way divergence under
+   owner arbitration (`git-remote-divergence`; 159 behind, 88 dirty tracked files). Irreversible /
+   outward-facing stop.
+2. **Escalate the hook on large or safety-shaped drift** — changes what the rule IS (what counts as
+   severe, and what a severe verdict does). NEW DESIGN lane; the owner's call.
+
+### What did hold
+
+The hook's *presence* was sufficient — it is what made the deploying session read the delivered
+script instead of the local one, pin a detached worktree at `origin/main`, and deploy from there.
+**The gap is the SEVERITY, not the detection.**
+
+### Proposed investigation
+
+Make severity a function of the diff rather than of an allow-list: any drift that DELETES more than a
+threshold of lines from a script the deploy contract names, or that removes a block matching a safety
+marker (`concurrency`, `convergence`, `ancestry`), escalates from FYI to a stop. Keep the allow-list
+as the *quieting* mechanism, not the *alarming* one.
+
+---
+
+## FG-2026-08-04-04 — the design-source mirror is untracked and un-ignored, so a vendored bundle sits one `git add -A` from a commit
+
+```yaml
+id: FG-2026-08-04-04
+class: routing-contract
+scope: project
+target: cash-recovery .gitignore
+marker: ".claude/design-source/"
+state: closed
+fix: done
+delivery: done
+owner: mason
+```
+
+### Incident
+
+2026-08-04. `design-ingest` mirrors the Claude Design bundle to disk before the per-frame fan-out,
+because sub-agents cannot reach the design MCP (`FG-2026-07-26-01` / `-06`). That mirror landed at
+`.claude/design-source/held-stopped-units/` — a 75KB `.dc.html` plus seven sliced frame files plus a
+tokens file — and `git status` showed `?? .claude/design-source/`.
+
+### Why it is structural
+
+The `design-manifests-are-unrecoverable` memory asserts that staged design source IS gitignored. It
+was not: `git check-ignore` returned NOT IGNORED. So a belief that the mirror is safely out of the way
+was load-bearing and false, and the repo's own multi-writer commit discipline (*"commit the manifest
+explicitly by path, never `git add -A`"*) was the only thing keeping a vendored upstream bundle out of
+the tree. That is a convention holding a line an ignore rule should hold.
+
+### Fix
+
+`.claude/design-source/` added to `.gitignore`. The mirror is a reproducible cache of an upstream
+artifact, not a source of record — the durable artifacts are the ingest manifest and the per-frame
+catalogs under `_bmad-output/implementation-artifacts/`, both force-added deliberately.

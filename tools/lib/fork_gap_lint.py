@@ -564,7 +564,21 @@ def check_stale_open(entries, creation_mode: bool) -> int:
     for e in entries:
         state = e.header.get("state", "")
         marker, target = e.header.get("marker", ""), e.header.get("target", "")
-        if state == "closed" or marker == "n/a" or not _checkable(target):
+        # A marker present in the target is the DETECTOR'S SIGNAL for an open gap — and the
+        # EXPECTED, CORRECT condition for one that declares itself already fixed. `closed` was
+        # skipped; `fork-fixed-distribution-owed` and `fix: done` were not, so an entry logged
+        # in the same commit as its own fix was reported as an ERROR for being accurate. The
+        # check's own message admits the ambiguity ("either the marker is too generic, or the
+        # gap is already fixed") and then treats only the first reading as actionable.
+        #
+        # This inverts the point of the marker contract: the register asks authors to write a
+        # marker that WILL exist once the fix lands, precisely so an entry is self-auditing —
+        # and then errored on exactly that. Observed 2026-08-04: FG-2026-08-04-02 (logged with
+        # its fix, 9d631284) and FG-2026-08-03-16 (`fix: done`, distribution owed) both blocked
+        # the commit, and neither was stale — both were correctly stamped.
+        fix_is_done = state in ("closed", "fork-fixed-distribution-owed") or \
+            e.header.get("fix", "") == "done"
+        if fix_is_done or marker == "n/a" or not _checkable(target):
             continue
         full = os.path.join(ROOT, target)
         if not os.path.exists(full):
