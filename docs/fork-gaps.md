@@ -8981,3 +8981,329 @@ the tree. That is a convention holding a line an ignore rule should hold.
 `.claude/design-source/` added to `.gitignore`. The mirror is a reproducible cache of an upstream
 artifact, not a source of record — the durable artifacts are the ingest manifest and the per-frame
 catalogs under `_bmad-output/implementation-artifacts/`, both force-added deliberately.
+
+---
+
+## FG-2026-08-04-08 — the session display name is a usable clock, and was used as one: a LOCAL-time header became a `Z`-suffixed `claimed_at` 51 minutes in the future
+
+```yaml
+id: FG-2026-08-04-08
+class: time-provenance
+scope: machine-local
+target: ~/.claude/hooks/ session-header injector + cash-recovery .claude/hooks/collision_stamp.py
+marker: "LOCAL time — never read this as a clock"
+state: open
+fix: none
+delivery: n/a
+owner: mason
+```
+
+### Incident
+
+2026-08-04, cash-recovery. Writing a claim into `.claude/wip-register.yaml`, the session took its
+`claimed_at` from its own auto-generated display name — `claude-session-YYYYMMDD-HHMMSS`, which is
+stamped from **local time (BST)** — and wrote `claimed_at: "2026-08-04T19:12:40Z"` while real UTC was
+`18:21:01Z`. **51 minutes in the future**, with a `Z` suffix asserting UTC, alongside
+`claimed_at_source: "date -u"`, which was simply false. The collision guard caught it as a
+future-dated format error and refused to treat the claim as fresh.
+
+### Why it is structural
+
+The register's own design notes already name this exact defect class: local time written with a `Z`
+suffix sits in the same field as a genuine `date -u` stamp, is indistinguishable by inspection, and
+makes `now_utc − claimed_at_utc` staleness uncomputable. The design response was *"the harness is the
+only writer of `claimed_at`"* — but the stamper does not currently overwrite what the agent wrote, and
+**nothing anywhere tells the agent that the header is not a clock.**
+
+Meanwhile the header sits in every prompt, is the most convenient timestamp in reach, and *looks*
+like a UTC-shaped string. A field an agent self-reports will eventually be wrong; a field an agent
+self-reports **from a plausible-looking source in its own context** will be wrong quickly. This is the
+same shape as `actor` vs `author_provenance` and `claimed_by` vs `claimed_by_session_id` — a readable
+value that resembles the authoritative one.
+
+### Cost of the observed miss
+
+Contained: the guard fired and the claim was rewritten from `date -u`. The cost was one detected
+format error, not a lost claim. The reason to log it is that the detection was the LAST line — every
+prior line (the doc, the `claimed_at_source` field, the agent's own care) passed a wrong value
+through.
+
+### Proposed investigation
+
+Two independent levers, either sufficient, both cheap:
+
+1. **Say it where the value is read** — have the session-header hook state, in the injected line
+   itself, that the timestamp is LOCAL and must never be used as a clock. The header is the vector;
+   an annotation on the vector is the closest possible placement to the dangerous moment. Awareness
+   tier only.
+2. **Make the stamper authoritative in fact, not just in doctrine** — have the register's
+   `PostToolUse` stamper OVERWRITE `claimed_at` from the harness clock rather than accepting the
+   agent's value, exactly as it already stamps `claimed_by_session_id` over a self-reported
+   `claimed_by`. Deterministic; removes the agent's discretion instead of informing it.
+
+(2) is the real fix and (1) is the backstop; shipping (2) alone would leave `claimed_at_source`
+truthful for the first time.
+
+---
+
+## FG-2026-08-04-09 — a REJECTED push still produced a PR, carrying another session's commit under this session's title
+
+```yaml
+id: FG-2026-08-04-09
+class: delivery-contract
+scope: fork
+target: docs/global-bmad-workflow.md delivery flow (branch → push → gh pr create)
+marker: "verify the local tip IS the remote head before gh pr create"
+state: open
+fix: none
+delivery: n/a
+owner: mason
+```
+
+### Incident
+
+2026-08-04, cash-recovery. A session created branch `fix/intake-friction-sweep`, committed, and
+pushed. The push was **REJECTED, non-fast-forward** — a branch of that name already existed on the
+remote, pushed earlier by a *different* session. `gh pr create` was then run anyway and **succeeded**,
+opening **PR #869** against that remote branch: the other session's commit, presented under this
+session's title and body. A PR whose description described work its own diff did not contain.
+
+Caught only by manually listing the PR's changed files and noticing they were not the files just
+written. Closed as #869; the work was re-raised correctly as **#870** on a uniquely-named branch.
+
+### Why it is structural
+
+The delivery flow is a sequence of independent commands, and **`gh pr create` does not care whether
+your push succeeded.** It opens a PR for `<remote>/<branch>` as it exists on the server. A rejected
+push leaves the local tip and the remote head disagreeing, and every later step — the PR title, the
+body, the merge — is authored against the wrong one with no error anywhere.
+
+Branch-name collision is not exotic here: parallel sessions on one repo generate names from the task,
+and the same task phrasing produces the same name. Two sessions asked to "sweep intake friction" will
+both reach for `fix/intake-friction-sweep`.
+
+The failure is also silent in the expensive direction: the PR *exists*, CI runs, and the thing looks
+delivered. If the diff had not been checked by hand, another session's commit would have been merged
+under a description that did not describe it.
+
+### Proposed investigation
+
+Two candidates, not mutually exclusive:
+
+1. **A pre-PR tip check** — before `gh pr create`, assert `git rev-parse HEAD` equals
+   `git rev-parse origin/<branch>`. One command; turns the silent divergence into a refusal at the
+   only moment it matters. This is the honest minimum, because it checks the actual invariant the PR
+   depends on rather than the push's exit code (a session may legitimately push earlier in the turn).
+2. **Session-unique branch names** — a short suffix (`-<sha8 of session_id>`) on generated branch
+   names, so a collision cannot occur in the first place. Cheaper to reason about, but it does not
+   protect a hand-typed name, so it is a reduction in exposure, not a gate.
+
+(1) is the gate; (2) is the exposure reduction. Both belong to the delivery flow, not to any one
+project.
+
+---
+
+## FG-2026-08-04-10 — a WIP-register claim stays `active` after its PR merges, so the register accumulates false positives
+
+```yaml
+id: FG-2026-08-04-10
+class: shared-state
+scope: project
+target: cash-recovery .claude/wip-register.yaml + the delivery flow's post-merge step
+marker: "release-on-merge"
+state: open
+fix: none
+delivery: n/a
+owner: mason
+```
+
+### Incident
+
+2026-08-04. `.claude/wip-register.yaml` held `status: active` on `src/mcp/tools.ts` for session
+`759ec45a`, whose work had **merged hours earlier** as PRs **#842** and **#846**. The claim was
+accurate when written and describes finished work now. Nothing in the delivery flow releases a claim
+when its branch lands, so this is not an oversight by that session — it is the default outcome.
+
+### Why it is structural
+
+The register's entire value is answering one question: *is this surface genuinely held right now?*
+Every stale `active` row is a **false positive** on that question, and false positives are the
+specific way an advisory register dies. A session that reads a warning, checks, and finds the claim
+describes merged work learns that warnings are noise — and the next warning, the true one, gets
+walked past.
+
+That is not hypothetical here. The five same-epic duplicate builds of 2026-07-20 came from exactly
+that behaviour: proceeding past a coordination signal. The register was the mitigation; a register
+that accrues stale claims is a mitigation decaying back toward the failure it was built for.
+
+It also compounds silently. Nothing prunes, so the ratio of stale-to-live claims only moves one way
+between manual cleanups, and the register's usefulness degrades on a schedule nobody is watching.
+
+### Proposed investigation
+
+Both options key on the `branch:` field the claim already carries:
+
+1. **Release-on-merge in the delivery flow** — after `gh pr merge`, release the claim for that
+   branch. Precise and immediate, but it is a step an agent must remember, which is the same class of
+   compliance the stale claims came from.
+2. **A reaper** — cross-reference each `active` claim's `branch:` against merged PRs
+   (`gh pr list --state merged --head <branch>`) and release the ones whose branch has landed. Runs
+   without a session's cooperation, and can run at SessionStart alongside the other surfacers.
+
+(2) is the durable one precisely because it does not depend on the session that made the claim still
+existing. (1) is worth having as well, because it releases at the moment the fact becomes true rather
+than at the next sweep. Neither requires a new field.
+
+---
+
+## FG-2026-08-04-11 — the Bash edit-guard denied a write inside a directory its own deny message calls exempt, because `cd $VAR` was assigned in a preceding statement
+
+```yaml
+id: FG-2026-08-04-11
+class: enforcement
+scope: project
+target: .claude/hooks/bash_edit_guard.py (cash-recovery)
+marker: "cd base from a literal assignment earlier in the command"
+state: open
+fix: none
+delivery: n/a
+owner: mason
+```
+
+### Incident
+
+2026-08-04, cash-recovery. A heredoc write to a scratch file inside the session **scratchpad under
+`/private/tmp`** was DENIED. The deny message itself lists the temp dirs among the exempt paths, so
+the guard blocked a write to a location it names as allowed.
+
+Cause: the command was shaped
+
+```
+C=/abs/path; cd $C && cat > scratch-probe.ts <<EOF
+```
+
+The guard resolves a relative write target against the `cd` base **only when the `cd` argument is a
+literal in the same simple command**. Here the base came from `$C`, assigned in a *preceding*
+statement separated by `;`, so the substitution logic did not apply, the relative target resolved
+against `CLAUDE_PROJECT_DIR` instead, and a project path that does not exist was judged protected.
+
+Cost: one tool swap to `Write`. Small — the case is logged for its shape, not its price.
+
+### Why it is structural
+
+This is the third member of a family already in this register: `FG-2026-08-03-13` (a leading `cd`
+with `~` unexpanded → allowlisted fork edit denied) and the earlier fix that taught the guard to
+honour a leading `cd` at all. Each time, the guard rendered a **confident verdict about a path the
+command never touched**. That is a false positive even when the verdict about that path would be
+correct, and it is the exact failure mode that gets a guard file switched off.
+
+The guard already has the two pieces needed: it substitutes a `$VAR` assigned to a fully literal
+value in the same command, and it honours a leading literal `cd`. The gap is only that the two do not
+compose across a `;`.
+
+### Proposed investigation
+
+Extend the existing same-command literal-variable substitution so an assignment in a **preceding
+statement of the same compound command** is in scope — i.e. resolve `cd $VAR` when `VAR` was assigned
+a fully literal value anywhere earlier in the command string. The existing safety rules carry over
+unchanged and should be restated in the fix: a **partially** literal value is skipped rather than
+truncated (the `T=/tmp/p-$$` case), anything behind command substitution or a glob stays
+unresolvable and therefore protected, and an absolute target is never re-based, so a `cd` still
+cannot launder a protected path.
+
+Scope note, deliberately narrow: this is a resolution fix inside the guard's existing model, not an
+attempt to parse shell properly. Correct classification in general needs a real parser, and that
+dimension stays ceded.
+
+---
+
+## FG-2026-08-04-12 — the parked main checkout taxes every session that needs current code, and once nearly produced a false live-defect report
+
+```yaml
+id: FG-2026-08-04-12
+class: shared-state
+scope: project
+target: /Users/masonwood/code/cash-recovery main checkout (git-remote-divergence, owner-arbitrated)
+marker: "unknown — owner arbitration, no marker"
+state: open
+fix: none
+delivery: n/a
+owner: mason
+```
+
+### Incident
+
+2026-08-04. `/Users/masonwood/code/cash-recovery` is **151 commits behind `origin/main`** and parked
+pending owner arbitration on the main-divergence question. Consequence for one ordinary session:
+every piece of real work — reading current source, running the MCP tools, implementing and testing a
+fix, delivering three PRs — happened in a **throwaway clone**, including diffing `package.json`
+against the stale checkout to prove it was safe to borrow its `node_modules`.
+
+It also produced a genuine near-miss. Source read from the stale checkout showed code that had
+already been **replaced upstream**, and **two defects that were already fixed were nearly reported to
+the owner as live**.
+
+### Why it is structural
+
+The parked checkout is a decision, and this entry does not contest it. What is worth recording is
+that its cost is **paid per session and absorbed silently** — it appears as setup time, not as a
+problem, so it never surfaces in any report and never enters the arbitration it is a consequence of.
+
+The near-miss is the part that is not merely tax. A stale checkout is not a slow checkout; it is a
+checkout that answers questions **confidently and wrongly**. "Is this bug live?" is exactly the
+question it gets wrong, and its wrong answer looks identical to a right one — same shape as
+`FG-2026-08-04-02`, where the same 151-commit gap turned a prior-halt lookup into a false absence.
+Two entries, one root, different consumers.
+
+### Not proposing a fix
+
+Unparking is the owner's decision and is not requested here. What this entry asks for is only that
+the ongoing cost is **on the record** rather than re-absorbed each session, and that the near-miss is
+attached to it, so the arbitration weighs a real consequence and not just an inconvenience.
+
+If a mitigation short of unparking is wanted, the smallest honest one is a **staleness banner**: have
+SessionStart report `git rev-list --count HEAD..origin/main` for the parked checkout, so a session
+knows before it reads a file that the tree cannot answer "is this live?". That is a warning, not a
+fix, and it should not be mistaken for one.
+
+---
+
+## FG-2026-08-04-13 — the WIP register raced a write: an append lost to another session between read and edit
+
+```yaml
+id: FG-2026-08-04-13
+class: shared-state
+scope: project
+target: cash-recovery .claude/wip-register.yaml append path
+marker: "unknown — contention is expected; no fix designed"
+state: open
+fix: none
+delivery: n/a
+owner: mason
+```
+
+### Incident
+
+2026-08-04, cash-recovery. An `Edit` to `.claude/wip-register.yaml` failed with *"File has been
+modified since read"* — another session appended between this session's read and its write.
+Recovered immediately by re-reading and re-appending. **Individual cost: low.**
+
+### Why it is worth a line anyway
+
+The register is single-file, append-only, multi-writer, and deliberately lives in the main checkout
+so every session sees it at once — so contention is not a defect, it is the design working. The
+file's own contract anticipates it. What was **not** on the record is that it **fires in practice**,
+which is the difference between an anticipated risk and an observed one.
+
+The harness's read-then-write check is what caught it, and that check is doing real work here: a
+tool without it would have written the stale content back and silently dropped the other session's
+claim. That failure mode already has entries in this register (several `N WIP-register claim(s) …
+are gone from the register` rows), so the loss is not theoretical.
+
+### Proposed investigation
+
+None recommended today — the recovery is one re-read, and the mechanism that caught it is the one
+that should catch it. Log it as a **frequency datum**: if this recurs often enough to be a tax rather
+than an event, the case for an append-only writer (a small `--claim` CLI doing read-append-write
+under a lock, rather than a general-purpose `Edit`) gets stronger, and that is the shape the fix
+would take. Recording the first observed occurrence is what makes "often enough" measurable later.
