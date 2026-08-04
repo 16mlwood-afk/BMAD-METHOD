@@ -75,7 +75,7 @@ function sandbox() {
   return root;
 }
 
-function entry({ id, target, marker, state = 'open', scope = 'fork' }) {
+function entry({ id, target, marker, state = 'open', scope = 'fork', fix = null }) {
   return [
     `## ${id} — fixture entry`,
     '',
@@ -86,6 +86,7 @@ function entry({ id, target, marker, state = 'open', scope = 'fork' }) {
     `target: ${target}`,
     `marker: "${marker}"`,
     `state: ${state}`,
+    ...(fix ? [`fix: ${fix}`, 'delivery: owed'] : []),
     'owner: fork-maintenance',
     '```',
     '',
@@ -376,6 +377,47 @@ try {
   // (e) BOUND: the gate must keep firing only when the register is staged. If that guard is
   //     ever removed, every fork commit inherits the register's historical rot again.
   ok('I5 bound: the register gate still fires only when fork-gaps.md is staged', /grep -qx 'docs\/fork-gaps\.md'/.test(hook));
+
+  // ---- I7: THE MARKER CONTRACT — a row is allowed to prove its own fix ----
+  //
+  // The register asks authors to write a marker that WILL exist once the fix lands, so an
+  // entry is self-auditing. The detector then read marker-present as evidence of a STALE
+  // OPEN gap — correct for `state: open`, and exactly backwards for a row that already says
+  // it is fixed. `closed` was exempt; `fork-fixed-distribution-owed` and `fix: done` were
+  // not, so an entry logged in the same commit as its own fix was reported as an ERROR for
+  // being accurate, and in creation mode that BLOCKED the commit. Observed 2026-08-04 on
+  // FG-2026-08-04-02 and FG-2026-08-03-16 — neither stale, both correctly stamped.
+  //
+  // These pin BOTH directions, because the fix is only right if the detector kept its job.
+  fs.writeFileSync(path.join(root, 'custom', 'workflows', 'landed.md'), 'contains landed-fix-token here');
+
+  fs.writeFileSync(
+    register,
+    header + entry({ id: 'FG-2026-04-04-01', target: 'custom/workflows/landed.md', marker: 'landed-fix-token', fix: 'done' }),
+  );
+  ok('I7 `fix: done` with a PRESENT marker is not flagged — the row proved its own fix', candidates(run(root, 'stale-open')) === 0);
+
+  fs.writeFileSync(
+    register,
+    header +
+      entry({
+        id: 'FG-2026-04-04-02',
+        target: 'custom/workflows/landed.md',
+        marker: 'landed-fix-token',
+        state: 'fork-fixed-distribution-owed',
+        fix: 'done',
+      }),
+  );
+  ok('I7 `fork-fixed-distribution-owed` with a PRESENT marker is not flagged', candidates(run(root, 'stale-open')) === 0);
+
+  // The other direction. If this ever goes to 0 the exemption has been widened into a
+  // blanket off-switch, and "fixed but never closed" — the failure the detector exists for —
+  // becomes invisible again.
+  fs.writeFileSync(
+    register,
+    header + entry({ id: 'FG-2026-04-04-03', target: 'custom/workflows/landed.md', marker: 'landed-fix-token', state: 'open' }),
+  );
+  ok('I7 bound: a genuinely OPEN entry with a present marker is STILL flagged', candidates(run(root, 'stale-open')) === 1);
 
   console.log(`\n  ${passed} passed, ${failed} failed`);
   if (failed) process.exit(1);
