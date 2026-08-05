@@ -11,6 +11,8 @@ description: 'Full capture procedures for the six conditional domain passes (§3
 
 ---
 
+## Domain passes
+
 ### 3b. Finance-domain pass — semantics a blank-canvas redesign must preserve (conditional)
 
 Fires **only when finance presentation is material** to the surface — money is a primary data type
