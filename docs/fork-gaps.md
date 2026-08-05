@@ -9307,3 +9307,73 @@ that should catch it. Log it as a **frequency datum**: if this recurs often enou
 than an event, the case for an append-only writer (a small `--claim` CLI doing read-append-write
 under a lock, rather than a general-purpose `Edit`) gets stronger, and that is the shape the fix
 would take. Recording the first observed occurrence is what makes "often enough" measurable later.
+
+## FG-2026-08-05-01 — design-handoff step-01-gather.md exceeded a consuming agent's per-read token cap; also custom/skills-native/ is entirely gitignored (untracked source of truth)
+
+```yaml
+id: FG-2026-08-05-01
+class: context-budget-overflow
+scope: fork
+target: custom/workflows/design/design-handoff/steps/step-01-gather.md + new step-01-domain-passes.md (also custom/skills-native/bmad-design-handoff/ — see Incident, this layout is gitignored)
+marker: "step-01-domain-passes.md"
+state: fork-fixed-distribution-owed
+fix: done
+delivery: done
+owner: mason
+distribution: "custom/workflows/ fix pushed to myfork/custom (e5c5ea5b, 04e5065c) and applied directly to cash-recovery's local .claude/skills/ copy (PR #982, merged) since that project consumes it now. NOT fanned out to the other 12 sync targets as its own action — rides the existing batched fleet-wide re-sync window already queued in fork STATUS.md ## Now (owner ruling 2026-07-26: no custom/ change gets its own sync window)."
+```
+
+### Incident
+
+Running `design-handoff` against cash-recovery's eBay listing page (2026-08-05), a plain single
+`Read` call on `step-01-gather.md` truncated at 25000 tokens, showing lines 1-419 of 499 — before
+reaching step 2 of a 7-step gather chain (step-01 -> 01b -> 01c -> 02 -> 03 -> 03b -> 04). The file
+was 498 lines / 70163 bytes (fork `workflows/` layout), over the fork's own soft per-step budget
+(`context-budget.md` §4: 350 lines / 28000 bytes / ~7k tokens). `validate-context-budget.js` already
+WARNs on files this size but does not block (soft ceiling, house style routinely writes 400-900-line
+steps) — so the overrun shipped and was only caught by a live agent hitting the read cap mid-run.
+
+Separately, while splitting the skills-native copy of this same file, `git check-ignore -v
+custom/skills-native/bmad-design-handoff/step-01-gather.md` resolved to `.gitignore:13:
+custom/skills-native/`. The entire skills-native layout — the one cash-recovery pilots
+(`bmad-v68-skills-pilot` project memory: "do NOT revert, it's the proven end-state") — has no git
+history, no diff, no rollback on this machine. My edit to it exists only on this filesystem; it
+cannot be committed or pushed to `myfork/custom`.
+
+### Why it's structural
+
+§3b-§3g of `step-01-gather.md` are six CONDITIONAL domain passes (finance, live-process,
+interaction-model, operator-domain, viewport, ledger-archetype) that together made up over half the
+file's bytes (35288 of 70163), yet a typical run fires zero or one of them. The workflow was written
+step-by-step over many waves (each pass added independently, each individually reasonable-sized), so
+no single edit ever crossed a hard ceiling — the overrun accumulated across contributions, which is
+exactly the shape `context-budget-overflow` names: correct logic, wrong ingestion size, and nothing
+in the authoring loop measures the FILE as a whole against the budget until a live run trips over it.
+
+The skills-native gitignore is structural in a different way: it is a **distribution architecture
+gap**, not a one-off oversight. Whatever process seeds a project's `.claude/skills/` from
+`skills-native/` is reading a source that has zero version control by construction — any machine that
+edits it silently diverges from any other, with no diff to catch drift and no commit to revert a bad
+edit. This is the same "13 copies drift in silence" shape CLAUDE.md already names for the
+bash-edit-guard tracking decision, but for the skills-native corpus as a whole.
+
+### Fix candidates
+
+**MAINTENANCE (done this session):** split `step-01-gather.md` per `context-budget.md` §5 "Pointer
+over inline" — each §3x keeps its FIRES/SKIP test inline, the full procedure moves to
+`step-01-domain-passes.md`, read only when a pass fires. Exact content move, no rewrite. Landed in
+the fork's `workflows/` layout (tracked, pushed) and mirrored by hand into cash-recovery's local
+copy (merged). NOT landed in the fork's own `skills-native/` copy in any durable way — see below.
+
+**NEW DESIGN/POLICY (owner call, not shipped here):** whether `custom/skills-native/` becomes
+git-tracked. This is explicitly named as one of the two blast-radius stops in this file's own
+routing rule ("a skills-native re-port"), so it is proposed, not decided. Two shapes worth naming
+for that decision: (a) un-ignore it and treat it exactly like `custom/workflows/` — normal git
+history, pushed to `myfork/custom`, synced like everything else; (b) leave it deliberately
+untracked as a build artifact GENERATED from `custom/workflows/` by some conversion step, in which
+case the generation step (not the generated output) is what should be sourced from git — but no such
+generation step currently exists; the two layouts were hand-authored in parallel and have already
+independently drifted (skills-native is missing the 2026-08-04 SR-85 scanner-first fix that
+`workflows/` and cash-recovery's project copy both carry), which is itself evidence that (b)'s
+premise — "skills-native is derived, workflows/ is the source" — is not actually true in practice
+today.
