@@ -46,6 +46,43 @@ The compact, always-current state. The skill reads THIS block + the top of `## C
 ## Changelog
 
 
+### 2026-08-05 — sync warns when it is about to deliver onto a STALE BASE (`report_stale_delivery_base`)
+
+**What.** New warn-only report in `sync-bmad-workflows.sh`, called on the delivery path, the
+`--check` preview, and the v6.8 skills-layout branch. It fires when a target checkout is behind
+its upstream, regardless of `ahead`.
+
+**Why.** `report_unpushed_delivery` returns early on `ahead == 0`, so it mentioned behind-ness
+only as a parenthetical when the tree was ALSO ahead. A **purely behind** tree — the common case,
+and the one where a delivery is most wrong — produced no output at all. Measured in cash-recovery
+2026-08-05: **0 ahead, 231 behind**, and every sync into it said nothing about its base. This is
+the middle link of a deadlock: sync writes onto a stale base → the push then needs a per-project
+rebase decision → `report_unpushed_delivery` correctly refuses to automate it (FG-2026-07-26-08,
+36 unpushed commits across 13/13) → the delivery strands, the tree stays dirty, nothing ever
+fast-forwards it. Fast-forward FIRST and the same delivery is a clean ff plus a push.
+
+**Scope.** Additive only. **No change to where sync writes** — the fix is the ORDER, not the
+rsync fan-out. `--check` verified read-only (no writes to any target).
+
+**Delivery.** Fork commit only. **The 14-project fan-out was deliberately NOT run** — that is the
+distribution stop, and it is the owner's call.
+
+**Self-review verdict.** Ships as warn-only; promotion to a refusal needs an owner decision plus a
+proven-quiet window (a gate that false-fires across 14 projects gets the whole script distrusted).
+`--check` across all targets reports **12** stale bases — true fires, matching the
+FG-2026-07-26-08 shape, not noise.
+
+**One real bug caught during verification, worth the note.** The unit probe passed while the
+end-to-end `--check` printed nothing: cash-recovery is the v6.8 skills-layout pilot, whose branch
+`continue`s before reaching the old-layout preview block. The function was correct and simply
+never called on that path — the same shape as the custom-skills drift bug that branch already
+documents. **A green unit probe proves the logic; only the end-to-end run proves the call site.**
+
+Origin + full analysis: cash-recovery
+`_bmad-output/planning-artifacts/proposal-2026-08-05-shared-checkout-not-decision-grade.md` (PR #920),
+Lane B.
+
+
 ### 2026-07-31 — creator audit: delivered-vs-fork drift checker, create-workflow provenance, budget-gate recalibration (`85920a4c`)
 
 **What.** Systemic audit of `create-workflow` / `create-agent` (behavioural spec · enforcement map · monitoring plan), then three fixes. **(1) `tools/check-skill-drift.sh`** — the missing *direction* of enforcement: every other fork check reads the FORK, this reads the PROJECT. It re-runs the real porter into a temp tree (executing the rewrite rules rather than re-implementing them, so it can never fall out of step with them) and diffs against a skills-layout project; scoped to fork-DELIVERED skills only, with upstream-installed `bmad-*` reported as INFO so ~41 false positives don't bury the signal. Wired into `npm run quality` (it needs a project path, so not pre-commit); a missing reference project is a LOUD skip. **(2)** `create-workflow` now stamps STD-SKILLPROV-001 §3 provenance, parity with `create-agent`, at `discovery_performed: false` + `override_reason` — the standard's shape for "did not search", since this workflow runs no outward pass. 35 existing `workflow.md` back-filled `unknown`. **(3)** `validate-context-budget.js` soft ceiling **14 → 10** to match create-workflow's own prose, plus a HARD check 3 asserting the two agree **in both directions**.

@@ -1359,15 +1359,67 @@ report_unpushed_delivery() {
   fi
 }
 
+# report_stale_delivery_base — warn when we are about to DELIVER INTO A TREE THAT IS BEHIND.
+#
+# THE GAP THIS CLOSES IS A SILENCE, not a wrong message. `report_unpushed_delivery` above
+# returns early on `[[ "$ahead" -eq 0 ]]`, so it mentions behind-ness ONLY as a parenthetical
+# when the tree is ALSO ahead. A tree that is purely behind — 0 ahead, hundreds behind — is the
+# COMMON case and the one where a delivery is most wrong, and it produced no output at all.
+# Measured 2026-08-05 in cash-recovery: 0 ahead, 231 behind, and every sync into it said
+# nothing whatsoever about the base it was writing onto.
+#
+# WHY IT MATTERS — this is the middle link of a three-step deadlock, and naming it is most of
+# the fix:
+#     sync rsyncs into a tree that is BEHIND
+#       -> its commit sits on a STALE BASE
+#         -> the push then needs a per-project rebase-or-merge decision
+#           -> report_unpushed_delivery correctly REFUSES to automate it (FG-2026-07-26-08)
+#             -> the delivery strands, the tree stays dirty, nothing ever fast-forwards it
+#               -> round again
+# Fast-forward FIRST and the same delivery is a clean ff plus a push, and the refusal never
+# arises. The fix is therefore the ORDER, not where sync writes — which is why this is a new
+# report and not a change to the rsync fan-out.
+#
+# ENFORCEMENT TIER: PROBABILISTIC — it WARNS and never refuses. Promotion to a refusal needs an
+# owner decision plus a proven-quiet window: this runs against every target in the fan-out, and
+# a gate that false-fires across 14 projects gets the whole script distrusted. Deliberately NOT
+# promoted here — never two gates at once.
+#
+# NOT a false positive when it fires on all targets at once. "Behind" is measured, not
+# inferred; 13/13 reporting it is the finding, not noise (FG-2026-07-26-08 measured exactly
+# that shape for unpushed commits).
+#
+# Full analysis: cash-recovery
+# `_bmad-output/planning-artifacts/proposal-2026-08-05-shared-checkout-not-decision-grade.md`
+report_stale_delivery_base() {
+  local project_root="$1"
+  local upstream behind
+  upstream=$(git -C "$project_root" rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null) || upstream=""
+  [[ -z "$upstream" ]] && upstream="origin/main"
+  git -C "$project_root" rev-parse --verify -q "$upstream" &>/dev/null || return 0
+  behind=$(git -C "$project_root" rev-list --count "HEAD..$upstream" 2>/dev/null || echo 0)
+  [[ "$behind" -eq 0 ]] && return 0
+  echo "  ⚠  delivery BASE IS STALE: this checkout is $behind commit(s) behind $upstream."
+  echo "         A delivery committed here sits on a stale base, so its push then needs a"
+  echo "         rebase-or-merge decision — which is exactly why deliveries strand locally."
+  echo "         Fast-forward FIRST, then deliver:  git -C $project_root merge --ff-only $upstream"
+  echo "         Blocked by a dirty tree, or by a worktree holding the branch? That is the real"
+  echo "         finding — resolve it rather than delivering onto the stale base."
+}
+
 summarize_bmad_delivery() {
   local project_root="$1"
   git -C "$project_root" rev-parse --is-inside-work-tree &>/dev/null || return 0
   # In --check mode, report the unpushed state and stop. Check mode existing to preview drift
   # while staying silent about a delivery stuck on the local machine was half the blind spot.
   if $CHECK_ONLY; then
+    report_stale_delivery_base "$project_root"
     report_unpushed_delivery "$project_root"
     return 0
   fi
+  # Before anything is committed. A delivery onto a stale base is the defect; saying so
+  # afterwards is a post-mortem, not a warning.
+  report_stale_delivery_base "$project_root"
   local bmad_paths=(_bmad .claude/skills .claude/commands/bmad CLAUDE.md)
   local status total untracked tracked
   status=$(git -C "$project_root" status --porcelain -- "${bmad_paths[@]}" 2>/dev/null || true)
@@ -1452,9 +1504,19 @@ while IFS= read -r target || [[ -n "$target" ]]; do
           echo "  ⛔ uncommitted BMAD-managed changes — sync would SKIP this target (commit, or --force):"
           echo "$sl_dirty_managed" | sed 's/^/     /'
         fi
+        # Stale delivery BASE + unpushed delivery, on the SKILLS-LAYOUT path too. This branch
+        # `continue`s, so it never reaches the old-layout preview block further down — a report
+        # added only there is invisible for every v6.8 project. Caught by an end-to-end --check
+        # probe that printed nothing, not by the unit probe, which passed: the function was
+        # correct and simply never called on this path. Same shape as the custom-skills drift
+        # bug this branch already documents above — the write path was never the gap, the check
+        # simply never asked.
+        report_stale_delivery_base "$sl_proot"
+        report_unpushed_delivery "$sl_proot"
       elif bmad_target_blocked_dirty "$sl_proot" "$(basename "$sl_proot")"; then
         blocked=$((blocked + 1))
       else
+        report_stale_delivery_base "$sl_proot"
         deliver_skills_layout_project "$sl_proot"
         synced=$((synced + 1))
       fi
@@ -1519,6 +1581,18 @@ while IFS= read -r target || [[ -n "$target" ]]; do
         dirty=true
       fi
       report_unpushed_delivery "$project_root"
+    fi
+
+    # Stale delivery BASE preview. Separate from the unpushed check above because the two are
+    # different failures: unpushed = "committed, never left the machine"; stale base =
+    # "about to commit onto a tree hundreds of commits behind". A project can be perfectly
+    # clean and fully pushed and still be the wrong base to deliver onto.
+    if [[ -n "$(report_stale_delivery_base "$project_root")" ]]; then
+      if ! $dirty; then
+        echo "STALE $project"
+        dirty=true
+      fi
+      report_stale_delivery_base "$project_root"
     fi
 
     # Skip-if-dirty guard preview (fork-gap 2026-07-10): would a real sync REFUSE this target?
