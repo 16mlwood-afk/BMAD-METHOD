@@ -9377,3 +9377,95 @@ independently drifted (skills-native is missing the 2026-08-04 SR-85 scanner-fir
 `workflows/` and cash-recovery's project copy both carry), which is itself evidence that (b)'s
 premise — "skills-native is derived, workflows/ is the source" — is not actually true in practice
 today.
+
+---
+
+## FG-2026-08-06-01 — the register's LAST working write route from a worktree is now closed, inverting the 2026-07-25 resolution
+
+```yaml
+id: FG-2026-08-06-01
+class: routing-contract
+scope: project
+target: cash-recovery .claude/wip-register.yaml (write protocol)
+marker: "Edit the worktree copy of this file instead of the shared-checkout path"
+state: open
+fix: none
+delivery: n/a
+routing: needs-owner-marker
+owner: mason
+```
+
+### Incident
+
+Session `claude-session-20260806-155228` (two `design-handoff` runs, `/receive` + `/grade`).
+Claim taken correctly in the main checkout **before** entering a worktree. On completion — PR #1010
+merged — releasing that claim from **inside** the worktree was refused by **both** routes:
+
+1. **Edit tool**, absolute path `/Users/masonwood/code/cash-recovery/.claude/wip-register.yaml`:
+   > *"This session is isolated in the worktree … Edit the worktree copy of this file instead of the shared-checkout path."*
+2. **Bash**, same absolute path:
+   > *"this command is too complex to verify that it stays inside the worktree … Refusing to run it."*
+
+Resolution required `ExitWorktree` — i.e. **abandoning isolation in order to satisfy the register
+protocol**. A session with work still live in its worktree cannot update or release a claim at all.
+
+### Why this is new, and not the entry above it
+
+The 2026-07-25 entry on this same file (`cat >> … wip-register.yaml` blocked by the Bash guard)
+recorded its own mitigation explicitly: *"The identical target then **PASSED via the Edit tool**."*
+Every prior instance in that thread was, in its own words, *"an inconvenience with a working side
+door."* **The side door is now shut.** The refusal is not the fork's Bash guard — it is
+harness-level worktree isolation, a different mechanism, which is why the standing fix ask **(d)**
+there (*exempt the register from the Bash worktree-guard, mirroring `DENY_EXEMPT_ZONES`*) would
+**not** have prevented this: it addresses only route 1 of 2.
+
+The contract this breaks is stated in cash-recovery's `CLAUDE.md` as an explicit COROLLARY, in the
+imperative, and the observed refusal text is a near-verbatim instance of the thing it forbids:
+
+> *"`.claude/wip-register.yaml` MUST be writable from the main checkout by EVERY route … **No
+> tooling may instruct an agent to move that write into a worktree.** A guard whose remedy is
+> 'call EnterWorktree' is telling the agent to do the exact thing this contract forbids."*
+
+Here the remedy offered is *"edit the worktree copy"* — the same instruction, one layer up. A claim
+written to the worktree copy is invisible to every other session until committed **and** pushed,
+which is precisely the failure the register exists to prevent.
+
+### Compounding, and why it is worse than the 2026-07-25 shape
+
+That one fired at **claim time** (session start), where the cost of the block is a skipped claim.
+This one fires at **release time**, where the cost is a **stale `active` row** — and stale `active`
+rows are already a live, self-documented problem in this register: multiple rows carry
+`PENDING-STAMP` owners and July timestamps, and the collision guard's own promotion criteria are
+measured against real claim traffic. A protocol that is easy to enter and hard to exit manufactures
+exactly that residue. A session that does not think to exit its worktree will simply leave the row
+open, and nothing warns it.
+
+### Fix candidates
+
+**MAINTENANCE — none available in this pass.** The refusal originates in harness worktree isolation,
+not in a fork hook, so there is no fork-side matcher to carve out. Nothing was shipped, and no fix is
+claimed. (Stated explicitly per this file's evidence rule: the only thing verified here is the two
+refusal messages and that `ExitWorktree` cleared them.)
+
+**NEW DESIGN / POLICY (owner call — do not ship without a marker).** Three shapes, in rough order of
+blast radius:
+
+1. **Doctrine: release-before-worktree.** Amend the register protocol so a claim's terminal states
+   are written from the main checkout *around* the worktree lifecycle — claim before `EnterWorktree`,
+   release after `ExitWorktree` — and say so in `CLAUDE.md` § Same-Epic Collisions. Cheapest; costs
+   the ability to update a long-running claim mid-flight, which today several sessions do.
+2. **Move the live register out of the isolated tree.** The register is tracked *for visibility* but
+   its live value only exists in one checkout — the same split `manifest-locks/` already resolves by
+   living at a main-checkout path every worktree can reach. Making the register's writable home a
+   non-repo path (with the tracked copy as a published snapshot) removes the isolation collision by
+   construction. Largest change; touches `collision_guard.py`, `collision_stamp.py`,
+   `brief_regen_guard.py` and `wip-register.sh`, all of which resolve it via `git rev-parse
+   --git-common-dir`.
+3. **A `wip-register.sh release` path that is worktree-safe**, invoked as a script rather than a file
+   write — scripts already bypass the edit guards by the documented KNOWN GAP, so this works *today*
+   but only by leaning on a gap CLAUDE.md deliberately declines to close. Named for completeness and
+   **not recommended**: it makes the sanctioned route the bypass, which is the exact anti-pattern the
+   `ask`-for-low-risk-text ruling was made to avoid.
+
+**Not proposed:** widening the harness refusal. It is behaving correctly for its own purpose — the
+collision is between two contracts, and the fork owns only one of them.
