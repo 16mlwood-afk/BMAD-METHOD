@@ -46,6 +46,49 @@ The compact, always-current state. The skill reads THIS block + the top of `## C
 ## Changelog
 
 
+### 2026-08-09 — design-implement gains a bounded COMMIT-BOUNDARY pass (step-02b §4e)
+
+**What.** A conditional pass in `design-implement`'s capability-delta preflight that fires only when
+the surface carries an outward write, durable mutation, approval, binding/merge, retry, or a
+pre-commit evidence review. When it fires it requires nine lifecycle determinations — durable
+object · states · transitions · evidence snapshot · freshness · preconditions · success/failure/
+**unknown-external** outcomes · idempotency · the ONE control that performs the write — recorded as a
+`commit_boundary:` block in the §4d preflight artifact (on a halt) or the grid artifact header.
+Ships with `tools/check-commit-boundary.js` (`--scan` trigger signals, `--check` field presence),
+`commit-boundary-golden-matrix.md`, and `npm run test:commit-boundary` (12 cases, wired into
+`npm test`).
+
+**Why.** cash-recovery `/listings`: "Preview what will be sent" and "Re-attempt publish" pointed at
+the same target around an irreversible eBay write, with no durable attempt, no states, no snapshot
+of the reviewed payload, no staleness rule, no idempotency. Every check ahead of the grid was blind
+to it by construction — the capability delta saw "publish" on both sides, the grid is CSS-only, and
+UI-copy review could not find it because **nothing was misworded**. `design-handoff` §3d is the
+nearest neighbour and does not reach it: it fires only on a processing cockpit and captures operator
+momentum, not the durable object. A shortfall is classified an **interaction-model gap** — remedied
+by the smallest stateful flow mapped onto named frames and routed through `{added_capabilities}`
+(existing `capability-build` machinery, no new tag), never by a relabel or an extra confirm dialog.
+
+**Scope.** Additive and narrow. No change to §4, §4b, §4c or the grid; §4d's persist rule now names
+§4e alongside them. Read-only and reversible surfaces skip in one line — the pass is a narrow
+trigger, not a tax on ordinary UI work.
+
+**Enforcement honesty.** The pass is PROBABILISTIC (workflow prose; a rendered comp is not a tool
+call). The script is DETERMINISTIC for **two questions only** — did a trigger signal appear, and are
+the nine fields present and non-placeholder. It cannot and does not judge whether the state model is
+correct. Warn-only by default; not wired into any hook or CI.
+
+**Verification.** `npm test` green (exit 0) including the new suite. Beyond fixtures, the detector
+was run against **nine real cash-recovery routes**: `/listings`, `/pricing`, `/reimbursements`,
+`/staging`, `/approvals` fire; `/ingestion-runs`, `/lineage`, `/raw-records`, `/recovery` stay quiet.
+That probe removed two signal terms that were false-firing (`authorise` — access control, not
+approval, hitting three read-only routes via a `request-authorized` comment; `void` — a TypeScript
+keyword) and caught a real defect in the tool: `process.exit()` truncated a >64KB piped `--json`
+report mid-string. Both are pinned as golden rows (G11, G12).
+
+**Delivery.** **Fork commit only — the 14-project fan-out was deliberately NOT run** (distribution
+stop, owner's call). `custom/skills-native/` is a generated tree and was not regenerated, so the
+skills-layout port of design-implement does not yet carry §4e.
+
 ### 2026-08-05 — sync warns when it is about to deliver onto a STALE BASE (`report_stale_delivery_base`)
 
 **What.** New warn-only report in `sync-bmad-workflows.sh`, called on the delivery path, the
