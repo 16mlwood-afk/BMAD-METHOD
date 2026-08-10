@@ -9469,3 +9469,91 @@ blast radius:
 
 **Not proposed:** widening the harness refusal. It is behaving correctly for its own purpose — the
 collision is between two contracts, and the fork owns only one of them.
+
+## FG-2026-08-10-01 — brief-revision-policy's material-vs-editorial binary forces full regeneration for an additive, evidence-backed correction
+
+```yaml
+id: FG-2026-08-10-01
+class: contract-dimension-gap
+scope: fork
+target: custom/workflows/design/shared/brief-revision-policy.md
+marker: "authoritative amendment route"
+state: open
+fix: none
+delivery: n/a
+routing: needs-owner-marker
+owner: mason
+```
+
+### Incident
+
+**Noticed:** 2026-08-10, building Gate 3 of the three-gate design route
+(`custom/workflows/design/design-tuning/steps/step-04-emit-critique.md`, this branch).
+
+Gate 3 classifies a design finding into one of four lanes and routes an accepted `brief-gap`
+finding into this policy — which is Gate 2. Writing that hand-off surfaced the problem: this
+policy offers exactly **two** outcomes (§1). A correction is either a *minor revision*
+(hand-edit in place, `change_class: clarification`) or a *material revision* (**a new brief
+file** via a full `design-handoff` re-run, with the predecessor superseded).
+
+The corrections Gate 3 actually produces frequently fit **neither**. The representative shape:
+a brief never determined a terminal-state set, a confirmation requirement, or a row budget; the
+gap is real; the correction is **additive** — one requirement, with its source already in hand
+(a policy clause, the domain model, the brief's own text elsewhere) — and it changes nothing
+the brief already decided. §1's own test classifies it as **material** ("a synthesizer would
+produce a different output"), because a new requirement is precisely a thing a synthesizer acts
+on. So the only sanctioned route for adding one sentence is to regenerate the whole brief.
+
+### Why it's structural
+
+The policy's classifier has one axis — *would downstream output change?* — and it is being asked
+to answer a question with two: **does this change what the brief already decided, or does it add
+something the brief never determined?** Those come apart, and a one-axis classifier cannot
+express the difference, so it collapses the additive case into the destructive one.
+
+The cost is not the regeneration effort; it is what regeneration **loses**. A delivered brief
+carries a capability contract that was expensive to establish and is usually correct —
+`{must_support_capabilities}`, the §3 mutation-audit `{dropped_capabilities}` log, the §5f
+spawned-surface derivation, an operator-domain or finance-domain pass. `design-handoff` re-runs
+blank-canvas by mandate, so every one of those is re-derived from scratch. That is the same risk
+the three-gate route already names when it refuses to send backlog work through Gate 1:
+*re-running the full route recreates the contract and risks losing it.* Gate 2, entered from
+Gate 3, currently has no way to honour that reasoning.
+
+Two second-order effects follow, and both are already visible in the corpus rather than
+hypothetical. The supersession chain grows an entry whose diff is one added sentence, which
+makes the lineage less readable, not more. And the classifier's expense creates pressure to
+mislabel — an additive correction filed as a `clarification` to avoid a regeneration is exactly
+the drift §5 Check 6 exists to catch, produced by the policy's own economics.
+
+### Fix candidates
+
+**NEW DESIGN / POLICY (owner call — do NOT ship without a routing marker).** Nothing was
+implemented for this entry; the Gate 2 wiring added on this branch (§9) deliberately routes
+findings into the policy **as it stands**, and does not add a route.
+
+Proposed investigation: an **authoritative amendment route** — a third `change_class` for an
+addition that is evidence-backed and non-destructive, amending the delivered brief in place
+with explicit provenance rather than superseding it. It would need, at minimum:
+
+1. **Explicit provenance on the amendment** — which Gate 3 critique and which finding id
+   produced it, the brief body SHA before and after, and the named evidence source for the
+   added requirement (the same evidence bound Gate 1's auto-repair uses: a policy clause, the
+   domain model, or the brief's own text elsewhere; never a value nobody has decided).
+2. **Structural-field exclusions, non-negotiable.** A change touching `frames`, `route`,
+   `composition`, `page_mode` or `shell_role` is **never** an amendment. Those are the machine
+   contract the bundle→implement conformance gate diffs against (§2 Block B); moving one is a
+   scope decision and must stay a material revision with a full supersession.
+3. **A consumer story.** `design-artifact-loop` / `design-synthesize` intake (§5) would need to
+   read an amended brief without ambiguity about which text a prior run consumed — the honest
+   answer may be that an amendment must bump a body-SHA field the consumers can compare.
+
+**Rejected as insufficient:** widening "minor revision" to cover additions. §1's minor class is
+defined as *not changing meaning*, and an added requirement does change meaning — loosening it
+would delete the one clean line in the policy and make every hand-edit arguable.
+
+**Risk if built carelessly**, named so a later session does not discover it the hard way: an
+amendment route is a hand-edit route, and this policy's §3 forbids hand-editing into a material
+revision precisely because silent scope drift is the failure it exists to stop. The exclusions in
+(2) and the provenance in (1) are what keep an amendment from becoming that drift under a new
+name. Do not implement any of this without an owner decision.

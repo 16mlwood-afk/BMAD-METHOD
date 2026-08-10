@@ -74,6 +74,38 @@ This workflow's closing hand-off message is governed by **`shared/close-out-cont
 
 ---
 
+## GATE 1 — BRIEF-READY (step-03c) — CRITICAL
+
+This workflow owns **Gate 1** of the three-gate design route. After step-03 writes the brief
+and **before** step-04 delivers it, `steps/step-03c-gate1-brief-ready.md` answers one question:
+*does this exact brief contain unresolved material brief-visible defects?*
+
+Everything inside it is an **internal mechanic of that one gate**, never a separate step or a
+separate approval: the deterministic checker (`tools/check-brief-readiness.py`), an **isolated
+adversary reviewer that did not author the brief**, the review bound to the exact brief body by
+SHA-256, evidence-bounded auto-repair of draft-only defects, a re-check of the repaired text,
+and a disposition per finding. It emits `brief-adversary-{target_slug}-{date}.md`, which
+step-04 stages in the same commit as the brief.
+
+**Phase 1 is WARN-ONLY, and warn-only is NOT uniform** — both halves must be stated on the
+artifact and in the close-out:
+
+- **Instrument results never block.** A fired probe, an adversary finding, an `open`
+  disposition: recorded, surfaced, delivery proceeds.
+- **A genuine missing OWNER product/design decision PAUSES this brief.** Do not invent the
+  value; do not hand an incomplete contract to Claude Design. This is not the gate blocking on
+  findings — it is the route refusing to guess a decision that is the owner's to make.
+
+**Scope: DRAFTS ONLY.** A backlog brief is never forced through Gate 1 — it enters the route at
+**Gate 3** (`design-tuning` step-04) and reaches Gate 2 only via an accepted brief-gap finding.
+**Gate 2 is not consulted at Gate 1**: an undelivered draft has no supersession problem.
+
+Promotion to Phase 2 (blocking on findings) is a **separate owner decision**. Full contract —
+artifact schemas, SHA lifecycle, disposition enum, entry points, promotion evidence:
+`shared/design-gate-artifacts.md`.
+
+---
+
 ## ANALYTICS PRESENTATION RATIONALE — companion artifact
 
 When a brief carries an analytics band (`{has_analytics_band}` is `true`), this workflow emits a **second** artifact beside the brief: `design-rationale-{target_slug}-{date}.md`. It documents *how* the analytics presentation was decided — the page-mode signal, the band-belongs answers, the archetype candidates weighed, the shapes rejected, and the explicit time≠trend check. The brief records the winning choices; the rationale records the deliberation behind them.
@@ -128,6 +160,7 @@ One-line definition · allowed values · where set. The **rationale** for each v
 - `{analytics_archetype}` - The band *shape*: `trend` | `distribution` | `composition` | `ranking` | `coverage` | `flow` | `waterfall` | `single-metric` | `correlation` (or `unclear` → ask); empty when no band. **Selected step-01 §5c via the `analytics-surface-architect` skill** (single selection brain; `shared/analytics-archetypes.md` is the taxonomy SoT). Rationale → state-variables.md.
 - **Analytics reasoning capture** — the `analytics-surface-architect` decision object, captured step-01 §5c (populated iff `{has_analytics_band}`; rendered by step-03b + §4b; empty otherwise). Fields + rationale → state-variables.md: `{page_mode_rationale}`, `{band_decision_log}`, `{archetype_candidates}`, `{archetype_winner_reason}`, `{archetype_secondary}`, `{time_present_check}`, `{archetype_drill_map}`, `{archetype_prohibited}`.
 - `{rationale_output_path}` / `{rationale_output_filename}` / `{rationale_path_relative_to_repo_root}` - the analytics rationale artifact written by step-03b (only when `{has_analytics_band}`); delivered in the same commit by step-04.
+- **Gate 1 (step-03c)** — `{gate1_artifact_path}` (the `brief-adversary-*.md` written by the gate; delivered in the same commit by step-04) · `{brief_body_sha}` / `{brief_body_sha_after_repair}` (the review binding — brief body only, frontmatter excluded; a mismatch at step-04 INVALIDATES the review and the gate re-runs) · `{gate1_owner_decisions}` (genuine missing owner product/design decisions; **empty is the normal case**) · `{gate1_paused}` (true iff `{gate1_owner_decisions}` is non-empty — the one thing that stops step-04 in Phase 1). Contract → `shared/design-gate-artifacts.md`.
 - `{constraints}` - Hard constraints (responsive breakpoints, data density, accessibility).
 - `{user_context}` - Who uses this feature, what they're accomplishing, frequency of use.
 - `{reference_pages}` - Existing app pages with good design to reference — from brand identity (preferred).
@@ -274,4 +307,5 @@ Read fully and follow each step file in sequence:
 2. `{project-root}/_bmad/bmm/workflows/design/design-handoff/steps/step-02-audit-design.md` — audit the current design system / extract tokens / locate reference pages. **Skipped when `{is_greenfield}`** (`{skip_step_02}` set in step-01 §1c — nothing built to audit; tokens come from the policy).
 3. `{project-root}/_bmad/bmm/workflows/design/design-handoff/steps/step-03-generate-brief.md` — write the brief to `{output_path}` with full Block A + Block B frontmatter.
 3b. `{project-root}/_bmad/bmm/workflows/design/design-handoff/steps/step-03b-emit-rationale.md` — **conditional: only when `{has_analytics_band}` is `true`.** Write the analytics presentation rationale (`design-rationale-{target_slug}-{date}.md`) — the human-facing record of HOW the page-mode/band/archetype were chosen. Skipped entirely for no-band features.
-4. `{project-root}/_bmad/bmm/workflows/design/design-handoff/steps/step-04-deliver.md` — commit, push, PR, merge to `main`, surface the merged URL. Stages the rationale alongside the brief when one was written. Skippable via `--no-deliver`.
+3c. `{project-root}/_bmad/bmm/workflows/design/design-handoff/steps/step-03c-gate1-brief-ready.md` — **Gate 1 (brief-ready).** Runs the deterministic brief probes, spawns an isolated adversary reviewer bound to the brief body by SHA-256, auto-repairs only evidence-backed draft-only defects, re-checks, and emits `brief-adversary-{target_slug}-{date}.md`. **WARN-ONLY in Phase 1 for every instrument result**; the single exception is a genuine missing owner product/design decision, which PAUSES this brief before step-04. Skippable via `--no-gate1` or `gates.design-handoff-gate-1: skip`. Never run on a backlog brief.
+4. `{project-root}/_bmad/bmm/workflows/design/design-handoff/steps/step-04-deliver.md` — commit, push, PR, merge to `main`, surface the merged URL. Stages the rationale **and the Gate 1 adversary artifact** alongside the brief when they were written. Skippable via `--no-deliver`.
