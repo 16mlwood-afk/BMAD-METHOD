@@ -25,6 +25,11 @@ From step-03:
 - `{github_repo_url}` — for verification
 - `{feature_name}`, `{target_slug}`, `{handoff_mode}` — for commit / PR text
 
+From step-03c (Gate 1 — brief-ready):
+- `{gate1_artifact_path}` — the `brief-adversary-{target_slug}-{date}.md` written by the gate. Staged in the SAME commit as the brief (§3). Empty when the gate was skipped.
+- `{brief_body_sha}` / `{brief_body_sha_after_repair}` — the review binding (brief body only, frontmatter excluded). Re-checked in §0a.
+- `{gate1_paused}` / `{gate1_owner_decisions}` — the ONE Phase-1 condition that stops this step. See §0a.
+
 From step-03b (only when `{has_analytics_band}` is `true`):
 - `{rationale_output_path}` — absolute path to the analytics rationale on disk
 - `{rationale_path_relative_to_repo_root}` — for the final surface
@@ -90,6 +95,35 @@ owner sequence it.
 > the fork**, so in any project without it this section is the only tier. That is exactly the
 > prose-consumer blind spot: a gate constrains a tool call, never the instruction that tells the model
 > to make it. Treat this step as load-bearing, not as a restatement of the hook.
+
+### 0a. Gate 1 Check — one pause condition, and a re-bound review
+
+**Gate 1 (step-03c) is WARN-ONLY in Phase 1, and warn-only is NOT uniform.**
+
+- **Instrument results never stop this step.** A fired probe, an adversary finding, an `open`
+  disposition, an unavailable checker: recorded in `{gate1_artifact_path}`, surfaced in §10,
+  and delivery proceeds. There is no finding count and no severity that blocks delivery.
+- **`{gate1_paused}` is the ONE condition that does.** It is true iff Gate 1 found a genuine
+  missing OWNER product/design decision. Then: **do not deliver this brief**, do not invent the
+  value, and do not hand the contract to Claude Design with the decision unresolved. Surface
+  the decision (it is the only thing the owner sees from the gate) and resume here when it is
+  answered. Say plainly that **this is not the gate blocking on findings — it is the route
+  refusing to guess a decision that is the owner's to make.** This holds in `autonomous_mode`.
+
+**Re-bind the review before staging.** The review is only about the text it read:
+
+```bash
+python3 ~/bmad-method-v6/tools/check-brief-readiness.py "{output_path}" --body-sha
+```
+
+If it differs from `{brief_body_sha_after_repair}` (or `{brief_body_sha}` when no repair ran),
+the brief body changed after the review — **the review is INVALID; re-run step-03c** before
+delivering. A frontmatter-only edit cannot trigger this (the digest excludes frontmatter by
+construction), so supersede bookkeeping and `last_modified_date` move freely.
+
+If Gate 1 was skipped, `{gate1_artifact_path}` is empty; note the skip in §10 and continue.
+
+Full contract: `shared/design-gate-artifacts.md`.
 
 ### 1. Delivery Skip Check
 
@@ -203,6 +237,9 @@ There is no legitimate "deliver a frames-inconsistent brief" case, so each recip
 git add -f {output_path}
 # Only when {has_analytics_band} is true:
 git add -f {rationale_output_path}
+# Only when Gate 1 ran ({gate1_artifact_path} non-empty) — the gate record belongs beside the
+# brief it reviewed, in the same commit, for the same reason the rationale does.
+git add -f {gate1_artifact_path}
 ```
 
 **Assert the stage actually happened** — turn the silent no-op into a loud, self-correcting halt:
@@ -385,6 +422,8 @@ Delivery
 - Brief on main: {github_repo_url}/blob/main/{output_path_relative_to_repo_root}
 {If {has_analytics_band}:}
 - Rationale: {github_repo_url}/blob/main/{rationale_path_relative_to_repo_root} (read for context; do NOT hand to {consumer})
+{If Gate 1 ran: ONE line — the artifact path, plus "Gate 1: WARN-ONLY (Phase 1) — findings recorded, delivery not blocked". Do NOT list the findings, the fired-probe count, or the dispositions table; the owner gets decisions, not evidence of work. If Gate 1 was skipped, say which skip condition fired. Never hand this artifact to {consumer}.}
+{If {gate1_owner_decisions} is non-empty: this LEADS the whole close-out, above "Active artifact" — one sentence per decision, why the brief cannot answer it, what a generator will do unanswered, and the options where they exist. Say that delivery is PAUSED for this brief and that this is the route refusing to guess an owner decision, not the gate blocking on findings.}
 
 For {consumer}
 - Connect to {github_repo_url} and use `{output_path_filename}` on main as the SOLE active source brief for `{route}`.

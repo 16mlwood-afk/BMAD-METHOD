@@ -1,6 +1,6 @@
 ---
 name: brief-revision-policy
-description: 'Canonical policy for how design briefs may be revised. Defines the minor/material split, the provenance frontmatter contract, the editing rules, and the halt conditions consumer workflows enforce at intake. Referenced by design-handoff (producer) and design-artifact-loop / design-synthesize (consumers). §8 adds tolerant supersede-awareness for the non-consumer downstream pair design-ingest / design-implement (stamp + explain, never refuse).'
+description: 'Canonical policy for how design briefs may be revised. Defines the minor/material split, the provenance frontmatter contract, the editing rules, and the halt conditions consumer workflows enforce at intake. Referenced by design-handoff (producer) and design-artifact-loop / design-synthesize (consumers). §8 adds tolerant supersede-awareness for the non-consumer downstream pair design-ingest / design-implement (stamp + explain, never refuse). §9 is Gate 2 of the three-gate design route: how an accepted brief-gap finding from a Gate 3 critique enters this policy, and why materiality is this gate OUTPUT rather than its entry condition.'
 ---
 
 # Design Brief Revision Policy
@@ -364,3 +364,64 @@ Migration is best-effort. Briefs that aren't currently in active use can be left
 This is deliberately weaker than the §5 consumer refuse: a consumer that synthesizes off a superseded brief silently corrupts everything downstream, so it must refuse; a non-destructive cataloguer that pauses for review only needs to *tell the truth loudly*. The `--allow-superseded` escape hatch in §5 Check 3 has no analog here because `design-ingest` never blocks in the first place — the gate that matters is `design-implement`'s apply-time confirmation on a superseded-with-deltas run.
 
 **The honest limit.** Supersede status lives in the *brief* frontmatter, but ingest's input is a design URL/bundle. So ingest can only know a handoff is superseded when its surface confidently corresponds to a brief's `target_slug` on disk. A raw-URL run with no brief is `no_brief` — ingest states it cannot check, rather than asserting the handoff is current. Diffing a superseded handoff against its successor (so `design-implement` applies only the delta) is explicitly **out of scope** here — it would require both to be ingestable design sources of the same kind, which a handoff and a markdown brief are not; it is a candidate for a future dedicated workflow.
+
+---
+
+## 9. Gate 2 — the revision route, entered from a Gate 3 critique
+
+This policy IS **Gate 2** of the three-gate design route (`shared/design-gate-artifacts.md`).
+The gate asks one question:
+
+> **Is the correction editorial or material?**
+
+Nothing here is new policy. §1 already defines the minor/material split, §3 the editing rules,
+§4 the producer rules. §9 exists to say **who enters this route, when, and on what condition** —
+because that was the part nobody had written down, and its absence is what produced a
+circularity in practice.
+
+### 9a. Entry condition — acceptance, NOT materiality
+
+An **accepted** `brief-gap` finding from a Gate 3 critique (`design-tuning` step-04, artifact
+`design-critique-{target_slug}-{date}.md`, lane `brief-gap`) enters this route.
+
+> **Materiality is the OUTPUT of this gate, never a precondition for entering it.**
+
+No workflow may filter findings by *"is this material enough to be worth a revision?"* before
+handing them here. Deciding materiality before the gate that decides materiality is the
+circularity this replaces: the question is answered by §1's test — *would a downstream
+synthesizer or implementer produce a meaningfully different output from the new text?* — and
+that test is applied HERE, once, by this policy.
+
+The verdict then routes exactly as the policy already says:
+
+- **editorial (minor / `clarification`)** → amend in place under §3's hand-edit rules:
+  filename preserved, `revision_mode: manual_minor_revision`, `change_class: clarification`,
+  `last_modified_*` updated, one `## Changelog` line.
+- **material** → re-run `design-handoff` per §3/§4: a NEW brief file, `change_class:
+  material_revision`, `supersedes` naming the predecessor, and the predecessor flipped to
+  `brief_status: superseded` with `superseded_by` set in the same run. Lineage is set **both
+  ways**, always.
+
+### 9b. Never invoked for an undelivered draft
+
+Gate 1 (`design-handoff` step-03c) works on a brief that has **not been delivered**, so it has
+no supersession problem: its defects are edited in place, in the draft, before step-04.
+
+**Invoking this route on an undelivered draft is forbidden.** It is what turns a two-minute
+text fix into a supersession chain, and it produces a `superseded` predecessor that no consumer
+ever read.
+
+### 9c. Backlog work reaches this gate only through Gate 3
+
+A backlog brief is **never** forced through Gate 1. Existing work enters the route at Gate 3,
+is classified there, and only an accepted `brief-gap` finding arrives here. A delivered brief
+carries a capability contract that was expensive to establish and is usually correct —
+re-deriving it from scratch risks losing it, which is a worse outcome than the gap being fixed.
+
+### 9d. Status — a DEFINED route, not yet a proven one
+
+Honest statement, and it must not be softened: this policy is written and consumers carry
+intake checks against it (§5), but **Gate 2 has not been exercised end-to-end through this
+route.** Treat the first few passes as the exercise. A finding routed here and then quietly
+dropped is the failure mode to watch for — the Gate 3 artifact's `routed_to_gate_2` list is the
+record that makes that visible.
