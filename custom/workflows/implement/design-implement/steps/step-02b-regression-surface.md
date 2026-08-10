@@ -6,6 +6,7 @@
 - **The capability delta runs BOTH ways — DROPPED and ADDED — and they are equally load-bearing.** A redesign that *removes* a production capability is one failure mode (silent regression); a redesign that *adds* capability the live page lacks is the equal-and-opposite one (silent under-build — the workflow reads the uplift as a reskin and never constructs the new surface). The DROP axis halts for intent; the ADD/uplift axis does not halt (building what the design draws is the unambiguous contract) but it MUST be inventoried, foregrounded, and turned into a BUILD plan — never collapsed into "treatment alignment." An empty DROP set is **not** evidence the job is a restyle; an uplift redesign drops nothing yet is mostly net-new construction.
 - **You may NOT conclude the implementation is "restyle-only / treatment-only / token-alignment / a structural superset / no net-new capability" until BOTH `{production_capabilities}` and `{handoff_capabilities}` are fully inventoried and the bidirectional delta (§3) is computed.** That verdict is a *capability-scope* claim; a token-level observation (raw-hex → canonical-token debt, a `var(--*)` mapping) is *treatment* evidence that belongs to step-03's grid, and it can never license a scope conclusion. Forming "just tokens / production is a superset" from treatment evidence — especially while the map (step-02) is still resolving — is the **running-blind** failure this gate exists to forbid. Inventory first; the scope verdict is an *output* of §3, not an intuition that precedes it.
 - **A handoff is a PROPOSAL about treatment and composition, NOT an authorization to delete what production does.** A redesign frequently omits a capability the live page has — sometimes deliberately (a genuine simplification), sometimes incidentally (the designer never saw it, the bundle's mock data didn't exercise it). Which one it is, is **intent** — design-implement cannot infer it and must not guess. So when the handoff drops a production capability, this step **HALTS and asks** (grounding gate / halt-by-default), it does not silently reproduce the omission.
+- **A CONSEQUENTIAL interaction needs a MODEL, not just controls (§4e).** When the surface carries an outward write, durable mutation, approval, binding/merge, retry, or a pre-commit evidence review, the handoff must answer nine lifecycle questions (durable object · states · transitions · evidence snapshot · freshness · preconditions · success/failure/**unknown** outcomes · idempotency · the ONE control that writes). Controls without that lifecycle are an **interaction-model gap**, not a copy or layout issue, and are never resolved by relabeling a button. Everything else skips — this is a narrow trigger, not a new tax on ordinary UI work.
 - **Skip cleanly when there is no production to regress.** If `{impl_page}` is a brand-new surface with no existing built page (nothing in step-02 to inventory), there is no regression surface — record "new surface, no production capabilities to compare" and proceed to step-03. (The ADD side is then trivially "everything is net-new" — still inventory `{handoff_capabilities}` so step-03/04 build it all.) This step's DROP halt only bites on a **redesign of an existing page**.
 
 ## YOUR TASK
@@ -179,11 +180,11 @@ Rules:
 - **Generalize — do not hardcode any one project.** The trigger is the project's mock-data convention (`DATA_STATE = "fixture"` is the common marker) + a production route; the disclosure floor's exact mechanism (banner component, marker comment, CI gate) belongs to the consuming project — name it where known, never assume it is identical across the 13.
 - **Forced-and-honest is fine; silent is not.** A disclosed fixture shipped after explicit confirmation, behind the disclosure floor and off the default landing, is a legitimate "designed-on-fixtures, awaits its wiring epic" surface. The prohibited move is wiring mock data into a prod route as an unremarked default and declaring the run done.
 
-### 4d. PERSIST the halt verdict before halting (§4 or §4c) — the report must outlive the session
+### 4d. PERSIST the halt verdict before halting (§4, §4c or §4e) — the report must outlive the session
 
-**A halt at §4 or §4c is the most expensive verdict this workflow produces, and until now it evaporated with the session.** The regression report was presented in chat and nowhere else — so the next session, handed the SAME Claude Design prompt (the "Send to local coding agent" panel emits a *stable* prompt per file, and any `design-handoff-detect` hook routes every paste straight back here), re-derived the identical halt from zero after a full ingest + map. The verdict already existed; nothing could find it.
+**A halt at §4, §4c or §4e is the most expensive verdict this workflow produces, and until now it evaporated with the session.** The regression report was presented in chat and nowhere else — so the next session, handed the SAME Claude Design prompt (the "Send to local coding agent" panel emits a *stable* prompt per file, and any `design-handoff-detect` hook routes every paste straight back here), re-derived the identical halt from zero after a full ingest + map. The verdict already existed; nothing could find it.
 
-**So: whenever §4 or §4c halts, WRITE THE REPORT TO DISK FIRST, then halt.** Write before you present, not after — the durable artifact must land before the session can end or compact, the same discipline the apply ledger uses.
+**So: whenever §4, §4c or §4e halts, WRITE THE REPORT TO DISK FIRST, then halt.** Write before you present, not after — the durable artifact must land before the session can end or compact, the same discipline the apply ledger uses.
 
 Path: `{implementation_artifacts}/design-implement-preflight-{target_slug}-{date}.md`.
 
@@ -200,7 +201,7 @@ design_file: {design_file}
 brief: {matched brief filename + brief_status, or "none"}
 handoff_supersede_status: {handoff_supersede_status}
 baseline_commit: {baseline_commit}                                 # the still-valid? signal reads from here
-outcome: HALTED at step-02b — {which gate(s): §4 capability drop | §4c fixture-to-prod}
+outcome: HALTED at step-02b — {which gate(s): §4 capability drop | §4c fixture-to-prod | §4e commit boundary}
 blocked_on: {ONE line naming the real blocker — e.g. "read model: 11 of 18 handoff capabilities have no live read path"}
 blocking_paths: [{the files/modules that must change for the blocker to clear}]
 date: {date}
@@ -216,6 +217,73 @@ Rules:
 - **Persist on EVERY halting exit, including an owner-confirmed one.** If the owner then says "proceed anyway", record that resolution in the artifact rather than deleting it — the next session needs to know the halt happened *and* how it was settled.
 - **This is a REPORT, not yet a contract.** The recall check reads it opportunistically and treats a missing, malformed, or unparseable artifact as a silent no-op. Whether it should become a machine-consumed contract with an enforced schema (and whether the recall check should ever GATE on it) is an **open owner decision** — do not tighten it here.
 - **Never overwrite another day's artifact.** The filename carries `{date}`; a second halt on the same slug the same day appends a new record rather than replacing the file (same append-only discipline as the ingest manifest).
+
+### 4e. Commit-boundary pass — the interaction MODEL behind a consequential control (conditional)
+
+**FIRES only when the surface being applied includes at least ONE of: an outward write to an external system · a durable mutation · an approval · a binding/merge · a retry of any of those · a pre-commit evidence review of what is about to be written.** **SKIP** otherwise — a read-only worklist, review board, report, filter, drill-down, or any purely reversible local UI state — and skipping is the COMMON case, so record one line and move on: `Commit boundary: n/a — no outward write, durable mutation, approval, binding or retry on this surface.` If uncertain, fire only when getting it wrong would write something the operator cannot take back; else proceed and note the ambiguity. **A pre-commit-review affordance ALONE (a "preview", a "details" drawer) does NOT fire this** — that is a read-only review surface; the review signal only matters next to a write.
+
+**Detection aid, advisory only:** `node ~/bmad-method-v6/tools/check-commit-boundary.js --scan <bundle-dir | manifest | frame files>` reports write-class and pre-commit-review signals with file:line. It decides the TRIGGER question mechanically and nothing else — a `TRIGGERED` verdict is not a defect, and a `NOT-TRIGGERED` verdict does not license skipping a boundary you can see with your own eyes.
+
+**Why this pass exists (the gap it closes).** A bundle can supply the CONTROLS of a consequential interaction while omitting its LIFECYCLE, and every check upstream of here passes it: the controls are drawn, the copy is right, the capability delta is clean (the capability *exists* on both sides), and the grid is CSS-only. On cash-recovery `/listings`, "Preview what will be sent" and "Re-attempt publish" pointed at the same target around an irreversible external write — no durable publish attempt, no states, no snapshot of the payload the operator had actually reviewed, no staleness rule, no idempotency, and no single control that owned the write. **UI-copy review was structurally incapable of finding it, because nothing was misworded.** §3d of `design-handoff` (the interaction-model pass) is the nearest neighbour and does not cover this: it fires only on a processing cockpit, and it captures the operator's *momentum* — consequence-preview, per-item commit weight — not the *durable object* the attempt lives in.
+
+**When it fires, DETERMINE all nine — from the design, the brief, and the existing implementation; never invent one, and never leave one implicit:**
+
+1. **`durable_object`** — the record that represents the attempted action (not the entity being acted on). A publish *attempt*, a submission, an approval decision.
+2. **`states`** — every state that object can be in, including the ones nobody draws (prepared, submitted, succeeded, failed, unknown-outcome, superseded).
+3. **`transitions`** — which state may follow which, and what causes it. A transition the code cannot make may not be drawn; one it can make may not be dropped.
+4. **`evidence_snapshot`** — the exact payload/evidence the operator reviewed, captured as a snapshot ATTACHED to the attempt. "The preview re-derives it at render time" is a different thing and must be recorded as such.
+5. **`freshness`** — when that snapshot goes stale (inputs changed, price moved, photos re-committed, N minutes elapsed) and what the surface does about it. A stale snapshot reviewed as if current is the failure this field exists to name.
+6. **`preconditions`** — what must hold before the irreversible transition is legal.
+7. **`outcomes`** — success, failure, **and unknown-external-outcome** handling. All three, separately: an unknown outcome is not a failure, and treating it as one is how a double-write happens.
+8. **`idempotency`** — duplicate-submit protection and retry behaviour: what key dedupes, what a retry does to the prior attempt, whether the operator can retry an attempt whose outcome is unknown.
+9. **`commit_control`** — the SOLE control that performs the irreversible write. Exactly one. If two controls can reach the write, that is the finding, not a footnote.
+
+Record as `{commit_boundary_contract}`; the unresolved half is `{commit_boundary_gaps}`. **Write it down as a `commit_boundary:` block** — in the §4d preflight artifact's frontmatter when this pass halts, otherwise in the header of the run's grid artifact (the durable ledger step-04 §5 already writes and commits early). **No new artifact is minted for it.** Shape:
+
+```yaml
+commit_boundary:
+  triggered_by: [outward-write, retry] # which of the six signal classes fired
+  durable_object: publish_attempt (units_listings.publish_attempts)
+  states: [prepared, submitted, succeeded, failed, unknown_outcome]
+  transitions: prepared→submitted (commit control only); submitted→{succeeded,failed,unknown_outcome} (eBay response or timeout); unknown_outcome→submitted only via a reconcile read, never a blind resend
+  evidence_snapshot: the exact listing payload rendered in Preview, stored on the attempt at commit time
+  freshness: snapshot invalid if price, photos or aspects changed since capture — re-preview required
+  preconditions: aspects complete · photos committed · account armed · no attempt in submitted/unknown_outcome
+  outcomes:
+    success: attempt succeeded, listing id stored, publish control disabled for that unit
+    failure: attempt failed with eBay's actual error surfaced, retry permitted under a new attempt id
+    unknown: outcome unknown — reconcile read before any retry; never auto-resend
+  idempotency: one attempt row per (unit, payload hash); a duplicate submit within an open attempt is refused, not queued
+  commit_control: the "Publish to eBay" button only — Preview and Re-attempt never reach the write
+```
+
+Then verify the fields are actually there rather than assuming: `node ~/bmad-method-v6/tools/check-commit-boundary.js --check <that artifact>`. It reports presence and placeholders (`TBD` / `n/a` / `see design` are non-answers, same discipline as §3f's viewport fields) and nothing about whether the model is right.
+
+**A missing lifecycle is an INTERACTION-MODEL GAP, not a copy or layout issue — classify it that way explicitly.** When the bundle supplies the controls but the nine facts cannot be completed from the design + brief + implementation, do NOT resolve it by relabeling a button, moving it, adding a confirm dialog, or "clarifying" the copy. Require the **smallest stateful flow** that closes the gap — typically one durable attempt record, at least the three terminal outcomes, one snapshot bound to the attempt, one idempotency key, one commit control — and then **MAP it to the design**: name which frames/sections gain state, which existing control loses the write, and what each new state renders. Anything beyond that minimum is scope, not a fix.
+
+**Route through the machinery that already exists — do not invent a new tag.** Each element of the smallest flow becomes an entry in `{added_capabilities}` (hence `{uplift_capabilities}`), so §4b's rules apply unchanged: strategy is at least `additive`, step-03 §2h tags it `capability-build`, and step-04 constructs it and enumerates it in §9. A commit-boundary gap that ships unbuilt is a step-04 failure exactly like any other uplift item.
+
+**Branch:**
+
+- **Model complete** (all nine determined, one commit control) → record `{commit_boundary_contract}`, note it in the preflight output, and **proceed**. No halt; the design already models the boundary.
+- **Model incomplete, or more than one control reaches the write** → **HALT and ADVISE**, before the grid. Same posture as §4c: state the gap, state the smallest flow you recommend, and hold. **Autonomous mode does NOT auto-proceed** — inventing a lifecycle around someone else's irreversible write is intent, not decision autonomy. Present it as a plan to approve, never as a menu:
+
+```
+Commit boundary — this surface performs an IRREVERSIBLE {outward write | durable mutation | approval | binding}
+({control(s)}), and the handoff supplies the controls without the lifecycle. This is an interaction-model gap,
+not a copy or layout issue.
+
+Missing: {the unresolved facts of the nine, named}.
+Shared write path: {the controls that both reach the write, if more than one}.
+
+Smallest flow that closes it: {durable object} with states {…}; {snapshot} captured at review and
+{staleness rule}; {idempotency key}; ONE commit control ({which}), the other control demoted to read-only.
+Mapped to the design: {frame/section} gains {state renders}; {control} loses the write.
+
+I'll build that unless you'd rather change it.
+```
+
+**Enforcement honesty.** The pass itself is **PROBABILISTIC** — workflow prose the model executes, and there is no artifact for a hook to block. The **DETERMINISTIC** companion is `tools/check-commit-boundary.js`, and it is deliberately narrow: `--scan` decides whether the trigger fired, `--check` decides whether the nine fields are present and non-placeholder in the emitted record. **Neither can tell whether the state model is CORRECT** — whether the states are the right states, the snapshot the one the operator saw, or the named control genuinely the only writer. Presence is checkable; soundness is the human's job at the halt. Both directions are pinned in `../commit-boundary-golden-matrix.md`.
 
 ### 5. Record the approved plan
 
@@ -244,6 +312,7 @@ Read fully and follow: `{project-root}/_bmad/bmm/workflows/implement/design-impl
 - If the uplift set is non-empty, the run **named it** (ADDED / DEEPENED), set strategy to at least `additive`, and carried `{uplift_capabilities}` to step-03/04 as build tasks — it did NOT flatten the uplift into "treatment alignment."
 - Kept capabilities are marked protected for step-03/04; dropped capabilities are routed to the step-04 §9 orphaned-action confirmation; uplift capabilities are routed to step-03 §2h / step-04 as `capability-build`.
 - **Any halting exit (§4 or §4c) PERSISTED its verdict to `{implementation_artifacts}/design-implement-preflight-{target_slug}-{date}.md` BEFORE halting (§4d)** — full report in the body, and frontmatter carrying `design_source`, `baseline_commit`, `outcome`, `blocked_on` and `blocking_paths` so Input Resolution's Prior-halt recall can match it and compute whether the blocker has moved. A halt presented only in chat is a **failed** exit: the next identical paste re-derives it from zero after a full ingest.
+- The **commit-boundary pass (§4e)** ran its trigger test and said so either way: `Commit boundary: n/a — …` on a read-only/reversible surface, or a `commit_boundary:` record carrying all nine determinations on a consequential one. Where the lifecycle could not be completed, the run classified it as an **interaction-model gap**, proposed the **smallest** stateful flow mapped onto named frames/sections, routed each element into `{added_capabilities}` so step-03/04 build it, and did NOT auto-proceed — including in autonomous mode. A surface with two controls reaching the same irreversible write was reported as a finding, not a footnote.
 - The **fixture-to-prod permission checkpoint (§4c)** ran: when the surface would ship to a production route backed by a mock module (`DATA_STATE = "fixture"` / the project's mock marker) with no live read path, the run **halted** for explicit owner authorization and did NOT auto-proceed (autonomous mode included) — disclosure (the fixture banner + the project's CI gate) is not treated as permission; otherwise it recorded `Fixture-to-prod: n/a`.
 
 ## FAILURE MODES
@@ -256,4 +325,6 @@ Read fully and follow: `{project-root}/_bmad/bmm/workflows/implement/design-impl
 - **Skipping the halt because the grid looked clean.** The component sweep greens out on a redesign that drops a whole capability (its inner primitives exist elsewhere) — exactly why this preflight runs before the grid, not after.
 - **Mis-scoring an undrawn-but-promised frame as dropped.** A §13 lookup the brief §7 / frame inventory promises but the static bundle didn't render is present-in-intent, not a regression — check the contract before flagging.
 - **Letting autonomous mode pick `replacement`.** Intent autonomy is out of scope; autonomous defaults to keep-all and discloses. (Conversely, autonomous mode BUILDS the uplift — implementing what the handoff drew is decision autonomy, not intent.)
+- **Reading a commit-boundary gap as a copy or layout problem (§4e).** "Preview what will be sent" and "Re-attempt publish" sharing a target around an irreversible external write is not fixed by better labels, a confirm dialog, or moving the buttons apart — the missing artifact is the durable attempt and its states. A relabel closes the finding and leaves the defect. The mirror failure is **over-firing**: running the pass on a read-only review surface because it says "Preview". A pre-commit-review signal alone never fires it.
+- **Treating an UNKNOWN external outcome as a failure.** A timeout or unreadable response from an external system is not "it didn't happen" — retrying it blindly is how one publish becomes two. `outcomes.unknown` is a required, separate determination for exactly this reason.
 - **Inventorying treatment instead of capability.** "The button is a different colour" is a grid delta (step-03), not a capability. This step is about what the page *does*, not how it looks.
