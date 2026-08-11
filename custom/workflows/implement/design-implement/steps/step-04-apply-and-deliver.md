@@ -7,6 +7,15 @@ description: 'Apply all deltas from the comparison grid to the implementation, r
 
 **Progress: Step 4 of 4** — Final step
 
+**Close-out shape.** Emit the close-out per `shared/close-out-contract.md` — audience-first, process
+narration forbidden by default, and the **§2a two-block shape**: plain answer first; at most one
+fenced `FOR YOUR LLM ADVISER` block carrying actionable detail only (PR URL, commit SHA, row
+dispositions, unrouted findings, manifest path), never a voice and never raw build/test scroll.
+The `persona_slot` (workflow.md → OUTPUT CONTRACT & VOICE SLOT) may speak in block 1 only.
+**A CHECKPOINTED or HALTED disposition is stated in block 1 in plain language** — never left for
+the reader to find in block 2. The `completion_disposition` requirement in close-out-contract §2
+element 4 is unchanged and still binds.
+
 ## RULES:
 
 - FULLY AUTONOMOUS. No user interaction. No menus. No halting.

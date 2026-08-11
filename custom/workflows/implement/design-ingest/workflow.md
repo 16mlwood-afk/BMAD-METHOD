@@ -112,6 +112,24 @@ For `synthesize_bundle`, the same refusal gates apply as `design-implement` (`sy
 
 ---
 
+## OUTPUT CONTRACT & VOICE SLOT
+
+Emit the close-out per `shared/close-out-contract.md` (audience-first; process narration forbidden
+by default; shape-feedback routes to a workflow patch). **The two-block shape in §2a binds here:**
+block 1 is the plain answer; block 2 is at most one fenced `FOR YOUR LLM ADVISER` block, emitted
+only when actionable technical detail exists, neutral and machine-shaped, never carrying a voice.
+The manifest path, frame counts, and grid scaffold state belong in block 2 — not in block 1.
+
+**The voice slot (`persona_slot`).** The agent executing this workflow MAY speak in its own voice
+at exactly the three human-facing moments in `shared/workflow-personas.md` §2a. Here that is: the
+opening re-orientation, **the section-inventory review PAUSE** (a genuine owner decision — this
+workflow's defining human moment), and close-out block 1.
+
+**Never in:** `steps/step-01-frame-inventory.md`, `steps/step-02-fanout-enumerate.md` (machine-to-machine
+fan-out), `manifest-schema.md`, or any written manifest record. The manifest is an artifact for a
+downstream workflow to consume; a voice in it is contamination, not warmth. If no voice is bound
+these render plain and anonymous — **today's behavior, unchanged.** This workflow names no persona.
+
 ## EXECUTION
 
 Read fully and follow: `{project-root}/_bmad/bmm/workflows/implement/design-ingest/steps/step-01-frame-inventory.md` to begin.

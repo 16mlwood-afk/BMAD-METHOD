@@ -7,6 +7,13 @@ description: 'Generate a paste-ready correction message for Claude Design and pe
 
 **Progress: Step 3 of 4** — the correction/approval message. Gate 3 (step-04) follows.
 
+**Close-out shape.** Emit the close-out per `shared/close-out-contract.md` — audience-first, process
+narration forbidden by default, and the **§2a two-block shape**: plain answer first; at most one
+fenced `FOR YOUR LLM ADVISER` block carrying actionable detail only (state-file path, violation
+IDs, iteration number), never a voice and never raw trace. The `persona_slot` (workflow.md → OUTPUT
+CONTRACT & VOICE SLOT) may speak in block 1 only. **The correction message to Claude Design is not
+a close-out** — it is a directive to a downstream consumer and keeps its existing imperative form.
+
 ## RULES:
 
 - FULLY AUTONOMOUS. No user interaction. No menus. No halting.
