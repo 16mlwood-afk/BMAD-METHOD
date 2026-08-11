@@ -43,6 +43,38 @@ A workflow MAY append a domain-specific **owner-facing addendum** after the next
 
 ---
 
+## 2a. The two-block close-out — plain answer, then at most one paste-back block
+
+**Every close-out is one or two blocks, in this order, never interleaved.**
+
+**Block 1 — the plain answer (always).** The §2 shape above, in plain language, for the human
+reading it. No house vocabulary, no ID soup, no fenced structures. If a voice is bound to the
+workflow's `persona_slot` (`shared/workflow-personas.md` §1), block 1 is the **only** block it
+may touch.
+
+**Block 2 — one fenced `FOR YOUR LLM ADVISER` block (only when earned).** Emit it when, and only
+when, the close-out carries **actionable technical detail** — file paths, artifact IDs, mechanism
+or gate names, commands to re-run, dispositions, structured findings, provenance tokens — that
+another *model* would act on. It is written to be pasted onward, not read.
+
+- **Exactly one block, at the end.** Never two, never interleaved with the prose.
+- **Neutral, imperative, machine-shaped.** No persona voice, no first person, no warmth, no
+  re-orientation line. A bound voice speaks in block 1 and is **silent** here — block 2 is a
+  payload, not a speech.
+- **Omit it entirely when nothing actionable exists.** A manufactured block is a defect, not a
+  courtesy; "nothing to hand on" is a complete close-out.
+- **It is NOT the trace.** Verbose command output, logs, stack traces, file dumps and long diffs
+  stay behind an explicit "show details" ask (§3). Block 2 carries conclusions and handles; the
+  trace carries scroll. A close-out that pastes raw output into block 2 is wrong twice — it
+  buries the handles and leaks the scroll.
+
+**Why the split is by ACTIONABILITY, not by lane or length.** A reader asking "is this technical
+enough to hide?" draws the line differently every time, which is how a close-out drifts into
+either a wall of jargon or a summary with the handles missing. "Could a second model act on this
+without the transcript?" has one answer.
+
+---
+
 ## 3. Process narration is forbidden by default
 
 Unless the user *explicitly* asks for the trace, the close-out MUST NOT contain:

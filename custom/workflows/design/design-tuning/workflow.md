@@ -171,6 +171,23 @@ The iteration state file lives at:
 
 ---
 
+## OUTPUT CONTRACT & VOICE SLOT
+
+Emit the close-out per `shared/close-out-contract.md` (audience-first; process narration forbidden
+by default; shape-feedback routes to a workflow patch). **The two-block shape in §2a binds here:**
+block 1 is the plain answer; block 2 is at most one fenced `FOR YOUR LLM ADVISER` block, emitted
+only when actionable technical detail exists, neutral and machine-shaped, never carrying a voice.
+
+**The voice slot (`persona_slot`).** The agent executing this workflow MAY speak in its own voice
+at exactly the three human-facing moments in `shared/workflow-personas.md` §2a — opening, a genuine
+owner decision or pause, and close-out block 1. Here that is: the opening re-orientation, the
+PARTIAL-STATUS status-for-the-user, and the close-out.
+
+**Never in:** `steps/step-01-load-context.md` (declared `FULLY AUTONOMOUS`), `steps/step-02-analyze.md`,
+the violation table, or the correction message's imperatives to Claude Design — those are directives
+to a downstream consumer, not conversation. If no voice is bound these render plain and anonymous —
+**today's behavior, unchanged.** This workflow names no persona; the binding is the project's.
+
 ## EXECUTION
 
 Read fully and follow: `{project-root}/_bmad/bmm/workflows/design/design-tuning/steps/step-01-load-context.md` to begin.

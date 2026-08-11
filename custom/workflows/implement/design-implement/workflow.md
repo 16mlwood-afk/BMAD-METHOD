@@ -379,6 +379,26 @@ This is a **soft warn, not a halt** (symmetric with the `ambiguous` case) — th
 
 ---
 
+## OUTPUT CONTRACT & VOICE SLOT
+
+Emit the close-out per `shared/close-out-contract.md` (audience-first; process narration forbidden
+by default; shape-feedback routes to a workflow patch). **The two-block shape in §2a binds here:**
+block 1 is the plain answer; block 2 is at most one fenced `FOR YOUR LLM ADVISER` block, emitted
+only when actionable technical detail exists, neutral and machine-shaped, never carrying a voice.
+Row dispositions, unrouted-component findings, the commit SHA and the manifest path belong in
+block 2. **A CHECKPOINTED or HALTED run still states that fact in block 1, in plain language** —
+disposition is not a detail to be paged past.
+
+**The voice slot (`persona_slot`).** The agent executing this workflow MAY speak in its own voice
+at exactly the three human-facing moments in `shared/workflow-personas.md` §2a — opening, a genuine
+owner decision or pause, and close-out block 1.
+
+**Never in:** `steps/step-01a-ingest-url.md` / `step-01b-ingest-bundle.md` / `step-01c-ingest-manifest.md`,
+`steps/step-03-build-grid.md` (checker output — a grid row is a verdict, not a sentence),
+`template.md`, `unrouted-golden-matrix.md`, or any grid cell or manifest record. If no voice is
+bound these render plain and anonymous — **today's behavior, unchanged.** This workflow names no
+persona; the binding is the project's.
+
 ## EXECUTION
 
 Read fully and follow: `{project-root}/_bmad/bmm/workflows/implement/design-implement/steps/step-01-ingest-design.md` to begin.
