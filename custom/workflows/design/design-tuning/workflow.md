@@ -33,7 +33,7 @@ This uses **step-file architecture** for focused execution:
 
 - All steps are autonomous — no user interaction after the screenshot(s) and (optionally) the design artifact URL are provided
 - State persists via variables (see below)
-- Sequential progression: load context (brief + policy + artifact source + canonical components) → analyze (artifact source for treatment, screenshot for composition) → generate correction
+- Sequential progression: load context (brief + policy + artifact source + canonical components) → analyze (artifact source for treatment, screenshot for composition) → generate correction → **emit critique (Gate 3)**
 - Iteration state persists across invocations via a state file on disk
 
 ### State Variables
@@ -58,6 +58,7 @@ This uses **step-file architecture** for focused execution:
 - `{artifact_css_catalog}` — Per-component CSS property catalog extracted from the artifact source for the components under review (the treatment values: `border-radius`, `box-shadow`/ring, `padding`, `font-*`, `letter-spacing`, exact color, presence of a leading dot). The exact-value baseline step-02's treatment lane compares against.
 - `{canonical_components}` — Map of treatment-class (status-pill, badge, filter-chip, drawer, button) → the canonical component in THIS project's codebase plus its extracted classes/values. The §13 cross-surface reference, read from code, NOT from policy prose. This is what the iter-4 V18 miss lacked.
 - `{treatment_evidence_mode}` — `bundle-exact` (artifact source ingested; treatment checks read exact values) or `screenshot-degraded` (no artifact source; treatment checks are downgraded to `unverified-treatment` and cannot be certified resolved). Mirrors design-review's `measurement_method` degraded-mode switch.
+- **Gate 3 (step-04)** — `{critique_artifact_path}` (the `design-critique-*.md` this run emits) · `{critiqued_brief_sha}` (brief BODY sha256, frontmatter excluded — the same digest Gate 1 records, which is what lets the two artifacts be lined up) · `{gate3_lanes}` (per-lane counts: `brief-gap` / `brief-violation` / `implementation-data` / `visual`) · `{gate3_routed_to_gate_2}` (ids of ACCEPTED brief-gap findings entering `brief-revision-policy.md` §9 — never pre-filtered by materiality) · `{gate3_owner_decisions}` (genuine missing owner product/design decisions; **empty is the normal case**) · `{gate3_paused}` (true iff that list is non-empty). Contract → `shared/design-gate-artifacts.md`.
 
 ### Step Processing Rules
 
@@ -73,6 +74,40 @@ This uses **step-file architecture** for focused execution:
 - **Be specific.** "Badge colors exceed the 4-color limit" not "the colors feel wrong."
 - **Track across iterations.** The value of this workflow is knowing what got fixed and what persists — without that, it's just a review.
 - **Policy is authoritative; the brief is derivative.** If the brief explicitly allows something but the project design policy prohibits it, the policy wins — flag the violation. If the brief explicitly prohibits something the policy permits, the brief wins for this feature (the brief may narrow but not loosen). When in doubt, cite the policy.
+
+---
+
+## GATE 3 — DESIGN-CLOSURE (step-04) — CRITICAL
+
+This workflow owns **Gate 3** of the three-gate design route. `steps/step-04-emit-critique.md`
+**extends** design-tuning; it does not move or replace it. The correction-pass capability
+already lives in steps 01–03 and is untouched — what is added is that the findings, their lane
+classification and their routing **survive as a durable artifact**,
+`design-critique-{target_slug}-{date}.md`, instead of as a conversation.
+
+The gate asks one question of every finding: *is this a **brief gap**, an **explicit-brief
+design violation**, an **implementation/data concern**, or a **visual concern**?* Each finding
+is routed **once**. Then **one bounded correction pass — not a loop.** An unexpected second
+pass REOPENS classification and routes each new finding by evidence; **it must not presume the
+brief is wrong.**
+
+**This is also the BACKLOG entry point.** An existing design with an already-delivered brief
+enters the route here, never at Gate 1 — a backlog brief already carries a capability contract
+that was expensive to establish and is usually correct.
+
+**Accepted `brief-gap` findings enter Gate 2** (`shared/brief-revision-policy.md` §9), which
+then decides editorial amendment versus material supersession. **Materiality is the OUTPUT of
+that gate, never a precondition for entering it** — do not pre-filter findings by "is this
+material enough?".
+
+**Phase 1 is WARN-ONLY, and warn-only is NOT uniform.** Instrument results (findings, lanes,
+dispositions) never block. A genuine missing OWNER product/design decision **pauses the affected
+design handoff** — do not invent the value, do not send a correction with the decision silently
+unresolved. That is not the gate blocking on findings; it is the route refusing to guess a
+decision that is the owner's to make. Promotion to Phase 2 is a separate owner decision.
+
+Full contract — artifact schema, lane and disposition enums, SHA lifecycle, promotion evidence:
+`shared/design-gate-artifacts.md`.
 
 ---
 

@@ -5,7 +5,7 @@ description: 'Generate a paste-ready correction message for Claude Design and pe
 
 # Step 3: Generate Correction
 
-**Progress: Step 3 of 3** — Final step
+**Progress: Step 3 of 4** — the correction/approval message. Gate 3 (step-04) follows.
 
 ## RULES:
 
@@ -254,3 +254,9 @@ Display to the user:
 - Approving a design that still has hard failures
 - **Approving on `{coverage_partial} == true`.** PASS requires both 0 hard failures AND full screen coverage; emit PARTIAL-STATUS when coverage is incomplete and refuse to send Claude Design a correction (the gap is on the user's side, not the design's). See §5a.
 - **Sending the PARTIAL-STATUS message to Claude Design as a correction.** That message is a status-for-the-user; Claude Design would treat it as a directive to redesign the screens it has already shown. The next step is the user dropping the missing screens, not Claude Design producing new ones.
+
+---
+
+## NEXT STEP
+
+Read fully and follow `{project-root}/_bmad/bmm/workflows/design/design-tuning/steps/step-04-emit-critique.md` — **Gate 3 (design-closure)**. It classifies every finding this run produced into exactly one lane, emits the durable `design-critique-{target_slug}-{date}.md`, routes accepted brief-gap findings into Gate 2, and runs the one bounded correction pass. Do not end the workflow at this step: without step-04 the classification survives only as this conversation, which is the gap Gate 3 exists to close.
