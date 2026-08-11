@@ -1,11 +1,27 @@
 ---
 name: 'step-03-emit-manifest-and-handoff'
-description: 'Assemble the durable ingest manifest per manifest-schema.md (frame inventory + section inventory + pre-seeded grid scaffold), re-assert the completeness invariant, write it to implementation_artifacts on main, and PAUSE with the design-implement handoff command. This is the one deliberate halt.'
+description: 'Assemble the durable ingest manifest per manifest-schema.md (frame inventory + section inventory + pre-seeded grid scaffold), re-assert the completeness invariant, write it to implementation_artifacts on main, and PAUSE with the design-implement handoff command. This is the one deliberate halt. Declares `completion_disposition` per `shared/completion-contract.md` (STD-COMPLETION-001).'
 ---
 
 # Step 3: Emit Manifest + Handoff
 
 **Progress: Step 3 of 3** — terminal. Emits the manifest and STOPS.
+
+**Close-out shape.** Emit the close-out per `shared/close-out-contract.md` — audience-first, process
+narration forbidden by default, and the **§2a two-block shape**: plain answer first (what was
+ingested, what the owner is being asked to review, what happens next); at most one fenced
+`FOR YOUR LLM ADVISER` block carrying actionable detail only (manifest path, frame and section
+counts, the `design-implement` resume command), never a voice and never raw trace. The
+`persona_slot` (workflow.md → OUTPUT CONTRACT & VOICE SLOT) may speak in block 1 and at the review
+PAUSE. **Nothing written INTO the manifest carries a voice** — it is an artifact for a downstream
+workflow, and the completeness invariant below is unaffected by any of this.
+
+Emit a `completion_disposition` per `shared/completion-contract.md` (STD-COMPLETION-001):
+`pr_merged` / `pr_open` with the PR, `owner_gated_residue` with each blocker named, or `advisory`
+with a why — diagnosis with no disposition is an invalid exit. **This workflow's normal exit is
+`owner_gated_residue`**: the manifest is delivered, and the named residue is the section-inventory
+review the owner has not yet given (that PAUSE is the workflow's purpose, not a failure). It goes
+in close-out block 1, in plain language — a disposition is never demoted into block 2.
 
 ## RULES
 
