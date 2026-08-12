@@ -9482,6 +9482,19 @@ state: open
 fix: none
 delivery: n/a
 routing: needs-owner-marker
+- 2026-08-11 — an open item whose CHEAPEST resolver is the owner gets routed to a third party by default, so it sits for weeks. On 9plas the purchase price had been flagged UNRECONCILED (Land Registry £180,000 vs the £185,000 every derived figure was built on) and ranked gap #1 in the stress-test pack the day before. The remedy the record named was "the original completion statement" — a document nobody holds. The actual resolver was one sentence from Mason, who was in the room, and it arrived only because he volunteered it unprompted. Same session, same shape: the renovation spend carried `CONFIRMED ALREADY SPENT (Mason, 2026-07-24)` and Mason then put it £10,000 lower — so a tag reading CONFIRMED was owner-recall, not evidence, and had propagated unchallenged into four downstream documents. TWO STRUCTURAL DEFECTS, both in the matter-file/appraisal method rather than in any one matter. (1) The open-items schema has no "resolver = owner" channel — `open_content_items` and the "what would change all of this" lists enumerate agents, lenders, solicitors and accountants, so the one free, instant source gets skipped precisely because he is not an external party. (2) The confidence vocabulary (CONFIRMED / EVIDENCED / ESTIMATE / LIKELY / UNVERIFIED, `property-appraisal/SKILL.md` § Confidence tagging) has no level for "the owner said so from memory", so owner-recall enters as CONFIRMED and outranks a contradicting documentary source — which is exactly backwards, and is how a Land Registry figure lost to a remembered one for eighteen days. TARGET FILES: `~/.claude/skills/property-appraisal/SKILL.md` (add an ASSERTED tier below ESTIMATE for unevidenced owner recall, and require the outstanding-analysis checklist to name the resolver for each item, flagging any whose resolver is the owner as ask-this-session); `~/.claude/CLAUDE.md` § File-Tree Doctrine / Matter state (the STATE block's read-first discipline covers cross-session drift but not "this open item is answerable by the person you are talking to"). NOT proposing a hook — the detection is semantic and a matcher would fire on every matter file. The cheap deterministic slice, if this recurs: the desk hook already reads matter files at session start, so it could surface open items tagged `resolver: owner` as a one-line prompt, which is a schema addition plus three lines of shell rather than a new gate.
+
+## FG-2026-08-12-01 — 1 WIP-register claim(s) written by session 6b8ae223 are gone from the register
+
+```yaml
+id: FG-2026-08-12-01
+class: enforcement
+scope: project
+target: .claude/wip-register.yaml (cash-recovery)
+marker: "Session:** `6b8ae223-1b7e-4dd9-a376-9368bd034dcc`"
+state: open
+fix: none
+delivery: n/a
 owner: mason
 ```
 
@@ -9557,3 +9570,197 @@ amendment route is a hand-edit route, and this policy's §3 forbids hand-editing
 revision precisely because silent scope drift is the failure it exists to stop. The exclusions in
 (2) and the provenance in (1) are what keep an amendment from becoming that drift under a new
 name. Do not implement any of this without an owner decision.
+**Logged automatically by `claim-receipt.py`, not by an agent noticing.** That is the point:
+FG-2026-07-31-12 exists because six claims were destroyed and nothing recorded it until the
+owner asked. This row is the mechanical replacement for that memory.
+
+**Session:** `6b8ae223-1b7e-4dd9-a376-9368bd034dcc`
+**Claims present when written, absent at Stop:**
+  - `design-implement:clerk-grading-workspace-v2 — STATION GEOMETRY.`
+
+### Why it's structural
+
+**What this does and does not establish.** The claim TEXT is gone from
+`.claude/wip-register.yaml`. It does not say who removed it, whether it was deliberate
+(an owner compaction looks identical), or whether the underlying WORK survived — claims are
+coordination metadata and the commits are the durable record. Check `git log` for the work
+before treating this as a loss of anything but the record.
+
+**Most likely mechanism, from the 07-31 case:** claims are written to the MAIN CHECKOUT so
+peers see them immediately, which means they are UNCOMMITTED, which means a concurrent
+session's checkout over the tracked path erases them. Visibility and durability are in
+tension and the doctrine only names the first.
+
+## FG-2026-08-12-02 — RESOLVED: the worktree deps-currency detector counted foreign-platform binaries as "missing", firing on every healthy worktree forever
+
+```yaml
+id: FG-2026-08-12-02
+class: enforcement
+scope: machine-local
+target: ~/.claude/hooks/worktree-deps-currency.py (+ worktree-deps-currency.test.py)
+marker: "Worktree deps are STALE, not broken"
+state: closed
+fix: done
+delivery: done
+owner: mason
+```
+
+### Incident
+
+A session was handed off with *"worktree `node_modules` symlinks to the main checkout's store;
+100 lockfile-declared packages absent; `tsc`/`vitest` unrunnable in a fresh worktree"* and named
+it the blocker for the next session. **The store was complete.** All 100 names were
+foreign-platform optional binaries — `@esbuild/linux-x64`, `@esbuild/android-arm`,
+`@rollup/rollup-win32-*`, `@next/swc-*` — which npm correctly never installs on darwin/arm64.
+Measured against `origin/main`'s lockfile: **0 genuinely missing packages**, `tsc` exit 0, 394
+files / 5606 tests green in a fresh worktree.
+
+`check()` filtered on nothing: any top-level lockfile entry whose directory was absent counted
+as staleness, with no `os` / `cpu` / `optional` test.
+
+### Why it's structural
+
+Three properties compound, and none is a one-off bug:
+
+1. **It could never be quiet.** A lockfile lists every platform's build of each native optional
+   dep, so the condition is true on a *correctly installed* store, permanently, on every machine.
+   The detector fired on every `EnterWorktree` in every project since it shipped (2026-08-03).
+2. **Its remedy is dangerous.** The message says *"run `npm install` from THIS worktree"* against
+   a store shared by every live session via the symlink. A detector that cries wolf AND names a
+   shared-state mutation as the fix manufactures the hazard it exists to warn about.
+3. **It laundered into a handoff as fact.** The false alarm was copied into a session handoff as
+   a named blocker with a package count, so the next session inherited "deps are broken" as a
+   premise rather than a claim to test. The instrument's output became evidence.
+
+This is the indiscriminate-detector anti-pattern the enforcement doctrine already names — the
+version that does not get switched off, because it looks authoritative and cites a real FG.
+
+### Resolution
+
+`_platform_applies(meta)` implements npm `os`/`cpu` matching including the `!negated` form, with
+a uname→node arch map. `_top_level_packages()` now returns `dict[name] -> meta`. It filters on
+**applicability, not `optional`** — a package that CAN run here and is missing still fires, so no
+real signal is lost; on the lockfile that produced this, the os/cpu test alone explained all 100
+and left zero.
+
+**Verified, not asserted:** `python3 ~/.claude/hooks/worktree-deps-currency.test.py` → 27 passed
+/ 0 failed (10 new cases, both directions, incl. "mixed lockfile counts 1, not 3"). Live probes
+through the real wiring (`worktree-verify-bootstrap.sh:39`): healthy worktree SILENT · main
+checkout SILENT · worktree with no `node_modules` still FIRES the FG-2026-07-10-04 message.
+
+### Carried, unresolved
+
+The **shared-store hazard itself is real and untouched** — `worktree.symlinkDirectories` still
+points every worktree's `node_modules` at the main checkout, so a genuine staleness event still
+has no safe remedy. FG-2026-08-03-04 stays open on its own terms. What changed is only that the
+detector no longer claims one is happening when it is not.
+
+---
+
+## FG-2026-08-12-03 — the worktree mandate, claims-in-the-main-checkout, and worktree isolation are mutually unsatisfiable as written
+
+```yaml
+id: FG-2026-08-12-03
+class: contract
+scope: project
+target: cash-recovery/CLAUDE.md (§Same-Epic Collisions COROLLARY) + the PreToolUse Edit|Write worktree guard
+marker: "Edit the worktree copy of this file instead of the shared-checkout path"
+state: open
+fix: none
+delivery: n/a
+owner: mason
+```
+
+### Incident
+
+Re-observed 2026-08-12, and flagged by the PRIOR session too (its handoff named it as friction 1
+and left it unlogged because it read routing as the owner's). Logging it now because a second
+independent session hit the identical wall, which makes it the wiring rather than a session.
+
+Three rules, each individually correct:
+
+1. **ALWAYS `EnterWorktree`** before editing any file (CLAUDE.md, hard mandate).
+2. **Claims MUST be authored in the MAIN CHECKOUT** — a claim written inside a worktree is
+   invisible to other sessions until committed *and* pushed (CLAUDE.md, and the whole reason the
+   register works at all).
+3. **Worktree isolation denies writes to the main checkout** from inside a worktree.
+
+The CLAUDE.md corollary anticipates exactly this and states the requirement:
+*"`.claude/wip-register.yaml` MUST be writable from the main checkout by EVERY route — Bash,
+Edit, Write, a script."* **The Edit tool does not honour it.** Attempting to append a claim to
+`<main>/.claude/wip-register.yaml` from inside a worktree returns:
+
+> *"This session is isolated in the worktree … Edit the worktree copy of this file instead of the
+> shared-checkout path."*
+
+That instruction is the one thing the contract forbids: the worktree copy is invisible to peers.
+
+### Why it's structural
+
+The refusal comes from **harness-level worktree isolation**, not from `bash_edit_guard.py` — so
+the carve-out that CLAUDE.md documents (and that `bash_edit_guard.py` genuinely implements) does
+not reach the Edit route. The two guards disagree about the same path, which is precisely the
+defect `FG-2026-07-25-02` recorded in the opposite direction, arriving through a different door.
+
+Worked around by writing a Python script to a scratchpad and appending via Bash — sanctioned, but
+it means **the register is now edited by the one route with no path-classification guard at all**,
+which is a worse safety posture than the tool that refused.
+
+### What would close it
+
+Either the harness isolation honours the same `*/.claude/*` exemption `bash_edit_guard.py`
+already implements, or CLAUDE.md's "EVERY route" claim is corrected to name Bash-only and the
+register write is given a first-class affordance (a `claim` script) so it stops depending on
+which tool happens to be exempt.
+
+---
+
+## FG-2026-08-12-04 — the worktree Bash guard refuses read-only compound commands, with no narrower route offered
+
+```yaml
+id: FG-2026-08-12-04
+class: ergonomics
+scope: harness
+target: the worktree-isolation Bash matcher ("this command is too complex to verify")
+marker: "too complex to verify that it stays inside the worktree"
+state: open
+fix: none
+delivery: n/a
+owner: mason
+```
+
+### Incident
+
+Inside a worktree, these were each REFUSED as *"too complex to verify that it stays inside the
+worktree"* — every one read-only, none writing anything:
+
+- `git fetch -q origin; { ls <dir>/*.md; git ls-tree -r --name-only origin/main -- <dir>; } | sort -u`
+  — the exact prior-halt recall recipe **`design-implement`'s own step file prescribes verbatim**
+- `for w in a b c; do ls -ld "$dir/$w/node_modules"; done` — inspecting worktree symlinks
+- a `python3 - <<'PY'` heredoc that only READ the register and printed a summary
+- `npx tsc --noEmit 2>&1 | tail -20; echo "exit: $?"`
+
+### Why it's structural
+
+The refusal keys on shell *shape* (`;`, `&&`, `{}`, heredocs, redirects) rather than on resolved
+write targets — so it cannot distinguish `ls | sort` from `cat > src/x.ts`. Two consequences:
+
+1. **A workflow step file cannot be followed as written.** `design-implement`'s prior-halt recall
+   ships the compound `git fetch && { ls; git ls-tree; } | sort -u` as the correct incantation,
+   and it is unrunnable inside the worktree the same workflow mandates.
+2. **The workaround is strictly less safe.** Splitting is fine, but the heredoc case pushed real
+   logic into a scratchpad `.py` invoked as `python3 script.py` — which the guards see as an
+   opaque invocation with **no write target at all** (the KNOWN GAP CLAUDE.md already documents).
+   The guard converts an inspectable one-liner into an uninspectable script.
+
+Note `bash_edit_guard.py` already solves the classification problem properly — quoted-span
+handling, leading-`cd` resolution, literal `$VAR` substitution, fail-closed on unresolvable
+targets, 47 golden cases. This refusal fires *before* any of that judgement is applied.
+
+### What would close it
+
+Route the compound case through `bash_edit_guard.py`'s target classifier instead of refusing on
+shape, or allow a read-only allowlist (`ls`, `git ls-tree`, `git log`, `grep`, `sort`, `wc`) to
+compose freely. Lowest-cost interim: name the narrower route in the refusal text, since the
+current message says only "break it into plain, separate commands" and does not say that a
+scratchpad script — the thing an agent reaches for next — is the least-inspectable option.
