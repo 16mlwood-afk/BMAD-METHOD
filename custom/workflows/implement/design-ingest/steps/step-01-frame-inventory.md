@@ -69,12 +69,64 @@ Then resolve the handoff's supersede status against the briefs on disk — the "
 
 Two probes, cheapest first. Neither writes shared state; neither blocks on failure.
 
-**1. Output-path probe (no shared state, always run).** Record `{run_started_at}` (UTC, from the harness clock) at the top of this step. Then:
+**1. Output-path probe (no shared state, always run).** Record `{run_started_at}` at the top of this
+step **as EPOCH SECONDS** (`date -u +%s`), not as a formatted instant — see the unit rule below.
 
 ```bash
-test -e "{implementation_artifacts}/design-ingest-{target_slug}.md" && \
-  stat -f '%m %N' "{implementation_artifacts}/design-ingest-{target_slug}.md"
+RUN_STARTED_AT=$(date -u +%s)          # TOP of this step, before anything else
+P="{implementation_artifacts}/design-ingest-{target_slug}.md"
+if [ -e "$P" ]; then
+  MTIME=$(stat -f '%m' "$P")           # epoch seconds; GNU coreutils: stat -c '%Y'
+  echo "mtime_epoch=$MTIME run_started_epoch=$RUN_STARTED_AT"
+  echo "mtime_utc=$(date -u -r "$MTIME" +%Y-%m-%dT%H:%M:%SZ)"   # DISPLAY ONLY
+  [ "$MTIME" -gt "$RUN_STARTED_AT" ] && echo "VERDICT=concurrent-detected" \
+                                     || echo "VERDICT=prior-manifest (re-ingest)"
+fi
 ```
+
+> **COMPARE EPOCH TO EPOCH. Never compare a formatted timestamp.** `stat -f '%m'` emits epoch
+> seconds while `{run_started_at}` reads as a wall-clock instant, and this file never said which
+> unit the comparison runs in — so an agent reconciling the two sides formats one of them, and the
+> convenient formatter is the wrong one: `stat -f '%Sm' -t '%Y-%m-%dT%H:%M:%SZ'` prints **local
+> time with a `Z` suffix**. In any UTC+N zone that inflates the manifest's apparent age by N hours
+> onto the `NEWER` branch — and that branch **STOPS the run**. A false `concurrent-detected` is the
+> most expensive false positive available here: §5a exists to halt before the fan-out, so getting
+> it wrong blocks exactly the legitimate work it was built to protect.
+>
+> **Observed 2026-08-12 (cash-recovery, `clerk-dispatch-station`, BST = UTC+1).** A same-day
+> re-ingest read its own prior manifest as `16:21:42Z` against a `15:33:47Z` start and reported
+> `concurrent-detected`. True UTC mtime was `15:21:42Z` — twelve minutes *before* the start, i.e.
+> unambiguously OLDER — and the only writer had been that same session. Same defect class as the
+> `claimed_at` local-time-with-`Z` incident in the collision register's design v3: one field, two
+> conventions, indistinguishable by inspection.
+>
+> Format to UTC (`date -u -r <epoch>`) for **display** in the pause narration if you like. Never
+> for the comparison.
+
+**Golden case — a same-day re-ingest in UTC+N must NOT halt.** Run this before trusting any change
+to this probe. It pins both directions: the one that false-fired, and the one that must still fire.
+
+```bash
+TZ=Europe/London   # UTC+1 in summer — the zone the miss was observed in
+T=$(mktemp -d); P="$T/design-ingest-golden.md"
+
+# (a) prior manifest, written 20 minutes BEFORE the run starts -> must be a re-ingest
+touch -t "$(date -v-20M +%Y%m%d%H%M)" "$P"
+RUN_STARTED_AT=$(date -u +%s); MTIME=$(stat -f '%m' "$P")
+[ "$MTIME" -gt "$RUN_STARTED_AT" ] && echo "FAIL(a): halted on an OLDER manifest" \
+                                   || echo "PASS(a): prior-manifest (re-ingest)"
+
+# (b) manifest that appears AFTER the run starts -> must still stop
+RUN_STARTED_AT=$(date -u +%s); sleep 1; touch "$P"; MTIME=$(stat -f '%m' "$P")
+[ "$MTIME" -gt "$RUN_STARTED_AT" ] && echo "PASS(b): concurrent-detected" \
+                                   || echo "FAIL(b): missed a real concurrent write"
+rm -rf "$T"
+```
+
+Both must print `PASS`. **(a)** fails on any implementation that formats either side to local time —
+it is the regression test for this exact miss. **(b)** is the guard against "fixing" the false
+positive by weakening or disabling the probe, which would silently give up the protection §5a exists
+for.
 
 - **Absent** → no concurrent run detectable by this probe. Continue.
 - **Present and OLDER than `{run_started_at}`** → a prior completed ingest, not a concurrent one. This is a **re-ingest**, which is legitimate. Note it for the step-03 pause ("this supersedes an earlier manifest from `<date>`") and continue. **If you ARCHIVE the prior manifest under a new filename rather than overwriting it, you owe it a restamp — see below.**
