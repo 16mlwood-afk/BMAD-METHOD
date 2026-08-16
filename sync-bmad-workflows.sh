@@ -189,8 +189,14 @@ JQ_MERGE='
       + $template.hooks[$event]
     )
   )
-  | .permissions = ($template.permissions // .permissions // {})
-  | .enableAllProjectMcpServers = ($template.enableAllProjectMcpServers // .enableAllProjectMcpServers // false)
+  | .permissions = (($template.permissions // {}) * (.permissions // {}))
+  # Project WINS when the key is present — including an explicit `false`, which `//`
+  # could never preserve (false is falsy in jq, so the template's `true` always won and
+  # silently auto-enabled project-scoped MCP servers against the project's stated choice).
+  # `has()` distinguishes "explicitly false" from "absent"; only absent takes the default.
+  | .enableAllProjectMcpServers = (
+      if has("enableAllProjectMcpServers") then .enableAllProjectMcpServers
+      else ($template.enableAllProjectMcpServers // false) end)
   | .["$schema"] = "https://json.schemastore.org/claude-code-settings.json"
 '
 
