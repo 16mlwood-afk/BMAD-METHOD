@@ -26,9 +26,22 @@ TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
 [[ -f "$SCRIPT"   ]] || { echo "FAIL: missing $SCRIPT"; exit 2; }
 [[ -f "$TEMPLATE" ]] || { echo "FAIL: missing $TEMPLATE"; exit 2; }
 
+# X1/X2 run FIRST and fail fast. Extracting the jq text proves nothing about whether the
+# SCRIPT still parses: on 2026-08-16 an apostrophe in a comment inside JQ_MERGE (a
+# single-quoted bash string) terminated the quote, turned the rest of the block into shell
+# code, and broke the sync at HEAD — while this suite stayed 11/11 green, because awk
+# extraction cannot see a quoting error. Text validity and script validity are two things.
+if bash -n "$SCRIPT" 2>/dev/null; then echo "PASS X1 sync script parses (bash -n)"
+else echo "FAIL X1 sync script does NOT parse — bash -n:"; bash -n "$SCRIPT"; exit 1; fi
+
 # Verbatim extraction — the whole point.
 awk "/^JQ_MERGE='/{f=1;next} f&&/^'/{exit} f{print}" "$SCRIPT" > "$TMP/jq.txt"
 [[ -s "$TMP/jq.txt" ]] || { echo "FAIL: could not extract JQ_MERGE from $SCRIPT"; exit 2; }
+
+if grep -q "'" "$TMP/jq.txt"; then
+  echo "FAIL X2 apostrophe inside JQ_MERGE — it is a single-quoted bash string:"
+  grep -n "'" "$TMP/jq.txt"; exit 1
+else echo "PASS X2 no apostrophe inside the single-quoted JQ_MERGE block"; fi
 
 merge() { jq -n "$(cat "$TMP/jq.txt")" "$1" "$TEMPLATE"; }
 
