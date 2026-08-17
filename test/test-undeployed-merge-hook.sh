@@ -21,11 +21,12 @@ bad() { FAIL=$((FAIL+1)); printf '  FAIL  %s\n          -> %s\n' "$1" "$2"; }
 
 # The historical (broken) command, frozen as a fixture so the suite can prove it
 # is actually discriminating between old and new behaviour.
+REPO_ROOT=$(cd "$(dirname "$0")/.." && pwd)
 OLD_CMD=$(cat "$(dirname "$0")/fixtures/undeployed-hook-pre-2026-08-17.txt")
 
 # The CURRENT command is extracted from the shipped asset, never copied — a
 # copy would silently drift from what actually runs.
-ASSET="${BMAD_HOOKS_ASSET:-$HOME/bmad-method-v6/src/modules/bmm/_module-installer/assets/hooks.json}"
+ASSET="${BMAD_HOOKS_ASSET:-$REPO_ROOT/src/modules/bmm/_module-installer/assets/hooks.json}"
 NEW_CMD=$(python3 - "$ASSET" <<'EXTRACT'
 import json, sys
 def walk(o):
@@ -45,6 +46,7 @@ sys.stdout.write(cmds[0])
 EXTRACT
 )
 [ -n "$NEW_CMD" ] || { echo "could not extract the hook from $ASSET"; exit 2; }
+[ -n "$OLD_CMD" ] || { echo "could not read the pre-fix fixture"; exit 2; }
 
 # run_hook spawns /bin/bash directly from THIS script (never inside a `( )`
 # subshell, which would fork a new pid every call and make $PPID vary per
