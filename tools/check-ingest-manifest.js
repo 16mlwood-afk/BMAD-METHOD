@@ -202,7 +202,12 @@ if (frameRows) {
       .replace(/\s*\(primary\)\s*$/i, '')
       .replaceAll('`', '')
       .trim();
-    if (!name || /^frame$/i.test(name)) continue; // header row
+    /* Header-row detection cannot key on the literal word "frame": a real inventory may lead
+     * with a row-number column (`| # | Frame | Role | Sections | Doc pos |`), whose header cell
+     * is "#". Counting it produced "20 frames declared" for a 19-frame manifest — a number the
+     * file does not support, printed in the same summary that is supposed to catch exactly that.
+     * A cell with no letter or digit in it is never a frame name. */
+    if (!name || /^frame$/i.test(name) || !/[A-Za-z0-9]/.test(name)) continue; // header row
     const drawnCell = (cells[4] || '').toLowerCase();
     const drawn = /true/.test(drawnCell);
     if (declaredFrames.has(name)) fail('DUP-FRAME', `C8 Frame inventory declares "${name}" more than once`);
@@ -282,27 +287,61 @@ if (!gridLayoutRecognised) {
   );
 }
 
+/* Is the grid actually READABLE by this parser? `gridLayoutRecognised` answers "is it keyed
+ * the way C1–C5 assume"; this adds the other half — "did we get any rows out of it at all".
+ * A fenced scaffold satisfies the first and fails the second, and every C1–C5 finding derived
+ * from a zero-row grid accuses the manifest of a defect the parser invented. C13 reports the
+ * blindness once; these stay silent rather than restate it as five different lies. */
+const gridEvaluable = gridLayoutRecognised && Boolean(gridRows) && gridCount > 0;
+
 /* ── 5. The checks ── */
-if (gridLayoutRecognised && C.sections_total !== undefined && gridRows && gridCount !== C.sections_total) {
+/* `gridCount > 0` is a GUARD, not a nicety.
+ *
+ * Without it, a manifest whose scaffold this parser cannot read (a fenced block rather
+ * than a markdown table) reports `sections_total is 75 but the grid scaffold has 0 data
+ * rows` — which accuses the TOTAL of being wrong when the total is right and the parser
+ * is blind. That is the cry-wolf failure this file warns about twenty lines above, and
+ * it fires precisely when someone has just done the right thing by declaring a total.
+ *
+ * An unparsed grid is a CEDED dimension, reported once by C13 below, not a defect in the
+ * number. Observed 2026-08-20 on the cash-recovery handheld manifest, immediately after
+ * its correct total was added. */
+if (gridEvaluable && C.sections_total !== undefined && gridCount !== C.sections_total) {
   fail(
     'C1-TOTAL',
     `C1 sections_total is ${C.sections_total} but the grid scaffold has ${gridCount} data rows — one section was enumerated and not scaffolded, or the count was hand-summed wrong`,
   );
 }
+
+/* ── C13 · the grid is PRESENT but this parser cannot read it ──
+ *
+ * Says the true thing in one line, so a reader knows the frame/section arithmetic here
+ * is UNVERIFIED rather than verified-clean — and so C1 does not have to lie to say it.
+ * C12 still covers the arithmetic, because it scans text rather than table cells. */
+if (gridRows && gridCount === 0) {
+  fail(
+    'C13-GRID-UNPARSED',
+    'C13 a grid scaffold is present but this parser read zero rows from it — most likely a fenced block rather than a markdown table. C1–C5 are NOT evaluated: the frame/section arithmetic is unverified here, not verified-clean. C12 still checks the scaffold\'s own totals, because it reads text rather than cells',
+  );
+}
 /* Frames already reported as having zero grid rows — so the drawn-frame sweep below does not
  * report the SAME defect a second time from the other side. One condition, one finding. */
 const reportedNoGridRows = new Set();
-for (const [name, n] of gridLayoutRecognised ? invDeclared : new Map()) {
-  const g = gridPerFrame.get(name);
-  if (g === undefined) {
-    reportedNoGridRows.add(name);
-    fail(
-      'C4-NO-GRID-ROWS',
-      `C4 frame "${name}" declares ${n} sections in the section inventory but has NO grid-scaffold rows — design-implement would be structurally blind to all of them`,
-    );
-  } else if (g !== n) {
-    fail('C2-PER-FRAME', `C2 frame "${name}": section inventory declares ${n} sections, grid scaffold has ${g} rows`);
+for (const [name, n] of invDeclared) {
+  if (gridEvaluable) {
+    const g = gridPerFrame.get(name);
+    if (g === undefined) {
+      reportedNoGridRows.add(name);
+      fail(
+        'C4-NO-GRID-ROWS',
+        `C4 frame "${name}" declares ${n} sections in the section inventory but has NO grid-scaffold rows — design-implement would be structurally blind to all of them`,
+      );
+    } else if (g !== n) {
+      fail('C2-PER-FRAME', `C2 frame "${name}": section inventory declares ${n} sections, grid scaffold has ${g} rows`);
+    }
   }
+  /* C3 compares the frontmatter against the section-inventory headings — it never reads the
+   * grid, so it survives an unreadable one. Gating the whole loop would have silenced it. */
   if (C.sections_per_frame && C.sections_per_frame[name] !== undefined && C.sections_per_frame[name] !== n) {
     fail(
       'C3-FRONTMATTER',
@@ -313,10 +352,10 @@ for (const [name, n] of gridLayoutRecognised ? invDeclared : new Map()) {
 for (const f of gridLayoutRecognised ? drawnFrames : []) {
   if (!invDeclared.has(f))
     fail('C4-MISSING-INV', `C4 frame "${f}" is drawn:true in the Frame inventory but has no section-inventory entry`);
-  if (!gridPerFrame.has(f) && !reportedNoGridRows.has(f))
+  if (gridEvaluable && !gridPerFrame.has(f) && !reportedNoGridRows.has(f))
     fail('C4-MISSING-GRID', `C4 frame "${f}" is drawn:true in the Frame inventory but has no grid-scaffold rows`);
 }
-for (const f of gridLayoutRecognised ? gridPerFrame.keys() : []) {
+for (const f of gridEvaluable ? gridPerFrame.keys() : []) {
   if (declaredFrames.size > 0 && !declaredFrames.has(f)) {
     fail('C5-UNDECLARED', `C5 grid scaffold has rows for "${f}", which is not in the Frame inventory`);
   }
@@ -427,6 +466,69 @@ if (C.sections_per_frame) {
   const sum = Object.values(C.sections_per_frame).reduce((a, b) => a + b, 0);
   if (C.sections_total !== undefined && sum !== C.sections_total) {
     fail('C9-SUM', `C9 sections_per_frame sums to ${sum} but sections_total is ${C.sections_total}`);
+  }
+}
+
+/* ── C12 · the scaffold's OWN ARITHMETIC ──────────────────────────────────────
+ *
+ * WHY THIS EXISTS, and why it is a BODY SCAN rather than another table check.
+ *
+ * cash-recovery's `design-ingest-clerk-grading-handheld-2026-08-19.md` printed a
+ * per-frame scaffold whose rows sum to 75, under a footer rule declaring 70, with the
+ * same 70 repeated in its ingest receipt and its section-inventory total. It carried
+ * no `completeness.sections_total`, so C1 — which cross-checks exactly this — was
+ * skipped, and NO-COMPLETENESS was read as a formatting nit and waved past. Six
+ * design-implement passes then reported progress against a denominator that disagreed
+ * with the manifest's own rows.
+ *
+ * C1 could not have caught it: it compares the frontmatter against PARSED GRID ROWS,
+ * and that scaffold is a fenced block rather than a markdown table, so the row parser
+ * saw nothing and the layout was correctly ceded. The number that was wrong is the one
+ * a HUMAN reads — the total printed under the rule — and nothing looked at that.
+ *
+ * So this scans the TEXT for the two things a reader actually believes:
+ *   · every `<frame>  <n>  <status>` line in a scaffold block, summed
+ *   · the total printed beneath a `───` rule
+ * and cross-checks them against each other and against `sections_total`. Layout-
+ * independent by construction, exactly like C10/C11 — which is the property that lets
+ * it fire on the manifest shape C1 has to cede.
+ *
+ * It CANNOT tell which number is right — only that they disagree. That is enough: a
+ * disagreement is always a defect, and naming all three lets a human pick.
+ */
+{
+  /* A scaffold row: a name, an integer, and a status word. Tolerant of both a fenced
+   * block and a table, because the point is to read what is PRINTED. */
+  const rowRe = /^\|?\s*([A-Za-z0-9][\w.\-]*)\s*\|?\s+(\d+)\s+\|?\s*([A-Za-z][\w-]*)\s*\|?\s*$/gm;
+  let rowSum = 0;
+  let rowCount = 0;
+  for (const m of src.matchAll(rowRe)) {
+    /* The status word is what distinguishes a scaffold row from an arbitrary
+     * "word number word" line elsewhere in the prose. */
+    if (!/^(UNVERIFIED|applied|deferred|dropped|transcribed|pending)$/i.test(m[3])) continue;
+    rowSum += Number(m[2]);
+    rowCount += 1;
+  }
+
+  /* The total printed under a horizontal rule — the number a human reads as THE total. */
+  const footerRe = /^[\s|]*[─-]{3,}[\s|]*\n[\s|]*(\d+)[\s|]*$/gm;
+  const footers = [...src.matchAll(footerRe)].map((m) => Number(m[1]));
+
+  if (rowCount >= 2) {
+    for (const printed of footers) {
+      if (printed !== rowSum) {
+        fail(
+          'C12-SCAFFOLD-ARITHMETIC',
+          `C12 the grid scaffold prints ${printed} under its rule but its own ${rowCount} rows sum to ${rowSum} — the number a reader believes disagrees with the number the manifest contains. Every downstream "N of ${printed}" is against a denominator this file does not support`,
+        );
+      }
+    }
+    if (C.sections_total !== undefined && C.sections_total !== rowSum) {
+      fail(
+        'C12-TOTAL-VS-ROWS',
+        `C12 completeness.sections_total is ${C.sections_total} but the scaffold's ${rowCount} rows sum to ${rowSum}`,
+      );
+    }
   }
 }
 
