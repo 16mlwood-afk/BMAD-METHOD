@@ -499,7 +499,7 @@ if (C.sections_per_frame) {
 {
   /* A scaffold row: a name, an integer, and a status word. Tolerant of both a fenced
    * block and a table, because the point is to read what is PRINTED. */
-  const rowRe = /^\|?\s*([A-Za-z0-9][\w.\-]*)\s*\|?\s+(\d+)\s+\|?\s*([A-Za-z][\w-]*)\s*\|?\s*$/gm;
+  const rowRe = /^\|?\s*([A-Za-z0-9][\w.-]*)\s*\|?\s+(\d+)\s+\|?\s*([A-Za-z][\w-]*)\s*\|?\s*$/gm;
   let rowSum = 0;
   let rowCount = 0;
   for (const m of src.matchAll(rowRe)) {
