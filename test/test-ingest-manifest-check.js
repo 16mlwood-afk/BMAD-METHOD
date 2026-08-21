@@ -137,7 +137,11 @@ check(
     '| beta | §13-lookup | alpha | jsx banner | true |',
     '| beta | §13-lookup | alpha | jsx banner | true |\n| gamma | §13-lookup | alpha | jsx banner | true |',
   ),
-  1,
+  /* EXIT 2, not 1, since 2026-08-21: a `drawn: true` frame with no section-inventory entry is
+   * an EMIT REFUSAL, not a finding among findings. The frame inventory contradicts the section
+   * inventory, so every count below has a denominator the manifest itself says is incomplete.
+   * `drawn: false` is untouched and still routes downstream as FRAME NOT DRAWN. */
+  2,
   ['C4-MISSING-INV', 'C4-MISSING-GRID'],
 );
 
@@ -362,6 +366,25 @@ check(
     failures.push('warn-only-does-not-exit-nonzero');
   }
 }
+
+/* ══ 2026-08-21 additions ══════════════════════════════════════════════════════
+ * C14 enum validation and the consumer trust ceiling. Most assert SILENCE: a checker that
+ * fires on a legitimate manifest is one that gets switched off, taking every real finding
+ * with it. ── */
+
+for (const g of ['value-exact', 'partial', 'summary']) {
+  check(`c14-silent-on-legal-grain-${g}`,
+    goodManifest().replace(/manifest_grain:\s*\S+/, `manifest_grain: ${g}`), 0, []);
+}
+
+/* Out-of-enum is REPORTED, never coerced — found in the wild as `full`. */
+check('c14-fires-on-out-of-enum-grain',
+  goodManifest().replace(/manifest_grain:\s*\S+/, 'manifest_grain: full'), 1, ['C14-GRAIN-ENUM']);
+
+/* ABSENT is the schema's own conservative default, NOT an invalid value. Conflating the two
+ * would fire on every manifest written before the field existed — which is most of them. */
+check('c14-silent-when-grain-absent',
+  goodManifest().replace(/^\s*manifest_grain:.*$/m, ''), 0, []);
 
 fs.rmSync(TMP, { recursive: true, force: true });
 
