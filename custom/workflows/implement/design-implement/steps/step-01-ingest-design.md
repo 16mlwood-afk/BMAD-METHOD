@@ -49,7 +49,27 @@ if {input_kind} == "ingest_manifest":    → read ./step-01c-ingest-manifest.md 
 
 Workflow.md's Input Resolution has already populated `{input_kind}`, `{design_url}` (URL path), `{bundle_dir}` + `{bundle_manifest}` (bundle path), or `{ingest_manifest}` (manifest path). For the bundle path, the refusal gates (`dev_no_render`, `needs_human_review`) have cleared; for the manifest path, the completeness-invariant gate (no drawn frame with an empty section list) has cleared — if execution reached this step with that `{input_kind}`, the manifest is good.
 
-**The MANIFEST PATH is the context fix.** A large bundle (~140KB JSX) does not fit one ingest context — the failure mode was shortcutting the exhaustive per-component catalog to fit, which let a whole *section* go unenumerated. When `design-ingest` has already fanned out per-frame and emitted a reviewed grid scaffold, that path reads the scaffold instead of re-cataloging; the exhaustive enumeration already happened, durably, in `design-ingest`. **Read its grain first (`MANIFEST.1a`)** — the scaffold is only a value source when it says it is.
+**The MANIFEST PATH is the context fix — for VALUES, and only for values (owner ruling 2026-08-21).** A large bundle (~140KB JSX) does not fit one ingest context, and the failure mode was shortcutting the exhaustive per-component catalog to fit. When `design-ingest` has already fanned out per-frame and emitted a reviewed grid scaffold, that path reads the scaffold instead of re-cataloging **property values**. **Read its grain first (`MANIFEST.1a`)** — the scaffold is only a value source when it says it is.
+
+> **SOURCE REVIEW IS NOT WAIVABLE BY GRAIN.** Every run — URL, bundle, or manifest, at any
+> `manifest_grain`, including `value-exact` — **opens the authoritative design source and
+> verifies frame structure, ordered top-level sections, and layout geometry** before any row is
+> marked applied and before any fidelity verdict is issued. `manifest_grain` governs one thing:
+> whether individual **resolved property values** need re-reading. It never waives review of
+> **existence, order, hierarchy, composition, or geometry.**
+>
+> **Why the ruling exists.** The manifest is a section-and-property artifact. It has no slot for
+> layout geometry at all, it carries order only implicitly as inventory order with nothing
+> asserting it, and its frame-completeness gate proves a section list is *non-empty*, never that
+> it is *complete*. So a manifest can be arithmetically perfect, pass `check-ingest-manifest.js`
+> clean, declare `value-exact` honestly — and still be three sections short, in the wrong order,
+> at the wrong column ratio. That is not a hypothetical: `design-ingest-clerk-grading-workspace-v2.md`
+> was exactly that, and it drove ten days of rework across 57 commits and 27 deploys while every
+> instrument stayed green.
+>
+> **The cost is real and is accepted.** This re-reads the design source on every run, including
+> runs whose manifest is genuinely value-exact. The alternative is a consumer that skips the one
+> artifact that can answer the questions the manifest cannot represent.
 
 ---
 

@@ -92,9 +92,58 @@ Re-read each modified file, then walk the Step-3 grid **row by row** and give EV
 
 | Disposition | Meaning | Required note |
 |---|---|---|
-| `✓ applied` | The delta is now fixed in the implementation (re-verified by re-reading the file). | — |
+| `✓ applied` | The delta is fixed in the implementation, **and the row cites both halves of the evidence below**. | **Two citations, both required — see "What `applied` costs" beneath this table.** |
 | `⊘ deferred` | Intentionally not applied this pass. | **Reason, one of:** `needs-data` (the page load / server doesn't provide the value — name the field), `out-of-scope` (explicitly outside this run's target), `judgment` (a product decision the implementer made — state it), `content-lane` (a formatter/enum-driven identifier cell from step-03 §2c — its rendered value cannot be verified against a mock-data bundle; routed to design-review / design-tuning on the LIVE page), `foundation-token-drift` (a step-03 §2i Foundation-token row — the app's canonical token VALUE diverges from the design system AND/OR `docs/design-policy.md`'s declared scale; routed to `apply-design-policy-change` for a single-source token migration, NEVER patched in-component and NEVER encoded as a dead `var(--token, <literal>)` fallback), `capability-protected` (the row would remove a production capability the user chose to KEEP at step-02b — `{capability_dispositions}` marks it `keep`; the handoff's treatment is applied around it, the capability is not deleted). |
 | `✗ dropped` | Cannot or will not apply at all. | **Reason** — why it's not implementable as specified. |
+
+### What `✓ applied` costs — two citations, or it is not applied (owner ruling 2026-08-21)
+
+**A matching prop, a copied string, or a manifest cell is NOT evidence that a design section is
+applied.** Every `✓ applied` row cites:
+
+1. **The implemented surface** — `file:line` of the **rendered** thing. Not an import, not a
+   prop, not a constant, not a test. If the row is a section, the citation points at the element
+   a reader meets on the page.
+2. **The source-design evidence** — where in the authoritative design that section lives: the
+   frame, and its position in that frame's ordered section list.
+
+**The failure this replaces, verbatim from the ledger it produced.** Pass 4 of the clerk grading
+manifest ran `grep -c "What this product should look like"`, got `1`, and marked the row applied.
+The hit was a `<Drawer label=…>` prop. The section the design draws first did not exist for
+another 16 hours and 22 commits, and the grid cell asserting it was applied never changed in
+between. The same inference produced the Pass 6 retraction and the Pass 15 sweep. **A grep proves
+a string is in the file; only a render proves a clerk can see it.**
+
+Three phrasings that do **not** satisfy citation 1, because each was used and each was wrong:
+
+- *"the string is present"* — it was, in a prop.
+- *"the component exists / is imported"* — an unrendered import is a component nobody meets.
+- *"the manifest row says applied"* — that is the claim, not evidence for it.
+
+**`⊘ deferred(placement)` is banned as a disposition.** "The section exists but sits in the wrong
+column" asserts existence while conceding the design is not met; it reads as near-done to the next
+resume and is how a missing section survived nine passes. Such a row is **UNVERIFIED** until the
+section is where the design puts it.
+
+### Per-pass evidence: structure, order, geometry
+
+Every pass — not every row — emits these three, from the **source read**, before any fidelity
+verdict. They are cheap because they are per-frame, not per-section.
+
+| Evidence | What the pass states | Fails when |
+|---|---|---|
+| **STRUCTURE** | For each frame touched: the source's top-level section list, and the implementation's, as two lists. | A section is in one list and not the other. A section present-but-empty counts as absent. |
+| **ORDER** | The two lists **as sequences**, compared position by position. | Any position differs. Order is not "roughly the same set". |
+| **GEOMETRY** | The source's declared container track for the frame's primary layout — column widths, grid template, gap, page padding — and the implementation's, as values. | A value differs and the row is still marked applied. |
+
+A pass that cannot produce one of the three says which and why; it does **not** issue a fidelity
+verdict without them. `UNVERIFIED — geometry not read` is a legitimate pass outcome. A green grid
+with no geometry evidence is not.
+
+**Why per-pass and not per-row.** Order and geometry are properties of a frame, not of a section —
+there is no row on which "the sections are in the wrong order" could ever have been recorded, which
+is exactly why the swap in the clerk bench survived every check that ran. Putting them at pass
+scope gives them somewhere to live.
 
 Every `content-lane` row from step-03 §2c (`{content_unverified_count}` of them) is disposed `⊘ deferred(content-lane)` — its CSS may well have been applied, but its *value-formatting* is explicitly NOT certified here. Do not silently `✓` it; do not drop it. It carries into §9 under "Content-lane verification owed (live page)" with the routing command, so the run hands the content lane off out loud instead of implying the grid covered it.
 
