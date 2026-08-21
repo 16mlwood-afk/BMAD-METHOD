@@ -65,6 +65,27 @@ Both paths converge here. `{design_components}` (with embedded `.properties` per
 
 **Non-empty is a floor, not a grain check.** A prose-only manifest yields a non-empty `{css_property_catalog}` — every section still produces a row, the rows just carry prose — so this check passes on exactly the input MANIFEST.1a exists to catch. The two are a pair: **SHARED.1 proves rows exist; `{manifest_grain}` proves they carry values.** Never read a green SHARED.1 as "value-exact."
 
+**THE EFFECTIVE GRAIN, NOT THE DECLARED ONE (2026-08-21).** `check-ingest-manifest.js` now
+reports an `effective_grain` alongside the declared field, and **the consumer branches on the
+effective value.** It differs from the declared one in exactly two cases, both of which mean
+*nothing verified the claim*:
+
+- the declared value is **not in the enum** (`C14-GRAIN-ENUM` — observed in the wild as
+  `manifest_grain: full`), so no branch of the table matches and no default applies; or
+- the **grid invariants C1–C5 could not be evaluated** — an unparsed grid, or one keyed on
+  something the parser does not recognise. `value-exact` promises the consumer it may skip the
+  design source; when the grid is unreadable, nothing substantiates that promise.
+
+In both cases the effective grain is **`summary`**: treat the manifest as the section
+denominator only and **open the authoritative design source for values.** The frontmatter is
+**not** rewritten and is not the authority here — the failure direction is an unnecessary
+source re-read, never a wrong value, which is the same logic the schema already applies to an
+absent field.
+
+Run the checker and read `effective_grain` from its `--json` output rather than parsing the
+frontmatter yourself; a consumer that reads the raw field re-creates exactly the gap this
+closes.
+
 On the manifest path, also assert before leaving this step: `{manifest_grain}` is set (absent ⇒ `summary`); if it claims `value-exact` then `completeness.sections_missing_property_rows` is **empty** — if not, the manifest is internally inconsistent (`design-ingest` step-03 §2a should have halted), so downgrade to `partial`, re-read the listed sections, and disclose it in SHARED.2; and on `partial`/`summary` the required re-read has actually happened *here*, not deferred to step-03 where no source remains in context.
 
 If `{css_property_catalog}` is empty, that is a step-1 failure regardless of input kind. Halt with:

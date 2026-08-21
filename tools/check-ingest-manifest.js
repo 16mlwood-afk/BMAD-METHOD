@@ -104,6 +104,9 @@ const src = fs.readFileSync(MANIFEST, 'utf8');
 const lines = src.split('\n');
 const findings = [];
 const fail = (code, msg) => findings.push({ code, msg });
+/* Frames that make this manifest UNEMITTABLE — see C4-MISSING-INV. Distinct from a
+ * finding: findings describe a manifest, a refusal says it must not ship as it is. */
+const emitRefusals = [];
 
 /* ── 1. completeness block (line-based; no YAML dep, matching house tooling) ── */
 function readCompleteness() {
@@ -151,6 +154,31 @@ if (C.sections_total === undefined)
 
 const grainMatch = src.match(/^\s*manifest_grain:\s*(\S+)/m);
 const grain = grainMatch ? grainMatch[1] : null;
+
+/* ── C14 · the declared grain must be a value the schema DEFINES ──────────────
+ *
+ * The enum is exactly `value-exact | partial | summary`. The schema's consumer table branches
+ * on those three and defaults an ABSENT field to `summary`. An UNRECOGNISED value matches no
+ * branch and hits no default — a consumer implementing that table literally has undefined
+ * behaviour at precisely the point the field exists to constrain.
+ *
+ * Found in the wild: `manifest_grain: full` (cash-recovery,
+ * design-ingest-clerk-receive-handheld-2026-08-05.md). Every check passed it, because the tool
+ * validated the field's PRESENCE and its C7 consequence and never its VALUE.
+ *
+ * REPORTED, NEVER COERCED. Silently reading an unknown value as `summary` would hide that a
+ * producer believed in a trust level the schema does not define — and nobody now knows whether
+ * `full` meant `value-exact` or something its author thought was stronger. Guessing is the
+ * self-reported-claim failure this whole field exists to stop. The consumer ceiling below
+ * still protects the reader; the finding is what gets the file fixed by someone who knows. */
+const GRAIN_ENUM = ['value-exact', 'partial', 'summary'];
+const grainInvalid = grain !== null && !GRAIN_ENUM.includes(grain);
+if (grainInvalid) {
+  fail(
+    'C14-GRAIN-ENUM',
+    `C14 manifest_grain is "${grain}", which is not one of ${GRAIN_ENUM.join(' | ')} — a consumer branching on the schema's table matches no case and falls through no default. NOT coerced: an unrecognised value is a producer belief the schema does not define, and guessing which one was meant is the self-reported claim this field exists to prevent. Fix it at the producer, or re-derive the grain from the design source`,
+  );
+}
 
 /* ── 2. Frame inventory: which frames are declared, and drawn? ──
  *
@@ -321,7 +349,7 @@ if (gridEvaluable && C.sections_total !== undefined && gridCount !== C.sections_
 if (gridRows && gridCount === 0) {
   fail(
     'C13-GRID-UNPARSED',
-    'C13 a grid scaffold is present but this parser read zero rows from it — most likely a fenced block rather than a markdown table. C1–C5 are NOT evaluated: the frame/section arithmetic is unverified here, not verified-clean. C12 still checks the scaffold\'s own totals, because it reads text rather than cells',
+    "C13 a grid scaffold is present but this parser read zero rows from it — most likely a fenced block rather than a markdown table. C1–C5 are NOT evaluated: the frame/section arithmetic is unverified here, not verified-clean. C12 still checks the scaffold's own totals, because it reads text rather than cells",
   );
 }
 /* Frames already reported as having zero grid rows — so the drawn-frame sweep below does not
@@ -350,8 +378,25 @@ for (const [name, n] of invDeclared) {
   }
 }
 for (const f of gridLayoutRecognised ? drawnFrames : []) {
-  if (!invDeclared.has(f))
-    fail('C4-MISSING-INV', `C4 frame "${f}" is drawn:true in the Frame inventory but has no section-inventory entry`);
+  if (!invDeclared.has(f)) {
+    /* HARD EMIT REFUSAL, not a finding among findings (owner ruling 2026-08-21).
+     *
+     * A `drawn: true` frame with no section-inventory entry is not a partial manifest — it is a
+     * manifest whose own frame inventory CONTRADICTS its own section inventory. The producer
+     * declared the frame was drawn and then enumerated nothing from it, so every downstream
+     * count is computed over a denominator the manifest itself says is incomplete.
+     *
+     * `drawn: false` is untouched and remains the correct, supported answer: the schema already
+     * routes it downstream as FRAME NOT DRAWN, which is a decision a consumer can act on. The
+     * refusal is only for the contradiction — claiming drawn AND enumerating nothing.
+     *
+     * Observed: design-ingest-removal-recovery.md carries four such frames. */
+    emitRefusals.push(f);
+    fail(
+      'C4-MISSING-INV',
+      `C4 frame "${f}" is drawn:true in the Frame inventory but has no section-inventory entry — EMIT REFUSAL: set drawn:false (routes downstream as FRAME NOT DRAWN) or enumerate the frame. A manifest whose frame inventory contradicts its section inventory must not be emitted`,
+    );
+  }
   if (gridEvaluable && !gridPerFrame.has(f) && !reportedNoGridRows.has(f))
     fail('C4-MISSING-GRID', `C4 frame "${f}" is drawn:true in the Frame inventory but has no grid-scaffold rows`);
 }
@@ -533,6 +578,20 @@ if (C.sections_per_frame) {
 }
 
 /* ── 6. Report ── */
+/* Grid invariants C1-C5 are the only thing that can substantiate a value-exact claim, and
+ * they are skipped whenever the grid is unreadable OR keyed on something this parser does not
+ * recognise. Either way the claim stands unverified. */
+const gridInvariantsUnevaluated = !gridEvaluable || (gridRows && gridCount === 0);
+let effectiveGrain = grain;
+let effectiveGrainReason = null;
+if (grainInvalid) {
+  effectiveGrain = 'summary';
+  effectiveGrainReason = `declared "${grain}" is not in the schema enum — no branch matches, so the conservative default applies`;
+} else if (gridInvariantsUnevaluated && grain && grain !== 'summary') {
+  effectiveGrain = 'summary';
+  effectiveGrainReason = 'the grid invariants (C1-C5) could not be evaluated, so nothing substantiates the declared grain';
+}
+
 const report = {
   manifest: MANIFEST,
   sections_total_declared: C.sections_total ?? null,
@@ -544,6 +603,25 @@ const report = {
   manifest_grain: grain,
   findings,
   verdict: findings.length > 0 ? 'FINDINGS' : 'CONSISTENT',
+  /* ── THE CONSUMER TRUST CEILING (owner ruling 2026-08-21) ──────────────────
+   *
+   * `value-exact` tells design-implement it may build its property catalog from the scaffold
+   * and skip the design source entirely. That promise is only worth what verified it — and
+   * when the grid cannot be read, NOTHING verified it. Observed in the wild:
+   * design-ingest-ebay-publish-lifecycle-2026-08-09.md declares `value-exact` while its grid
+   * parses to zero rows, so C1-C5 never ran and the consumer was being told to skip the design
+   * source on the strength of an unchecked claim.
+   *
+   * So the effective grain is capped, on the CONSUMER side, at `summary`. This is the same
+   * logic the schema already applies to an ABSENT field: when the trust level cannot be
+   * established, the safe default applies, and the failure direction is an unnecessary source
+   * re-read rather than a wrong value.
+   *
+   * IT REWRITES NOTHING. The frontmatter keeps saying what its producer wrote; this is a
+   * derived field the consumer reads instead. Editing the file would destroy the evidence that
+   * a producer once claimed value-exact over an unverifiable grid. */
+  effective_grain: effectiveGrain,
+  effective_grain_reason: effectiveGrainReason,
 };
 
 if (JSON_OUT) {
@@ -555,6 +633,13 @@ if (JSON_OUT) {
   console.log(`  frames  declared/drawn  : ${declaredFrames.size}/${drawnFrames.length}`);
   console.log(`  frames  inventory/grid  : ${invDeclared.size}/${gridPerFrame.size}`);
   console.log(`  manifest_grain          : ${grain ?? '(absent)'}`);
+  if (effectiveGrainReason) {
+    console.log(`  EFFECTIVE grain         : ${effectiveGrain}  <- CONSUMERS MUST USE THIS`);
+    console.log(`    why                   : ${effectiveGrainReason}`);
+    console.log('    consequence           : treat this manifest as the SECTION DENOMINATOR ONLY');
+    console.log('                            and OPEN THE AUTHORITATIVE DESIGN SOURCE for values.');
+    console.log('                            The frontmatter is unchanged and is NOT the authority here.');
+  }
   if (findings.length === 0) {
     console.log('  verdict                 : CONSISTENT — the numbers agree with themselves.');
     console.log('  NOTE: this proves ARITHMETIC, not completeness. Whether a real section was');
@@ -564,6 +649,21 @@ if (JSON_OUT) {
     console.log(`  verdict                 : ${findings.length} FINDING(S)`);
     for (const f of findings) console.log(`    ✗ [${f.code}] ${f.msg}`);
   }
+  if (emitRefusals.length > 0) {
+    console.log('');
+    console.log(`  EMIT REFUSED — ${emitRefusals.length} frame(s) marked drawn:true with no section inventory:`);
+    for (const f of emitRefusals) console.log(`      ${f}`);
+    console.log('    This manifest must not be emitted as it stands. Either enumerate those frames,');
+    console.log('    or set drawn:false — which the schema already routes downstream as FRAME NOT');
+    console.log('    DRAWN, and is a decision a consumer can act on. A frame inventory that');
+    console.log('    contradicts its own section inventory makes every count below it meaningless.');
+  }
 }
 
+/* An emit refusal is NOT gated on --strict. `--strict` decides whether FINDINGS block a run;
+ * a refusal is a statement that the artifact is internally contradictory, and that is true
+ * whether or not the caller asked for strictness. Exit 2 distinguishes it from an ordinary
+ * strict failure so a caller can tell "this manifest has problems" from "this manifest must
+ * not ship". */
+if (emitRefusals.length > 0) process.exit(2);
 process.exit(STRICT && findings.length > 0 ? 1 : 0);
