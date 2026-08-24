@@ -153,6 +153,29 @@ an ellipsis reads as "omitted for brevity" to every future reader.
 - supply-order-detail-drawer / SellerSmart dispatch: needs `dispatch` view-model fields + a backend dispatch read — NOT currently on the SupplyOrder view-model. Implementing requires data plumbing; flag, do not fabricate.
 ```
 
+### Fingerprint scan block
+
+`fingerprint_scan:` (frontmatter, written by step-03 §1) records the ingest-boundary run of the
+shared scanner (`scripts/design-fingerprint-scan.sh`) over the fetched frame sources, per
+`design-standards.md` § Enforcement coverage:
+
+```yaml
+fingerprint_scan:
+  ran: true # false when the scanner is absent in this project — an absent scan must never read as a clean one
+  deterministic_findings: 2
+  findings:
+    - { rule: left-border-accent, file: 'frames/f3-worklist.html', construct: 'border-left: 3px solid var(--amber)' }
+    - { rule: gradient, file: 'frames/f1-overview.html', construct: 'bg-gradient-to-r' }
+  declared_exceptions: [] # rule ids passed with --allow because the project's brand identity declares them
+  advisory_note: 'scanner covers the machine-detectable subset only — advisory taxonomy rows still need review'
+```
+
+Findings never block the emit (ingest is non-destructive); they exist so the pause review and the
+apply phase see that the design arrived carrying prohibited constructs. `design-implement` treats a
+non-empty `findings` list as sections that must NOT be reproduced verbatim without the finding being
+resolved or a declared exception being named. `deterministic_findings: 0` is recorded as exactly
+that — never as "design compliant".
+
 ### How `design-implement` consumes it
 
 When invoked with `input_kind: ingest_manifest`, `design-implement` step-01:

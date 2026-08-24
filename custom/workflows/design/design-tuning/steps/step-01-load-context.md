@@ -152,7 +152,7 @@ Extract `{brief_constraints}` from:
 - Section 5's feature-specific tail — responsive targets, data density, navigation position, interaction model (these are net-new from the brief; no policy version to compare).
 - Section 6 (Design Ask) — the specific design directive and scope.
 
-Set `{corporate_guardrails}` from `{hard_failures}` (loaded from policy in step 1b) + the AI fingerprint sensitivity section of the policy + the standard AI fingerprint list. **Do NOT pull `{corporate_guardrails}` from the brief; the brief may have softened items.**
+Set `{corporate_guardrails}` from `{hard_failures}` (loaded from policy in step 1b) + the AI fingerprint sensitivity section of the policy + the canonical AI-fingerprint taxonomy: **READ `{project-root}/_bmad/bmm/workflows/design/shared/design-standards.md` § AI Fingerprint Detection now** (all six category tables + the composite test) and carry those rows — "the standard AI fingerprint list" previously named here resolved to no file, which meant this half of the guardrails was assembled from memory (the drift that let a left-border-accent container ship unflagged, 2026-08-24). If the standards file is unreadable, mark the fingerprint dimension of every subsequent verdict `UNVERIFIED — standards file unreadable`; never substitute a remembered list. **Do NOT pull `{corporate_guardrails}` from the brief; the brief may have softened items** (its §5b machine-embed is a convenience copy — the standards file remains the source).
 
 **If no project design policy exists (`{brand_identity}` empty):**
 

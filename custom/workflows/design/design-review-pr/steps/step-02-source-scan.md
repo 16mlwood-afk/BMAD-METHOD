@@ -122,6 +122,20 @@ This arm is **detection + advisory only** — it never emits a P0/P1 itself (a d
 
 ---
 
+### 8. Standing check: F-FPSCAN-01 — canonical fingerprint scan (deterministic arm)
+
+Run the shared fingerprint scanner over the changed design-relevant files:
+
+```bash
+bash {project-root}/scripts/design-fingerprint-scan.sh $(cat /tmp/diff-files)
+```
+
+(If the script is absent in this project — it distributes via the `custom/scripts` sync lane — record F-FPSCAN-01 as "scanner not installed" for step-04 coverage and fall back to greping the deterministic rules yourself from `{design_standards_path}` § Enforcement coverage.)
+
+Each deterministic finding it prints becomes a `{findings}` entry (severity per the taxonomy row's P1/P2 class, `lane: source-grep`, `source: "standards § AI Fingerprint Detection"`). Honor declared exceptions: a pattern the project's brand identity / `docs/design-policy.md` explicitly declares as an identity treatment is passed with `--allow <rule-id>` and reported as established, not failed. **Two honesty rules, from the scanner's own contract:** (1) a clean scan is NOT design compliance — the scanner covers only the machine-detectable subset (its output names the advisory remainder; carry that line into step-04's human-judgment seed); (2) never suppress a finding because the construct "looks intentional" — intent is only ever established by a written declaration.
+
+---
+
 ## OUTPUT
 
 Append all findings to `{findings}`. Each finding looks like:
