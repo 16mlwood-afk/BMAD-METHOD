@@ -742,17 +742,9 @@ A design containing ANY of these fails review:
 
 {Copy section 9 from brand identity — sensitivity table, verbatim}
 
-Additionally, avoid all standard AI design tool fingerprints:
-- Bento grid layouts
-- Hero sections on internal pages
-- Dashboard metric card grids as page openers
-- Purple/violet as primary accent (unless brand identity assigns it)
-- Gradient text, gradient backgrounds, glassmorphism
-- Oversized border-radius (>10px on containers)
-- Heavy card shadows — `shadow-sm` maximum
-- Animated number counters
-- Chatty empty states with illustrations
-- Icons on every label and heading
+Additionally, the FULL canonical AI-fingerprint taxonomy applies — it is embedded verbatim in §5b
+below (machine-copied from `shared/design-standards.md`, never hand-excerpted; the brief carries
+the whole taxonomy because the designer receives this brief, not that file).
 
 **Self-test:** If someone would guess AI was involved, the design fails.
 
@@ -782,6 +774,64 @@ Additionally, avoid all standard AI design tool fingerprints:
 {constraints — responsive breakpoints, data density, accessibility, performance, navigation position}
 
 **Self-test:** If someone would guess AI-generated, it fails. Anything beyond the universal guardrails above (color counts, sidebar vs full-width, status treatment, type family, etc.) is the **project's** decision — when those decisions are made, capture them in `docs/design-policy.md` so future briefs include them as branded constraints rather than re-deriving them per feature.
+
+The guardrail list above is the compact floor; the FULL canonical AI-fingerprint taxonomy is
+embedded verbatim in §5b below and applies in every variant.
+
+---
+
+## 5a. Comfort Floor — the design must PASS these, not merely avoid the bans above
+
+{Emit this section for EVERY `{design_system}` variant. It is a floor, not a preference. The project design policy outranks it (SOURCE-OF-TRUTH PRECEDENCE 1 over 2), so a policy MAY tighten it and MAY override a specific line — but the override has to be written down in `docs/design-policy.md` and named here. Silently dropping a floor is not an override.}
+
+Everything in §5 is a prohibition, and prohibitions have no lower bound. A design can satisfy every rule above, follow this project's density preference exactly, and still be uncomfortable to look at — because nothing above says how tight is too tight. **Density is the house style; cramped is a defect.** They are not the same thing, and this section is where the difference is decided.
+
+Restated from `shared/design-standards.md` § Quality Checklist — the designer receives this brief, not that file.
+
+**Spacing**
+- Grouping reads through proximity: the gap *between* two groups is visibly larger than the gap *inside* a group.
+- Uniform padding everywhere is a failure, not a neutral choice — it removes the only cue the eye uses to group, and reads as suffocating.
+- Every spacing value comes from one scale (multiples of 4 or 8). No ad-hoc values.
+- If rows, labels, or controls collide, or must be re-read to be told apart, density has passed its floor.
+
+**Typography**
+- Primary, secondary and tertiary content are identifiable in under 2 seconds.
+- Three font sizes or fewer on the surface. More is a hierarchy failure, not richness.
+- Monospace only for codes and identifiers.
+
+**Accessibility**
+- WCAG AA contrast: 4.5:1 body text, 3:1 large text.
+- Keyboard focus visible — 2px minimum, high contrast.
+- Colour is never the sole differentiator of meaning.
+- Touch targets ≥ 44px on any handheld-class surface.
+
+**States**
+- Hover, focus, empty and error states are designed, not left to framework defaults.
+
+**The squint test — how to check the 2-second rule:** blur your eyes at the screen. Something must read first. If nothing dominates, hierarchy has failed, regardless of every rule above being satisfied.
+
+---
+
+## 5b. AI-Fingerprint Taxonomy — canonical, machine-embedded
+
+{Emit this section for EVERY `{design_system}` variant. It is a MACHINE COPY, not authored prose:
+at generation time, copy the canonical `## AI Fingerprint Detection` section — from that heading
+through the end of `### The Composite Test` — VERBATIM from
+`{project-root}/_bmad/bmm/workflows/design/shared/design-standards.md` into this section, preceded
+by the stamp comment below. Never hand-type, summarize, trim, or "adapt" it: a hand-copied excerpt
+is exactly the drift channel that shipped an undetected fingerprint on 2026-08-24. If the standards
+file cannot be read, this brief is NOT deliverable — HALT and report the unreadable path; do not
+substitute a from-memory list.}
+
+<!-- embedded-from: design-standards.md § AI Fingerprint Detection · run: {date} · this block is machine-copied; edit the source file, never this copy -->
+
+{VERBATIM COPY GOES HERE}
+
+{After the copy, close with:} If this project's brand identity declares an exception to any row
+above (a named identity treatment with construction + scope), that declaration appears in §5's
+brand-identity copy and overrides the row FOR THE DECLARED SCOPE ONLY. No other softening of this
+section is legitimate — the taxonomy is a floor the project policy can tighten but not silently
+relax.
 
 ---
 

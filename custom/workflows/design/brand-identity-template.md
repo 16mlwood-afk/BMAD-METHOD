@@ -99,7 +99,16 @@ version: 1
 ## 4. Component Language
 
 ### Cards
-{Exact pattern — e.g., "bg-card rounded-lg border shadow-sm. No heavy shadows. Left-border accent (border-l-[3px]) for colored variants. Internal padding p-4."}
+{Exact pattern — e.g., "bg-card rounded-lg border shadow-sm. No heavy shadows. Internal padding p-4."}
+
+> **Declared-exception rule (left-border accents and other taxonomy-listed patterns):** if this
+> project intentionally uses a pattern the shared AI-fingerprint taxonomy prohibits — e.g. a
+> left-border accent container (`border-l-[3px]`) — it is legitimate ONLY when declared here, with
+> the exact construction and the surfaces it applies to, e.g.: "Left-border accent
+> (`border-l-[3px]`) on status callout cards in the filing queue ONLY — declared exception to
+> design-standards § Category 3." An undeclared use is an AI fingerprint and fails review
+> (`design-standards.md` § Category 3, "Left-border accent containers"). Do not copy this
+> template's examples as declarations — a declaration names real surfaces in THIS project.
 
 ### Tables
 {Exact pattern — table structure, header style, row hover, alignment, monospace columns}
@@ -111,7 +120,8 @@ version: 1
 {Button hierarchy — primary, secondary, ghost, destructive. Sizes. Press effects.}
 
 ### Status Indicators
-{How status is communicated visually — badges, left borders, color dots, progress bars}
+{How status is communicated visually — badges, color dots, progress bars. A left-border/edge accent
+belongs here only as a declared exception per the rule above — name the construction and scope.}
 
 ### Navigation
 {Header height, nav style, active state treatment, tab style}
@@ -166,9 +176,16 @@ Things this brand NEVER does. These are non-negotiable — a design that include
 
 ## 9. AI Fingerprint Sensitivity
 
-Beyond the standard AI fingerprint checklist (which the workflow loads separately), these are patterns this specific project is extra sensitive to:
+Beyond the canonical AI-fingerprint taxonomy in `design-standards.md` § AI Fingerprint Detection
+(which design workflows load and embed into briefs — this section supplements it, never replaces
+it), these are patterns this specific project is extra sensitive to:
 
 | Pattern | Why we're sensitive | What to do instead |
 |---------|-------------------|-------------------|
 | {pattern} | {reason} | {alternative} |
+
+**Declared exceptions (if any):** {List every taxonomy-prohibited pattern this project deliberately
+uses as an identity treatment, with construction + scope, mirroring the §4 declarations. Reviewers
+and the fingerprint scanner (`--allow <rule-id>`) honor ONLY exceptions listed here or in §4.
+If none: "None — the full taxonomy applies unmodified."}
 ```

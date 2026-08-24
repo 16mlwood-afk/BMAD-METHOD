@@ -62,6 +62,10 @@ Populate `{hard_failures}` as a list of `{rule: <text>, source_line: <int>}` rec
 
 **If no hard-failure section is found:** halt with `policy at {policy_path} contains no hard-failure section. Synthesis without enforced floors is unsafe. Add a "## Hard Failures" section listing the anti-patterns this project forbids.`
 
+### 4b. Load the canonical AI-fingerprint taxonomy
+
+READ `{project-root}/_bmad/bmm/workflows/design/shared/design-standards.md` § AI Fingerprint Detection (all six category tables + the composite test) and append its rows to `{hard_failures}` tagged `source: design-standards`, so step-6's self-critique evaluates the synthesized HTML against the FULL taxonomy — not the brief's §5b copy and not a remembered list (the brief's embed is a convenience mirror; the standards file is the source, and a generator that never opens it is how a left-border-accent container shipped on 2026-08-24). A brand-identity-declared exception (named construction + scope) suppresses the matching row for its declared scope only. If the standards file is unreadable, HALT — synthesizing without the taxonomy floor is the same unsafe state as a missing hard-failure section.
+
 ### 5. Extract the contract-critical positive-assertion allowlist
 
 Positive assertions are rules the policy ratifies as contract-critical — things synthesis MUST do, not just things it must avoid.

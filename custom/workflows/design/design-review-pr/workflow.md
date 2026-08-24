@@ -76,7 +76,7 @@ Seven checks are NOT in `docs/review-checklist.md` — the workflow evaluates th
 - `installed_path` = `{project-root}/_bmad/bmm/workflows/design/design-review-pr`
 - `checklist_path` = `{project-root}/docs/review-checklist.md`
 - `policy_path` = `{project-root}/docs/design-policy.md`
-- `design_standards_path` = `{project-root}/_bmad/bmm/workflows/design/shared/design-standards.md`
+- `design_standards_path` = `{project-root}/_bmad/bmm/workflows/design/shared/design-standards.md` — **read this file at step-01 load** (its `## AI Fingerprint Detection` tables + `## Enforcement coverage` classification drive step-02 §8's scan and the human-judgment seeds); citing it as a path variable without loading it is the drift this sentence exists to stop (2026-08-24).
 - `archetypes_path` = `{project-root}/_bmad/bmm/workflows/design/shared/analytics-archetypes.md`
 - `implementation_artifacts` = config-resolved `_bmad-output/implementation-artifacts/` (where active briefs live)
 
