@@ -44,8 +44,25 @@ Some project design policies forbid merging records from distinct **operational 
 | `needs-detail-route` | The per-item depth warrants its own route (`/[feature]/[id]`). The primary route covers the queue/list; the item's full evaluation belongs on a second route. Most common for data-heavy operational surfaces. |
 | `needs-tab-views` | Two or three genuinely distinct operator modes on the same primary data justify top-level tab navigation within the current route. The tabs represent mode-switching, not content overflow. |
 | `needs-sibling-route` | A distinct sub-feature (batch management, history, configuration) belongs on its own adjacent route rather than embedded in the primary surface. |
+| `not-a-route` | **The DEMOTING verdict — this should not be a route at all.** The job is served by a SECTION of an existing surface, a drawer on it, or a contextual LINK from the surface the operator is already standing on. Name which existing route absorbs it and in which form. |
 
-**When the verdict is not `single-page-appropriate`:**
+**`not-a-route` exists because every OTHER verdict points OUTWARD.** `single-page-appropriate`,
+`needs-detail-route`, `needs-tab-views` and `needs-sibling-route` between them can only keep a route
+or add one — so a step meant to catch surface sprawl could previously only ever grow it. That is a
+ratchet, and it is not hypothetical: cash-recovery spent a permanent nav slot on 2026-08-24 to fix an
+unreachability that a contextual link fixed instead the next day. The sibling precedent is
+`analytics-placement-triage`, which has carried demoting verdicts (`no-surface`, `remove-band`) all
+along and is merely scoped to analytics.
+
+**Reach for it FIRST when any of these hold:** the job is a read-only view of data another surface
+already owns · the new route's only argument is that the content is hard to reach today (fix the
+reachability, not the topology) · the operator would have to leave the surface they work on to use it
+and then come straight back · the "page" is one list, one panel, or one form with no state of its own.
+**When it holds, say which surface absorbs the job and in what form** — section, drawer, or link —
+and stop. A `not-a-route` verdict is a complete, successful outcome of this step, not a failure to
+decide, and it must never be softened into `needs-sibling-route` to keep the handoff moving.
+
+**When the verdict is not `single-page-appropriate` (and not `not-a-route`):**
 Describe the recommended topology in 2-4 sentences: which route covers which job. Note any routes that already exist in `{implementation_files}` for this feature prefix.
 
 Before generating the brief, surface to the user:
@@ -54,6 +71,21 @@ Before generating the brief, surface to the user:
 In autonomous mode, proceed with the primary brief and surface the topology in §4c of the generated brief.
 
 Set `{surface_topology_verdict}` and `{surface_topology_notes}`.
+
+**HALT on `not-a-route` — do NOT generate a brief.** There is no surface to design, so continuing
+would produce a brief for a page the step just decided should not exist. Stop here and emit the
+demotion record instead:
+
+> **`not-a-route` — this job does not warrant its own surface.**
+> **Absorbed by:** `{existing route}` · **as a:** section | drawer | contextual link
+> **Why not a route:** {2–4 sentences}
+> **If it should be a route anyway, the owner says so** — an agent may argue for the surface and may
+> build it once admitted, but may not be the sole reader of its own case.
+
+This is a **successful** terminal outcome of `design-handoff`, not a failure or a blocked run: report
+it as the answer to the ask. Where the project keeps a scope register, the demotion is recorded there
+as the surface's admission record. **`{surface_topology_notes}` MUST be non-empty on this verdict** —
+a demotion that does not name the absorbing surface is not actionable by anyone downstream.
 
 #### 5d-i. Surface part — is THIS brief targeting a sub-surface?
 
@@ -187,9 +219,9 @@ Confirm populated:
 - **Analytics rigor capture** ✓ (populated iff `{has_decision_numbers}` is `true`; all empty otherwise — run **per surface** on multi-surface pages) — `{rigor_read_sentence}`, `{rigor_decision_numbers}`, `{rigor_deciding_fields}`, `{rigor_data_gaps}`, `{rigor_verdict}` from the `analytics-rigor` skill in §5c-2. These render into **brief §4d** (surface-level — covers decision numbers in the band AND the record/hero) and drive `C-RIGOR-01` at review; rationale §3b records the reasoning when a band exists. The §5c-2 honesty gate holds — data gaps are surfaced as enrichment requirements, never fabricated into figures.
 - `{is_capital_decision}` ✓ (`true` iff the surface's job is to commit a scarce resource — capital / inventory slots / time — under uncertainty with a real downside; narrower than `{has_decision_numbers}`, so a buy/reorder/sizing surface is `true` but a dashboard/coverage/status surface is `false` — §5c-3)
 - **Decision analysis capture** ✓ (populated iff `{is_capital_decision}` is `true`; all empty otherwise — run **per decision surface**) — `{decision_frame}`, `{decision_outcome}`, `{decision_sizing}`, `{decision_sensitivity}`, `{decision_context}`, `{decision_gaps}`, `{decision_verdict}` from the `decision-analysis` skill in §5c-3. These render into **brief §4e** (the executive layer — modelled outcome + sizing + breakeven driver + reference class) and drive `C-DECISION-01` at review; rationale §3c records the reasoning when a band exists. The §5c-3 model-honesty gate holds — an un-modellable decision is an honest `single-scenario` read + a named VOI gap, never a fabricated outcome distribution.
-- `{surface_topology_verdict}` ✓ (one of: `single-page-appropriate` | `needs-detail-route` | `needs-tab-views` | `needs-sibling-route`)
+- `{surface_topology_verdict}` ✓ (one of: `single-page-appropriate` | `needs-detail-route` | `needs-tab-views` | `needs-sibling-route` | `not-a-route`)
 - `{analytics_hierarchy}` ✓ (each surface tagged hero | supporting | drill — §5e; empty when the page has 0–1 analytics surface) — plus `{hierarchy_rationale}` and `{analytics_surface_inventory}`; `{hierarchy_unresolved}` set only when no single hero emerged (→ routed to §5d topology)
-- `{surface_topology_notes}` ✓ (recommended topology in 2-4 sentences; empty string when verdict is `single-page-appropriate`)
+- `{surface_topology_notes}` ✓ (recommended topology in 2-4 sentences; empty string when verdict is `single-page-appropriate`; on `not-a-route` it MUST name the absorbing surface and the form — section, drawer, or link — and may never be empty)
 - `{surface_part}` ✓ (§5d-i — the kebab name of the sub-surface within `{route}` when the handoff target is a tab/section/panel inside a page; `""` when the target is the route's whole primary surface; never set for a §13 lookup drawer. Part of the surface identity step-03 §1a / `brief-revision-policy.md` invariant 6 use for predecessor detection.)
 - `{linked_records_inventory}` ✓ (§3a — one entry per on-screen value that IS a record another surface owns: foreign reference · owning surface+route · expand-in-context target (§7 drawer over the current surface, NOT navigate-away; "Open full {sibling} →" secondary inside it) · inline lookups read through the relation; empty **only** for a true leaf surface that references no foreign record. Renders into brief §2a and is enforced at review by `design-review-pr` §13/§12.)
 - `{spawned_surfaces}` ✓ (§5f — one **required deliverable frame** per surface this page spawns: the primary surface, the drilled detail drawer (per the §5a composition), one lookup drawer per `{linked_records_inventory}` entry, one state-variant frame per operator-distinct lifecycle state from `{runtime_behavior_contract}` (iff `{is_live_process_surface}` — rule 4), and one workflow-state frame per operator-distinct step (iff ≥2 operator-distinct steps — rule 5, deduped against rule 4 by `frame_name`); each with `frame_name · trigger · render_as · must_contain · figures (§4d) · lookups (depth-1 §2a)`; richness floor applied — no bare identity stubs; depth-1 lookups. Renders into brief **§7 Surface Inventory** and is cross-checked by `design-implement` step-03 §2f. Empty only for a true leaf surface with no drawer, no linked records, and a single step.)
