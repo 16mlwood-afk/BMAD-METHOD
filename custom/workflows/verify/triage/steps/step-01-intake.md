@@ -16,6 +16,7 @@ nextStepFile: './step-02-investigate.md'
 - `{observation}` — normalized description of what the user reported
 - `{observation_type}` — classification (see table below)
 - `{page_context}` — which page, route, feature, or system area the observation relates to
+- `{operator_path_anchor}` — for `absent-change` only: the concrete anchor the user supplied (current URL/route, named entry point + device, or screenshot). `UNVERIFIED` until one exists
 - `{investigation_plan}` — list of specific queries and code reads to perform in step 2
 
 ---
@@ -33,12 +34,21 @@ Read the user's input and classify it:
 | `unexpected-state` | Data that doesn't match expectations — wrong values, missing fields, stuck records | "This column is always empty", "these orders show £0" |
 | `ui-concern` | Something about the interface feels wrong but isn't a data error | "I can't tell which invoices need attention", "this page is confusing" |
 | `silent-failure` | Something should have happened but didn't — no error, just absence | "I uploaded invoices yesterday but nothing processed", "the cron didn't run" |
+| `absent-change` | A change the user was **told had shipped** is not visible on the surface they are actually looking at | "you said you fixed it but I can't see it", "i don't see it on mobile", "where is it", "hasn't changed at all has it?" |
 | `performance` | Slowness, timeouts, resource issues | "This page takes 10 seconds to load", "the export times out" |
 | `vague` | Insufficient context to classify — needs one clarifying question | "Something's broken", "things don't look right" |
 
 Store as `{observation_type}`.
 
 **If `vague`:** Ask ONE question — "Which page or feature are you looking at?" — then reclassify with the response. Do not ask more than one question.
+
+**Precedence.** `absent-change` outranks `silent-failure`, `ui-concern` and `unexpected-state` whenever the user is referring to a change they were previously told had shipped. The other three describe the system behaving oddly; this one describes a **claim** that has failed to reach them, which is a different investigation.
+
+**If `absent-change` — MANDATORY FIRST ACTION, before any cause is proposed:**
+
+1. **Obtain one concrete operator-path anchor.** Exactly one of: the current URL/route, the named entry point plus the device ("I tapped Grading, on my phone"), or a screenshot. Ask for it in one short line if it was not supplied. Nothing else in this step proceeds without it.
+2. **Set `{operator_path_anchor}` to `UNVERIFIED`** until that anchor exists, and say so in the intake summary. Operator-path reachability is not a thing that can be inferred from the repository.
+3. **Do not lead with client-side explanations.** Cache, hard refresh, stale session, permissions and rollout timing are step-02 cause **6** — the last one checked, not the first one offered. Proposing one before the anchor is in hand is the failure this type exists to prevent.
 
 ### 2. Extract Page Context
 
@@ -80,6 +90,7 @@ Based on `{observation_type}`, plan the investigation queries for step 2:
 | `unexpected-state` | Query the table for the field in question. Check if the value is missing at the source (DB), in transport (API), or in rendering (UI component). |
 | `ui-concern` | Read the page component. Check what data is available (from the loader/API) vs what's rendered. Check if relevant data exists in the DB but isn't surfaced. |
 | `silent-failure` | Check the processing pipeline — cron history, queue status, recent activity. Query for records stuck in intermediate states. Check error logs. |
+| `absent-change` | Run the operator-path walk in `step-02-investigate.md` in its stated causal order. Do not substitute a repository-side check for it — see the instrument-scope note in that step. |
 | `performance` | Check data volumes, query patterns, index coverage. Look for N+1 queries, missing pagination, or unbounded fetches. |
 
 Store the plan as `{investigation_plan}` — a numbered list of specific queries and file reads.
@@ -108,6 +119,7 @@ Proceed immediately to `{project-root}/_bmad/bmm/workflows/verify/triage/steps/s
 ## SUCCESS METRICS
 
 - Observation classified into a specific type (not left as `vague`)
+- For `absent-change`: an operator-path anchor was obtained, or the summary states `{operator_path_anchor}: UNVERIFIED` and asks for one
 - Page/feature context extracted — route, entity, or process identified
 - Investigation plan has specific, actionable queries — not "look at the database"
 - Summary presented to the user so they know the workflow understood their input
@@ -118,4 +130,5 @@ Proceed immediately to `{project-root}/_bmad/bmm/workflows/verify/triage/steps/s
 - Classifying everything as `vague` and asking multiple clarifying questions
 - Formulating an investigation plan that's too generic ("check the code") instead of specific ("query invoices table grouped by error_message")
 - Skipping the screenshot analysis — URL bar, page headings, and filter state contain critical context
+- On an `absent-change` observation, offering cache / hard-refresh / stale-session / permissions as the first explanation, or proposing any cause before an operator-path anchor is in hand
 - Jumping to a fix without investigating first
