@@ -46,6 +46,28 @@ Full cross-project policy → the `workflow-routing` global memory; this is its 
 4. Diff this project's `CLAUDE.md` against `~/bmad-method-v6/src/modules/bmm/_module-installer/assets/CLAUDE.md.template`
 5. Propose updates for any missing sections — preserve project-specific values (structure, deploy command, conventions)
 
+**The source is `custom`, committed — the sync refuses anything else (2026-08-31).** The
+fan-out reads the fork WORKING TREE, not a commit, so whatever is sitting in `custom/` or
+`src/modules/` at that moment is what 14 projects receive. Two conditions are therefore
+refusals, not warnings:
+
+- the fork worktree is **dirty** in `custom/` or `src/modules/` — those edits would be
+  distributed while existing nowhere in git;
+- the checkout is **not on `custom`** — the target would take its workflows from a branch
+  the fork does not treat as canonical.
+
+Edits to the sync script itself, `docs/`, or `test/` do not block anything: the gate checks
+only the paths the fan-out reads. `--allow-unclean-source` is the deliberate exit and prints
+that it was used; `--check` stays read-only and reports without refusing. Every run now opens
+with `SOURCE <branch> @ <rev> — <subject>`, and each project's `sync-stamp.yaml` records
+`source_branch` and `source_revision`, so a project can say which fork revision it carries
+rather than only when it was last touched.
+
+Both conditions were live on 2026-08-31: the fork sat on a feature branch 20 commits off
+`custom` with two substantive uncommitted changes, and the sync distributed all of it without
+comment. If the gate refuses, the fix is to commit the work and merge the branch into
+`custom` — not to reach for the override.
+
 **Never modify workflows directly in `_bmad/bmm/workflows/`.** Changes made in projects will be overwritten on next sync. Instead, modify `~/bmad-method-v6/custom/workflows/` and re-sync, or use `--pull` to bring project changes back to the source first.
 
 ### The core lane (`_bmad/core/workflows/`) is UNMANAGED — shadow, don't patch
