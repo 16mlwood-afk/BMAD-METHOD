@@ -1952,9 +1952,23 @@ while IFS= read -r target || [[ -n "$target" ]]; do
     # load-bearing there, so deleting it would break live pointers, and the honest fix is to
     # keep it current. Refresh where it exists; do NOT create it where it does not, because
     # that would silently migrate a target's layout as a side effect of a sync.
-    if [[ -d "$project_root/_bmad/bmad-shared" && -d "$SKILLS_NATIVE/_shared" ]]; then
-      rsync -a --delete --exclude='.DS_Store' "$SKILLS_NATIVE/_shared/" "$project_root/_bmad/bmad-shared/"
-      echo "  OK    bmad-shared refreshed ($(ls "$SKILLS_NATIVE/_shared" 2>/dev/null | wc -l | xargs) policies)"
+    if [[ -d "$project_root/_bmad/bmad-shared" ]]; then
+      # $SKILLS_NATIVE is GENERATED and gitignored, so `-d` on it is a guard that turns
+      # ITSELF OFF wherever the generator has not run — silently, and in exactly the
+      # environment that matters most: a release cut from a fresh clone. Guarding on it
+      # reintroduced, one level up, the very defect this block was written to fix.
+      #
+      # Build it, and if it cannot be built SAY SO. A condition that cannot be satisfied
+      # must announce itself rather than pass quietly; that is the same rule as a receipt
+      # for a delivery that did not happen, and a status call over a path git cannot see.
+      if ensure_skills_native_built && [[ -d "$SKILLS_NATIVE/_shared" ]]; then
+        rsync -a --delete --exclude='.DS_Store' "$SKILLS_NATIVE/_shared/" "$project_root/_bmad/bmad-shared/"
+        echo "  OK    bmad-shared refreshed ($(ls "$SKILLS_NATIVE/_shared" 2>/dev/null | wc -l | xargs) policies)"
+      else
+        echo "  WARN  bmad-shared NOT refreshed — the generated port tree is unavailable" >&2
+        echo "        ($SKILLS_NATIVE/_shared). This target keeps its existing flattened" >&2
+        echo "        shared copy, which may be a release behind. Not a silent pass." >&2
+      fi
     fi
 
   # Copy .worktreeinclude if missing
