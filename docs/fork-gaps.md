@@ -11108,3 +11108,12 @@ the clause it violated. It was two independent readers, and neither defending a 
 it was checked. A single session cannot reproduce that by trying harder. It can only
 assume it is currently making one of these, and go looking — starting with whichever result
 it is most confident about, since that is the one it has not re-examined.
+
+**The confidence is the marker, and that makes this searchable rather than merely wise.**
+Every instance in this entry was a result nobody thought to question: a green suite, a
+zero-error checker, a clean status, a silent log, a receipt written moments earlier by the
+thing being checked. None of them was a close call that went the wrong way. So the practical
+search is not "where might I be wrong" — which returns everything and therefore nothing —
+but "which of my current beliefs have I never actually looked at, because they arrived
+already labelled as fine". That list is short, and today it contained the answer every
+time.
