@@ -367,6 +367,18 @@ def cmd_publish(args):
 
     results, exceptions = [], []
     try:
+        # A fresh worktree has no node_modules, so the suite cannot run there at all
+        # (it dies on `Cannot find module 'yaml'` before the first case). Link the fork's
+        # tree in rather than installing: local custom is verified identical to the remote
+        # release commit above, so the fork's dependencies ARE the release commit's.
+        # HONEST LIMIT: this cannot catch a dependency change that was never installed
+        # locally. A release from a machine whose node_modules predates a package.json
+        # change would test against the older deps. `npm ci` here would be correct and
+        # costs minutes per release; revisit if a dependency change ever ships broken.
+        fork_modules = FORK / "node_modules"
+        if fork_modules.is_dir() and not (wt / "node_modules").exists():
+            (wt / "node_modules").symlink_to(fork_modules)
+
         if not args.no_test:
             print("running the release suite against that exact commit...")
             r = subprocess.run(["npm", "test"], cwd=wt, capture_output=True, text=True)
