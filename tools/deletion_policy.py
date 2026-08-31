@@ -28,17 +28,18 @@ import hashlib
 import re
 from pathlib import Path
 
-# NORMALISE BY EVERY REWRITE THE DISTRIBUTOR APPLIES, not just the commonest one.
-# Folding `_bmad/bmad-shared/` alone rewrites the INSTALLED side and leaves the SOURCE side
-# untouched, so a correctly delivered file hashes as differing forever. In the verifier
-# that produced seven phantom "stale" files and nearly bought a rewrite of a distributor
-# that had no bug. The same one-sided fold lived here, where its effect is the opposite and
-# worse: content that matches a release reads as USER_AUTHORED, so genuine repair is held
-# back on files nobody wrote. Every shared location folds to ONE token, including the
-# fork's own bare `shared/` form.
-_REWRITE = re.compile(
-    rb"(\{project-root\}/)?(_bmad/(bmad-shared|bmm/workflows/design/shared"
-    rb"|bmm/workflows/shared)|shared)/")
+# CANONICAL REPRESENTATION — one shared path for every consumer (owner ruling 2026-08-31).
+# This module previously carried its own normalisation regex. The identical one-sided fold
+# was independently present here, in the verifier and in the deletion policy; fixing one
+# left the others live, and the same line failed in opposite directions depending on the
+# consumer. There is now exactly one definition of "the same content", and every producer,
+# verifier, classifier, deletion and certification path uses it.
+import importlib.util as _ilu
+_rep_spec = _ilu.spec_from_file_location(
+    "bmad_representation", Path(__file__).resolve().parent / "bmad_representation.py")
+_rep = _ilu.module_from_spec(_rep_spec)
+_rep_spec.loader.exec_module(_rep)
+
 
 ALLOW_DELETE = "ALLOW_DELETE"          # the release removed it, deliberately
 PRESERVE_PARTIAL = "PRESERVE_PARTIAL_SYNC"    # a half-finished run emptied it
@@ -54,7 +55,8 @@ RECEIPT_NAME = ".bmad-distribution.json"
 
 
 def _h(b):
-    return hashlib.sha256(_REWRITE.sub(b"shared/", b)).hexdigest()
+    """Delegates to the shared canonical digest."""
+    return _rep.digest(b)
 
 
 def classify_deletion(rel, *, release_has, in_plan, prior_content=None,

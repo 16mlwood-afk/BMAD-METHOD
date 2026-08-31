@@ -34,6 +34,16 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 FORK = Path(__file__).resolve().parent.parent
+
+# Canonical representation — the one definition of "the same content" (see
+# tools/bmad_representation.py). Loaded here so the receipt fingerprint, the verifier and
+# the drift classifier can never disagree about it.
+import importlib.util as _ilu_top
+_rs = _ilu_top.spec_from_file_location(
+    "bmad_representation", Path(__file__).resolve().parent / "bmad_representation.py")
+_rep_mod = _ilu_top.module_from_spec(_rs)
+_rs.loader.exec_module(_rep_mod)
+_rep_digest = _rep_mod.digest
 REGISTRY = Path.home() / ".bmad-targets.json"
 LEGACY_TARGETS = Path.home() / ".bmad-targets"
 LEDGER = FORK / "docs" / "release-ledger.jsonl"
@@ -179,11 +189,16 @@ def managed_tree_hash(real, t):
     managed = real / t.get("managed_root", "_bmad")
     if not managed.is_dir():
         return None
+    # Fingerprint over the CANONICAL representation, not raw bytes, so the receipt's
+    # tree digest means the same thing as every drift and verification verdict. A receipt
+    # fingerprint that disagrees with the verifier about what "the same content" is would
+    # be a second opinion nobody asked for.
     h = hashlib.sha256()
     for p in sorted(managed.rglob("*")):
         if p.is_file() and p.name != RECEIPT and ".git" not in p.parts:
             h.update(str(p.relative_to(managed)).encode())
-            h.update(p.read_bytes() if p.stat().st_size < 2_000_000 else b"<large>")
+            h.update(_rep_digest(p.read_bytes()).encode()
+                     if p.stat().st_size < 2_000_000 else b"<large>")
     return h.hexdigest()[:16]
 
 

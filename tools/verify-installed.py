@@ -23,31 +23,18 @@ import re
 import sys
 from pathlib import Path
 
-# NORMALISE THE SOURCE SIDE BY EVERY REWRITE THE DISTRIBUTOR CAN APPLY, not just the one
-# it applies most often. The first cut folded only `_bmad/bmad-shared/`, which rewrites the
-# INSTALLED side and leaves the RELEASE side alone — so a correctly delivered file hashed
-# as differing forever. It reported seven stale shared-policy files across three targets
-# that were not stale at all, and very nearly bought a rewrite of a distributor that had no
-# bug in it. Caught by a parallel session; confirmed here against bison-ops, where the
-# entire difference was one line:
-#     installed  {project-root}/_bmad/bmad-shared/detect-stack.md
-#     release    {project-root}/_bmad/bmm/workflows/shared/detect-stack.md
-# Every shared location the distributor can emit folds to ONE token, so both sides land on
-# the same string whichever form they carry.
-# The fork ALSO refers to shared policy by its own bare `shared/x.md` form, so that has to
-# fold to the same token or the source side keeps a string the installed side no longer
-# has. Folding only the _bmad forms doubled the false positives rather than removing them.
-_REWRITE = re.compile(
-    rb"(\{project-root\}/)?(_bmad/(bmad-shared|bmm/workflows/design/shared"
-    rb"|bmm/workflows/shared)|shared)/")
+# CANONICAL REPRESENTATION — one shared path for every consumer (owner ruling 2026-08-31).
+# This module previously carried its own normalisation regex. The identical one-sided fold
+# was independently present here, in the verifier and in the deletion policy; fixing one
+# left the others live, and the same line failed in opposite directions depending on the
+# consumer. There is now exactly one definition of "the same content", and every producer,
+# verifier, classifier, deletion and certification path uses it.
+import importlib.util as _ilu
+_rep_spec = _ilu.spec_from_file_location(
+    "bmad_representation", Path(__file__).resolve().parent / "bmad_representation.py")
+_rep = _ilu.module_from_spec(_rep_spec)
+_rep_spec.loader.exec_module(_rep)
 
-# A second rewrite class exists that a prefix fold cannot express: on a skills-native
-# target a workflow cross-reference becomes a SKILL path, changing the file name as well as
-# the directory. Rather than pretend that away, a file that still differs is compared again
-# with every backticked {project-root} pointer removed. If it then matches, the only
-# difference was a rewritten pointer — reported as REWRITE-ONLY: neither hidden, nor
-# counted as stale content.
-_ANYPATH = re.compile(rb"`\{project-root\}/[^`]*`")
 
 # The directories the distributor delivers, and where each lands in a target.
 WORKFLOW_DIRS = ("implement", "verify", "design", "meta", "shared",
@@ -56,13 +43,13 @@ SHARED_SOURCES = ("custom/workflows/shared", "custom/workflows/design/shared")
 
 
 def h(data):
-    return hashlib.sha256(_REWRITE.sub(b"<SHARED>/", data)).hexdigest()
+    """Delegates to the shared canonical digest."""
+    return _rep.digest(data)
 
 
 def h_nopaths(data):
-    """Hash with every distributor-rewritable pointer collapsed."""
-    return hashlib.sha256(
-        _ANYPATH.sub(b"`<PATH>`", _REWRITE.sub(b"<SHARED>/", data))).hexdigest()
+    """Delegates to the shared pointer-collapsed digest. BLUNT — never decides CURRENT."""
+    return _rep.digest_pointers(data)
 
 
 def _sources_for(release, rel):

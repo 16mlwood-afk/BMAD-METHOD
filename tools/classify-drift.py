@@ -52,37 +52,17 @@ def out(args, cwd=None):
 # files in cash-recovery look human-authored when they were the current release verbatim.
 # Normalise both sides before hashing, or the classifier over-preserves and every repair
 # stalls on phantom local edits.
-# NORMALISE BY EVERY REWRITE THE DISTRIBUTOR APPLIES, not just the commonest one.
-# Folding `_bmad/bmad-shared/` alone rewrites the INSTALLED side and leaves the SOURCE side
-# untouched, so a correctly delivered file hashes as differing forever. In the verifier
-# that produced seven phantom "stale" files and nearly bought a rewrite of a distributor
-# that had no bug. The same one-sided fold lived here, where its effect is the opposite and
-# worse: content that matches a release reads as USER_AUTHORED, so genuine repair is held
-# back on files nobody wrote. Every shared location folds to ONE token, including the
-# fork's own bare `shared/` form.
-_REWRITE = re.compile(
-    rb"(\{project-root\}/)?(_bmad/(bmad-shared|bmm/workflows/design/shared"
-    rb"|bmm/workflows/shared)|shared)/")
-
-
-def blob(data):
-    return hashlib.sha256(_REWRITE.sub(b"shared/", data)).hexdigest()
-
-
-# bmad-shared is FLATTENED on delivery: the distributor collects shared policy from more
-# than one fork directory into one replica folder, so a replica path can have several
-# possible sources and all must be tried. Trying only custom/workflows/shared misread
-# operator-artifact-contract.md — real fork content — as a local addition.
-SHARED_SOURCES = ("custom/workflows/shared/", "custom/workflows/design/shared/")
-
-
-def source_paths(rel):
-    """Every fork path that could produce this replica path."""
-    if rel.startswith("_bmad/bmad-shared/"):
-        tail = rel[len("_bmad/bmad-shared/"):]
-        return [base + tail for base in SHARED_SOURCES]
-    one = source_path(rel)
-    return [one] if one else []
+# CANONICAL REPRESENTATION — one shared path for every consumer (owner ruling 2026-08-31).
+# This module previously carried its own normalisation regex. The identical one-sided fold
+# was independently present here, in the verifier and in the deletion policy; fixing one
+# left the others live, and the same line failed in opposite directions depending on the
+# consumer. There is now exactly one definition of "the same content", and every producer,
+# verifier, classifier, deletion and certification path uses it.
+import importlib.util as _ilu
+_rep_spec = _ilu.spec_from_file_location(
+    "bmad_representation", Path(__file__).resolve().parent / "bmad_representation.py")
+_rep = _ilu.module_from_spec(_rep_spec)
+_rep_spec.loader.exec_module(_rep)
 
 
 def source_path(rel):
