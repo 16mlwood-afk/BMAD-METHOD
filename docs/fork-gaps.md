@@ -10970,3 +10970,84 @@ got created, and doing it again would make a third.
 
 Needs an owner marker because it changes what "shared" means per layout, which is a design
 decision rather than a repair.
+
+### FG-2026-08-31-07 — a signal is not evidence: the five failures that produced every defect of 2026-08-31
+
+```yaml
+id: FG-2026-08-31-07
+class: inference-discipline
+scope: fork
+target: "`tools/bmad-release.py`, `tools/verify-installed.py`, `tools/classify-drift.py`, `tools/bmad_representation.py` — and any future consumer that reports on a fleet"
+marker: "absence of a signal is only evidence when the channel would have carried it"
+fix_scope: fork+global
+state: closed
+fix: done
+delivery: n/a
+routing: recorded
+```
+
+### Incident
+
+Two sessions repaired a fourteen-project fleet across one afternoon. Every defect —
+without exception — was a signal that LOOKED like evidence and was not. They are recorded
+together because they share one root, and because each was committed by someone who had
+already named the pattern, in one case in the same message that explained it.
+
+**1. A success code is not proof of success.** `sync-bmad-workflows.sh` REFUSES a target
+with uncommitted managed content and exits 0. `bmad-release` read the exit code, wrote
+thirteen targets a receipt naming a release none of them had received, and reported
+`delivered 14, exceptions 0`. Fixed: publish reads what the distributor SAID, not what it
+returned.
+
+**2. A receipt is not delivery.** Those thirteen receipts then made the targets read
+CURRENT. A certificate written moments earlier by the thing being certified is the weakest
+possible evidence, and it actively suppresses further checking. Fixed: content is compared
+against the release before any receipt is written, and the receipt re-read after.
+
+**3. A mismatch is not drift.** The distributor rewrites references on delivery, so a
+correct file never byte-matches its source. Normalising one side only produced seven
+phantom stale files and nearly bought a rewrite of a distributor that had no bug. The same
+line in the classifier produced the OPPOSITE failure — content matching a release read as
+USER_AUTHORED — which withheld repair from five projects for ten files nobody wrote.
+Fixed: `tools/bmad_representation.py`, one canonical comparison for every consumer.
+
+**4. A guard whose precondition is missing has not held — it has not run.** The
+shared-policy refresh guarded on `-d "$SKILLS_NATIVE/_shared"`, a GENERATED and gitignored
+path. In a fresh clone the guard is false, the block is skipped, and the run reports
+success — silently disabling itself in exactly the environment a real release uses. Fixed:
+build the generator, and warn loudly when it cannot be built.
+
+**5. Absence of a signal is evidence only when the channel would have carried it.** The
+general form, and the one that catches people already being careful. Instances, all real:
+
+- A publish log grepped for `bmad-shared refreshed` and found none — but `cmd_publish`
+  prints the syncer's stdout ONLY on failure, so that log could never carry the line on a
+  successful run. Absence in a channel that is silent by design was read as absence of the
+  event.
+- `git status` over a gitignored path returns nothing whether the tree is pristine or
+  wrecked. Silence was read as cleanliness on four projects. Fixed: unobservable scopes are
+  now named in the verdict.
+- "The full suite is green, exit 0" — the right instrument, in the wrong environment. True
+  in a working tree where a generated artefact happened to exist; false from a clean
+  checkout, where the same suite fails 7/2. An environment-dependent result stated as an
+  absolute.
+
+### Why it is structural
+
+Every one of these is cheap to make and expensive to catch, because the wrong signal and
+the right one are indistinguishable at the point of reading. Nothing about care prevents
+them: both sessions committed instances AFTER naming the pattern, and the most careful
+instance — reading a log for a line that channel never emits — was made while explaining
+the rule to the other session.
+
+What worked was not vigilance. It was that neither session defended a claim once it was
+checked, and that each checked the other's rather than accepting it.
+
+### The rule, in the form worth keeping
+
+    Unobservable is not clean.
+    Not-yet-run is not passed.
+    Not-pushed is not delivered.
+    A guard whose precondition is missing has not held.
+    And absence of a signal is evidence only when the channel would have carried it —
+    before concluding it did not happen, show you would have seen it if it had.
