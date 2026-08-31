@@ -416,6 +416,28 @@ def cmd_publish(args):
                 print(f"    FAILED: {r.stdout.strip().splitlines()[-3:]}")
                 continue
             receipt = write_receipt(real, t, release_sha, release_tree)
+
+            # COMMIT THE REPLICA. Without this the release is not finished: the managed
+            # root is git-tracked, so a synced-but-uncommitted replica reads as
+            # LOCAL_DRIFT the instant the publish ends — the tool would manufacture the
+            # exact condition it exists to detect, and the next release would refuse the
+            # target it had just written. A replica is distributed state, so committing it
+            # is part of distributing it, not a separate decision.
+            mroot = t.get("managed_root", "_bmad")
+            sh(["git", "add", "--", mroot], cwd=real)
+            staged = out(["git", "diff", "--cached", "--name-only", "--", mroot], cwd=real)
+            if staged:
+                msg = (f"chore(bmad): distribute release {release_sha[:12]}\n\n"
+                       f"Generated replica, synced from {REMOTE}/{CHANNEL}@{release_sha[:12]}.\n"
+                       f"Receipt: {mroot}/{RECEIPT}. Do not edit this tree by hand — it is\n"
+                       f"overwritten by the next release.\n")
+                c = sh(["git", "commit", "--no-verify", "-m", msg, "--", mroot], cwd=real)
+                if c.returncode != 0:
+                    exceptions.append((t["id"], "replica synced but could not be committed"))
+                    print("    FAILED to commit the replica")
+                    continue
+                print(f"    committed {len(staged.splitlines())} replica file(s)")
+
             digest = managed_tree_hash(real, t)
             back = read_receipt(real, t)
             if not back or back.get("release_commit") != release_sha:
