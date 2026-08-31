@@ -96,6 +96,23 @@ def close(args):
     return 0
 
 
+def local_only(t):
+    """Managed-root commits that exist on THIS machine and nowhere else.
+
+    A replica can be CURRENT on disk and still be undelivered: the distribution commit
+    was never pushed, so a fresh clone, another machine, and CI all get the OLD methods.
+    'Current' that only one laptop can see is not delivered, and the accountability
+    contract asks about delivery — so this is measured, not assumed. Returns the count
+    of unpushed commits touching the managed root; 0 when there is no upstream to
+    compare against (unknowable, not clean — the caller must not read 0 as proof).
+    """
+    real, root = t["path"], t.get("managed_root", "_bmad")
+    if not R.out(["git", "-C", real, "rev-parse", "--abbrev-ref", "HEAD@{u}"]):
+        return 0
+    n = R.out(["git", "-C", real, "rev-list", "--count", "@{u}..HEAD", "--", root])
+    return int(n) if n.isdigit() else 0
+
+
 def survey(fetch=True):
     """-> dict. Every field is measured; nothing is assumed."""
     release_sha, findings = R.source_gate(fetch=fetch)
@@ -118,13 +135,15 @@ def survey(fetch=True):
         state, detail = (("BLOCKED", blocks[0]) if blocks
                          else R.classify(t, release_sha or ""))
         targets.append({"id": t["id"], "state": state, "detail": detail,
-                        "owner": t.get("owner", "active")})
+                        "owner": t.get("owner", "active"),
+                        "local_only": local_only(t)})
 
     active = [t for t in targets if t["state"] != "DISABLED"]
     current = [t for t in active if t["state"] == "CURRENT"]
     identity = [t for t in active if t["state"] in IDENTITY_STATES]
     repairable = [t for t in active if t["state"] in REPAIRABLE_STATES]
     gated = [t for t in targets if t["owner"] == "owner-gate"]
+    undelivered = [t for t in active if t.get("local_only")]
     decisions = open_decisions()
 
     # The verdict never rounds up. Without a resolved release commit we do not KNOW
@@ -133,7 +152,7 @@ def survey(fetch=True):
 
     if decisions or identity or gated:
         verdict = "OWNER DECISION NEEDED"
-    elif repairable or stranded or source_blocks or unresolved:
+    elif repairable or stranded or source_blocks or unresolved or undelivered:
         verdict = "REPAIRING"
     elif active and len(current) == len(active):
         verdict = "HEALTHY"
@@ -144,9 +163,11 @@ def survey(fetch=True):
             "source_blocks": source_blocks, "stranded": stranded, "targets": targets,
             "active": len(active), "current": len(current), "identity": identity,
             "repairable": repairable, "owner_gated": gated, "decisions": decisions,
+            "undelivered": undelivered,
             "questions": {
                 "all_projects_current": bool(active) and len(current) == len(active),
-                "undelivered_improvements": bool(stranded) or bool(repairable),
+                "undelivered_improvements": (bool(stranded) or bool(repairable)
+                                             or bool(undelivered)),
                 "unsafe_or_duplicate_copies": bool(identity) or bool(gated),
                 "blocked_on_owner": bool(decisions) or bool(identity) or bool(gated),
             }}
@@ -163,7 +184,12 @@ def render(s):
         return "\n".join(lines)
 
     if s["verdict"] == "REPAIRING":
-        if n and c == n:
+        u = len(s.get("undelivered", []))
+        if n and c == n and u:
+            outcome = (f"Your methods are active in all {n} projects on this machine, but in "
+                       f"{u} of them that has not been saved anywhere else yet — a fresh copy "
+                       f"of those projects would still get the old ones.")
+        elif n and c == n:
             outcome = ("Your latest workflow improvements are finished but not yet released, "
                        "so no project can see them yet.")
         elif c:
@@ -215,7 +241,8 @@ def why(s):
         out.append(f"source block   : {m.splitlines()[0]}")
     width = max([len(t["id"]) for t in s["targets"]] or [10]) + 2
     for t in s["targets"]:
-        out.append(f"  {t['id']:<{width}}{t['state']:<16}{t['detail'][:78]}")
+        lo = f"  [{t['local_only']} unpushed]" if t.get("local_only") else ""
+        out.append(f"  {t['id']:<{width}}{t['state']:<16}{t['detail'][:60]}{lo}")
     for d in s["decisions"]:
         out.append(f"  OPEN {d['id']}: {d['question']}")
     for k, v in s["questions"].items():

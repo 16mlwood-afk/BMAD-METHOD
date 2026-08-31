@@ -35,11 +35,12 @@ def survey(targets, *, sha="a" * 40, blocks=(), decisions=()):
     identity = [t for t in active if t["state"] in H.IDENTITY_STATES]
     repairable = [t for t in active if t["state"] in H.REPAIRABLE_STATES]
     gated = [t for t in targets if t.get("owner") == "owner-gate"]
+    undelivered = [t for t in active if t.get("local_only")]
     stranded = [m for m in blocks if "not reachable" in m.lower() or "stranded" in m.lower()]
 
     if decisions or identity or gated:
         verdict = "OWNER DECISION NEEDED"
-    elif repairable or stranded or blocks or not sha:
+    elif repairable or stranded or blocks or not sha or undelivered:
         verdict = "REPAIRING"
     elif active and len(current) == len(active):
         verdict = "HEALTHY"
@@ -50,11 +51,12 @@ def survey(targets, *, sha="a" * 40, blocks=(), decisions=()):
             "source_blocks": list(blocks), "stranded": stranded, "targets": targets,
             "active": len(active), "current": len(current), "identity": identity,
             "repairable": repairable, "owner_gated": gated, "decisions": list(decisions),
-            "questions": {}}
+            "undelivered": undelivered, "questions": {}}
 
 
-def T(tid, state, owner="active"):
-    return {"id": tid, "state": state, "detail": "d", "owner": owner}
+def T(tid, state, owner="active", local_only=0):
+    return {"id": tid, "state": state, "detail": "d", "owner": owner,
+            "local_only": local_only}
 
 
 BANNED = ["fork", "branch", "rsync", "worktree", "manifest", "merge conflict",
@@ -107,6 +109,23 @@ check("H11 uncommitted replica content is ordinary repair, not an owner decision
 
 s = survey([T("a", "PARTIAL_RELEASE")])
 check("H12 a replica with no receipt is ordinary repair", s["verdict"] == "REPAIRING")
+
+# ------------------------------------------------- current-on-disk is not yet delivered
+s = survey([T("a", "CURRENT", local_only=1)])
+check("H12a a CURRENT replica whose distribution was never pushed is NOT healthy",
+      s["verdict"] == "REPAIRING")
+
+s = survey([T("a", "CURRENT"), T("b", "CURRENT", local_only=3)])
+check("H12b one undelivered replica downgrades an otherwise-current estate",
+      s["verdict"] == "REPAIRING")
+
+r = H.render(survey([T("a", "CURRENT"), T("b", "CURRENT", local_only=3)]))
+check("H12c ... and says so in words the owner can act on, without git vocabulary",
+      "a fresh copy of those projects would still get the old ones" in r
+      and "push" not in r.lower())
+
+s = survey([T("a", "CURRENT", local_only=0), T("b", "CURRENT", local_only=0)])
+check("H12d nothing unpushed leaves HEALTHY reachable", s["verdict"] == "HEALTHY")
 
 # ------------------------------------------------------------------------ the four lines
 for label, s in [
