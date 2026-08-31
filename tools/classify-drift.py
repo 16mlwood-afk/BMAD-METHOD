@@ -83,6 +83,11 @@ def source_path(rel):
         return "custom/workflows/" + rel[len("_bmad/bmm/workflows/"):]
     if rel.startswith("_bmad/bmm/agents/"):
         return "custom/agents/" + rel[len("_bmad/bmm/agents/"):]
+    # The SKILLS surface. Omitting it left half the distributed surface unclassified,
+    # which is how nine targets read clean while holding uncommitted skill content and a
+    # publish then reported success for targets the distributor had refused.
+    if rel.startswith(".claude/skills/"):
+        return "custom/skills/" + rel[len(".claude/skills/"):]
     return None
 
 
@@ -142,7 +147,8 @@ def main():
         if not (root / ".git").exists():
             report.append({"id": t["id"], "buckets": {"6 UNREACHABLE": ["<not a git repo>"]}})
             continue
-        lines = [l for l in out(["git", "status", "--porcelain", "--", mroot],
+        lines = [l for l in out(["git", "status", "--porcelain", "--", mroot,
+                                 ".claude/skills", ".claude/commands/bmad"],
                                 cwd=root).splitlines() if l.strip()]
         buckets = {}
         for line in lines:
