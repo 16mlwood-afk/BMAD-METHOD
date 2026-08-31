@@ -247,10 +247,7 @@ beta                        4  UNVERIFIED
 const CEDED = ['C13-GRID-UNPARSED'];
 
 /* The defect the field case had: the rule prints 9, the rows above it sum to 7. */
-check('c12-scaffold-arithmetic-disagrees', fencedManifest({ declaredTotal: 7, printedTotal: 9 }), 1, [
-  ...CEDED,
-  'C12-SCAFFOLD-ARITHMETIC',
-]);
+check('c12-scaffold-arithmetic-disagrees', fencedManifest({ declaredTotal: 7, printedTotal: 9 }), 1, [...CEDED, 'C12-SCAFFOLD-ARITHMETIC']);
 
 /* THE OTHER DIRECTION, and the one that matters most: when the printed total matches its
  * own rows and the frontmatter agrees with both, C12 says NOTHING. A checker that fires on
@@ -373,18 +370,15 @@ check(
  * with it. ── */
 
 for (const g of ['value-exact', 'partial', 'summary']) {
-  check(`c14-silent-on-legal-grain-${g}`,
-    goodManifest().replace(/manifest_grain:\s*\S+/, `manifest_grain: ${g}`), 0, []);
+  check(`c14-silent-on-legal-grain-${g}`, goodManifest().replace(/manifest_grain:\s*\S+/, `manifest_grain: ${g}`), 0, []);
 }
 
 /* Out-of-enum is REPORTED, never coerced — found in the wild as `full`. */
-check('c14-fires-on-out-of-enum-grain',
-  goodManifest().replace(/manifest_grain:\s*\S+/, 'manifest_grain: full'), 1, ['C14-GRAIN-ENUM']);
+check('c14-fires-on-out-of-enum-grain', goodManifest().replace(/manifest_grain:\s*\S+/, 'manifest_grain: full'), 1, ['C14-GRAIN-ENUM']);
 
 /* ABSENT is the schema's own conservative default, NOT an invalid value. Conflating the two
  * would fire on every manifest written before the field existed — which is most of them. */
-check('c14-silent-when-grain-absent',
-  goodManifest().replace(/^\s*manifest_grain:.*$/m, ''), 0, []);
+check('c14-silent-when-grain-absent', goodManifest().replace(/^\s*manifest_grain:.*$/m, ''), 0, []);
 
 fs.rmSync(TMP, { recursive: true, force: true });
 
