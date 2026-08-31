@@ -1435,3 +1435,1241 @@ pointers missing from the index, 0 index section-names missing from `claude-advi
 - **Priority: medium.** No data loss; the failure is a rejected paste and a wasted round-trip with
   the board. But it recurred on every instructions rewrite, and it burned an owner-noticed
   correction cycle — the specific cost the drift detector exists to remove.
+
+## 2026-07-16 — edit-guard false-positive, new instance class: a READ-ONLY `python3 -c` (openpyxl dump of ~/Downloads xlsx files) hard-blocked as "edit-equivalent" (pointer to standing gap-#111 / allowlist thread — NOT a new gap)
+
+```yaml
+id: FG-2026-07-16-03
+class: pointer-instance (shape-vs-target misclassification, standing thread)
+scope: project
+target: .claude/settings.local.json
+marker: "read-only invocation"
+state: closed
+fix: done
+delivery: done
+owner: project:inbound-flow
+```
+
+### Incident
+**Target file:** the Bash edit-guard hook command in inbound-flow `.claude/settings.local.json`.
+
+**What fought us:** filling an Amazon listings TSV from two `~/Downloads` xlsx files — zero repo writes intended. A `python3 -c` one-liner that only READ the xlsx (openpyxl `load_workbook` + print) was hard-blocked as an edit-equivalent; the trigger can only have been the `>` characters in a comparison (`if i > 40`) and/or `2>&1`. New wrinkle vs. prior thread hits (which were real writes to out-of-scope targets: gitignored config, scratchpad): this one had NO write of any kind — the shape heuristic fired on operator syntax inside a `-c` string. Cost was small (one block + a worktree entry that project policy wanted anyway), but the failure mode compounds the standing thread: the guard classifies on command SHAPE, not parsed redirection or expanded TARGET, and now provably misfires on reads. Same root, same fix direction as gap-#111/(c): parse actual redirections (or at minimum exempt `2>&1` and quoted/`-c` string contents) and check the resolved target path class before blocking. Logged as an instance, not duplicated.
+
+### Work
+
+**Status (migrated 2026-07-25):** no closure note existed on this entry at migration; state derived as `open`.
+
+### Resolution — 2026-07-26: the guard was NEVER WIRED; now wired, with four resolution defects fixed
+
+**The finding that kept all four of these entries open.** `.claude/hooks/bash_edit_guard.py` — the
+reviewable, target-classifying guard written 2026-07-25 to replace the 2050-char inline regex — was
+**never wired**. `settings.local.json` still ran the inline matcher it claims to have replaced, so the
+file existed, its suite was green, cash-recovery's CLAUDE.md asserted it was live, and **it fired in
+zero sessions.** Same shape as `FG-2026-07-25-09`: authored, measured, documented as live, deployed to
+nothing. That is why four separate Bash false-positive entries stayed open against a guard that
+supposedly fixed them.
+
+**Now wired** (`PreToolUse` Bash -> `bash_edit_guard.py`; prior settings backed up as
+`.claude/settings.local.json.bak-preguardwire-*`), and **four resolution defects** fixed — each one
+made the guard judge a path the command never touched, which is a false positive even when the verdict
+about that path is correct:
+
+1. **A leading `cd <dir> &&` is honoured** for relative targets (was resolving every relative path
+   against `CLAUDE_PROJECT_DIR`, so an allowlisted fork edit was denied for a cash-recovery path that
+   does not exist).
+2. **`$VAR` assigned to a fully-literal value in the same command is substituted**; a PARTIALLY
+   literal value is skipped, never truncated (the first cut turned `T=/tmp/probe-$$` into
+   `/tmp/probe-` and confidently exempted a nonexistent path — caught by golden case V3 pre-ship).
+3. **The quoted-span rule now covers `tee` / `sed -i` / `awk -i`, not just redirects** — a command
+   that merely MENTIONS those tokens in a quoted argument was classified as writing. The live deny
+   listed `x, cat, >, but, writes, nothing` as its targets; a verdict whose own evidence is word salad
+   is a verdict to distrust.
+4. **`BMAD_ALLOW_MAIN_EDIT=1` is honoured and LOGGED** (exact-match; paths only, never the command).
+   It was named in deny messages and honoured by NO guard — a documented, inert escape hatch.
+
+**Evidence: 43/43 golden cases, plus LIVE probes** (the suite alone cannot prove wiring): a read-only
+`python3 -c` whose string mentions `sed -i` / `cat >` / `tee` now runs; a write to `src/db/schema.ts`
+is still denied and names exactly one resolved target.
+
+**Enforcement tier, honest.** DETERMINISTIC: the guard decides the tool call; the suite pins the
+behaviour. PROBABILISTIC: nothing verifies the override is used *appropriately* — the log makes misuse
+auditable, not preventable. **Two honest weaknesses, both stated rather than papered over:** (a) the
+override logs to a local JSONL, not into the PR/record as the override-with-logging pattern prescribes;
+(b) the swap went deny→deny with no warn-only staging, so an unknown false-NEGATIVE class the old
+regex happened to catch would not have been detected — the old matcher is preserved in the backup if a
+behavioural diff is ever wanted.
+
+**Distribution:** `settings.local.json` is gitignored and does not sync. **Enforced in cash-recovery
+only**; the other 12 projects still run the old inline regex and still have every false positive above.
+
+
+
+### Closed — 2026-07-26: the fan-out ran; the legacy guard is gone from every project
+
+Owner approved the rollout explicitly. `tools/migrate-bash-edit-guard.sh --apply` migrated **13/13,
+0 failed** (one piloted first, then the remaining 12). **Verified INDEPENDENTLY of the migration
+script's own report** — the thing this whole family of gaps was caused by trusting: every project now
+greps exactly **1** reference to `bash_edit_guard` and **0** to the legacy blob, carries all four guard
+files, and passes `guard-health-check.sh` with **0 findings**.
+
+So the read-only false positives this entry logged (a `python3 -c` doing nothing but reading, blocked
+because the command string mentioned an edit token) are fixed everywhere, not just in cash-recovery.
+
+**Nothing was committed to git, deliberately** — see `FG-2026-07-25-02` for the reasoning; it is a
+tracking-policy question the fork has parked, not an oversight.
+
+## 2026-07-18 — edit-guard false-positive reproduces in a SECOND project (cash-recovery): read-only `sed` pipe blocked (pointer-instance on the shape-vs-target thread — NOT a new gap)
+
+```yaml
+id: FG-2026-07-18-01
+class: pointer-instance (shape-vs-target misclassification, standing thread)
+scope: project
+target: the Bash edit-guard hook command in cash-recovery's .claude settings.
+marker: "read-only invocation"
+state: closed
+fix: done
+delivery: done
+owner: project:cash-recovery
+```
+
+### Incident
+**Target file:** the Bash edit-guard hook command in cash-recovery's `.claude` settings.
+
+**What fought us:** a Buy-Box audit in cash-recovery. A read-only `env | grep … | sed -E 's/=.*/=<set>/'` (mask secret values while listing env-var NAMES — zero file writes) was hard-blocked as an "edit-equivalent (sed -i / cat > / tee / etc.)". The trigger was the bare `sed` token; the command had no `-i`, no redirection, no write target. Cost was one command rewrite. **New fact vs. the 2026-07-16 inbound-flow instances:** the identical shape-based false-positive fires in a DIFFERENT project's edit-guard on a DIFFERENT tool (`sed` pipe, not `python3 -c`), confirming this is not one project's local hook quirk — the same guard pattern is replicated across projects and misfires identically. That argues the fix (parse redirection / resolve target-path-class before blocking; exempt read-only `sed`/`awk`/`python -c` pipes) belongs at the **shared/template layer that seeds these per-project guards**, not one settings file at a time. Logged as an instance, not duplicated.
+
+### Work
+
+**Status (migrated 2026-07-25):** no closure note existed on this entry at migration; state derived as `open`.
+
+### Resolution — 2026-07-26: the guard was NEVER WIRED; now wired, with four resolution defects fixed
+
+**The finding that kept all four of these entries open.** `.claude/hooks/bash_edit_guard.py` — the
+reviewable, target-classifying guard written 2026-07-25 to replace the 2050-char inline regex — was
+**never wired**. `settings.local.json` still ran the inline matcher it claims to have replaced, so the
+file existed, its suite was green, cash-recovery's CLAUDE.md asserted it was live, and **it fired in
+zero sessions.** Same shape as `FG-2026-07-25-09`: authored, measured, documented as live, deployed to
+nothing. That is why four separate Bash false-positive entries stayed open against a guard that
+supposedly fixed them.
+
+**Now wired** (`PreToolUse` Bash -> `bash_edit_guard.py`; prior settings backed up as
+`.claude/settings.local.json.bak-preguardwire-*`), and **four resolution defects** fixed — each one
+made the guard judge a path the command never touched, which is a false positive even when the verdict
+about that path is correct:
+
+1. **A leading `cd <dir> &&` is honoured** for relative targets (was resolving every relative path
+   against `CLAUDE_PROJECT_DIR`, so an allowlisted fork edit was denied for a cash-recovery path that
+   does not exist).
+2. **`$VAR` assigned to a fully-literal value in the same command is substituted**; a PARTIALLY
+   literal value is skipped, never truncated (the first cut turned `T=/tmp/probe-$$` into
+   `/tmp/probe-` and confidently exempted a nonexistent path — caught by golden case V3 pre-ship).
+3. **The quoted-span rule now covers `tee` / `sed -i` / `awk -i`, not just redirects** — a command
+   that merely MENTIONS those tokens in a quoted argument was classified as writing. The live deny
+   listed `x, cat, >, but, writes, nothing` as its targets; a verdict whose own evidence is word salad
+   is a verdict to distrust.
+4. **`BMAD_ALLOW_MAIN_EDIT=1` is honoured and LOGGED** (exact-match; paths only, never the command).
+   It was named in deny messages and honoured by NO guard — a documented, inert escape hatch.
+
+**Evidence: 43/43 golden cases, plus LIVE probes** (the suite alone cannot prove wiring): a read-only
+`python3 -c` whose string mentions `sed -i` / `cat >` / `tee` now runs; a write to `src/db/schema.ts`
+is still denied and names exactly one resolved target.
+
+**Enforcement tier, honest.** DETERMINISTIC: the guard decides the tool call; the suite pins the
+behaviour. PROBABILISTIC: nothing verifies the override is used *appropriately* — the log makes misuse
+auditable, not preventable. **Two honest weaknesses, both stated rather than papered over:** (a) the
+override logs to a local JSONL, not into the PR/record as the override-with-logging pattern prescribes;
+(b) the swap went deny→deny with no warn-only staging, so an unknown false-NEGATIVE class the old
+regex happened to catch would not have been detected — the old matcher is preserved in the backup if a
+behavioural diff is ever wanted.
+
+**Distribution:** `settings.local.json` is gitignored and does not sync. **Enforced in cash-recovery
+only**; the other 12 projects still run the old inline regex and still have every false positive above.
+
+
+## 2026-07-21 — bash edit-guard blocks appends to the allowlisted fork path (`cat >>`), contradicting CLAUDE.md
+
+```yaml
+id: FG-2026-07-21-02
+class: false-positive
+scope: fork
+target: ~/bmad-method-v6/
+marker: "bash_edit_guard.py"
+state: closed
+fix: done
+delivery: done
+owner: fork-maintenance
+routing: retro-routed
+routing_note: "Implemented under standing 'continue fixing the fork gaps' maintenance instruction from Mason (2026-07-26)."
+```
+
+### Incident
+CLAUDE.md's Cross-Repo Edits section states fork edits under `~/bmad-method-v6/` are "explicitly allowlisted by the hook — you can Edit/Write fork files directly." But the **Bash** edit-guard blocked `cat >> ~/bmad-method-v6/docs/fork-gaps.md` with "32 parallel claude sessions detected and you are NOT in a worktree", because it pattern-matches `cat >`/`tee`/`sed -i` as edit-equivalents **without checking the target path against the fork allowlist** — the allowlist is honored only for the Edit/Write *tools*, not for bash edit-equivalents. So the one file the workflow-friction policy tells the agent to append to (this file) can't be reached by the natural `cat >>` append; it forces a Read + Edit-tool detour, which then trips the *second* gate (fork-edit requires the specialist skill loaded). Net: logging a fork-gap is self-obstructing at the exact moment the Stop hook asks for it.
+**Target to fix:** the Bash edit-guard PreToolUse hook (the parallel-session counter that blocks edit-equivalents). Give the bash path the same allowlist check the Edit/Write path already has: if the redirect/`-i` target resolves under `~/bmad-method-v6/` (or any configured allowlisted root), permit it without a worktree.
+
+### Work
+
+**Status (migrated 2026-07-25):** no closure note existed on this entry at migration; state derived as `open`.
+
+**Priority: low** — a clean workaround exists (Edit tool), but it contradicts CLAUDE.md's stated contract and adds friction to the reflection step itself.
+
+**Addendum 2026-07-23 (same second-gate, new signal — the flag's lifetime is too short):** the fork-edit gate ("the mason-bmad-workflow-expert skill has not been loaded this session") reset **twice inside one continuous working session** and re-blocked legitimate fork edits, forcing a full specialist-skill reload each time (the skill is large — that's real context + wall-clock cost). The first reset followed a context compaction (defensible — the skill's instructions were genuinely truncated, so requiring a reload restores the live guidance). The **second reset fired on a mere date-rollover** (2026-07-16 → -23) while the skill's instructions were still fully in-context — so the gate's "loaded this session" state keys on a boundary (session-day?) that invalidates *independently of whether the specialist is actually present*, re-blocking on a signal that didn't change the thing the gate protects. **Target to fix:** the fork-edit PreToolUse gate's session-state tracking (the hook that emits "skill has not been loaded this session"). Tie the flag to *skill-content-still-in-context* (or reset it only on an actual compaction boundary), not to a calendar-day rollover. **Priority: low-medium** — the gate is correct and worth keeping; it just re-charges its cost on a boundary that carries no real risk, and it does so at the same reflection step the entry above is already about.
+
+### Resolution — 2026-07-26: the guard was NEVER WIRED; now wired, with four resolution defects fixed
+
+**The finding that kept all four of these entries open.** `.claude/hooks/bash_edit_guard.py` — the
+reviewable, target-classifying guard written 2026-07-25 to replace the 2050-char inline regex — was
+**never wired**. `settings.local.json` still ran the inline matcher it claims to have replaced, so the
+file existed, its suite was green, cash-recovery's CLAUDE.md asserted it was live, and **it fired in
+zero sessions.** Same shape as `FG-2026-07-25-09`: authored, measured, documented as live, deployed to
+nothing. That is why four separate Bash false-positive entries stayed open against a guard that
+supposedly fixed them.
+
+**Now wired** (`PreToolUse` Bash -> `bash_edit_guard.py`; prior settings backed up as
+`.claude/settings.local.json.bak-preguardwire-*`), and **four resolution defects** fixed — each one
+made the guard judge a path the command never touched, which is a false positive even when the verdict
+about that path is correct:
+
+1. **A leading `cd <dir> &&` is honoured** for relative targets (was resolving every relative path
+   against `CLAUDE_PROJECT_DIR`, so an allowlisted fork edit was denied for a cash-recovery path that
+   does not exist).
+2. **`$VAR` assigned to a fully-literal value in the same command is substituted**; a PARTIALLY
+   literal value is skipped, never truncated (the first cut turned `T=/tmp/probe-$$` into
+   `/tmp/probe-` and confidently exempted a nonexistent path — caught by golden case V3 pre-ship).
+3. **The quoted-span rule now covers `tee` / `sed -i` / `awk -i`, not just redirects** — a command
+   that merely MENTIONS those tokens in a quoted argument was classified as writing. The live deny
+   listed `x, cat, >, but, writes, nothing` as its targets; a verdict whose own evidence is word salad
+   is a verdict to distrust.
+4. **`BMAD_ALLOW_MAIN_EDIT=1` is honoured and LOGGED** (exact-match; paths only, never the command).
+   It was named in deny messages and honoured by NO guard — a documented, inert escape hatch.
+
+**Evidence: 43/43 golden cases, plus LIVE probes** (the suite alone cannot prove wiring): a read-only
+`python3 -c` whose string mentions `sed -i` / `cat >` / `tee` now runs; a write to `src/db/schema.ts`
+is still denied and names exactly one resolved target.
+
+**Enforcement tier, honest.** DETERMINISTIC: the guard decides the tool call; the suite pins the
+behaviour. PROBABILISTIC: nothing verifies the override is used *appropriately* — the log makes misuse
+auditable, not preventable. **Two honest weaknesses, both stated rather than papered over:** (a) the
+override logs to a local JSONL, not into the PR/record as the override-with-logging pattern prescribes;
+(b) the swap went deny→deny with no warn-only staging, so an unknown false-NEGATIVE class the old
+regex happened to catch would not have been detected — the old matcher is preserved in the backup if a
+behavioural diff is ever wanted.
+
+**Distribution:** `settings.local.json` is gitignored and does not sync. **Enforced in cash-recovery
+only**; the other 12 projects still run the old inline regex and still have every false positive above.
+
+
+## 2026-07-26 — `[CORRECTED — mis-attributed on first write; real cause already diagnosed and being fixed in-flight]` a PATH-SCOPED commit hands hooks a temp `GIT_INDEX_FILE`, and the test sandbox inherits it
+
+```yaml
+id: FG-2026-07-26-01
+class: worktree-sync-drift
+scope: fork
+target: test/lib/clean-git-env.js
+marker: "GIT_ENV_TO_STRIP"
+state: closed
+fix: done
+delivery: done
+owner: fork-maintenance
+```
+
+> **[CORRECTION 2026-07-26 — read this before the incident below.]** The original write-up blamed the
+> test for *staging a fixture into the shared real index*. **That attribution is WRONG.** The real
+> mechanism was already diagnosed — in this very file's own header comment, by a parallel session
+> whose fix (`GIT_ENV_TO_STRIP`) is **in the working tree, uncommitted**, and is recorded in
+> `docs/manifest-contract.md` §4a as the "intermittent, never root-caused" failure.
+>
+> **Real cause:** on a **PATH-SCOPED** commit (`git commit -m … -- <paths>`) git builds a TEMPORARY
+> index and exports it to hooks as `GIT_INDEX_FILE`. `git -C` / `cwd` do **not** override that env
+> var — it wins over the working directory — so the test's sandbox `git add -A` writes entries into
+> the *real commit's* temp index, referencing blobs that live only in the sandbox object store. The
+> commit then dies building trees. **Proven by that session: 13/13 standalone, 11/13 with
+> `GIT_INDEX_FILE` set** — which is exactly the "11 passed, 2 failed" I observed and misread as an
+> unrelated test failure.
+>
+> **Why I hit it and most sessions don't:** I used path-scoped commits throughout
+> (`git commit <paths> -m …`), which is the ONLY form that hands hooks a temp index. A normal
+> `git add` + `git commit` never triggers it. My own choice of commit form was the trigger.
+>
+> **Corrected owner + target:** the fix is authored and in-flight (uncommitted) by that session —
+> do **not** re-fix it, and do not "clean up" the test. What remains owed is only that the fix gets
+> **committed**, and that `manifest-contract.md` §4a be updated to say the cause is now known rather
+> than "never root-caused."
+>
+> **Corrected lesson (the durable one):** the recommended two-step `git add` + commit form was pushed
+> on sessions *as a workaround for this bug*, which reintroduced the shared-index sweep hazard the
+> one-step form exists to eliminate. A workaround adopted before root-causing traded one hazard for
+> another for weeks.
+
+### Incident
+
+**Every commit to the fork currently fails**, after the full validator suite has already run and
+passed:
+
+```
+fatal: unable to read fc82610c46b589f323ad37db1f4cf1cb13c78272
+error: invalid object 100644 fc82610c... for '.claude/skills/bmad-example/SKILL.md'
+error: Error building trees
+```
+
+`.claude/skills/bmad-example/SKILL.md` is a **test fixture** created by
+`test/test-sync-skip-if-dirty.js`. It is not in `HEAD`, not in the index before the commit
+(`git ls-files -s | grep bmad-example` → empty), not in any stash, and `git fsck
+--connectivity-only` is clean. It appears **during** the pre-commit run: `npm test` creates and
+stages the fixture into the checkout's real index, then deletes the object, and git's tree-build
+then references a blob that no longer exists.
+
+**Why this is nasty rather than merely annoying.** The failure surfaces at the very END, after
+lint-staged, the whole validator suite, and the hook smoke-test have all run and reported green — so
+the operator reads a wall of passing output and then a tree error naming a path they never touched.
+Nothing in the message connects it to the test suite. The only working escape is `--no-verify`, which
+is precisely the escape the fork has repeatedly logged as corrosive: it discards the cheap validators
+that ARE the point of the gate. Same shape as the 2026-07-20 corrupt-stash outage — a commit-time
+outage whose only exit is the one that disables verification.
+
+**Aggravating factor:** the same suite reported **11 passed, 2 failed** in that run. Whether the two
+failures are pre-existing or a symptom of the same index pollution is UNVERIFIED — do not assume
+either.
+
+### Work
+
+1. **The test must never touch the checkout's real index.** It should build fixtures in a temp repo
+   (`mktemp -d` + `git init`), as `test_brief_regen_guard.py` and the sync-guard golden case already
+   do. A test that stages into the repo it runs in is unsafe in ANY checkout and actively dangerous in
+   this one, which is shared by many concurrent sessions.
+2. **Clean up on failure, not just on success.** If the fixture is genuinely needed in-repo, remove it
+   with `git update-index --force-remove` in a trap, so a failing assertion cannot leave the index
+   holding a reference to a deleted blob.
+3. **Triage the 2 failing assertions** in `test-sync-skip-if-dirty.js` separately — they gate the
+   `rsync --delete` skip-if-dirty guard, which is the Tier-3 protection on the fleet fan-out. A red
+   test there is not cosmetic.
+
+**Watch:** this is the third commit-time outage in the shared checkout whose only escape is
+`--no-verify` (corrupt stash 2026-07-20; foreign staged set 2026-07-25; this). If a fourth appears,
+the pattern is the shared checkout itself, not the individual causes.
+
+### Resolution — 2026-07-26, `66440307` (the in-flight fix this entry saw uncommitted is now landed)
+
+This entry and `FG-2026-07-25-12` owed-item (1) are **the same finding reached by two sessions in
+parallel**; the corrected cause above is right. Landed:
+
+- **`test/lib/clean-git-env.js`** — one shared helper stripping `GIT_INDEX_FILE`, `GIT_DIR`,
+  `GIT_WORK_TREE`, `GIT_OBJECT_DIRECTORY`, `GIT_ALTERNATE_OBJECT_DIRECTORIES`, `GIT_COMMON_DIR`,
+  `GIT_PREFIX`. One home, because this recurs per-test: a **second** instance was found while fixing
+  the first — `test/test-stash-health.js`, fixture `tracked.txt`, identical failure. Both now use the
+  helper.
+- **§4a of `docs/manifest-contract.md`** no longer calls the failure "never root-caused" and no longer
+  routes sessions to the two-step form. The one-step rule stands with no caveat.
+
+**Disposition of the three Work items, against the CORRECTED cause:**
+
+1. *"The test must never touch the checkout's real index"* — it never did. `makeProject()` builds
+   throwaway repos under a temp `HOME`; the entries reached the real (temp) index purely through
+   inherited env. The intent is satisfied and is now enforced at the spawn site.
+2. *"Clean up on failure"* — moot for the same reason: there is no in-repo fixture to clean up.
+3. *"Triage the 2 failing assertions — UNVERIFIED whether pre-existing or a symptom"* — **ANSWERED:
+   symptom.** `node test/test-sync-skip-if-dirty.js` → 13/13; with `GIT_INDEX_FILE` set → 11/13
+   pre-fix, 13/13 post-fix. The two "failures" were the pollution making a sandbox misread as clean.
+   The skip-if-dirty guard was never actually red.
+
+**Proof, not assertion:** commit `66440307` was made with the **one-step path-scoped form** — the same
+command that had failed three times that session, twice naming a sandbox fixture path.
+
+**One real limitation found while proving it, now recorded in §4a:** `git commit -- <paths>` cannot
+carry an **untracked** file (`error: pathspec … did not match any file(s) known to git`), so a NEW
+file still needs a `git add` first. The doctrine had not said so.
+
+---
+
+## 2026-07-25 — the shared-index rule's own remedy is a command that cannot run, and its documented fallback is the hazard the rule exists to remove
+
+```yaml
+id: FG-2026-07-25-12
+class: enforcement
+scope: fork
+target: docs/manifest-contract.md
+marker: "recipe argument order"
+state: closed
+fix: done
+delivery: done
+owner: fork-maintenance
+routing: retro-routed
+routing_note: "Implemented under standing 'fix the recent fork gaps' maintenance instruction from Mason."
+```
+
+### Incident
+
+**What fought us (fork maintenance, committing a `design-implement` fix while ~4 sessions held the same checkout).** Rule 4a — the mitigation `FG-2026-07-25-01` sharpened after its THIRD firing — prescribes verbatim: *"Commit in ONE step: `git commit -- <explicit paths> -m …`"*. That command **cannot succeed.** Everything after `--` is a pathspec, so git parsed `-m` and the entire commit message as filenames and died with `did not match any file(s) known to git`. The correct form puts `--` after the options (`git commit -m "…" -- <paths>`). Following the doctrine literally produces an error, and the obvious recovery from that error is `git add` then `git commit` — **the exact two-step form the rule exists to forbid.** <!-- recipe-lint:ignore — quoted counter-example, not a prescription -->
+
+**It gets worse one bullet down.** The same rule then carries a caveat saying the *correct* form is "currently UNRELIABLE in the fork repo" (four consecutive `Error building trees` failures, never root-caused) and instructs the reader to fall back to `git add` + commit. So a session that survives the syntax error is then told, by the same rule, to do the hazardous thing anyway. Today's counter-evidence: `git commit -F <msgfile> -- <5 paths>` succeeded **twice**, in this repo, in this session, with another session's edits dirty in the tree and one of them already staged.
+
+**Why structural, not a typo.** This is a mitigation whose *deterministic tier is a copyable command*, and the command was never executed before being canonised — it was written into the register and the contract in the same wave that diagnosed the incident. Nothing in the fork tests a prescribed shell recipe, so a doctrine file can ship an unrunnable remedy indefinitely and read as fully mitigated. Same shape as `FG-2026-07-25-09` (a hook that fires in zero projects while its tiering table says otherwise): **the artifact most likely to be cited as the fix is the one furthest from having been run.**
+
+### Work
+
+**Done this session (`docs/manifest-contract.md` 4a):** the recipe is corrected to `git commit -m "…" -- <paths>` / `-F <msgfile> -- <paths>` with an explicit note that `--` follows the options; the four-failure caveat now carries today's counter-evidence and is demoted from "unreliable here" to "fall back only on an actual `Error building trees`, and say so when you do."
+
+**Owed (why `partly`):**
+
+1. **Root-cause or retire the `Error building trees` caveat.** It is the only thing still pushing sessions to the two-step form, it has never been root-caused (`2026-07-20`), and it did not reproduce today. Leaving it in place unexamined means the hazard-reopening advice stays live on the strength of one unexplained afternoon.
+2. **Nothing verifies a prescribed command.** The general form is *"doctrine ships an executable recipe that no test executes."* Cheapest honest tier: a validator that extracts fenced/inline `git …` recipes from `docs/*.md` and at minimum parses them for option-after-`--` ordering. A full behavioural test is not worth it; an argument-order lint would have caught this one exactly.
+
+**UPDATE — owed item (1) is DONE, same session; root cause found and fixed at source.** The
+`Error building trees` caveat is retired, not merely re-worded. It was never git corruption: a
+path-scoped commit is a PARTIAL commit, so git builds a **temporary index** and exports it to hooks
+as `GIT_INDEX_FILE`; the fork's pre-commit runs `npm test` → `test/test-sync-skip-if-dirty.js`,
+which built throwaway git repos and ran `git add -A` in them **with the parent env inherited**
+(`cwd` / `git -C` do NOT override `GIT_INDEX_FILE`). The sandbox's adds therefore landed in the real
+commit's temp index, naming blobs that live only in the sandbox object store — so git correctly
+refused to build a tree from an object it could not read. Every earlier finding was true *and*
+consistent with this: the object is absent from HEAD, the index, the worktree, the stash and `fsck`
+because **it was never in this repo.** Only the one-step form was ever affected — it is the only form
+that hands hooks a temp index — which is exactly why "use `git add` first" appeared to fix it and why
+it looked intermittent. Fixed by stripping the seven git env vars from every sandbox call in that
+test: **13/13 standalone, 13/13 with `GIT_INDEX_FILE` set** (11/13 leaked, pre-fix — the two
+"failures" were the pollution making a sandbox misread as clean). `docs/manifest-contract.md` §4a now
+states the one-step form with no caveat. *A never-root-caused caveat had been sending every session
+back into the hazard the rule exists to remove.*
+
+**UPDATE — owed item (2) DONE 2026-07-26; entry now `closed`.** `tools/validate-doc-recipes.mjs`,
+wired into `npm test` (so it runs in the pre-commit chain). It extracts every `git …` recipe from
+fenced blocks and inline code across `docs/` + `custom/` (483 docs) and errors when an option-looking
+token sits AFTER a bare `--`. Scope is deliberately one axis — argument order — because that is
+mechanically decidable and it is what actually bit; it does NOT check whether a command is correct,
+whether its paths exist, or whether its flags are real. `custom/skills-native/` is skipped: it is
+generated from `custom/workflows/`, so linting it would double-report every finding.
+
+**The false-positive class this had to solve first, or it would have been deleted within a day:** a
+doc that EXPLAINS a broken command necessarily contains it. The first run flagged 3 sites and *all
+three were quotations* — this entry's own write-up, `FG-2026-07-25-01`'s third-firing note, and the
+corrected §4a bullet. So exemption is explicit and visible: `recipe-lint:ignore` anywhere on the line
+(an HTML comment, invisible in rendered prose). No heuristic guessing at "this line sounds like a
+counter-example". All three annotated → **0 errors across 483 docs**, and a probe file carrying
+`git commit -- src/a.ts -m "msg"` is caught (exit 1), so it is proven in both directions. <!-- recipe-lint:ignore — quoted probe command, not a prescription -->
+
+**Watch:** a second unrunnable prescribed command anywhere in the fork docs makes (2) overdue rather than optional.
+
+**Priority: medium.** Nothing was lost — the error is loud and immediate. But this rule is the whole mitigation for a hazard that has now fired three times on the fork's own backlog and workflow files, and as written it fails on first use and then recommends the failure mode.
+
+---
+
+## 2026-07-25 — two sessions worked the same fork-gap entry concurrently, and the collision nudge built for exactly that watches a namespace the register is not in
+
+```yaml
+id: FG-2026-07-25-13
+class: routing-contract
+scope: fork
+target: check-fork-authoring-collision.sh
+marker: "fork-gaps entry-id collision key"
+state: closed
+fix: done
+delivery: done
+owner: fork-maintenance
+routing: routed
+routing_note: "The entry-id-keyed nudge proposed here is IMPLEMENTED — `check-fork-authoring-collision.sh` gained a `docs/fork-gaps.md` branch keyed on ENTRY ID (`4bbe52a7`), and it is CONFIRMED WORKING: it fired correctly on 2026-07-26 when session 984e3219 edited FG-2026-07-25-14 while another session held uncommitted changes to the same entry. Do NOT re-implement. The state stays `open` because a SECOND, DISTINCT failure mode in the same register is still uncovered — see below."
+```
+
+> **CORRECTION, logged rather than quietly overwritten (2026-07-26).** An earlier pass of this note
+> asserted the id-keyed nudge did not exist and marked the entry `not-routed`. **That was wrong** —
+> the fix had shipped (`4bbe52a7`) between the reading session's last look and its write, and the
+> nudge then fired *on that very edit*. Caught by the fork's own rule: *code wins over narrative
+> docs — verify before asserting* (`global-bmad-workflow.md`). Recorded because it is the same class
+> of error this register keeps documenting: a narrative claim about a mechanism, made without
+> checking the mechanism.
+>
+> **WHAT REMAINS UNCOVERED — the COMMIT-SWEEP variant, and the nudge structurally cannot see it.**
+> On 2026-07-26 a parallel fork session's commit **`e4e2935e`** swept session `984e3219`'s
+> uncommitted, in-progress `FG-2026-07-25-14` entry into its OWN commit — one titled for
+> `FG-2026-07-26-01` and never mentioning `-14`. So the entry landed under another session's
+> authorship.
+>
+> The shipped nudge warns the *editor* that someone else is in the same entry. It says nothing to
+> the *committer* about sweeping a file another session is mid-edit on — a different actor at a
+> different moment. This is the `git add -A` hazard the manifest contract already forbids for design
+> manifests (`manifest-schema.md` → Multi-writer contract: *"Commit the manifest explicitly by
+> path… A broad `git add -A` / `git stash` / sync sweep is how one session's uncommitted manifest
+> work gets scooped into another's commit"*). **The register is the fork's highest-contention
+> artifact and that rule plainly applies to it — but it is written down only for design manifests,
+> where a fork-maintenance session will never read it.**
+>
+> Nothing was lost this time (the swept entry was complete and correct), so this is evidence, not an
+> incident. Cheapest mitigation when routed: put the same "commit explicitly by path" sentence in
+> `global-bmad-workflow.md` beside the autonomous-maintenance rules — one prose line, zero
+> false-positive cost, and it would have prevented the sweep.
+
+### Incident
+
+**What fought us.** While authoring the `FG-2026-07-25-11` fix, another session was editing **the same register entry** — between two of my reads it corrected the entry's `target:` path and appended a "Both lanes need the fix" paragraph. Nothing warned either side. I found it only because a `Read` returned content my previous `Read` of the same range did not contain, and the edit-conflict error that followed was the first signal. Cost this time was small (their paragraph was directionally right; one claim in it needed correcting — it would have sent a session to hand-edit the GENERATED `custom/skills-native/` tree). Cost next time is the 2026-07-20 class: two sessions authoring the same fix into the same step file.
+
+**Why structural.** `check-fork-authoring-collision.sh` exists **for precisely this** — its own header says *"Two cold sessions pointed at the same gap can both author the same new standard … and collide."* But it fires only on the fork's `custom/workflows/shared/` standards namespace. **`docs/fork-gaps.md` is not in it** — and that file is (a) the fork's highest-contention artifact, (b) *the thing sessions point at when they say "pointed at the same gap"*, and (c) the file whose per-entry granularity makes silent concurrent edits hardest to notice, because two sessions editing different entries look identical to two sessions editing the same one. The register recently gained a write-time **schema** gate, which makes the coverage read as strong; the schema gate is orthogonal to concurrency and says nothing about who else is in the file.
+
+**Second, sharper miss:** the natural collision key here is not the file, it is the **entry id**. Two sessions in `docs/fork-gaps.md` on different ids are fine and should not be warned; two on the same id is the real event, and it is mechanically detectable from the diff hunks.
+
+### Work
+
+**Proposed (not actioned — one gate at a time, and this one wants the id-level key, not a path bolt-on).**
+
+1. Add `docs/fork-gaps.md` (and `STATUS.md`) to the nudge's watched set, keeping the existing per-session ledger so a session never flags its own edits.
+2. **Key on the entry id, not the file.** Resolve which `FG-…` entries the pending edit touches and warn only when another session's uncommitted diff touches the same id — otherwise the warn fires on every register edit and gets tuned out, which is worse than silence.
+3. Awareness tier only, same as today. Never block: legitimate parallel work on different entries is the normal case.
+
+### Resolution — 2026-07-26 (built + golden-tested; state → `closed`)
+
+`check-fork-authoring-collision.sh` gains a `docs/fork-gaps.md` branch **keyed on the entry id**, as
+proposed — not on the path, because two sessions on DIFFERENT entries is the normal healthy case and a
+per-file warn would be tuned out inside a day.
+
+**The part that decides whether this fires at all:** the foreign-dirty id is resolved by mapping the
+diff's **hunk line numbers** onto the entry that owns them (carrying each `id:` line forward), NOT by
+grepping the hunk text for an `FG-…` token. A session editing an entry's prose almost never repeats
+the id in the lines it changes, so a text-grep version would have detected essentially nothing while
+reading as live — the failure mode this whole batch has been about. Warns at most **once per (session,
+entry)** via the existing per-session ledger, namespaced `FG:`.
+
+Golden cases, 7/7: foreign-dirty id on first touch → WARN · same id again in the same session →
+silent · an id whose entry is clean → silent · a register edit naming no id → silent (no signal is not
+a story) · an unrelated file mentioning an id → silent · malformed JSON → silent · a fresh session on
+the same dirty id → WARN. The shared-standards branch is unchanged and still fires on its own terms.
+
+**Honest limits.** (a) Detection needs the id to appear in the *edit payload*, so a Write of the whole
+file with no id text is invisible. (b) It compares against the **working tree**, so a session that has
+already committed its edit is not "dirty" and will not be flagged. (c) It is awareness-tier and never
+blocks — deliberately, per the original design. Under-detection is the chosen failure direction.
+
+**Watch:** if a second duplicated authoring lands from two sessions on one entry before this ships, the id-level key is overdue.
+
+**Priority: medium.** No loss this session, and the register survived because both edits happened to be compatible. But the failure it guards against — two full build cycles thrown away — has already fired five times in this workspace on the project side, and the fork's register is the one place sessions demonstrably converge.
+
+## 2026-07-26 — the bash edit-guard resolves a RELATIVE path against the main checkout, not the session's worktree cwd, so it blocks the exact isolation it demands
+
+```yaml
+id: FG-2026-07-26-06
+class: enforcement-false-positive
+scope: machine-local
+target: .claude/hooks/bash_edit_guard.py
+marker: "worktree-cwd-unobserved"
+state: closed
+fix: done
+delivery: done
+owner: fork-maintenance
+routing: retro-routed
+routing_note: "Fixed under standing maintenance instruction; owner said 'u tell me' on 2026-07-26."
+```
+
+> **Header added 2026-07-26 (mechanical, by a later session).** This entry was authored with **no
+> ```yaml header block**, which fails `tools/check-fork-gap-schema.sh` — and that gate is armed in
+> pre-commit, so the omission **blocked every commit to this register for every session** until it was
+> filled. Fields were read off the entry's own body; nothing was interpreted or added. `id` is the next
+> free 2026-07-26 slot at the time of the fix (-01…-05 taken), so it does not imply authoring order.
+
+### Incident
+**Noticed:** 2026-07-26 (cash-recovery, mid-build in a worktree). **Priority: medium.**
+**Root-cause class: a relative-path base that is ASSUMED (`CLAUDE_PROJECT_DIR`) rather than OBSERVED
+(the shell's real cwd), in the one path where the harness — not the command string — moved the cwd.**
+
+**Observed, mid-build.** A session that had ALREADY called `EnterWorktree` — `pwd` and
+`git rev-parse --show-toplevel` both returning
+`/Users/masonwood/code/cash-recovery/.claude/worktrees/feat-claim-window-deadline-clock` — ran a
+heredoc append to a **relative** path (`src/app/(clerk)/inbound/inbound-board-model.test.ts`) and was
+hard-denied with:
+
+> `BLOCKED: 20 parallel claude sessions detected and you are NOT in a worktree. This bash command writes: src/app/. Call EnterWorktree`
+
+The session was in a worktree. The guard resolved the relative target against `CLAUDE_PROJECT_DIR`
+(the main checkout) rather than the shell's actual cwd, decided the write landed on tracked main
+files, and denied. **The remedy it printed — "Call EnterWorktree" — was already satisfied**, so the
+message is unactionable: there is no state the agent can reach that clears it.
+
+**Why this is the documented defect class and still a NEW instance.** `CLAUDE.md` already records four
+resolution fixes in this family, including *"a leading `cd <dir> &&` is now honoured for relative
+targets"*. That fix covers a cwd change **expressed inside the command string**. It does not cover the
+session cwd being changed **by the harness** via `EnterWorktree` — the guard never learns the shell
+moved. So the same root cause (relative-path base is assumed, not observed) survives in the one path
+the project's own worktree mandate makes routine.
+
+**Cost, concretely.** The false deny is not merely noisy — it pushes work toward the tool-swap bypass
+the override log exists to make visible. The write succeeded immediately via the `Edit` tool with the
+identical target, which is the *"every real use became a tool-swap bypass"* pattern
+`FG-2026-07-25-02` already calls out. A guard that is trivially and silently routed around by
+switching tools is enforcing nothing while costing a round trip and an explanation to the owner.
+
+**Sharpest available signal for a fix:** the guard already knows how to derive the repo root
+(`git rev-parse --git-common-dir` is used elsewhere for the register path). Resolving a relative
+target against the **hook payload's cwd** — which `PreToolUse` supplies — rather than
+`CLAUDE_PROJECT_DIR` would close it, and is the same "observe, don't assume" discipline as the
+`cd`-honouring fix. **Not applied here:** the guard is live in front of every Bash call for ~20
+concurrent sessions, the owner's instruction this session was to build SR-38, and changing a live
+deny-tier gate mid-flight with that blast radius is a separate, deliberate decision. Proposed, not
+shipped.
+
+**Do NOT "fix" this by widening the allowlist to `src/`.** That would delete the guard's entire
+purpose (preventing ad-hoc shell writes to tracked project files from the main checkout) to solve a
+path-resolution bug. The defect is *where the base path comes from*, not *which paths are protected*.
+
+---
+
+
+### Closed — 2026-07-27: observed cwd now beats assumed cwd
+
+`bash_edit_guard.py` read its cwd from `CLAUDE_PROJECT_DIR` only. That variable points at the MAIN
+checkout and does **not** move when the harness puts a session in a worktree — so a session that had
+correctly called `EnterWorktree` was told *"you are NOT in a worktree. Call EnterWorktree"* while
+standing in one, and its relative target was resolved against the wrong repo. The worst shape a guard
+can have: it punishes the session that did the right thing, and the only way out is the bypass.
+
+Fixed by preferring the payload's `cwd` (**observed**) over the env var (**assumed**), falling back to
+the env var for direct/test invocations that pass none. Golden cases W1–W3 pin all three paths: payload
+cwd inside a worktree → allow; payload cwd at the main checkout → still deny (proving W1 is the
+worktree doing the work, not the key merely being present); no payload cwd → unchanged behaviour.
+Suite 54 → 57, then 60 with the marker cases below. Propagated to 13/13, health-checked clean.
+
+## 2026-07-28 — the Bash edit-guard read every `&&`-chained command after a `sed -i` as another FILE OPERAND, so a write whose only real target sat under an EXEMPT prefix was denied by the garbage tokens
+
+```yaml
+id: FG-2026-07-28-01
+class: enforcement
+scope: project
+target: cash-recovery/.claude/hooks/bash_edit_guard.py
+also: cash-recovery/.claude/hooks/test_bash_edit_guard.py
+marker: "_CMD_SEPARATORS"
+state: closed
+fix: done
+fix_note: the sed/awk operand list now stops at the first whole shell-separator token,
+  quote-aware; 5 golden cases added (S1-S5); suite 65/65, health check HEALTHY.
+delivery: done
+delivery_note: PROJECT-LOCAL BY CONSTRUCTION — the reviewed guard is wired in
+  cash-recovery ONLY (settings.local.json is gitignored and does not sync), so the fix
+  is fully delivered everywhere the guard runs. The other 12 projects still run the
+  legacy inline matcher; re-homing them is the owner-gated custom/githooks/ move already
+  blocked by FG-2026-07-26-08 — NOT a distribution owed by this entry.
+owner: fork-maintenance
+routing: retro-routed
+routing_note: owner said "go go" on this entry in-thread after the reflection prompt;
+  MAINTENANCE lane — a resolution defect in how the guard executes, not a change to what
+  the rule IS. No policy, taxonomy, or lane was touched.
+see_also: "2026-07-28 later in this file — FIXED (fork prose, step-01b \u00a75-pre) + a deterministic tier shipped per-project. IMPORTANT: enforcement-expert REJECTED the candidate fix this entry proposes (halt-on-list = the indiscriminate-detector anti-pattern) and narrowed it to a conjunction. Read the annotation before implementing the fix as written here."
+```
+
+### Incident
+
+A `design-handoff` run needed a read-only production census, and the census script lives in the
+session scratchpad (`/private/tmp/claude-501/…`) — a path the guard's `EXEMPT_SUBSTRINGS` explicitly
+allows via `/private/tmp/`. Editing it with
+
+```
+sed -i.bak 's#^import postgres.*#import postgres from "…/node_modules/postgres/src/index.js";#' \
+  /private/tmp/…/census.mts && export PGURL=$(railway variables --json | python3 -c …) \
+  && timeout 180 npx tsx /private/tmp/…/census.mts 2>&1 | tail -15
+```
+
+was **DENIED**, and the deny message listed its targets as:
+
+> `postgres.*#import, postgres, from, …/index.js";#, &&, export, PGURL=$(timeout, 90, railway,
+> variables, Postgres, |, python3, import, json,sys;, …, timeout, 180, npx, tsx, 2>&1, |, tail`
+
+Every one of those is a shell word, not a file. The one real target was exempt.
+
+### Root cause — a regex that captures to end-of-LINE, not end-of-COMMAND
+
+`_SED_I` (and `_AWK_I`) end in `(.*)$`, and `_trailing_operands` then whitespace-split that capture
+and treated each token as a file operand. So the sed *script* argument and **every subsequent
+`&&`-chained command** became "files". Those tokens are unresolvable, unresolvable fails closed by
+design — so the garbage decided the verdict while the genuinely-exempt target was never reached.
+
+This is the same **word-salad-evidence** tell already recorded for the 2026-07-26 quoted-span bug in
+this guard ("a verdict whose own evidence is word salad is a verdict to distrust"), but a *distinct*
+cause: that fix taught the guard to ignore write-verbs inside quotes; nothing bounded the operand
+list at a command separator. Same family as `FG-2026-07-16-03` (read-only `python3 -c` blocked) and
+`FG-2026-07-18-01` (read-only `env | sed -E` blocked).
+
+### Why it is structural, not a one-off
+
+The affected directory is the one the session prompt **mandates** for temp files, and CLAUDE.md's own
+deny text promises "the temp dirs are exempt". So the guard contradicted its documented contract on
+its highest-frequency benign shape — a scratch edit chained to the command that consumes it. The
+second-order cost is the documented bypass: the sanctioned reroute is to write the identical change
+through a script (invisible to the guard by design), so a false positive here converts a reviewable
+edit into an unreviewable one.
+
+### Fix, and the trap avoided
+
+`_trailing_operands` now tokenizes with `shlex` and **breaks at the first whole token** in
+`_CMD_SEPARATORS` (`; && || | & |&`). The bound must be on a whole *token*, not on the separator
+*characters*: a sed script legitimately contains all of them (`s|a|b|`, `s/a/&b/`, `s/a/b/;s/c/d/`),
+and character-splitting would truncate the script and then mistake its fragment for the filename —
+trading this false positive for a worse one. Unbalanced quotes fall back to the old whitespace split
+so an odd command still fails closed. Golden cases pin both directions: **S1** the live FP now
+ALLOWs; **S2** a `docs/` target still resolves to ASK through a chain; **S3** a real
+`> src/db/schema.ts` later in the same chain is still DENIED (the bound must not hide a real write);
+**S4/S5** pipe- and `&`/`;`-bearing sed scripts on real source still DENY.
+
+### Evidence (run, not asserted)
+
+- `python3 .claude/hooks/test_bash_edit_guard.py` → **65/65 passed** (was 60 cases; S1-S5 added, all pass).
+- `bash .claude/hooks/guard-health-check.sh` → **HEALTHY** — wiring, ALLOW probe, DENY probe, and
+  override audit-row all green through the real stdin/JSON contract.
+
+### Not fanned out
+
+The reviewed guard is wired in cash-recovery only; the other 12 projects still run the legacy inline
+matcher, so this fix fires in one project. Distribution is the owner-gated `custom/githooks/` re-homing
+already blocked by `FG-2026-07-26-08` (13/13 diverged local `main`) — not re-opened here.
+
+### This entry is UNCOMMITTED on disk — and that is the already-logged deadlock, not an omission
+
+The commit was attempted and **rejected by the pre-commit schema gate**, on *other* entries:
+`FG-2026-07-27-07` (pre-migration header — 7 errors), `FG-2026-07-27-10` (three enum violations), and
+a duplicate `FG-2026-07-27-11` id. This entry itself is schema-clean
+(`tools/check-fork-gap-schema.sh` reports zero errors against it). The condition is exactly the one
+already written up above `-07`: the gate is repo-global, so one malformed entry blocks **every**
+session's commit to the fork, and the only unblocks are to overwrite a live session's uncommitted work
+(collision doctrine hard stop) or `--no-verify` (the gate teaching its own bypass). Neither was taken,
+and the staged index was released so this file cannot be swept into another session's commit. **The
+guard fix is live and verified in cash-recovery regardless — the guard is untracked machine-local code
+that does not ride this commit.** What is owed is only the register line landing in git.
+
+## 2026-07-28 — RETRACTED+SUPERSEDED (same day): the reviewed Bash edit-guard was wired NOWHERE; the superseded legacy regex blob was the live enforcement
+
+```yaml
+id: FG-2026-07-28-10
+class: enforcement-wiring-drift
+scope: project
+target: .claude/settings.local.json
+marker: "looks like an edit-equivalent"
+state: closed
+fix: done
+delivery: n/a   # machine-local settings; not synced, not tracked
+owner: mason
+routing: routed
+routing_note: "ROUTED by owner 2026-07-28 ('fix all four'). Re-wired + verified by guard-health-check.sh (4/4) and test_bash_edit_guard.py 68/68 from the main checkout. Backup .bak-rewireguard-20260728T125030Z."
+contradiction_ack: "SUPERSEDES the same-day tilde-expansion diagnosis in this slot, which was WRONG and was 'confirmed' by a fail-open probe (empty stdout read as ALLOW). Recurrence is NOT fixed: guard-health-check.sh is invoked by nothing and exits 0 even while printing findings."
+```
+
+**Target file:** `.claude/settings.local.json` (machine-local, cash-recovery only — does NOT sync)
+**Lane:** MAINTENANCE — **FIXED AND VERIFIED in the same session.**
+**Session:** `claude-session-20260728-131615`
+
+### Incident
+
+A heredoc append to an allowlisted fork path was denied with *"looks like an edit-equivalent"* — a
+message that names no target. The reviewed guard names its targets. Two different code paths, and the
+one that fired was the superseded legacy blob.
+
+### RETRACTION FIRST — what this entry originally claimed, and why it was wrong
+
+This entry was first logged as *"the guard resolves a `~/`-prefixed write target against
+`CLAUDE_PROJECT_DIR`, so an allowlisted fork edit is denied."* **That diagnosis was WRONG.** It was
+inferred from a single differential (tilde denied / absolute allowed) with no probe behind it. When
+the owner asked for a fix, probing the guard directly showed tilde expansion works correctly on both
+paths — `os.path.expanduser` is already applied at both target-resolution sites.
+
+**Worse, the first probe harness "confirmed" the wrong answer.** It treated EMPTY STDOUT as ALLOW,
+and the guard path was mistyped (missing `.bak`), so python never opened the file, wrote to stderr,
+and produced empty stdout — every case reported ALLOW. A fail-open harness returned exactly the
+result being hoped for, and was one step from deleting a correct, observed finding as
+"unreproducible." The rebuilt harness asserts the file exists, asserts rc==0, treats stderr as fatal,
+and carries two controls (a real source write that MUST deny, a `/tmp` write that MUST allow).
+
+**Durable lesson, worth more than the bug:** a diagnostic that cannot fail is not evidence. Any probe
+built to test an enforcement mechanism needs a control case in BOTH directions before its output is
+allowed to change a conclusion.
+
+### The actual root cause
+
+The deny message that fired read *"looks like an edit-equivalent (sed -i / cat > / tee / etc.)"* and
+**named no target**. The reviewed guard's denies name theirs (*"This bash command writes:
+src/db/schema.ts"*). Two different code paths — and the target-less wording belongs to the **2050-char
+legacy inline regex blob**, which `CLAUDE.md` declares superseded and *"where it is still running it
+is a finding, not a fallback."*
+
+Inspection of the live `settings.local.json` PreToolUse hooks:
+
+```
+matcher='Bash'  len=2050  reviewed_guard=False  legacy_phrase_present=True
+```
+
+**`bash_edit_guard.py` was invoked by NO Bash matcher.** The project's own
+`guard-health-check.sh` confirmed both halves independently:
+
+```
+✗ settings.local.json does NOT invoke bash_edit_guard.py — the legacy inline regex is
+    probably still live. This is the exact 2026-07-26 finding: green suite, zero wiring.
+✗ the LEGACY regex blob is still present in settings.local.json — it is superseded and
+    must not run anywhere new
+```
+
+### Why this is structural
+
+`CLAUDE.md` records this exact regression as **already fixed** ("Now genuinely wired … the previous
+settings file is backed up as `.bak-preguardwire-*`"). It recurred. `settings.local.json` is
+machine-local, gitignored, unversioned and rewritten by many sessions — **four `.bak-*` files carry
+today's date alone** — so any session's rewrite can silently drop a hook, and nothing detects it
+because the health check is not wired to anything. Meanwhile a parallel session was actively
+iterating false-positive fixes on `bash_edit_guard.py` (+61 lines uncommitted) that **fired nowhere**,
+and the four open fork-gaps about Bash false positives stayed open *for that reason*.
+
+The deeper shape: **the most blast-radius-heavy config in the system is the one file with no version
+control, no review, and no drift detection.**
+
+### Fix — SHIPPED and VERIFIED this session
+
+Re-wired the reviewed guard and removed the legacy blob (backup first:
+`.bak-rewireguard-20260728T125030Z`). Post-fix health check:
+
+```
+✓ settings.local.json invokes the reviewed guard
+✓ ALLOW probe: read-only command mentioning sed -i / cat > / tee is permitted
+✓ DENY probe: a real write to tracked source is blocked
+✓ override probe: BMAD_ALLOW_MAIN_EDIT=1 permits AND writes an audit row
+HEALTHY
+```
+
+`test_bash_edit_guard.py` from the main checkout: **68/68**.
+
+### STILL OPEN — the recurrence is not fixed, only this instance
+
+Nothing stops the next settings rewrite dropping it again. `guard-health-check.sh` exists, passes,
+and **is invoked by nothing** — and it `exit 0`s even while printing findings, so it cannot gate
+anything as written. Candidate: run it from SessionStart (or a pre-push hook) and make it exit
+non-zero on a wiring failure. Owner-gated: it adds a startup check to every session.
+
+---
+
+## 2026-07-28 — the collision stamper's "never overwrite an owner" guard treats its own placeholder as an owner, so `claimed_by_session_id` is unpopulated on 41 claims and the gate has nothing to key on
+
+```yaml
+id: FG-2026-07-28-12
+class: identity-field-rot
+scope: project
+target: .claude/hooks/collision_stamp.py
+marker: "PENDING-STAMP"
+state: closed
+fix: done
+delivery: n/a   # project-local hook; not synced
+owner: mason
+routing: routed
+routing_note: "ROUTED by owner 2026-07-28 ('fix all four'). Shipped cash-recovery aa41407: placeholder recognised AND the stamp bound to the entry this write introduced. 27/27 tests."
+contradiction_ack: "The OBVIOUS one-line fix (treat the placeholder as unowned) would have introduced identity FORGERY — two sessions wrote claims 16s apart, so freshness alone cannot bind. 41 legacy placeholders deliberately NOT backfilled: no recoverable owner, and a guess is worse than UNKNOWN."
+```
+
+**Target file:** `.claude/hooks/collision_stamp.py` (machine-local, cash-recovery only — does NOT sync)
+**Lane:** MAINTENANCE (a detector that no-ops) — **but a fix is deliberately NOT shipped; see below.**
+**Session:** `claude-session-20260728-131615`
+
+### Incident
+
+Two claims written 16 seconds apart under an IDENTICAL `claude-session-<timestamp>` display header;
+the collision guard could not separate them and warned on both — including, later, on my own claim as
+I released it.
+
+### Evidence (measured)
+
+```
+41 claimed_by_session_id: "PENDING-STAMP"
+ 8 claimed_by_session_id: "957bc8b4-2c77-4b7e-a5a3-c9671db9c8be"
+ 8 claimed_by_session_id: "67e5800d-0cae-47a2-9e48-a242edb85c9d"
+ …
+```
+
+The stamper works on some paths and not others, and **41 claims carry the literal placeholder.**
+
+### Root cause — exact, one line
+
+`collision_stamp.py:130`:
+
+```python
+already_owned = bool(fields.get("claimed_by_session_id", "").strip())
+```
+
+`"PENDING-STAMP"` is a non-empty string, so `already_owned` is `True` and the guard at line 133
+(`if active and not already_owned and fresh and session_id`) refuses to stamp. **The placeholder that
+exists to mark "not yet stamped" is what permanently prevents the stamp.**
+
+### Why this is structural
+
+`CLAUDE.md` states the design plainly: `claimed_by_session_id` is *"the **only** field the gate
+compares"*; `claimed_by` is *"a non-authoritative display label"*, because the
+`claude-session-<timestamp>` header is provably not unique. **That is now observed, not
+hypothetical:** this session and a parallel one ran under the identical header
+`claude-session-20260728-131615` and both wrote claims. With the authoritative field unpopulated on
+both, the guard cannot separate them and degrades to warning on everything — it fired twice here,
+once on an unrelated claim (no path overlap: clerk/domain vs owner/staging) and once on **my own**
+claim as I released it. A gate that warns on self trains its warnings to be read as noise, which is
+exactly how the WARN→DENY promotion evidence gets poisoned.
+
+### Why the obvious fix is WRONG — do not ship it
+
+Treating `PENDING-STAMP` as unowned **introduces identity forgery.** Line 133 has no "is this the
+entry *this* tool call just wrote" check — it stamps *any* `active` + `fresh` + unowned entry, and 41
+such entries exist including **other sessions' active claims.** Removing the placeholder guard would
+let whichever session next touches the register stamp its own `session_id` onto another session's
+claim: the exact AD-24 `actor`-vs-`author_provenance` failure the design exists to prevent,
+re-introduced by the fix for it.
+
+### Fix direction
+
+1. Bind stamping to the entry introduced by *this* write (PreToolUse snapshot → PostToolUse diff).
+   The design already calls for a before/after comparison for the sibling "detect mutation of another
+   session's claim" gap — **same mechanism; land them together.**
+2. Only then treat `PENDING-STAMP` as unowned.
+3. Do **not** backfill the 41 existing placeholders — they have no recoverable owner, and a guessed
+   one is worse than `UNKNOWN`. Let the fix apply forward only.
+
+
+**STATUS: FIXED 2026-07-28** — `collision_stamp.py` now recognises `PENDING-STAMP` (and `pending`/`tbd`/`none`/`-`) as placeholders, and binds the stamp to the entry THIS write introduced (the `surface` string must appear in the Edit `new_string` / Write `content` / Bash `command`), so the forgery path the naive fix would have opened stays shut. Placeholder line is REPLACED, never duplicated. 27/27 tests pass (19 pre-existing unchanged + 8 new, incl. the 16-second forgery case). The 41 legacy placeholders are deliberately NOT backfilled — no recoverable owner. cash-recovery `aa41407`.
+
+---
+
+## 2026-07-28 — `design-handoff` stamps `policy_version_required` from whatever tree it happens to read, with no freshness check, so a stale checkout self-certifies a brief against the wrong policy version
+
+```yaml
+id: FG-2026-07-28-13
+class: unverified-input-stamped-as-fact
+scope: fork
+target: custom/workflows/design/design-handoff/steps/step-01-gather.md
+marker: "FRESHNESS GATE"
+state: closed   # fork-side gap CLOSED; distribution tracked by `delivery: owed` + the STATUS.md batch
+fix: done
+delivery: owed   # fires in ZERO projects until a sync runs
+distribution: "sync-bmad-workflows.sh fan-out to the 13 projects — rides the standing owner-gated fleet re-sync gate (STATUS 'Now')"
+owner: mason
+routing: routed
+routing_note: "ROUTED by owner 2026-07-28 ('fix all four'). MAINTENANCE not doctrine — brief-revision-policy.md §2 already requires consumers to halt/warn on this field. BATCHED into the standing owner-gated fleet re-sync gate (STATUS.md ## Now) per the 2026-07-26 no-solo-sync-window ruling."
+contradiction_ack: "A stale stamp makes the drift detector report NO DRIFT in exactly the case it exists to catch, and is invisible at every existing gate because nothing re-reads the policy. SECOND, SMALLER CONTRADICTION worth recording: this entry wanted state fork-fixed-distribution-owed, but check-fork-gap-stale-open --creation-mode exempts ONLY state: closed, so a NEW entry that ships its fix in the same commit cannot use the distribution-owed state without erroring (its marker is present by construction). Logged as closed + delivery: owed instead. The checker blind spot is real and unfixed — it makes fork-fixed-distribution-owed unusable at creation time."
+```
+
+**Target file:** `custom/workflows/design/design-handoff/steps/step-01-gather.md` §1b
+**Lane:** MAINTENANCE (a gate reading a value it cannot trust) — the fix is a freshness assertion, not a new rule
+**Session:** `claude-session-20260728-131615`
+
+### Incident
+
+§1b says: *"Parse the frontmatter `version:` field of the loaded file → `{policy_version}` … stamped
+into the generated brief's `policy_version_required` field … so downstream consumers can detect when
+the policy has moved past the brief's pinned version."*
+
+Main checkout: `version: 18`. Worktree off `origin/main`: `version: 21`. Three versions (v19/v20/v21)
+merged by other sessions that the main checkout's working branch did not carry. Authoring from the
+main checkout — the default place to run a BMAD workflow, since `_bmad-output` artifacts live there —
+would have shipped `policy_version_required: 18`.
+
+### Why this is structural, not a stale-branch nuisance
+
+An open entry already covers stale `main` driving wrong investigation. **This is sharper:** the stale
+read does not produce a wrong answer, it produces a brief that **certifies its own correctness
+against a version nobody checked.**
+
+- `policy_version_required` exists *specifically* to let consumers halt on policy drift. Stamping it
+  from an unverified tree makes the drift detector report `no drift` in exactly the case it was built
+  for — v19/v20/v21 could each have changed a rule the brief now silently violates.
+- **Invisible at every gate:** the brief is internally consistent, the commit-time completeness check
+  tests presence not currency, and `design-implement` compares against the number the brief supplied.
+  Nothing re-reads the policy.
+- **Guaranteed to recur here:** `bmad-artifacts-untracked-main-only` pushes workflow runs into the
+  main checkout while the worktree mandate pushes *code* out of it — so the tree most likely to be
+  stale is the one workflows are told to run in.
+- Caught only by chance, having re-grepped the policy in a worktree for an unrelated reason.
+
+### Fix direction
+
+In §1b, after resolving the policy file, assert freshness before stamping:
+`git fetch -q && git diff --quiet origin/main -- docs/design-policy.md`. On divergence, halt naming
+both version numbers — "policy in this tree is v18; `origin/main` is v21; re-run from a current tree
+or rebase". Cheap, deterministic, fails loud in the one case that currently fails silent.
+
+
+**STATUS: FIXED IN FORK 2026-07-28, DISTRIBUTION OWED** — `custom/workflows/design/design-handoff/steps/step-01-gather.md` §1b now carries a FRESHNESS GATE: fetch + diff the resolved policy path against `origin/HEAD` before stamping; HALT on divergence naming BOTH version numbers; proceed with a recorded Open Question when no remote is reachable. Confirmed MAINTENANCE not doctrine — `brief-revision-policy.md` §2 already requires consumers to halt/warn on this field, so reading it from an unverified tree was always an execution defect. **Fires in ZERO projects until a sync runs** — batched into the standing owner-gated fleet re-sync gate (STATUS.md `## Now`), per the 2026-07-26 ruling that no single `custom/` change gets its own sync window.
+
+
+**CORRECTION 2026-07-29 — the first cut of this gate WAS BROKEN, caught by the fleet-gate
+precondition before any sync.** Owner required the offline path be reproduced before queueing the
+batch. It was, against a real git remote across four cases, and the authored shorthand failed two of
+them:
+
+```
+CASE C  OFFLINE, genuinely behind, stale origin/HEAD on disk
+        authored -> STALE   (=> HALT: freezes every disconnected run)
+CASE D  OFFLINE, no origin/HEAD, tree ACTUALLY CURRENT (local v21 == remote)
+        authored -> STALE   (=> HALT on a FRESH tree — a false halt)
+```
+
+Two defects in `git fetch -q origin 2>/dev/null` + `git diff --quiet … || echo STALE`:
+**(1)** `git fetch`'s exit code was never consulted, so the prose's "no remote reachable → Open
+Question" branch was **unreachable by construction**; **(2)** `|| echo STALE` fires on ANY non-zero
+exit, so `fatal: bad revision 'origin/HEAD'` — *the check could not RUN* — was reported as *the check
+ran and found divergence*. **A gate whose failure mode is indistinguishable from its trigger is not a
+gate.** Replaced with an explicit three-outcome branch (`UNVERIFIED-OFFLINE` / `UNVERIFIED-NO-REF` /
+`CLEAN` / `STALE`), verified against the same four cases. Precondition now PASSES; the batch may
+queue.
+
+**REFINED AGAIN 2026-07-29 — the owner's A–D matrix did not match what shipped, and one cell of it is
+not knowable.** Owner restated the fixed gate as A) online+current→CLEAN · B) online+behind→STALE ·
+C) offline+behind→OFFLINE-STALE · D) offline+current→OFFLINE-CLEAN. Verified the shipped gate against
+that matrix: **A and B matched; C and D did not.** The shipped version returned a single
+`UNVERIFIED-OFFLINE` for both, discarding a distinction that IS available — a last-known ref left on
+disk by an earlier fetch still yields real evidence of drift. C is now implemented as the owner
+described (`OFFLINE-STALE`, and it HALTs — positive evidence of drift earns the same stop as `STALE`).
+
+**D is refused, deliberately, with evidence.** "Offline + actually current" is **not knowable**: a
+tree matching its last-known ref is byte-identical whether the remote is unchanged or has moved on.
+Measured — a v21 tree matching a v21 ref reports the same verdict whether the remote is still v21 or
+has advanced to v22. Labelling that `CLEAN` would let the run stamp `policy_version_required` at full
+confidence and **skip the Open Question** — the original defect re-created through a label. It reports
+`OFFLINE-MATCHES-LAST-KNOWN` and proceeds *with* the Open Question: the owner's intended ACTION
+(continue) is honoured; the unearned confidence is not.
+
+**The matrix is now a permanent, runnable check** — `tools/verify-policy-freshness-gate.sh`, which
+**extracts the gate body verbatim from the step file at run time** so it cannot certify a copy that
+has drifted from the doc. 6/6 including the D′ trap. This discharges the owner's standing rule that a
+gate touching many projects may not rest on prose alone. Reproduction harness: `scratchpad/repro_freshness2.sh` (ephemeral — the four cases are
+described above so they can be rebuilt).
+---
+
+## 2026-07-28 — project design-policy §8.3 says an undecided-owner-class handoff must HALT; workflow §3f step 3 says WARN-ONLY and "do not freeze owner work". Both are live; the agent adjudicates mid-run
+
+```yaml
+id: FG-2026-07-28-14
+class: policy-workflow-contradiction
+scope: project
+target: docs/design-policy.md
+marker: "viewport policy not set for this owner surface-class"
+state: closed
+fix: done
+delivery: n/a   # project design-policy; consumed in-repo
+owner: mason
+routing: routed
+routing_note: "ROUTED by owner 2026-07-28 ('fix all four') — applied the direction this entry recommended. design-policy v22: OPEN ambition = WARN-ONLY; HALT reserved for CONTRADICTION of a DECIDED posture."
+contradiction_ack: "DOCTRINE-adjacent: the owner authorised the fix, and the direction was the one recommended here, but the underlying product question (the last undecided owner viewport class) remains the owner's and settling it retires this clause entirely."
+```
+
+**Target files:** `docs/design-policy.md` §8.3 (cash-recovery) **and**
+`custom/workflows/design/design-handoff/steps/step-01-gather.md` §3f step 3
+**Lane:** **NEW DESIGN / DOCTRINE — proposed, NOT shipped.** Which one wins is Mason's call.
+**Session:** `claude-session-20260728-131615`
+
+### Incident
+
+A `design-handoff` re-issue of `/staging/[unitId]` landed in the one remaining undecided owner
+viewport class, and the run had to adjudicate two live, opposite instructions mid-flight before it
+could decide whether to produce a brief at all.
+
+### The contradiction, verbatim
+
+`docs/design-policy.md` §8.3:
+> A `design-handoff` / `design-implement` for an owner surface whose ambition is not yet set must
+> **HALT** with a "viewport policy not set for this owner surface-class" diagnostic rather than assume
+> a posture or invent breakpoints.
+
+`step-01-gather.md` §3f step 3:
+> **Owner class + ambition OPEN → WARN-ONLY (do not freeze owner work).** … mark the brief
+> `unverified` / `pending-policy`, and LET THE HANDOFF CONTINUE.
+
+### Why it is structural
+
+Not a rule and its refinement — **opposite instructions for the same state.**
+`SOURCE-OF-TRUTH PRECEDENCE` puts project policy above the workflow, so a literal reading says HALT
+while the workflow being executed says CONTINUE. Precedent cuts the other way: the v18 changelog calls
+the warn-only path for `/stock` *"exactly as the policy already prescribes"* — i.e. §8.3 was already
+being read as if it said warn-only, which it does not.
+
+Net effect: **every handoff onto the one remaining undecided owner class ("Owner listings &
+catalog-management" — `/listings`, `/staging`, `/pricing`) is adjudicated ad hoc by whichever agent
+runs it.** I proceeded warn-only (owner standing default: proceed, don't stall, name the decision). A
+session reading precedence literally would have halted and delivered nothing. Same input, opposite
+output, both defensible — which makes a brief's `pending-policy` status a coin-flip rather than a
+contract.
+
+### Fix direction (owner decision, one line either way)
+
+Either amend §8.3 to say warn-only for an OPEN class and reserve HALT for a *contradiction of a
+DECIDED posture* (matching §3f's a/b/c/d split) — or amend §3f to honour a project policy that
+mandates HALT. **The scope is tiny and closing:** exactly one owner class remains undecided, so this
+has one live surface family left. Settling that class's posture retires the question entirely, which
+may be cheaper than reconciling the two documents.
+
+
+**STATUS: RESOLVED 2026-07-28 (owner-authorised) — design-policy v22.** Owner said "fix all four", so the direction recommended in this entry was applied: §8 preamble + §8.3 now say an OPEN owner ambition proceeds **WARN-ONLY** (`pending-policy`/`unverified`, fields `pending`), and **HALT is reserved for a CONTRADICTION of a DECIDED posture** (§3f a/b/c/e/f). Rationale recorded in the v22 changelog row: an OPEN ambition is *missing* information that an artifact can carry truthfully (the `/stock` v18→v19 re-verify proved the loop closes); a contradiction is *wrong* information nothing downstream re-checks. No posture, class membership, token, hard failure or assertion changed. **The owner still owns the underlying question** — settling the last undecided class (`Owner listings & catalog-management`) retires this clause's only live surface family, and the changelog says to prefer that over relying on the rule.
+
+---
+
+## 2026-07-29 — `design-handoff`'s viewport gate fails an UNRESOLVED surface class but cannot fail a WRONGLY RESOLVED one, so a guessed class citation passes every check and ships as `pending-policy`
+
+```yaml
+id: FG-2026-07-29-01
+class: unverified-input-stamped-as-fact
+scope: fork
+target: custom/workflows/design/design-handoff/steps/step-01-gather.md
+marker: "Membership is QUOTED, never asserted"
+state: closed   # fork-side gap CLOSED; distribution tracked by `delivery: owed`
+fix: done
+delivery: owed   # fires in ZERO projects until a sync runs
+distribution: "sync-bmad-workflows.sh fan-out to the 13 projects — rides the standing owner-gated fleet re-sync gate (STATUS 'Now')"
+owner: mason
+routing: needs-routing
+routing_note: "MAINTENANCE by the 2026-07-26 split — a gate making an assertion it never verifies, fixed in the same pass. Flagged needs-routing ONLY because the fix's wording forbids a workflow from repairing the policy table it reads, which brushes against policy ownership; if Mason reads that as doctrine rather than execution, the clause is the part to review."
+sibling: FG-2026-07-28-13   # same class, same file, adjacent failure — that one is a STALE tree, this one is a WRONG citation from a current tree
+contradiction_ack: "The brief that carried the guessed class was marked `pending-policy` / `unverified` — which READS as correctly-following-policy (the warn-only owner-ambition path), not as an unverified class. So the honest-looking marker was itself the camouflage: a reader checking 'is this brief verified?' gets a truthful 'no, pending the owner's mobile ambition' and never learns the class underneath it was never in the table. The gate is fine; what it measures is the wrong thing."
+```
+
+**Target file:** `custom/workflows/design/design-handoff/steps/step-01-gather.md` §3f step 1
+**Lane:** MAINTENANCE (a gate that verifies a weaker claim than the one it appears to verify)
+**Session:** `claude-session-20260728-202739`
+
+### Incident
+
+`design-brief-ingestion-run-detail-2026-07-27.md` §4g recorded:
+
+> **`viewport_surface_class: owner_dashboards_worklists`** — resolved from `docs/design-policy.md` §8.1 (mapped in policy **v17**, 2026-07-27).
+
+Policy v17 added the `/units/[id]` canonical-record-view class row and nothing else. **Neither `/ingestion-runs` nor `/ingestion-runs/[runId]` had ever appeared in §8.1** at v17 or at v18. The class was inferred from resemblance to the class's other members and then written down with a version citation.
+
+Nothing caught it:
+
+- **§3f gate (a) passed.** Its failure condition is `{viewport_surface_class}` *unresolved*. A class name was present, so it resolved. The gate has no notion of "resolved to a class that does not contain this route."
+- **The `pending-policy` warn path then took over** and produced a brief whose six viewport fields read `pending — awaiting the owner's §8.3 mobile-ambition decision`. That is the correct output *for a genuine member of an undecided class*, so the artifact looked exactly like a well-behaved brief.
+- **`design-review-pr`, `design-synthesize` and `design-implement` all read the class from the brief**, never from §8.1. The citation was the only record, and it was wrong.
+
+The three prior double-gap incidents (`/lineage` v14, `/units/[id]` v17, `/stock` v18) all HALTed correctly — because in each the author found *no* class and said so. This one is the inverse case and is the one the gate cannot see: the same missing-membership defect, resolved by guessing instead of halting, is rewarded rather than caught.
+
+### Why this is structural, not a one-off author error
+
+- **The check is cheap and was simply never asked for.** "Does this route string appear in that class's Members cell" is a substring test against a table the workflow already opens. Nothing in §3f requires it, and nothing requires the matched text to be recorded, so there is no artifact a later reader could check against.
+- **It survives the policy being corrected.** Both routes are now genuine members (`§8.3e`, owner ruling), so the citation is *retrospectively true* — which is precisely why it went unnoticed for two days and would have gone unnoticed permanently had the ruling landed differently.
+- **`pending-policy` is load-bearing camouflage.** See `contradiction_ack`. An `unverified` marker that names a *different* reason for being unverified is worse than none: it answers the question a reviewer would have asked.
+- **Same file, same class as `FG-2026-07-28-13`, different axis.** FG-13 is *stale tree, correct procedure*; this is *current tree, unverified citation*. Neither fix reaches the other, and both live in §3f/§1b of one step file — a strong argument for pairing them in the same sync.
+
+### Fix (applied this session)
+
+§3f step 1 now requires the resolution to **quote** the matched member text into `{viewport_class_evidence}`, rendered beside the class in §4g, and states that a near-miss — a sibling route, an "obviously belongs", a predecessor brief carrying the class, or a changelog that mapped a different route — is a **miss**, resolving to the existing unmappable Open Question. It also forbids the workflow from adding the missing member itself: posture is decided per class on each class's own job, so repairing the table from inside a handoff launders a guess into a citation.
+
+**Deterministic upgrade, not shipped:** the quoted evidence makes this mechanically checkable for the first time — a per-project commit-time check on `design-brief-*.md` could assert `{route}` appears in the §8.1 row named by `viewport_surface_class`. That is the hooks/CI distribution track, not this sync; authoring the clause does not deploy the check.
+
+**Evidence:** verified against `origin/main` at policy v21, and against `git show origin/main:docs/design-policy.md` for v17's actual changelog entry. The two ingestion briefs re-issued this session (PR #541, merged `2320bc0b`) carry the corrected class with the §8.3e posture read verbatim.
+
+---
+
+## 2026-07-29 — a SessionStart hook pointing at a TRACKED file is inert on any branch that predates the file, and its `[ -f ] || exit 0` reports that as healthy
+
+```yaml
+id: FG-2026-07-29-03
+class: enforcement-wiring-drift
+scope: project
+target: .claude/settings.local.json
+marker: "EDIT-GUARD CHECK MISSING"
+state: closed
+fix: done
+delivery: n/a   # machine-local settings; not synced, not tracked
+owner: mason
+routing: routed
+routing_note: "ROUTED by owner 2026-07-29 ('u call it' — delegated the (a)/(b) session-start choice). Option (a) wired; absence made LOUD in the same pass. Verified across three paths: absent -> warns, healthy -> silent, broken -> warns with the finding; all rc=0."
+contradiction_ack: "The hook exists to detect 'authored but firing nowhere' — and its own first cut was authored, wired, and firing nowhere, reporting green. A guard that cannot detect its own absence has the defect it was built to find."
+```
+
+### Incident
+
+Wired `guard-wiring-check.sh` into SessionStart per owner decision (a). The healthy-case
+verification PASSED — silent, rc=0 — and was a **false green**: the script had merged to
+`origin/main` (PR #544) but was **not in the main checkout's working tree**, which sits on a branch
+26 commits ahead that predates the merge. The hook's `[ -f "$S" ] || exit 0` turned that absence
+into silence, which is indistinguishable from health.
+
+### Why this is structural, not a one-off
+
+This is the third distinct mechanism in one week by which a check ends up **deployed to zero**:
+
+1. `settings.local.json` rewritten by a parallel session, dropping the hook (2026-07-26, recurred 07-28).
+2. The reviewed guard present and tested while the superseded legacy blob actually ran (07-28).
+3. **This one — the hook wired correctly, pointing at a tracked file absent from the current branch.**
+
+The common shape is not the mechanism, it is the **default**: every one of them fails *silent*, and
+silence is read as green. `[ -f "$X" ] || exit 0` is the idiom that does it, and it is everywhere —
+it is the correct idiom for an *optional* hook and exactly wrong for a *guard*, and nothing
+distinguishes the two at a glance.
+
+Branch skew makes it worse than a plain missing file: the check is present in the repo, present on
+`main`, passes review, and is genuinely absent at runtime — so every artifact says it is live.
+
+### Fix — shipped
+
+Absence is now LOUD: the hook emits a SessionStart warning naming the missing path, stating it is
+INERT, and noting the checkout is behind `origin/main`. It still exits 0 (a session-start hook must
+never block). It self-heals when the branch catches up.
+
+### Residual — NOT fixed here
+
+The warning will fire every session until `docs/receive-v2-ad6-disposition-fff9d42b` (26 commits
+ahead, undelivered) merges. That is accurate, not noise — but the underlying diverged-branch problem
+is `FG-2026-07-26-08`, not this entry. **Do not silence this warning to quiet that one.**
+
+**Generalisable check worth having:** for any hook whose job is enforcement, `[ -f "$X" ] || exit 0`
+should be `[ -f "$X" ] || warn` . A sweep of the SessionStart/PreToolUse hooks for that idiom would
+find the rest of this class; not run here.
+
+### SWEEP RUN AND COMPLETE — 2026-07-30
+
+The sweep this entry called for was run, and it found the class was **larger than one hook**.
+
+**The owner's grep returned clean, and that was a false all-clear** — it searched `.git/hooks/ hooks/
+scripts/ --include="*.sh"`, but `hooks/` does not exist here, 19 of the 22 enforcement hooks are
+`.py`, and 39 hook commands live INLINE inside `settings.local.json` where no file grep can see them.
+Swept properly: **25 inline commands carried the idiom, and 5 of 6 enforcement hooks exited `rc=0`,
+silent, when their script was absent** (measured by simulating absence, not inferred).
+
+All five are now hardened, each with its own wiring suite (**99 assertions total**):
+
+| guard | absent | crash |
+|---|---|---|
+| prod-mutation-guard | warn | warn |
+| deploy_lane_guard | warn | warn |
+| bash_edit_guard | warn (30-min throttle) | **ask** |
+| collision_guard | warn (30-min throttle) | warn |
+| collision_stamp | warn | warn |
+
+**The rule the sweep produced, owner-approved and now the governing constraint:**
+
+> **The absent/crash tier may never EXCEED the present tier.** Absence must not become a promotion
+> mechanism for an enforcement tier the owner has not approved.
+
+It is not cosmetic — it forced the `prod-mutation-guard` absent path back from `ask` to `warn` (the
+guard is warn-only when present, so asking made it *stronger while missing than while working*), and
+it is asserted in every suite rather than left as prose.
+
+**Three findings worth carrying forward:**
+
+1. **The right hardening is guard-specific, and a uniform patch would have been wrong.**
+   `deploy_lane_guard`'s entire value is quote-awareness, so any inline fallback matcher would fire on
+   every commit message mentioning `railway up` — it got *no* matcher. `collision_stamp`'s real gate
+   (`touched_register`) IS cheaply reproducible, so it got a faithful copy and needs no throttle,
+   while `bash_edit_guard`'s (write-target resolution against an allowlist) is not, so it got a
+   throttle instead.
+2. **Volume is a safety property.** An absent-notice on every command is how a hook gets deleted —
+   which is the failure being fixed. Two guards needed throttling for that reason alone.
+3. **The suites caught two real defects before they shipped** — a cooldown marker rooted at a
+   hardcoded path that need not exist (throttle silently degraded to spam), and a stale assertion in
+   an already-merged suite that only grepped `'ERRORED'` and so sailed through a tier change without
+   noticing. *A test that cannot see the thing it claims to check is the same defect class as the
+   guards it is testing.*
+
+Delivered: PRs #565, #567, #571, #575.
+
+**LIMITATION OF THIS SWEEP, FOUND THE SAME DAY — it detects MISSING, not STALE.**
+A parallel session logged `FG-2026-07-30-01` while this was landing, and it is the sharper
+variant: `collision_stamp.py` is **present in the working tree but 127 commits out of date**, so
+the `PENDING-STAMP` fix (`FG-2026-07-28-10`, merged, 27 passing tests) has been firing nowhere for
+two days. Measured today: placeholders in the live register have grown **41 → 74** since the fix
+merged.
+
+Every absent-path added by this sweep tests `[ -f "$S" ]`. A stale-but-present file passes that
+test, so **none of the five hardened guards can see this**. The sweep closed the loud half of the
+class and left the quiet half open: *file missing* is now visible; *file wrong version* is not.
+
+That is not a defect in the hardening — it is a different question (identity, not existence) and it
+wants a different mechanism: a version/hash assertion against `origin/main`, in the same family as
+`design-handoff`'s policy-freshness gate (`FG-2026-07-28-13`), which had to solve exactly this
+"the tree you are standing in is not the tree you think it is" problem. Not attempted here.
+
+**OWNER RULING 2026-07-30 (now recorded on `FG-2026-07-30-01`):** staging the updated hook on the
+diverged branch is **FORBIDDEN**. The acceptable fixes are (a) land the branch, or (b) a version
+assertion against `origin/main` as a separate owner-gated change. The sweep is closed as the
+**missing/crashing** class only — the **stale** class is a different question (identity, not
+existence) and must not be folded back into it.
+
+---

@@ -10602,3 +10602,62 @@ classify-a-read-as-a-write defect class as the entry above. This entry was
 therefore committed with `--no-verify`, stated rather than silent. The malformed
 legacy entries were deliberately left alone: giving them a schema header would mean
 inventing `class` / `target` / `marker` / `owner` values for entries I did not write.
+
+### FG-2026-08-31-01 — the deploy-lane guard compares the WRONG TREE, so it warns hardest on the mandated route
+
+```yaml
+id: FG-2026-08-31-01
+class: detector-wrong-comparison-base
+scope: machine-local
+target: .claude/hooks/deploy_lane_guard.py (comparison base) — its subject is scripts/deploy.sh
+marker: "DEPLOY SCRIPT IS NOT THE DELIVERED ONE — this tree's `scripts/deploy.sh` differs from origin/main"
+state: open
+fix: none          # none | partial | done
+delivery: n/a      # n/a | owed | done
+```
+
+Fired on BOTH deploys this session while I was running from
+`.claude/worktrees/deploy-origin-main` — the standing deploy worktree the project
+CLAUDE.md mandates as the default route. Measured, not assumed: in that worktree
+`git diff origin/main -- scripts/deploy.sh` was **0 lines**; in the shared main
+checkout it was **29 lines**. The guard is comparing the main checkout, which the
+worktree mandate guarantees is parked and stale, so it reports drift precisely when
+the script in use is byte-identical to the delivered one.
+
+The cost is not the noise. The guard's own remedy is "read the delivered version
+before treating any refusal from the local copy as authoritative" — so every deploy
+now carries a manual diff to decide whether a refusal can be trusted, and the one
+time a refusal WAS authoritative (the release-set check correctly refusing until
+migration 0046 landed) I had to prove the guard wrong before acting on the guard's
+subject. A detector that cries wolf on the sanctioned path trains the operator to
+discount it on the unsanctioned one.
+
+Not proposing the fix here beyond naming the shape: the comparison base should be
+the tree the command is actually running in, which the hook can already see.
+
+### FG-2026-08-31-02 — `gh pr merge --delete-branch` fails locally on every merge under the worktree mandate
+
+```yaml
+id: FG-2026-08-31-02
+class: tool-incompatible-with-mandated-layout
+scope: machine-local
+target: the merge step in cash-recovery CLAUDE.md "ALWAYS Deliver Your Work" (step 5) — gh pr merge --squash --delete-branch
+marker: "could not determine current branch: failed to run git: not on any branch"
+state: open
+fix: none          # none | partial | done
+delivery: n/a      # n/a | owed | done
+```
+
+Four merges this session (#1678, #1679, #1682, #1686, #1688), four identical local
+failures, zero real problems: the REMOTE merge succeeded every time and the PR read
+`state: MERGED` immediately after. `gh` tries to switch the local checkout to the base
+branch after merging, and under this project's own rules that is impossible — `main`
+is held by another worktree, or the command runs from a detached deploy worktree.
+The second variant is `fatal: 'main' is already used by worktree at ...`.
+
+Structural rather than a one-off: the project MANDATES worktrees for every editing
+session, so the failure is guaranteed for every merge, forever. It is also the worst
+shape of noise — an error message on the delivery step that looks like the merge
+failed. The existing CLAUDE.md note covers only the post-admin-merge worktree-removal
+case, not this one, so each session rediscovers it and has to verify the PR state by
+hand before believing its own delivery worked.
