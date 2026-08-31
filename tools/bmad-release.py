@@ -437,7 +437,37 @@ def cmd_publish(args):
                 print(f"    REFUSED BY THE DISTRIBUTOR — no receipt written")
                 print(f"      {blocked[0].strip()[:110]}")
                 continue
+            # INDEPENDENT VERIFICATION BEFORE THE RECEIPT EXISTS (owner contract
+            # 2026-08-31). Not the distributor's exit code, not this wrapper's return
+            # code, not a receipt we are about to write — the installed content is
+            # compared, per surface, against the release worktree itself. Thirteen false
+            # receipts were issued on 2026-08-31 precisely because success was inferred
+            # from an internal signal instead of measured.
+            import importlib.util as _ilu
+            _vs = _ilu.spec_from_file_location("vi", FORK / "tools" / "verify-installed.py")
+            _vi = _ilu.module_from_spec(_vs)
+            _vs.loader.exec_module(_vi)
+
+            ok, rep = _vi.verify(real, wt, quiet=True)
+            if not ok:
+                bad = "; ".join(f"{k}: {v['missing']} missing, {v['differing']} differing"
+                                for k, v in rep.items() if v["ok"] is False)
+                exceptions.append((t["id"], f"installed content does NOT match the release ({bad})"))
+                print(f"    NOT VERIFIED — no receipt written. {bad}")
+                continue
+            print(f"    verified against the release "
+                  f"({sum(v['expected'] for v in rep.values())} files, both surfaces)")
+
             receipt = write_receipt(real, t, release_sha, release_tree)
+
+            # Re-read the receipt and re-verify the content behind it, so the certificate
+            # is checked as written rather than as intended.
+            back0 = read_receipt(real, t)
+            ok2, _ = _vi.verify(real, wt, quiet=True)
+            if not back0 or back0.get("release_commit") != release_sha or not ok2:
+                exceptions.append((t["id"], "receipt revalidation failed after writing"))
+                print("    receipt revalidation FAILED")
+                continue
 
             # COMMIT THE REPLICA. Without this the release is not finished: the managed
             # root is git-tracked, so a synced-but-uncommitted replica reads as
