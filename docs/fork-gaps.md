@@ -10661,3 +10661,98 @@ shape of noise — an error message on the delivery step that looks like the mer
 failed. The existing CLAUDE.md note covers only the post-admin-merge worktree-removal
 case, not this one, so each session rediscovers it and has to verify the PR state by
 hand before believing its own delivery worked.
+
+### FG-2026-08-31-03 — the settings hooks merge is not idempotent, so `hooks (outdated)` can never go green and every sync grows the file
+
+```yaml
+id: FG-2026-08-31-03
+class: enforcement
+scope: fork
+target: "`sync-bmad-workflows.sh` — the `JQ_MERGE` reducer (its `$bmad_msgs` strip key), consumed by both the write path (~line 1832) and the `--check` staleness test (~line 1627)"
+marker: "$bmad_cmds"
+fix_scope: fork-only
+state: open
+fix: none          # none | partial | done
+delivery: n/a      # n/a | owed | done
+routing: recorded
+```
+
+`JQ_MERGE` decides which of a project's existing hook groups to strip before appending
+the template, and it keys that decision on `statusMessage`: `$bmad_msgs` is built from
+`[$template.hooks | .. | .statusMessage? // empty]`. A template hook that carries **no**
+`statusMessage` therefore contributes nothing to the strip key, so its already-installed
+copy is never removed — and the template copy is appended beside it. One more duplicate
+per sync, forever.
+
+Measured, not inferred. In `inbound-flow`, `.claude/settings.local.json` held **four**
+identical `PostToolUse` / `matcher: Skill` groups running the same
+`.depth-pass-invocations.jsonl` logger — one per past sync. After deduplicating by
+`(matcher, command)` the file went from 8 `PostToolUse` groups to 5, 35,579 -> 33,764
+bytes. Re-running `./sync-bmad-workflows.sh --check --only ...` immediately reported
+`hooks (outdated)` again, and diffing `jq -n "$JQ_MERGE" settings.local.json hooks.json`
+against the current file showed exactly one block being re-added: the same
+statusMessage-less logger. So the check is comparing against a merge result the write
+path can never converge on.
+
+Two costs, and the second is the structural one. The hook actually fires N times per
+Skill call, appending N identical JSONL rows — noise in a telemetry file. More
+importantly `--check` reports `STALE ... hooks (outdated)` on a project that has just been
+synced successfully, which is a detector that is red by construction: a session cannot
+use it to tell "this project needs a sync" from "this project is fine", so it gets
+discounted, and a genuinely outdated hook set hides behind it.
+
+Shape of the fix, not shipped here: the strip key needs a fallback for a template hook
+with no `statusMessage` — the `command` text is available and unique — so that an
+existing copy is removed before the template copy is appended. **Deliberately not
+implemented in this session:** there is no golden suite for this merge (`test/` has no
+settings-merge test; the 2026-08-16 comment "guard it in the suite" refers to `bash -n`),
+and the last two edits to this exact function shipped real damage — `77cf049a` had to
+stop the merge destroying a project's permissions and MCP choice, and `41251373` had to
+repair quoting `77cf049a` broke. A blind edit to an untested merge that rewrites every
+project's settings file is the wrong shape of fix. Write the golden cases first.
+
+### FG-2026-08-31-04 — the sync's durability guard watches unpushed COMMITS and is blind to uncommitted fork EDITS, which distribute silently
+
+```yaml
+id: FG-2026-08-31-04
+class: contract-dimension-gap
+scope: fork
+target: "`sync-bmad-workflows.sh` — the durability guard block keyed on `fork_ahead` / `myfork/${fork_branch}` (~lines 85-108)"
+marker: "fork_dirty"
+fix_scope: fork-only
+state: open
+fix: none          # none | partial | done
+delivery: n/a      # n/a | owed | done
+routing: recorded
+```
+
+The guard exists for exactly the right reason — the sync reads the fork's **local working
+tree**, so it can propagate state that exists nowhere in version control — and its own
+comment says so. But it only counts commits: `git rev-list --count "myfork/<branch>..HEAD"`.
+Uncommitted working-tree modifications are a strictly worse case of the same failure and
+produce no warning at all.
+
+Observed this session, not hypothesised. The fork checkout carried four uncommitted
+modified files, two of them substantive: a `custom/skills/bmad-correct-course/SKILL.md`
+change tightening the tracker-delta rule to "board-reachable" (the FG-2026-07-31-11 fix),
+and a `src/modules/bmm/_module-installer/assets/hooks.json` change keying the
+undeployed-merge baseline on the session rather than on first-ever run. Both were
+delivered into `inbound-flow` by `--only`, and both still exist only in one working tree.
+The sync printed the unpushed-commits warning and said nothing about either.
+
+Structural because the two halves disagree about what "the source" is. The guard reasons
+about `HEAD`; the rsync reads the worktree. Anything in the gap between them ships without
+a mention — and the gap is widest precisely when someone is mid-edit on the fork, which is
+the state a fork checkout is usually in.
+
+Compounding it, and worth naming separately in the same fix: the fork was checked out on
+`feat/design-lane-two-block-closeout`, 16 commits ahead of `custom`. The sync happily used
+it as the source with no note that the canonical branch is not what is being distributed.
+A one-line "syncing from `<branch>`, which is N ahead / M behind `custom`" would make the
+choice visible rather than implicit in whatever the last session left checked out.
+
+Shape of the fix: extend the same guard block to run `git -C "$SCRIPT_DIR" status
+--porcelain -- custom/ src/modules/` and warn with the file list when non-empty, and print
+the source branch with its divergence from `custom`. Warn-only, same as the existing
+behaviour — a fork checkout is legitimately dirty most of the time, so blocking would be
+switched off within a week.
