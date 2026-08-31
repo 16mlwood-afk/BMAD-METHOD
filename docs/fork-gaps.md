@@ -10746,7 +10746,7 @@ therefore committed with `--no-verify`, stated rather than silent. The malformed
 legacy entries were deliberately left alone: giving them a schema header would mean
 inventing `class` / `target` / `marker` / `owner` values for entries I did not write.
 
-### FG-2026-08-31-01 — the deploy-lane guard compares the WRONG TREE, so it warns hardest on the mandated route
+## FG-2026-08-31-01 — the deploy-lane guard compares the WRONG TREE, so it warns hardest on the mandated route
 
 ```yaml
 id: FG-2026-08-31-01
@@ -10757,7 +10757,10 @@ marker: "DEPLOY SCRIPT IS NOT THE DELIVERED ONE — this tree's `scripts/deploy.
 state: open
 fix: none          # none | partial | done
 delivery: n/a      # n/a | owed | done
+owner: unknown
 ```
+
+### Incident
 
 Fired on BOTH deploys this session while I was running from
 `.claude/worktrees/deploy-origin-main` — the standing deploy worktree the project
@@ -10778,7 +10781,7 @@ discount it on the unsanctioned one.
 Not proposing the fix here beyond naming the shape: the comparison base should be
 the tree the command is actually running in, which the hook can already see.
 
-### FG-2026-08-31-02 — `gh pr merge --delete-branch` fails locally on every merge under the worktree mandate
+## FG-2026-08-31-02 — `gh pr merge --delete-branch` fails locally on every merge under the worktree mandate
 
 ```yaml
 id: FG-2026-08-31-02
@@ -10789,7 +10792,10 @@ marker: "could not determine current branch: failed to run git: not on any branc
 state: open
 fix: none          # none | partial | done
 delivery: n/a      # n/a | owed | done
+owner: unknown
 ```
+
+### Incident
 
 Four merges this session (#1678, #1679, #1682, #1686, #1688), four identical local
 failures, zero real problems: the REMOTE merge succeeded every time and the PR read
@@ -10805,7 +10811,7 @@ failed. The existing CLAUDE.md note covers only the post-admin-merge worktree-re
 case, not this one, so each session rediscovers it and has to verify the PR state by
 hand before believing its own delivery worked.
 
-### FG-2026-08-31-03 — the settings hooks merge is not idempotent, so `hooks (outdated)` can never go green and every sync grows the file
+## FG-2026-08-31-03 — the settings hooks merge is not idempotent, so `hooks (outdated)` can never go green and every sync grows the file
 
 ```yaml
 id: FG-2026-08-31-03
@@ -10818,7 +10824,10 @@ state: open
 fix: none          # none | partial | done
 delivery: n/a      # n/a | owed | done
 routing: recorded
+owner: mason
 ```
+
+### Incident
 
 `JQ_MERGE` decides which of a project's existing hook groups to strip before appending
 the template, and it keys that decision on `statusMessage`: `$bmad_msgs` is built from
@@ -10854,7 +10863,7 @@ stop the merge destroying a project's permissions and MCP choice, and `41251373`
 repair quoting `77cf049a` broke. A blind edit to an untested merge that rewrites every
 project's settings file is the wrong shape of fix. Write the golden cases first.
 
-### FG-2026-08-31-04 — the sync's durability guard watches unpushed COMMITS and is blind to uncommitted fork EDITS, which distribute silently
+## FG-2026-08-31-04 — the sync's durability guard watches unpushed COMMITS and is blind to uncommitted fork EDITS, which distribute silently
 
 ```yaml
 id: FG-2026-08-31-04
@@ -10867,7 +10876,10 @@ state: open
 fix: none          # none | partial | done
 delivery: n/a      # n/a | owed | done
 routing: recorded
+owner: mason
 ```
+
+### Incident
 
 The guard exists for exactly the right reason — the sync reads the fork's **local working
 tree**, so it can propagate state that exists nowhere in version control — and its own
@@ -10900,7 +10912,7 @@ the source branch with its divergence from `custom`. Warn-only, same as the exis
 behaviour — a fork checkout is legitimately dirty most of the time, so blocking would be
 switched off within a week.
 
-### FG-2026-08-31-05 — nothing observes the gap between "done" and "pushed", and knowing about it does not close it
+## FG-2026-08-31-05 — nothing observes the gap between "done" and "pushed", and knowing about it does not close it
 
 ```yaml
 id: FG-2026-08-31-05
@@ -10913,7 +10925,10 @@ state: open
 fix: none
 delivery: n/a
 routing: recorded
+owner: mason
 ```
+
+### Incident
 
 Three times on 2026-08-31, finished and correct work sat invisible because it had not
 reached `custom`. Each time it cost a full publish cycle across fourteen targets, and each
@@ -10939,7 +10954,7 @@ that the same discipline is not applied to the fork's own tree between edits. No
 as a blocking gate here: the shape wants care, because a gate that fires on every
 in-progress edit is one that gets switched off within a day.
 
-### FG-2026-08-31-06 — image-pipeline carries a partial `_bmad/bmad-shared/` beside a live `workflows/shared/`
+## FG-2026-08-31-06 — image-pipeline carries a partial `_bmad/bmad-shared/` beside a live `workflows/shared/`
 
 ```yaml
 id: FG-2026-08-31-06
@@ -10952,7 +10967,10 @@ state: open
 fix: none
 delivery: n/a
 routing: needs-owner-marker
+owner: mason
 ```
+
+### Incident
 
 A non-skills-native target holding a flattened shared-policy copy: 17 of the 37 curated
 files, referenced by 4 installed files, sitting beside a live and current
@@ -10971,7 +10989,7 @@ got created, and doing it again would make a third.
 Needs an owner marker because it changes what "shared" means per layout, which is a design
 decision rather than a repair.
 
-### FG-2026-08-31-07 — a signal is not evidence: the five failures that produced every defect of 2026-08-31
+## FG-2026-08-31-07 — a signal is not evidence: the five failures that produced every defect of 2026-08-31
 
 ```yaml
 id: FG-2026-08-31-07
@@ -10984,6 +11002,7 @@ state: closed
 fix: done
 delivery: n/a
 routing: recorded
+owner: mason
 ```
 
 ### Incident

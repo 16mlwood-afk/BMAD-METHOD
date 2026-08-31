@@ -174,6 +174,19 @@ def validate_target(t, seen_real):
 
 
 # ------------------------------------------------------------------ receipts
+#: The paths whose content is actually distributed to a target. A change outside these
+#: cannot be observed by any consumer of the methods, and must not make an estate stale.
+DELIVERED_PATHS = ("custom", "src/modules")
+
+
+def delivered_digest(commit):
+    """Digest over the DELIVERED paths at a commit. Cheap: git tree ids, no worktree."""
+    parts = []
+    for path in DELIVERED_PATHS:
+        parts.append(out(["git", "rev-parse", f"{commit}:{path}"]) or "-")
+    return hashlib.sha256("|".join(parts).encode()).hexdigest()[:16]
+
+
 def read_receipt(real, t):
     p = real / t.get("managed_root", "_bmad") / RECEIPT
     if not p.is_file():
@@ -212,6 +225,12 @@ def write_receipt(real, t, release_sha, release_tree):
         "channel": CHANNEL,
         "release_commit": release_sha,
         "release_tree": release_tree,
+        # The digest of the DELIVERED paths only. The commit SHA moves for a docs commit,
+        # a test, or a register row — none of which any consumer of these methods can
+        # observe — so comparing it put all fourteen targets into STALE with not one
+        # delivered byte changed, and the only remedy was a fan-out copying identical
+        # content. This digest changes when, and only when, what gets installed changes.
+        "delivered_digest": delivered_digest(release_sha),
         "source_remote": REMOTE,
         "synced_at_utc": now(),
         "target_id": t["id"],
@@ -284,8 +303,28 @@ def classify(t, release_sha):
     if receipt.get("_corrupt"):
         return "PARTIAL_RELEASE", "receipt is unreadable"
     if receipt.get("release_commit") != release_sha:
+        # PREFER THE EVIDENCE THAT OBSERVES THE THING ITSELF over the proxy that stands in
+        # for it — the rule this whole system was rebuilt on. A SHA mismatch is a proxy for
+        # "the files might differ"; the delivered-paths digest answers "the files differ"
+        # directly, and when the two disagree the direct one wins. A receipt naming an
+        # older commit whose delivered content is identical is CURRENT with a superseded
+        # receipt, not stale.
+        have = receipt.get("delivered_digest")
+        want = delivered_digest(release_sha)
+        if have and have == want:
+            return "CURRENT", (f"content matches the release; receipt names an older "
+                               f"commit ({str(receipt.get('release_commit'))[:12]} vs "
+                               f"{release_sha[:12]}) that changed no delivered "
+                               f"path{blind_note}")
+        if not have:
+            # Pre-digest receipt: the direct evidence is unavailable, so the proxy is all
+            # there is. Say which, rather than implying content was compared.
+            return "STALE", (f"holds {str(receipt.get('release_commit'))[:12]}, release is "
+                             f"{release_sha[:12]} — receipt predates content digests, so "
+                             f"this is a commit comparison, not a content one{blind_note}")
         return "STALE", (f"holds {str(receipt.get('release_commit'))[:12]}, "
-                         f"release is {release_sha[:12]}{blind_note}")
+                         f"release is {release_sha[:12]}; delivered content differs"
+                         f"{blind_note}")
     return "CURRENT", f"at {release_sha[:12]}{blind_note}"
 
 
