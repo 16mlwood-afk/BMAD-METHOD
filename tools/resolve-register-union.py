@@ -22,6 +22,7 @@ WHAT IT REFUSES (exits non-zero, changes nothing):
 Usage:  resolve-register-union.py <path/to/register.md>
 Exit:   0 resolved (file rewritten) · 1 refused (file untouched)
 """
+import difflib
 import re
 import sys
 
@@ -89,19 +90,38 @@ def main(path):
               "contract change, not an append", file=sys.stderr)
         return 1
 
+    # An entry that differs is still an APPEND if one side is the other with lines added
+    # and none removed or changed — a later datapoint appended to a standing entry, which
+    # is how this register is actually written. Take the superset. Anything else (a line
+    # removed, or reworded) is a genuine edit on one side and not this script's call.
+    def superset(x, y):
+        """Return the longer body if it is y-plus-insertions, else None."""
+        for short, long_ in ((x, y), (y, x)):
+            ops = difflib.SequenceMatcher(
+                None, short.splitlines(), long_.splitlines(), autojunk=False
+            ).get_opcodes()
+            if all(tag in ("equal", "insert") for tag, *_ in ops):
+                return long_
+        return None
+
     by_a = dict(ents_a)
+    resolved = {}
     for head, body in ents_b:
         if head in by_a and by_a[head] != body:
-            print(f"refused: entry {head[:70]!r} has a different body on each side — "
-                  "one side edited it, which is a real disagreement", file=sys.stderr)
-            return 1
+            merged_body = superset(by_a[head], body)
+            if merged_body is None:
+                print(f"refused: entry {head[:70]!r} differs on each side by more than an "
+                      "append — a line was removed or reworded, which is a real edit",
+                      file=sys.stderr)
+                return 1
+            resolved[head] = merged_body
 
     seen, merged = set(), []
     for head, body in ents_a + ents_b:
         if head in seen:
             continue
         seen.add(head)
-        merged.append(body)
+        merged.append(resolved.get(head, body))
 
     out = pre_a + "".join(merged)
 
