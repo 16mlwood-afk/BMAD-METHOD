@@ -196,6 +196,11 @@ for r in "${rows[@]}"; do
 
   if ! $rebase_ok; then
     g rebase --abort >/dev/null 2>&1 || true
+    # `rebase --abort` restores the BRANCH, but a resolver that wrote one file before a
+    # later one refused can leave that write behind in the worktree — observed 2026-08-31,
+    # where a refused register resolution left docs/fork-gaps.md modified on custom. Safe
+    # to hard-restore because preflight already required a clean tree.
+    g checkout -q -- . 2>/dev/null || true
     g checkout -q "$CANON"; g branch -q -D "$tmp" 2>/dev/null || true
     skipped+=("$b (conflicts with $CANON — needs a human)")
     say "   left untouched. Resolve by hand:  git checkout $b && git rebase $CANON"
