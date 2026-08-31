@@ -79,6 +79,72 @@ merge "$TMP/base.json"    > "$TMP/out.json"   || { echo "FAIL: merge errored on 
 merge "$TMP/empty.json"   > "$TMP/oute.json"  || { echo "FAIL: merge errored on empty"; exit 1; }
 merge "$TMP/mcptrue.json" > "$TMP/outt.json"  || { echo "FAIL: merge errored on mcptrue"; exit 1; }
 
+# --- I1-I3: CONVERGENCE (FG-2026-08-31-03) ----------------------------------
+# The merge must RECOGNISE an already-installed template hook, or it appends a second
+# copy every sync and --check can never go green. The identity key was statusMessage
+# alone, so a template hook carrying none was invisible to it. Measured 2026-08-31:
+# inbound-flow had accumulated four copies of the same statusMessage-less hook.
+#
+# I1/I2 run against a SYNTHETIC template that is guaranteed to contain a
+# statusMessage-less hook, so the case cannot quietly go vacuous if the shipped
+# template later gives every hook a label. I3 then pins the same property on the
+# template that actually ships.
+merge_with() { jq -n "$(cat "$TMP/jq.txt")" "$1" "$2"; }
+
+cat > "$TMP/tmpl-nostatus.json" <<'JSON'
+{
+  "hooks": {
+    "PostToolUse": [
+      {"matcher": "Skill",
+       "hooks": [{"type": "command", "command": "echo no-status-message-here"}]},
+      {"matcher": "Bash",
+       "hooks": [{"type": "command", "command": "echo labelled", "statusMessage": "Labelled hook..."}]}
+    ]
+  }
+}
+JSON
+echo '{"hooks":{}}' > "$TMP/fresh.json"
+
+merge_with "$TMP/fresh.json" "$TMP/tmpl-nostatus.json" > "$TMP/i1.json" \
+  || { echo "FAIL I1 merge errored on a fresh project"; exit 1; }
+merge_with "$TMP/i1.json"    "$TMP/tmpl-nostatus.json" > "$TMP/i2.json" \
+  || { echo "FAIL I2 merge errored on the second pass"; exit 1; }
+merge_with "$TMP/i2.json"    "$TMP/tmpl-nostatus.json" > "$TMP/i3.json" \
+  || { echo "FAIL I2 merge errored on the third pass"; exit 1; }
+
+n1=$(jq '[.. | objects | select(.command == "echo no-status-message-here")] | length' "$TMP/i1.json")
+n2=$(jq '[.. | objects | select(.command == "echo no-status-message-here")] | length' "$TMP/i2.json")
+n3=$(jq '[.. | objects | select(.command == "echo no-status-message-here")] | length' "$TMP/i3.json")
+
+if [[ "$n1" == "1" && "$n2" == "1" && "$n3" == "1" ]]; then
+  echo "PASS I1 a statusMessage-less hook is recognised as already present (1 copy after 1, 2 and 3 syncs)"
+else
+  echo "FAIL I1 statusMessage-less hook duplicated across syncs — copies: $n1, $n2, $n3"; CONV_FAIL=1
+fi
+
+if diff <(jq -S . "$TMP/i1.json") <(jq -S . "$TMP/i2.json") >/dev/null \
+&& diff <(jq -S . "$TMP/i2.json") <(jq -S . "$TMP/i3.json") >/dev/null; then
+  echo "PASS I2 hook configuration is byte-stable from the second sync onward"
+else
+  echo "FAIL I2 a second sync still changes the settings file:"
+  diff <(jq -S . "$TMP/i1.json") <(jq -S . "$TMP/i2.json") | head -20; CONV_FAIL=1
+fi
+
+# I3 — same property, against the template that actually ships. This is what makes
+# `--check` able to report hooks (outdated) truthfully rather than by construction.
+merge "$TMP/empty.json"  > "$TMP/live1.json"
+merge_with "$TMP/live1.json" "$TEMPLATE" > "$TMP/live2.json"
+if diff <(jq -S . "$TMP/live1.json") <(jq -S . "$TMP/live2.json") >/dev/null; then
+  echo "PASS I3 the SHIPPED template reaches a fixed point after one sync"
+else
+  echo "FAIL I3 the shipped template never converges — a second sync still differs:"
+  diff <(jq -S . "$TMP/live1.json") <(jq -S . "$TMP/live2.json") | head -20; CONV_FAIL=1
+fi
+
+if [[ "${CONV_FAIL:-0}" == "1" ]]; then
+  echo; echo "FAILURES: convergence cases (I1-I3) — see above."; exit 1
+fi
+
 COLLIDE="$COLLIDE" python3 - "$TMP" <<'PY'
 import json, os, sys
 t = sys.argv[1]

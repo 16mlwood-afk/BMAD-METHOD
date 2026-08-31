@@ -178,13 +178,27 @@ bmad_target_blocked_dirty() {
 
 JQ_MERGE='
   input as $base | input as $template |
+  # IDENTITY IS statusMessage OR command, never statusMessage alone (FG-2026-08-31-03).
+  # An installed group is stripped before the template is appended only if the merge can
+  # RECOGNISE it as the template hook. Keying that on statusMessage alone means a template
+  # hook that carries none is never recognised, so its installed copy survives AND the
+  # template copy lands beside it: one more duplicate on every sync, forever, and a
+  # --check that reports hooks (outdated) on a project synced seconds ago. Measured
+  # 2026-08-31 in inbound-flow: four identical copies of the one statusMessage-less hook.
+  # command is the structural key here because it is what the harness actually executes
+  # and it is unique per hook; statusMessage is KEPT beside it so that a template hook
+  # whose command was edited still strips its older installed copy by the stable label.
   ($template.hooks | [.. | .statusMessage? // empty]) as $bmad_msgs |
+  ($template.hooks | [.. | objects | select(has("command")) | .command]) as $bmad_cmds |
+  ($bmad_msgs + $bmad_cmds) as $bmad_keys |
   reduce ($template.hooks | keys[]) as $event (
     $base;
     .hooks[$event] = (
       [(.hooks[$event] // [])[] | select(
         ((.name // "") | startswith("bmad-") | not) and
-        ([.hooks[]?.statusMessage // ""] | map(. as $m | $bmad_msgs | index($m)) | any | not)
+        ([.hooks[]? | (.statusMessage // ""), (.command // "")]
+          | map(select(. != ""))
+          | map(. as $k | $bmad_keys | index($k)) | any | not)
       )]
       + $template.hooks[$event]
     )
