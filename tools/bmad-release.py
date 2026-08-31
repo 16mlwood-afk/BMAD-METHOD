@@ -40,6 +40,11 @@ LEDGER = FORK / "docs" / "release-ledger.jsonl"
 CHANNEL = "custom"
 REMOTE = "myfork"
 RECEIPT = ".bmad-distribution.json"
+# The distributor writes to MORE than the managed root: skills are delivered to
+# .claude/skills too. Drift detection that looks only at _bmad is blind to half the
+# surface — and the syncer refuses a target dirty in EITHER, so a publish could be
+# reported ok for a target the syncer had silently skipped (observed 2026-08-31).
+MANAGED_EXTRA = (".claude/skills", ".claude/commands/bmad")
 TOOL_VERSION = "1.0.0"
 
 STATES = ("CURRENT", "STALE", "LOCAL_DRIFT", "MISSING", "UNREACHABLE",
@@ -225,7 +230,8 @@ def classify(t, release_sha):
     # Drift is checked FIRST and outranks a missing receipt. Both are true of an
     # untracked replica, but only one of them means a publish would DELETE work, and
     # that is the one an operator has to see.
-    dirty = out(["git", "status", "--porcelain", "--", t.get("managed_root", "_bmad")], cwd=real)
+    dirty = out(["git", "status", "--porcelain", "--",
+                 t.get("managed_root", "_bmad"), *MANAGED_EXTRA], cwd=real)
     if dirty:
         n = len(dirty.splitlines())
         return "LOCAL_DRIFT", (f"{n} uncommitted change(s) under the managed root — a sync "
@@ -414,6 +420,22 @@ def cmd_publish(args):
             if r.returncode != 0:
                 exceptions.append((t["id"], "sync failed"))
                 print(f"    FAILED: {r.stdout.strip().splitlines()[-3:]}")
+                continue
+
+            # A ZERO EXIT PROVES THE SYNCER RAN, NOT THAT IT DELIVERED. It refuses a
+            # target with uncommitted BMAD-managed content and still exits 0. On
+            # 2026-08-31 this tool reported "ok" for five targets the syncer had skipped
+            # and wrote them each a receipt claiming a release they never received — a
+            # false success, and a lying receipt is worse than no receipt because the
+            # next reconcile reads it as CURRENT. Read what the syncer actually said.
+            blocked = [l for l in r.stdout.splitlines()
+                       if l.startswith(("BLOCK ", "SKIP ")) or "would SKIP this target" in l]
+            if blocked:
+                exceptions.append((t["id"],
+                                   "the distributor REFUSED this target: "
+                                   + blocked[0].strip()[:120]))
+                print(f"    REFUSED BY THE DISTRIBUTOR — no receipt written")
+                print(f"      {blocked[0].strip()[:110]}")
                 continue
             receipt = write_receipt(real, t, release_sha, release_tree)
 
