@@ -371,6 +371,7 @@ def cmd_publish(args):
         shutil.rmtree(tmp, ignore_errors=True)
         return 1
 
+    import importlib.util as _ilu
     results, exceptions = [], []
     try:
         # A fresh worktree has no node_modules, so the suite cannot run there at all
@@ -407,6 +408,20 @@ def cmd_publish(args):
             if state == "LOCAL_DRIFT" and not args.force_drift:
                 exceptions.append((t["id"], f"LOCAL_DRIFT: {detail}"))
                 print(f"  SKIP {t['id']} — {detail}")
+                continue
+
+            # LANE LOCK — before the write, not after. Two sessions repairing the same
+            # fourteen projects concurrently is what caused the 2026-08-31 damage, and
+            # neither could see the other. Default deny: no token, no lock, or an
+            # unreadable lock all refuse.
+            try:
+                _fl = _ilu.module_from_spec(
+                    _ilu.spec_from_file_location("fl", FORK / "tools" / "fleet_lock.py"))
+                _ilu.spec_from_file_location("fl", FORK / "tools" / "fleet_lock.py").loader.exec_module(_fl)
+                _fl.assert_may_mutate(t["id"], "publish")
+            except Exception as e:
+                exceptions.append((t["id"], f"lane lock: {str(e).splitlines()[0]}"))
+                print(f"  DENIED {t['id']} — {str(e).splitlines()[0]}")
                 continue
 
             print(f"  publishing {t['id']}")

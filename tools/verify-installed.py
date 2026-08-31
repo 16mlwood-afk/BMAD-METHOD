@@ -23,7 +23,31 @@ import re
 import sys
 from pathlib import Path
 
-_REWRITE = re.compile(rb"(\{project-root\}/)?_bmad/bmad-shared/")
+# NORMALISE THE SOURCE SIDE BY EVERY REWRITE THE DISTRIBUTOR CAN APPLY, not just the one
+# it applies most often. The first cut folded only `_bmad/bmad-shared/`, which rewrites the
+# INSTALLED side and leaves the RELEASE side alone — so a correctly delivered file hashed
+# as differing forever. It reported seven stale shared-policy files across three targets
+# that were not stale at all, and very nearly bought a rewrite of a distributor that had no
+# bug in it. Caught by a parallel session; confirmed here against bison-ops, where the
+# entire difference was one line:
+#     installed  {project-root}/_bmad/bmad-shared/detect-stack.md
+#     release    {project-root}/_bmad/bmm/workflows/shared/detect-stack.md
+# Every shared location the distributor can emit folds to ONE token, so both sides land on
+# the same string whichever form they carry.
+# The fork ALSO refers to shared policy by its own bare `shared/x.md` form, so that has to
+# fold to the same token or the source side keeps a string the installed side no longer
+# has. Folding only the _bmad forms doubled the false positives rather than removing them.
+_REWRITE = re.compile(
+    rb"(\{project-root\}/)?(_bmad/(bmad-shared|bmm/workflows/design/shared"
+    rb"|bmm/workflows/shared)|shared)/")
+
+# A second rewrite class exists that a prefix fold cannot express: on a skills-native
+# target a workflow cross-reference becomes a SKILL path, changing the file name as well as
+# the directory. Rather than pretend that away, a file that still differs is compared again
+# with every backticked {project-root} pointer removed. If it then matches, the only
+# difference was a rewritten pointer — reported as REWRITE-ONLY: neither hidden, nor
+# counted as stale content.
+_ANYPATH = re.compile(rb"`\{project-root\}/[^`]*`")
 
 # The directories the distributor delivers, and where each lands in a target.
 WORKFLOW_DIRS = ("implement", "verify", "design", "meta", "shared",
@@ -32,7 +56,25 @@ SHARED_SOURCES = ("custom/workflows/shared", "custom/workflows/design/shared")
 
 
 def h(data):
-    return hashlib.sha256(_REWRITE.sub(b"shared/", data)).hexdigest()
+    return hashlib.sha256(_REWRITE.sub(b"<SHARED>/", data)).hexdigest()
+
+
+def h_nopaths(data):
+    """Hash with every distributor-rewritable pointer collapsed."""
+    return hashlib.sha256(
+        _ANYPATH.sub(b"`<PATH>`", _REWRITE.sub(b"<SHARED>/", data))).hexdigest()
+
+
+def _sources_for(release, rel):
+    """Candidate release paths that could produce this target-relative path."""
+    if rel.startswith(".claude/skills/"):
+        return [release / "custom" / "skills" / rel[len(".claude/skills/"):]]
+    if rel.startswith("_bmad/bmm/workflows/"):
+        return [release / "custom" / "workflows" / rel[len("_bmad/bmm/workflows/"):]]
+    if rel.startswith("_bmad/bmad-shared/"):
+        tail = rel[len("_bmad/bmad-shared/"):]
+        return [release / b / tail for b in SHARED_SOURCES]
+    return []
 
 
 def expected(release, target=None):
@@ -93,12 +135,33 @@ def verify(target, release, quiet=False):
                     missing.append(rel)
             elif h(f.read_bytes()) != digest:
                 differing.append(rel)
+
         # A surface the distributor does not deliver to this target (no files expected,
         # or the whole tree absent) is NOT a failure — it is out of scope. Reporting it
         # as a mismatch would make every old-layout project permanently unverifiable.
-        present = any((target / p).exists() for p in prefixes)
+        # Split the differences: a file whose only remaining difference is a rewritten
+        # pointer is correctly delivered and must not read as stale content.
+        rewrite_only = []
+        if differing:
+            still = []
+            for rel in differing:
+                src = next((c for c in _sources_for(Path(release), rel) if c.is_file()), None)
+                if src and h_nopaths((target / rel).read_bytes()) == h_nopaths(src.read_bytes()):
+                    rewrite_only.append(rel)
+                else:
+                    still.append(rel)
+            differing = still
+
+        # SCOPE, and `any` was wrong here. The workflow surface lives in two places, and a
+        # fully skills-native target has _bmad/bmad-shared but NO _bmad/bmm/workflows at
+        # all — by design, not by omission. With `any`, one present location put the whole
+        # surface in scope and every workflow file was then reported missing: cash-recovery
+        # read as 254 missing while missing nothing. Require the surface's PRIMARY location
+        # (the first prefix) to exist; a target without it is out of scope, not broken.
+        present = (target / prefixes[0]).exists()
         report[name] = {
             "expected": len(want), "missing": len(missing), "differing": len(differing),
+            "rewrite_only": len(rewrite_only),
             "in_scope": present and bool(want),
             "ok": (not missing and not differing) if (present and want) else None,
             "sample": (missing + differing)[:5],
@@ -108,7 +171,8 @@ def verify(target, release, quiet=False):
         for name, v in report.items():
             state = "n/a" if v["ok"] is None else ("MATCHES release" if v["ok"] else "MISMATCH")
             print(f"  {name:10}{state:18}expected={v['expected']:<5}"
-                  f"missing={v['missing']:<5}differing={v['differing']}")
+                  f"missing={v['missing']:<5}differing={v['differing']:<5}"
+                  f"rewrite-only={v['rewrite_only']}")
             for s in v["sample"]:
                 print(f"      ! {s}")
     return ok, report
