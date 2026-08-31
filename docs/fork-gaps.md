@@ -6117,6 +6117,19 @@ looks like good news. The distinction from (4) is worth keeping too — a guard 
 precondition is missing never ran; a check over nothing ran perfectly and had nothing to
 look at.
 
+**7. The same clause, demonstrated within ten minutes of being written.** The delivery-owner
+session appended clause (6) to its own standing instructions, the write succeeded, and it
+then grepped case-sensitively for `sixth clause` against text beginning `**Sixth clause`.
+Zero matches. The record was intact; the confirmation searched for a string that was never
+going to be there and would have reported the write as lost. Caught only because a zero
+from a just-written check was implausible enough to re-run case-insensitively.
+
+Recorded because it is the strongest evidence in this entry, and it is evidence AGAINST the
+comfortable reading. This is not a lapse of attention: it happened to the session that had
+just authored the rule, inside the artefact recording it, minutes later, while being
+maximally alert to exactly this failure. A wrong input set to a correct instrument is a
+shape a working mind produces by default. Only an external check reliably catches it.
+
 ### Why it is structural, not a one-off
 
 This is the surfacing sibling of the stale-`main` gap already open in this file, but it is not the
@@ -11087,3 +11100,11 @@ checked, and that each checked the other's rather than accepting it.
     A check that passes over nothing has not passed.
     And absence of a signal is evidence only when the channel would have carried it —
     before concluding it did not happen, show you would have seen it if it had.
+
+**And the operative advice, because there will usually be one reader and not two.** What
+converged this day was not diligence — seven defects, four of them made after the pattern
+was named, two inside the artefact built to prevent it, one within ten minutes of writing
+the clause it violated. It was two independent readers, and neither defending a claim once
+it was checked. A single session cannot reproduce that by trying harder. It can only
+assume it is currently making one of these, and go looking — starting with whichever result
+it is most confident about, since that is the one it has not re-examined.
