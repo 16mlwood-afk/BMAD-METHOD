@@ -9486,19 +9486,6 @@ state: open
 fix: none
 delivery: n/a
 routing: needs-owner-marker
-- 2026-08-11 — an open item whose CHEAPEST resolver is the owner gets routed to a third party by default, so it sits for weeks. On 9plas the purchase price had been flagged UNRECONCILED (Land Registry £180,000 vs the £185,000 every derived figure was built on) and ranked gap #1 in the stress-test pack the day before. The remedy the record named was "the original completion statement" — a document nobody holds. The actual resolver was one sentence from Mason, who was in the room, and it arrived only because he volunteered it unprompted. Same session, same shape: the renovation spend carried `CONFIRMED ALREADY SPENT (Mason, 2026-07-24)` and Mason then put it £10,000 lower — so a tag reading CONFIRMED was owner-recall, not evidence, and had propagated unchallenged into four downstream documents. TWO STRUCTURAL DEFECTS, both in the matter-file/appraisal method rather than in any one matter. (1) The open-items schema has no "resolver = owner" channel — `open_content_items` and the "what would change all of this" lists enumerate agents, lenders, solicitors and accountants, so the one free, instant source gets skipped precisely because he is not an external party. (2) The confidence vocabulary (CONFIRMED / EVIDENCED / ESTIMATE / LIKELY / UNVERIFIED, `property-appraisal/SKILL.md` § Confidence tagging) has no level for "the owner said so from memory", so owner-recall enters as CONFIRMED and outranks a contradicting documentary source — which is exactly backwards, and is how a Land Registry figure lost to a remembered one for eighteen days. TARGET FILES: `~/.claude/skills/property-appraisal/SKILL.md` (add an ASSERTED tier below ESTIMATE for unevidenced owner recall, and require the outstanding-analysis checklist to name the resolver for each item, flagging any whose resolver is the owner as ask-this-session); `~/.claude/CLAUDE.md` § File-Tree Doctrine / Matter state (the STATE block's read-first discipline covers cross-session drift but not "this open item is answerable by the person you are talking to"). NOT proposing a hook — the detection is semantic and a matcher would fire on every matter file. The cheap deterministic slice, if this recurs: the desk hook already reads matter files at session start, so it could surface open items tagged `resolver: owner` as a one-line prompt, which is a schema addition plus three lines of shell rather than a new gate.
-
-## FG-2026-08-12-01 — 1 WIP-register claim(s) written by session 6b8ae223 are gone from the register
-
-```yaml
-id: FG-2026-08-12-01
-class: enforcement
-scope: project
-target: .claude/wip-register.yaml (cash-recovery)
-marker: "Session:** `6b8ae223-1b7e-4dd9-a376-9368bd034dcc`"
-state: open
-fix: none
-delivery: n/a
 owner: mason
 ```
 
@@ -9574,6 +9561,25 @@ amendment route is a hand-edit route, and this policy's §3 forbids hand-editing
 revision precisely because silent scope drift is the failure it exists to stop. The exclusions in
 (2) and the provenance in (1) are what keep an amendment from becoming that drift under a new
 name. Do not implement any of this without an owner decision.
+
+- 2026-08-11 — an open item whose CHEAPEST resolver is the owner gets routed to a third party by default, so it sits for weeks. On 9plas the purchase price had been flagged UNRECONCILED (Land Registry £180,000 vs the £185,000 every derived figure was built on) and ranked gap #1 in the stress-test pack the day before. The remedy the record named was "the original completion statement" — a document nobody holds. The actual resolver was one sentence from Mason, who was in the room, and it arrived only because he volunteered it unprompted. Same session, same shape: the renovation spend carried `CONFIRMED ALREADY SPENT (Mason, 2026-07-24)` and Mason then put it £10,000 lower — so a tag reading CONFIRMED was owner-recall, not evidence, and had propagated unchallenged into four downstream documents. TWO STRUCTURAL DEFECTS, both in the matter-file/appraisal method rather than in any one matter. (1) The open-items schema has no "resolver = owner" channel — `open_content_items` and the "what would change all of this" lists enumerate agents, lenders, solicitors and accountants, so the one free, instant source gets skipped precisely because he is not an external party. (2) The confidence vocabulary (CONFIRMED / EVIDENCED / ESTIMATE / LIKELY / UNVERIFIED, `property-appraisal/SKILL.md` § Confidence tagging) has no level for "the owner said so from memory", so owner-recall enters as CONFIRMED and outranks a contradicting documentary source — which is exactly backwards, and is how a Land Registry figure lost to a remembered one for eighteen days. TARGET FILES: `~/.claude/skills/property-appraisal/SKILL.md` (add an ASSERTED tier below ESTIMATE for unevidenced owner recall, and require the outstanding-analysis checklist to name the resolver for each item, flagging any whose resolver is the owner as ask-this-session); `~/.claude/CLAUDE.md` § File-Tree Doctrine / Matter state (the STATE block's read-first discipline covers cross-session drift but not "this open item is answerable by the person you are talking to"). NOT proposing a hook — the detection is semantic and a matcher would fire on every matter file. The cheap deterministic slice, if this recurs: the desk hook already reads matter files at session start, so it could surface open items tagged `resolver: owner` as a one-line prompt, which is a schema addition plus three lines of shell rather than a new gate.
+
+## FG-2026-08-12-01 — 1 WIP-register claim(s) written by session 6b8ae223 are gone from the register
+
+```yaml
+id: FG-2026-08-12-01
+class: enforcement
+scope: project
+target: .claude/wip-register.yaml (cash-recovery)
+marker: "Session:** `6b8ae223-1b7e-4dd9-a376-9368bd034dcc`"
+state: open
+fix: none
+delivery: n/a
+owner: mason
+```
+
+### Incident
+
 **Logged automatically by `claim-receipt.py`, not by an agent noticing.** That is the point:
 FG-2026-07-31-12 exists because six claims were destroyed and nothing recorded it until the
 owner asked. This row is the mechanical replacement for that memory.
