@@ -1930,22 +1930,26 @@ while IFS= read -r target || [[ -n "$target" ]]; do
     fi
 
     # FLATTENED SHARED-POLICY HOME — refresh it wherever it EXISTS, regardless of the
-  # skills-native flag (FG-2026-08-31, found by the delivery-owner session).
-  #
-  # Until now `_bmad/bmad-shared/` was only rebuilt on the skills-native path, so a target
-  # that has the directory WITHOUT the flag was frozen while every other project moved on.
-  # image-pipeline sat a full contract version behind on ten policy files for exactly that
-  # reason — nothing missing, nothing corrupt, simply never refreshed.
-  #
-  # The layout question was settled by evidence rather than preference: six files installed
-  # in that project point at `{project-root}/_bmad/bmad-shared/...`. The directory is
-  # load-bearing there, so deleting it would break live pointers, and the honest fix is to
-  # keep it current. Refresh where it exists; do NOT create it where it does not, because
-  # that would silently migrate a target's layout as a side effect of a sync.
-  if [[ -d "$proot/_bmad/bmad-shared" && -d "$SKILLS_NATIVE/_shared" ]]; then
-    rsync -a --delete --exclude='.DS_Store' "$SKILLS_NATIVE/_shared/" "$proot/_bmad/bmad-shared/"
-    echo "  OK    bmad-shared refreshed ($(ls "$SKILLS_NATIVE/_shared" 2>/dev/null | wc -l | xargs) policies)"
-  fi
+    # skills-native flag (FG-2026-08-31, found by the delivery-owner session).
+    #
+    # NOTE THE VARIABLE: this loop uses $project_root. $proot is a `local` belonging to
+    # sync_skills_for_project and its siblings, and referencing it here aborted the whole
+    # run for all fourteen targets under `set -u` — after printing three green OK lines.
+    #
+    # Until now `_bmad/bmad-shared/` was only rebuilt on the skills-native path, so a target
+    # that has the directory WITHOUT the flag was frozen while every other project moved on.
+    # image-pipeline sat a full contract version behind on ten policy files for exactly that
+    # reason — nothing missing, nothing corrupt, simply never refreshed.
+    #
+    # The layout question was settled by evidence rather than preference: six files installed
+    # in that project point at `{project-root}/_bmad/bmad-shared/...`. The directory is
+    # load-bearing there, so deleting it would break live pointers, and the honest fix is to
+    # keep it current. Refresh where it exists; do NOT create it where it does not, because
+    # that would silently migrate a target's layout as a side effect of a sync.
+    if [[ -d "$project_root/_bmad/bmad-shared" && -d "$SKILLS_NATIVE/_shared" ]]; then
+      rsync -a --delete --exclude='.DS_Store' "$SKILLS_NATIVE/_shared/" "$project_root/_bmad/bmad-shared/"
+      echo "  OK    bmad-shared refreshed ($(ls "$SKILLS_NATIVE/_shared" 2>/dev/null | wc -l | xargs) policies)"
+    fi
 
   # Copy .worktreeinclude if missing
     worktree_include="$project_root/.worktreeinclude"
