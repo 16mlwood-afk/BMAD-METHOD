@@ -12,7 +12,13 @@ WORKTREE_INCLUDE_SRC="$SCRIPT_DIR/src/modules/bmm/_module-installer/assets/workt
 CONFIG_DEFAULTS_SRC="$SCRIPT_DIR/src/modules/bmm/_module-installer/assets/config-defaults.yaml"
 CLAUDEMD_TEMPLATE="$SCRIPT_DIR/src/modules/bmm/_module-installer/assets/CLAUDE.md.template"
 CLAUDEMD_SYNC="$SCRIPT_DIR/sync-claudemd-sections.py"
-TARGETS_FILE="$HOME/.bmad-targets"
+# Overridable so the target loop can be EXECUTED in a test against a throwaway project
+# instead of only parsed. Every distributor defect on 2026-08-31 was a runtime path — an
+# unbound variable in the loop, a flag-conditional refresh that never fired, a blanket
+# stage — and none was reachable by `bash -n` or by any check that stops at the real
+# fourteen targets. A distributor with no way to run one disposable target once is a
+# distributor whose loop body is untested by construction.
+TARGETS_FILE="${BMAD_TARGETS_FILE:-$HOME/.bmad-targets}"
 REFERENCE_FILE="$HOME/.bmad-reference"
 CHECK_ONLY=false
 FORCE=false

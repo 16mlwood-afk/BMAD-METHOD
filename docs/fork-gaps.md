@@ -10899,3 +10899,74 @@ Shape of the fix: extend the same guard block to run `git -C "$SCRIPT_DIR" statu
 the source branch with its divergence from `custom`. Warn-only, same as the existing
 behaviour — a fork checkout is legitimately dirty most of the time, so blocking would be
 switched off within a week.
+
+### FG-2026-08-31-05 — nothing observes the gap between "done" and "pushed", and knowing about it does not close it
+
+```yaml
+id: FG-2026-08-31-05
+class: delivery-boundary
+scope: fork
+target: "`deliver-fork-work.sh` (its own header documents this failure) + `tools/bmad-release.py` source gate"
+marker: "working tree diverges from the branch it claims to be delivering"
+fix_scope: fork-only
+state: open
+fix: none
+delivery: n/a
+routing: recorded
+```
+
+Three times on 2026-08-31, finished and correct work sat invisible because it had not
+reached `custom`. Each time it cost a full publish cycle across fourteen targets, and each
+time the session that committed the failure was the one that had just been discussing it —
+twice while holding open the very file that documents it.
+
+Framing owed to the delivery-owner session, and it is the right one: write this against
+the BOUNDARY, not against either participant. Nobody observes the gap. Not the author, who
+has the file open and can see the change and therefore believes it exists. Not the reader,
+who is looking at the branch and correctly reports it missing. Not the tooling, which reads
+the branch and is right to say so. Every party is behaving correctly and the work is still
+invisible.
+
+The durable lesson is that **knowing about a failure mode is not a control.** This is the
+best-documented failure in the fork — `deliver-fork-work.sh` exists because of it and its
+header narrates eight branches and five weeks of it — and it recurred three times in one
+afternoon among two sessions that had both read it that day.
+
+What would actually catch it: something that FAILS when a working tree diverges from the
+branch it claims to be delivering. `tools/bmad-release.py` already does exactly this one
+level up — it refuses to publish from a dirty or non-canonical source — and the gap is
+that the same discipline is not applied to the fork's own tree between edits. Not proposed
+as a blocking gate here: the shape wants care, because a gate that fires on every
+in-progress edit is one that gets switched off within a day.
+
+### FG-2026-08-31-06 — image-pipeline carries a partial `_bmad/bmad-shared/` beside a live `workflows/shared/`
+
+```yaml
+id: FG-2026-08-31-06
+class: layout-migration-incomplete
+scope: project
+target: "image-pipeline `_bmad/bmad-shared/` (17 files) beside `_bmad/bmm/workflows/shared/`"
+marker: "one shared source per layout"
+fix_scope: project-local
+state: open
+fix: none
+delivery: n/a
+routing: needs-owner-marker
+```
+
+A non-skills-native target holding a flattened shared-policy copy: 17 of the 37 curated
+files, referenced by 4 installed files, sitting beside a live and current
+`workflows/shared/` that 26 files reference. A migration that started and stopped.
+
+Resolved for now by option (a): the refresh is unconditional wherever the directory exists,
+so it can no longer freeze (FG-2026-08-31, fixed). That keeps the four live references
+working and is the safe state.
+
+Option (b) remains the tidier end state and is DEFERRED, not dropped: repoint those four
+references at `workflows/shared/` and retire the directory, so a non-native target has
+exactly one shared source. Deliberately not done inside a maintenance pass — a layout
+migration performed while repairing something else is how the second half-finished layout
+got created, and doing it again would make a third.
+
+Needs an owner marker because it changes what "shared" means per layout, which is a design
+decision rather than a repair.
