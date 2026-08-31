@@ -234,7 +234,13 @@ def classify(t, release_sha):
                  t.get("managed_root", "_bmad"), *MANAGED_EXTRA], cwd=real)
     if dirty:
         n = len(dirty.splitlines())
-        return "LOCAL_DRIFT", (f"{n} uncommitted change(s) under the managed root — a sync "
+        # Name every scope the count covers. The message used to say "under the managed
+        # root" while the count spanned _bmad, .claude/skills and .claude/commands/bmad —
+        # so ten targets reported 181 changes while `git status -- _bmad` showed zero, and
+        # the reader went hunting in the wrong directory. Every one was a deletion under
+        # .claude/skills. A count and its label must describe the same set.
+        scopes = ", ".join((t.get("managed_root", "_bmad"),) + MANAGED_EXTRA)
+        return "LOCAL_DRIFT", (f"{n} uncommitted change(s) under [{scopes}] — a sync "
                                "would DELETE them; inspect before releasing")
 
     receipt = read_receipt(real, t)
