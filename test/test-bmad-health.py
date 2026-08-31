@@ -28,7 +28,8 @@ def check(name, cond):
     print(f"  {'PASS' if cond else 'FAIL'}  {name}")
 
 
-def survey(targets, *, sha="a" * 40, blocks=(), decisions=()):
+def survey(targets, *, sha="a" * 40, blocks=(), decisions=(), mismatched=(),
+           verify_note="not reached"):
     """Build a survey dict the way survey() would, then re-run the verdict logic on it."""
     active = [t for t in targets if t["state"] != "DISABLED"]
     current = [t for t in active if t["state"] == "CURRENT"]
@@ -38,9 +39,15 @@ def survey(targets, *, sha="a" * 40, blocks=(), decisions=()):
     undelivered = [t for t in active if t.get("local_only")]
     stranded = [m for m in blocks if "not reachable" in m.lower() or "stranded" in m.lower()]
 
+    clean_so_far = not (decisions or identity or gated or repairable or stranded
+                        or blocks or not sha or undelivered)
+    note = verify_note if clean_so_far else "not reached"
+    bad = list(mismatched) if clean_so_far else []
+
     if decisions or identity or gated:
         verdict = "OWNER DECISION NEEDED"
-    elif repairable or stranded or blocks or not sha or undelivered:
+    elif (repairable or stranded or blocks or not sha or undelivered or bad
+          or (note and note != "not reached")):
         verdict = "REPAIRING"
     elif active and len(current) == len(active):
         verdict = "HEALTHY"
@@ -51,7 +58,8 @@ def survey(targets, *, sha="a" * 40, blocks=(), decisions=()):
             "source_blocks": list(blocks), "stranded": stranded, "targets": targets,
             "active": len(active), "current": len(current), "identity": identity,
             "repairable": repairable, "owner_gated": gated, "decisions": list(decisions),
-            "undelivered": undelivered, "questions": {}}
+            "undelivered": undelivered, "mismatched": bad, "verify_note": note,
+            "questions": {}}
 
 
 def T(tid, state, owner="active", local_only=0):
@@ -124,8 +132,32 @@ check("H12c ... and says so in words the owner can act on, without git vocabular
       "a fresh copy of those projects would still get the old ones" in r
       and "push" not in r.lower())
 
-s = survey([T("a", "CURRENT", local_only=0), T("b", "CURRENT", local_only=0)])
-check("H12d nothing unpushed leaves HEALTHY reachable", s["verdict"] == "HEALTHY")
+s = survey([T("a", "CURRENT", local_only=0), T("b", "CURRENT", local_only=0)],
+           verify_note="")
+check("H12d nothing unpushed and content verified leaves HEALTHY reachable",
+      s["verdict"] == "HEALTHY")
+
+# ---------------------------------------- a receipt is not evidence; content is the last gate
+s = survey([T("a", "CURRENT"), T("b", "CURRENT")], mismatched=["b"], verify_note="")
+check("H12e a replica whose installed CONTENT differs from the release is not healthy",
+      s["verdict"] == "REPAIRING")
+
+check("H12f ... and the owner is told in counts, not in file paths",
+      "1 of 2 projects are not yet holding exactly the methods they should be"
+      in H.render(survey([T("a", "CURRENT"), T("b", "CURRENT")],
+                         mismatched=["b"], verify_note="")))
+
+s = survey([T("a", "CURRENT")], verify_note="content verification unavailable")
+check("H12g verification that could not RUN is unverified, never clean",
+      s["verdict"] == "REPAIRING")
+
+s = survey([T("a", "CURRENT")], verify_note="could not materialise the release to compare against")
+check("H12h a missing release to compare against also blocks HEALTHY",
+      s["verdict"] == "REPAIRING")
+
+s = survey([T("a", "STALE")], mismatched=["a"], verify_note="")
+check("H12i the expensive content check is skipped once something is already broken",
+      s["mismatched"] == [] and s["verify_note"] == "not reached")
 
 # ------------------------------------------------------------------------ the four lines
 for label, s in [

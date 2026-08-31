@@ -33,7 +33,9 @@ Read-only except for --park/--close, which append to ~/.bmad-owner-decisions.jso
 import argparse
 import importlib.util
 import json
+import shutil
 import sys
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -113,6 +115,47 @@ def local_only(t):
     return int(n) if n.isdigit() else 0
 
 
+def content_verified(targets, release_sha):
+    """-> (list of target ids whose INSTALLED CONTENT does not match the release, note).
+
+    A receipt is not evidence. On 2026-08-31 the distributor refused thirteen of fourteen
+    targets, exited 0 anyway, and the release tool wrote all fourteen a receipt — so every
+    signal upstream of this one said delivered while the files on disk were stale. The only
+    honest answer compares content, so before HEALTHY can be claimed the release is
+    materialised at its exact commit and every target is diffed against it.
+
+    Run ONLY on the otherwise-clean path, because it costs a worktree: if anything is
+    already known broken the verdict is decided without it. Returns ([], reason) when the
+    check could not run — the caller must treat that as unverified, never as clean.
+    """
+    verifier = Path(__file__).resolve().parent / "verify-installed.py"
+    if not verifier.is_file() or not release_sha:
+        return [], "content verification unavailable"
+    spec = importlib.util.spec_from_file_location("verify_installed", verifier)
+    V = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(V)
+
+    tmp = Path(tempfile.mkdtemp(prefix="bmad-verify-"))
+    wt = tmp / "release"
+    if R.sh(["git", "worktree", "add", "--detach", str(wt), release_sha]).returncode != 0:
+        shutil.rmtree(tmp, ignore_errors=True)
+        return [], "could not materialise the release to compare against"
+    try:
+        bad = []
+        for t in targets:
+            try:
+                ok, _report = V.verify(t["path"], str(wt), quiet=True)
+            except Exception:                             # a verifier crash is not a pass
+                bad.append(t["id"])
+                continue
+            if not ok:
+                bad.append(t["id"])
+        return bad, ""
+    finally:
+        R.sh(["git", "worktree", "remove", "--force", str(wt)])
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def survey(fetch=True):
     """-> dict. Every field is measured; nothing is assumed."""
     release_sha, findings = R.source_gate(fetch=fetch)
@@ -134,7 +177,7 @@ def survey(fetch=True):
         blocks = [m for lvl, m in f if lvl == "BLOCK"]
         state, detail = (("BLOCKED", blocks[0]) if blocks
                          else R.classify(t, release_sha or ""))
-        targets.append({"id": t["id"], "state": state, "detail": detail,
+        targets.append({"id": t["id"], "path": t["path"], "state": state, "detail": detail,
                         "owner": t.get("owner", "active"),
                         "local_only": local_only(t)})
 
@@ -150,9 +193,19 @@ def survey(fetch=True):
     # whether anything is current, so the answer cannot be HEALTHY.
     unresolved = not release_sha
 
+    # Content verification is the LAST gate and runs only when nothing else is wrong, because
+    # it costs a worktree. Everything upstream of it — receipts, exit codes, the sync manifest
+    # — has been observed lying on the same day this was written, so HEALTHY is never claimed
+    # on their word alone.
+    mismatched, verify_note = [], "not reached"
+    if not (decisions or identity or gated or repairable or stranded
+            or source_blocks or unresolved or undelivered) and active:
+        mismatched, verify_note = content_verified(active, release_sha)
+
     if decisions or identity or gated:
         verdict = "OWNER DECISION NEEDED"
-    elif repairable or stranded or source_blocks or unresolved or undelivered:
+    elif (repairable or stranded or source_blocks or unresolved or undelivered
+          or mismatched or (verify_note and verify_note != "not reached")):
         verdict = "REPAIRING"
     elif active and len(current) == len(active):
         verdict = "HEALTHY"
@@ -160,6 +213,7 @@ def survey(fetch=True):
         verdict = "REPAIRING"
 
     return {"at": now(), "verdict": verdict, "release_commit": release_sha,
+            "mismatched": mismatched, "verify_note": verify_note,
             "source_blocks": source_blocks, "stranded": stranded, "targets": targets,
             "active": len(active), "current": len(current), "identity": identity,
             "repairable": repairable, "owner_gated": gated, "decisions": decisions,
@@ -167,7 +221,7 @@ def survey(fetch=True):
             "questions": {
                 "all_projects_current": bool(active) and len(current) == len(active),
                 "undelivered_improvements": (bool(stranded) or bool(repairable)
-                                             or bool(undelivered)),
+                                             or bool(undelivered) or bool(mismatched)),
                 "unsafe_or_duplicate_copies": bool(identity) or bool(gated),
                 "blocked_on_owner": bool(decisions) or bool(identity) or bool(gated),
             }}
@@ -184,8 +238,11 @@ def render(s):
         return "\n".join(lines)
 
     if s["verdict"] == "REPAIRING":
-        u = len(s.get("undelivered", []))
-        if n and c == n and u:
+        u, m = len(s.get("undelivered", [])), len(s.get("mismatched", []))
+        if m:
+            outcome = (f"{m} of {n} projects are not yet holding exactly the methods they "
+                       f"should be. I am putting that right.")
+        elif n and c == n and u:
             outcome = (f"Your methods are active in all {n} projects on this machine, but in "
                        f"{u} of them that has not been saved anywhere else yet — a fresh copy "
                        f"of those projects would still get the old ones.")
