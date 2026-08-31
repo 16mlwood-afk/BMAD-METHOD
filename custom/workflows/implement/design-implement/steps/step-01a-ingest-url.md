@@ -15,7 +15,7 @@ description: 'URL PATH of step-01 ingest: acquire a Claude Design bundle (legacy
 
 ### URL.1. Acquire the Design Bundle — two URL sub-kinds
 
-A `{design_url}` is one of **two** sub-kinds, ingested differently. Detect by URL shape, then take the matching branch. Both converge on the same exit state: a local `{design_dir}` populated with the design files (HTML/JSX + `tokens/*.css` + `readme.md`), so URL.2 onward is unchanged.
+A `{design_url}` is one of **two** sub-kinds, ingested differently. (A **third** entry point skips this section entirely: a *mirrored design-source directory* arrives with `{design_dir}` already populated and `{design_url}` unset — workflow.md detection rule 5 — and starts at URL.1c.) Detect by URL shape, then take the matching branch. Both converge on the same exit state: a local `{design_dir}` populated with the design files (HTML/JSX + `tokens/*.css` + `readme.md`), so URL.2 onward is unchanged.
 
 - **`…api.anthropic.com/.../h/<id>`** (legacy tar artifact) → **URL.1a (curl + tar)**.
 - **`claude.ai/design/p/<uuid>`** (a Claude Design *project* served through the **DesignSync** / `claude_design` MCP — the modern share-link the `/bmad:bmm:workflows:design-implement` command surface emits) → **URL.1b (MCP fetch)**. A `curl` of this URL returns HTML/a redirect, not a tar — never run the tar branch on it.
@@ -53,6 +53,48 @@ This URL is a design-system project read through the **DesignSync** (`claude_des
 
 0. **Resolve `{design_file}` BEFORE fetching — and URL-decode it.** The `<uuid>` in `claude.ai/design/p/<uuid>` is the DesignSync `projectId`. The target file comes from one of two places, in this order: (a) the `Implement: <file>` line if the input was Claude Design's paste-prompt — it is **already path-decoded** (e.g. `orders-spend/Spend Analysis.html`), use it verbatim; (b) otherwise the URL's `?file=<path>` query param, which is **percent/`+`-encoded** and MUST be decoded — `%2F`→`/`, `+`→space, `%20`→space (e.g. `?file=orders-spend%2FSpend+Analysis.html` → `orders-spend/Spend Analysis.html`). The decoded value is the project-relative key `get_file` and the `list_files` tree match against; an undecoded `%2F`/`+` key will miss every file. If neither source is present, leave `{design_file}` unset and default it at step 4.
 1. `get_project` with `projectId = <uuid>`; verify `type: PROJECT_TYPE_DESIGN_SYSTEM`. (If auth is missing, run `/design-login` first, per the command surface.)
+
+> **1a. PROJECT NOT FOUND — `list_projects` is the diagnostic, and the usual answer is "not a design system", not "broken auth".** A `404 {"code":"not_found","message":"project not found"}` from `get_project` — or from `list_files` on the same id — has **three** causes needing three different remedies, and printing the bare HTTP code sends the operator hunting through all of them. **Disambiguate deterministically: call `list_projects` with no `projectId`.**
+>
+> | `list_projects` result | Cause | Remedy |
+> |---|---|---|
+> | fails / unauthenticated | the session holds no design authorization | run `/design-login`, then re-invoke. **This is the only case `/design-login` fixes.** |
+> | succeeds, and `<uuid>` **is** listed | transient | retry `get_project` once; if it 404s again, report the error and stop (URL PATH's standard retry rule). |
+> | succeeds, and `<uuid>` is **NOT** listed | the share-link points at a project this MCP **cannot reach** — see below | mirror locally, or move the design into a design-system project. **Do not retry, and do not send the operator to `/design-login`.** |
+>
+> **The third row is the common one, and it is not a fault.** DesignSync reads *writable design-system* projects only (`PROJECT_TYPE_DESIGN_SYSTEM`; `list_projects` states it filters to writable). A Claude Design **canvas** project is a different project type, so it is invisible to this MCP **by construction** — no credential, no re-auth and no retry will ever make `get_project` resolve it. Yet `claude.ai/design/p/<uuid>` is precisely the link Claude Design's own "Send to local coding agent" panel emits from a canvas, so this arrival is **routine, not malformed input**. Observed 2026-08-21 (cash-recovery `/held`): `get_project` and `list_files` both 404'd on `cc6cae36…` while `list_projects` returned eight healthy projects — auth was fine, and the project simply was not one of them.
+>
+> **Two routes out. Prefer the first — it always works and needs no MCP at all.**
+>
+> 1. **Mirror the design source into the repo (RECOMMENDED).** Export the design from Claude Design and save its files — the `.dc.html` frame document, `support.js`, and **every sibling `<Name>.dc.html` a `<dc-import name="…">` references** — into `{implementation_artifacts}/design-source-<target_slug>-<YYYY-MM-DD>/`. Then re-invoke `design-implement` **against that directory**: Input Resolution accepts a mirrored design-source directory as a first-class input (workflow.md detection rule 5), sets `{design_dir}` to it, and resumes at **URL.1c** — the fetch is already satisfied and everything downstream is mechanism-agnostic. The convention is already in use in consuming repos (`design-source-*` directories sit beside the manifests); the workflow simply had no way to *offer* it.
+> 2. **Move the design into the design-system project.** Save the canvas into the project `list_projects` names for this repo, then re-paste the share-link. Slower, but it restores the normal MCP path for every later run.
+>
+> **PRINT THIS, never the raw HTTP code:**
+>
+> ```
+> ✗ design-implement cannot reach this design project.
+>
+>   projectId:      <uuid>
+>   get_project:    404 not found
+>   list_projects:  OK — <n> project(s) visible, and <uuid> is NOT among them
+>
+> DesignSync reads design-system projects only. A Claude Design canvas is a
+> different project type, so this share-link is unreachable by construction —
+> re-authenticating will not change that.
+>
+> Fastest fix — mirror the files, then re-invoke against the directory:
+>   1. Export from Claude Design: the .dc.html, support.js, and any sibling
+>      .dc.html a <dc-import> references.
+>   2. Save to _bmad-output/implementation-artifacts/design-source-<slug>-<date>/
+>   3. /bmad:bmm:workflows:design-implement <that directory>
+>
+> Alternative: save the canvas into "<the design-system project list_projects
+> named for this repo>" and re-paste the share-link.
+> ```
+>
+> **Do not confuse this with §2a below.** 2a is a **reachable project with a missing target file** — recover the design by slug from `ui_kits/`. This is an **unreachable project**: there is no tree to search, so slug recovery has nothing to run against and must not be attempted.
+>
+> **Enforcement honesty.** DETERMINISTIC for the *diagnosis* — `list_projects` mechanically separates the three causes, and the third is a set-membership test with no judgement in it. PROBABILISTIC for everything after: nothing verifies the operator exported the complete sibling set, and a mirror missing a `<dc-import>` sibling ingests as a thin-but-plausible catalog that only URL.6's near-empty guard might catch.
 2. `list_files` to enumerate the project tree (HTML/JSX frames, `tokens/*.css`, `readme.md`, data/app modules).
 
 > **2a. TARGET MISSING — the wrapper is gone but the design is not. DEGRADE, do not refuse.** Check `{design_file}` against the `list_files` tree *before* fetching it, and treat a `get_file` **404** the same way. **A deleted wrapper is a normal, expected state, not a malformed input:** Claude Design's "Send to local coding agent" panel emits a *stable* prompt per file, so a paste stays valid long after the project has been reorganized and that `templates/<slug>/<Frame>.html` renamed or deleted — while the design itself lives on in `ui_kits/<slug>/*.jsx`. Observed 2026-07-28 (project `f93d6a81`): `templates/claim-evidence-pack/ClaimEvidencePack.html` 404'd with all four of its modules — `PackApp.jsx`, `ClaimsQueue.jsx`, `ClaimWorkspace.jsx`, `pack-data.js` — intact and complete.

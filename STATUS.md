@@ -23,6 +23,14 @@ The compact, always-current state. The skill reads THIS block + the top of `## C
 >    - **2026-07-28** — design-implement **§3b Already-shipped recall** (step-02b) + `{prior_applied}` + §9 prior-commit attribution + step-01a's 404 target-degradation ladder (FG-2026-07-28, owner-routed "fix it now"). Closes the lifecycle asymmetry: intake could spot a HALTED run, a CHECKPOINTED run and a net-new surface, but not a design **already applied and shipped** — so a re-paste of the (stable) Claude Design prompt spent a full ingest + map + grid to rediscover the work was done and deployed.
 >      **Precondition before fan-out:** confirm on a live project that the middle verdict `prior-pass-residual-deltas` **does not exit the run** — it must CONTINUE and only re-frame the report. That is the whole point (the motivating run found a real defect *after* the design had shipped — cash-recovery PR #525); an implementation that exits there has inverted the fix into a regression, silently.
 >
+>    - **2026-08-16 — `JQ_MERGE` permissions destruction (SAFETY, uncommitted).** The settings merge replaced a project's whole `permissions` block: measured against the live template with a disposable fixture, `permissions.allow` (3 entries) and `permissions.deny` (1 entry) were **DROPPED** and `defaultMode` was **escalated `acceptEdits` → `bypassPermissions`** — on every sync, invisibly, because the sync prints nothing about permissions. Cause: `($template.permissions // .permissions // {})`, where the template object is truthy so `//` always returned it. **Fix (1 line):** `(($template.permissions // {}) * (.permissions // {}))` — template supplies defaults, project wins (jq recursive `*` resolves right-side-last). **Regression evidence:** `tools/verify-settings-merge.sh`, 9/9 green, extracting `JQ_MERGE` **verbatim** from `sync-bmad-workflows.sh` so it cannot certify a drifted copy (same discipline as `verify-policy-freshness-gate.sh`). Covers allow/deny/restrictive-defaultMode preservation, template-default-on-empty-project, local non-`bmad-` hook survival, base-only event untouched, and the two defects below.
+>      **Second defect found in the same audit — NOW ALSO FIXED (owner granted a protective exception 2026-08-16):** the template ships `enableAllProjectMcpServers: true`, and the same `//` shape meant a project's explicit `false` was **silently flipped to `true`** on every sync, auto-enabling project-scoped MCP servers against the project's stated choice. Fixed with `has()` so an explicit `false` is distinguished from an absent field; only absent takes the template default. Pinned as S1/S2/S3 (false stays false · true stays true · absent defaults). (The first cut of that case used `true` in the fixture and so could not tell preservation from override — a test that could not fail; corrected.)
+>      **STATUS: LOCALLY VERIFIED, NOT DISTRIBUTED. Committed `77cf049a` + `41251373`, NOT pushed, NO sync run.** State the scope precisely, because the earlier wording here overclaimed: the fixes apply **only to sync executions launched from THIS repaired local fork checkout**. They change **no project** until such a sync actually runs, and they are **unavailable to any other machine until the commits are pushed**. Nothing is protected right now beyond this checkout.
+>      **Why no sync, and why one would have been wrong.** A run delivers the entire `custom/` tree — including files other sessions had uncommitted at the time and the batched items whose preconditions are undischarged. **`--only` scopes PROJECTS, not content**, so it cannot exclude other custom-tree material; treating it as a content filter is a mistake to avoid on the next attempt. The fork was also one commit ahead of an unpushed branch, so a sync would have propagated state existing nowhere in git.
+>      **Evidence preserved for the eventual push/sync decision** — `tools/verify-settings-merge.sh`, 13 cases: (1) `bash -n` guard proving the shell script parses; (2) apostrophe-inside-single-quoted-`JQ_MERGE` guard — both added because a comment apostrophe in `77cf049a` broke the script at HEAD while the then-11-case suite stayed green, since awk extraction cannot see a quoting error; (3) the verbatim-extraction suite covering allow/deny/restrictive-defaultMode preservation, template-default-on-absent, and the explicit/absent MCP cases; (4) a scan of all 14 projects finding **zero live `statusMessage` collisions** — **time-bound, not permanent proof**: it reflects those settings files at 2026-08-16 and another session may add a colliding hook at any time. The collision limitation therefore stays documented and deliberately un-broadened.
+>      **Remaining limitation — `statusMessage` is a second, undocumented identity field.** A local hook whose name is NOT `bmad-`-prefixed is still dropped if any of its `statusMessage` values collides with a template hook's. Pinned as case H4 against a real template string. Not fixed.
+>      **Blast radius when this eventually syncs:** every project the fan-out touches, at `<project>/.claude/settings.local.json` only. The fix is strictly *protective* — it stops destruction that is happening today; it grants nothing and changes no hook wiring. Audit surface is small and now enumerated: `JQ_MERGE` writes exactly four things (`hooks[$event]` for template events only, `permissions`, `enableAllProjectMcpServers`, `$schema`); every other key and every base-only hook event passes through untouched.
+>
 >    **Preconditions — verify BEFORE running the sync, not after (owner-set 2026-07-26):**
 >    1. **Re-verify `unrouted-golden-matrix.md` row 3 against a live project.** Row 3 is the regression row — a component created inside an EXISTING route with no non-test importer. It PASSES under the old trigger and must FAIL under the new one. If it does not fail, the widening is not doing its job and must not fan out.
 >    2. **Confirm `◐` appears correctly in at least one REAL manifest** — not a fixture — and that its rows are listed above the grid with a named follow-up.
@@ -45,6 +53,49 @@ The compact, always-current state. The skill reads THIS block + the top of `## C
 > **Older wave one-liners moved to [`STATUS-archive.md`](./STATUS-archive.md)** (2026-07-20): `## Now` carried 21 `Latest wave`/`Prior wave` bullets against the budget gate's ceiling of 6, so the 15 oldest were moved VERBATIM to the archive's "moved out of `## Now`" section. Nothing was deleted, and the gate itself was NOT relaxed - `MAX_NOW_WAVE_BULLETS` stays 6.
 ## Changelog
 
+
+### 2026-08-09 — design-implement gains a bounded COMMIT-BOUNDARY pass (step-02b §4e)
+
+**What.** A conditional pass in `design-implement`'s capability-delta preflight that fires only when
+the surface carries an outward write, durable mutation, approval, binding/merge, retry, or a
+pre-commit evidence review. When it fires it requires nine lifecycle determinations — durable
+object · states · transitions · evidence snapshot · freshness · preconditions · success/failure/
+**unknown-external** outcomes · idempotency · the ONE control that performs the write — recorded as a
+`commit_boundary:` block in the §4d preflight artifact (on a halt) or the grid artifact header.
+Ships with `tools/check-commit-boundary.js` (`--scan` trigger signals, `--check` field presence),
+`commit-boundary-golden-matrix.md`, and `npm run test:commit-boundary` (12 cases, wired into
+`npm test`).
+
+**Why.** cash-recovery `/listings`: "Preview what will be sent" and "Re-attempt publish" pointed at
+the same target around an irreversible eBay write, with no durable attempt, no states, no snapshot
+of the reviewed payload, no staleness rule, no idempotency. Every check ahead of the grid was blind
+to it by construction — the capability delta saw "publish" on both sides, the grid is CSS-only, and
+UI-copy review could not find it because **nothing was misworded**. `design-handoff` §3d is the
+nearest neighbour and does not reach it: it fires only on a processing cockpit and captures operator
+momentum, not the durable object. A shortfall is classified an **interaction-model gap** — remedied
+by the smallest stateful flow mapped onto named frames and routed through `{added_capabilities}`
+(existing `capability-build` machinery, no new tag), never by a relabel or an extra confirm dialog.
+
+**Scope.** Additive and narrow. No change to §4, §4b, §4c or the grid; §4d's persist rule now names
+§4e alongside them. Read-only and reversible surfaces skip in one line — the pass is a narrow
+trigger, not a tax on ordinary UI work.
+
+**Enforcement honesty.** The pass is PROBABILISTIC (workflow prose; a rendered comp is not a tool
+call). The script is DETERMINISTIC for **two questions only** — did a trigger signal appear, and are
+the nine fields present and non-placeholder. It cannot and does not judge whether the state model is
+correct. Warn-only by default; not wired into any hook or CI.
+
+**Verification.** `npm test` green (exit 0) including the new suite. Beyond fixtures, the detector
+was run against **nine real cash-recovery routes**: `/listings`, `/pricing`, `/reimbursements`,
+`/staging`, `/approvals` fire; `/ingestion-runs`, `/lineage`, `/raw-records`, `/recovery` stay quiet.
+That probe removed two signal terms that were false-firing (`authorise` — access control, not
+approval, hitting three read-only routes via a `request-authorized` comment; `void` — a TypeScript
+keyword) and caught a real defect in the tool: `process.exit()` truncated a >64KB piped `--json`
+report mid-string. Both are pinned as golden rows (G11, G12).
+
+**Delivery.** **Fork commit only — the 14-project fan-out was deliberately NOT run** (distribution
+stop, owner's call). `custom/skills-native/` is a generated tree and was not regenerated, so the
+skills-layout port of design-implement does not yet carry §4e.
 
 ### 2026-08-05 — sync warns when it is about to deliver onto a STALE BASE (`report_stale_delivery_base`)
 

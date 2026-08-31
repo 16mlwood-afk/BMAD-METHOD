@@ -38,6 +38,21 @@ policy_version_required: {policy_version}     # version of docs/design-policy.md
 last_modified_by: workflow
 last_modified_date: {date}
 
+# Surface admission — WHY this surface is entitled to exist (rendered only when {is_new_surface}).
+# A brief for a route that already ships carries `surface_admission: pre-existing` and nothing more:
+# this field governs ADMISSION, and re-litigating the standing estate is what makes such a policy a
+# form nobody reads. Where the project keeps a scope register, `record:` points at the row that holds
+# the argument and names its READER — the answers must be evaluated by someone other than their
+# author, and no field here can verify that. `not-a-route` never reaches this template: step-01 §5d
+# halts on it.
+surface_admission:                       # `pre-existing`, or the five answers below
+  outcome: {admission_outcome}           # what outcome does this surface change? (a surface that changes none is a liability)
+  instead_of: {admission_instead_of}     # why a route rather than a section, a drawer, or a link on an existing surface
+  standing: {admission_standing}         # who the operator is, and when they are standing in a position to open it
+  already_answered: {admission_already}  # which existing surface answers this today, and why it is not enough
+  retire_when: {admission_retire_when}   # the OBSERVABLE that triggers review or retirement — without it the policy governs only growth
+  record: {admission_record}             # pointer to the register row carrying the argument, and who read it
+
 # Block B — Content (see shared/brief-revision-policy.md §2)
 mode: {handoff_mode}                     # fresh-design | refine-screen
 surface_class: {surface_class}           # page | chrome (absent ⇒ page). chrome = app-shell (nav/top-bar/sidebar/shell): page_mode is n/a and the composition/band lines below are OMITTED ENTIRELY — see brief-revision-policy.md Block B surface_class row

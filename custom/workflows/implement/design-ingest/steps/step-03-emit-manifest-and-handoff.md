@@ -78,6 +78,16 @@ Then **verify by running the tool, not by adding it up again:**
 node ~/bmad-method-v6/tools/check-ingest-manifest.js --manifest {manifest_path} --strict
 ```
 
+**EXIT 2 IS A REFUSAL, NOT A FINDING COUNT (2026-08-21).** The checker now exits **2** when a
+frame is `drawn: true` in the frame inventory and has **no section-inventory entry**. That is
+not a partial manifest — it is a manifest whose own frame inventory contradicts its own
+section inventory, so every count computed below it has a denominator the manifest itself says
+is incomplete. **Do not emit.** Either enumerate the frame, or set `drawn: false`, which the
+schema already routes downstream as FRAME NOT DRAWN and which a consumer can act on.
+
+Exit **1** is the ordinary strict failure (findings present); exit **2** says the artifact must
+not ship as it stands. A caller that treats every non-zero the same cannot tell them apart.
+
 A non-zero exit is a **HALT** — fix the manifest and re-run; do not emit. It asserts, independently of your own arithmetic: grid rows == `sections_total` (C1) · per-frame grid rows == each frame's declared `(N sections)` heading (C2) == `sections_per_frame[frame]` (C3) · every `drawn: true` frame in BOTH the section inventory and the scaffold (C4) · no grid rows for an undeclared frame (C5) · `frames_with_empty_section_list` empty (C6) · the §2a grain pair (C7) · no duplicate frame rows (C8) · `sections_per_frame` sums to `sections_total` (C9).
 
 **Quote the checker's output in the handoff — a claim with no run is UNVERIFIED.** "Invariants satisfied" without the command's result is exactly the assertion this replaced.

@@ -49,7 +49,27 @@ if {input_kind} == "ingest_manifest":    → read ./step-01c-ingest-manifest.md 
 
 Workflow.md's Input Resolution has already populated `{input_kind}`, `{design_url}` (URL path), `{bundle_dir}` + `{bundle_manifest}` (bundle path), or `{ingest_manifest}` (manifest path). For the bundle path, the refusal gates (`dev_no_render`, `needs_human_review`) have cleared; for the manifest path, the completeness-invariant gate (no drawn frame with an empty section list) has cleared — if execution reached this step with that `{input_kind}`, the manifest is good.
 
-**The MANIFEST PATH is the context fix.** A large bundle (~140KB JSX) does not fit one ingest context — the failure mode was shortcutting the exhaustive per-component catalog to fit, which let a whole *section* go unenumerated. When `design-ingest` has already fanned out per-frame and emitted a reviewed grid scaffold, that path reads the scaffold instead of re-cataloging; the exhaustive enumeration already happened, durably, in `design-ingest`. **Read its grain first (`MANIFEST.1a`)** — the scaffold is only a value source when it says it is.
+**The MANIFEST PATH is the context fix — for VALUES, and only for values (owner ruling 2026-08-21).** A large bundle (~140KB JSX) does not fit one ingest context, and the failure mode was shortcutting the exhaustive per-component catalog to fit. When `design-ingest` has already fanned out per-frame and emitted a reviewed grid scaffold, that path reads the scaffold instead of re-cataloging **property values**. **Read its grain first (`MANIFEST.1a`)** — the scaffold is only a value source when it says it is.
+
+> **SOURCE REVIEW IS NOT WAIVABLE BY GRAIN.** Every run — URL, bundle, or manifest, at any
+> `manifest_grain`, including `value-exact` — **opens the authoritative design source and
+> verifies frame structure, ordered top-level sections, and layout geometry** before any row is
+> marked applied and before any fidelity verdict is issued. `manifest_grain` governs one thing:
+> whether individual **resolved property values** need re-reading. It never waives review of
+> **existence, order, hierarchy, composition, or geometry.**
+>
+> **Why the ruling exists.** The manifest is a section-and-property artifact. It has no slot for
+> layout geometry at all, it carries order only implicitly as inventory order with nothing
+> asserting it, and its frame-completeness gate proves a section list is *non-empty*, never that
+> it is *complete*. So a manifest can be arithmetically perfect, pass `check-ingest-manifest.js`
+> clean, declare `value-exact` honestly — and still be three sections short, in the wrong order,
+> at the wrong column ratio. That is not a hypothetical: `design-ingest-clerk-grading-workspace-v2.md`
+> was exactly that, and it drove ten days of rework across 57 commits and 27 deploys while every
+> instrument stayed green.
+>
+> **The cost is real and is accepted.** This re-reads the design source on every run, including
+> runs whose manifest is genuinely value-exact. The alternative is a consumer that skips the one
+> artifact that can answer the questions the manifest cannot represent.
 
 ---
 
@@ -64,6 +84,27 @@ Both paths converge here. `{design_components}` (with embedded `.properties` per
 ### SHARED.1. Verify the catalog is non-empty — necessary, NOT sufficient
 
 **Non-empty is a floor, not a grain check.** A prose-only manifest yields a non-empty `{css_property_catalog}` — every section still produces a row, the rows just carry prose — so this check passes on exactly the input MANIFEST.1a exists to catch. The two are a pair: **SHARED.1 proves rows exist; `{manifest_grain}` proves they carry values.** Never read a green SHARED.1 as "value-exact."
+
+**THE EFFECTIVE GRAIN, NOT THE DECLARED ONE (2026-08-21).** `check-ingest-manifest.js` now
+reports an `effective_grain` alongside the declared field, and **the consumer branches on the
+effective value.** It differs from the declared one in exactly two cases, both of which mean
+*nothing verified the claim*:
+
+- the declared value is **not in the enum** (`C14-GRAIN-ENUM` — observed in the wild as
+  `manifest_grain: full`), so no branch of the table matches and no default applies; or
+- the **grid invariants C1–C5 could not be evaluated** — an unparsed grid, or one keyed on
+  something the parser does not recognise. `value-exact` promises the consumer it may skip the
+  design source; when the grid is unreadable, nothing substantiates that promise.
+
+In both cases the effective grain is **`summary`**: treat the manifest as the section
+denominator only and **open the authoritative design source for values.** The frontmatter is
+**not** rewritten and is not the authority here — the failure direction is an unnecessary
+source re-read, never a wrong value, which is the same logic the schema already applies to an
+absent field.
+
+Run the checker and read `effective_grain` from its `--json` output rather than parsing the
+frontmatter yourself; a consumer that reads the raw field re-creates exactly the gap this
+closes.
 
 On the manifest path, also assert before leaving this step: `{manifest_grain}` is set (absent ⇒ `summary`); if it claims `value-exact` then `completeness.sections_missing_property_rows` is **empty** — if not, the manifest is internally inconsistent (`design-ingest` step-03 §2a should have halted), so downgrade to `partial`, re-read the listed sections, and disclose it in SHARED.2; and on `partial`/`summary` the required re-read has actually happened *here*, not deferred to step-03 where no source remains in context.
 

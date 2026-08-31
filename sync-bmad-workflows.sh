@@ -189,8 +189,18 @@ JQ_MERGE='
       + $template.hooks[$event]
     )
   )
-  | .permissions = ($template.permissions // .permissions // {})
-  | .enableAllProjectMcpServers = ($template.enableAllProjectMcpServers // .enableAllProjectMcpServers // false)
+  | .permissions = (($template.permissions // {}) * (.permissions // {}))
+  # Project WINS when the key is present — including an explicit `false`, which `//`
+  # could never preserve: false is falsy in jq, so a truthy template value always won and
+  # silently auto-enabled project-scoped MCP servers against the stated project choice.
+  # `has()` distinguishes "explicitly false" from "absent"; only absent takes the default.
+  # NOTE: JQ_MERGE is a single-quoted bash string — NO APOSTROPHES anywhere inside it.
+  # One in a comment terminates the quote and the rest of the block becomes shell code
+  # (broke this script at HEAD on 2026-08-16; caught by `bash -n`, not by the jq suite,
+  # which extracts the text and therefore cannot see a quoting error).
+  | .enableAllProjectMcpServers = (
+      if has("enableAllProjectMcpServers") then .enableAllProjectMcpServers
+      else ($template.enableAllProjectMcpServers // false) end)
   | .["$schema"] = "https://json.schemastore.org/claude-code-settings.json"
 '
 
