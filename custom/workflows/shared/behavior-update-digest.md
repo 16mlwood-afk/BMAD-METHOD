@@ -30,6 +30,14 @@ When an audit/observation result is produced, the close-out's next-actor element
 - **`owner_gated`** — anything needing explicit approval (prod-data mutation, destructive migration, cross-repo fork doctrine, scope/plan change). NAME each, with why it is gated.
 - **`completion_disposition`** — per STD-COMPLETION-001: declare what was ACTUALLY done this turn (doctrine only? + story drafted? PR opened?) vs what remains. For an audit flow this is the `advisory` disposition specialized to enumerate the four deltas' real state, so the digest cannot masquerade as complete. Diagnosis with no disposition is the invalid commentator exit.
 
+## 2a. Every claimed behavioural defect carries its source-context evidence block
+
+A digest reports *findings*. A finding is a claim that some file, rule, or configuration **causes** behaviour — and a claim built on a search hit is a lead, not a result. So every claimed behavioural defect entering this digest carries the eight-field evidence block from `shared/source-context-gate.md` (STD-SRCCTX-001 §3): the governing source block, the exceptions/precedence checked, the live configuration or state checked, the observed execution or test evidence, and the resulting verdict (`active` / `inactive` / `overridden` / `dead` / `documentation-only` / `ambiguous`).
+
+**A claim with any field missing is a HYPOTHESIS.** It may be reported — under that word — and it may justify further investigation. It may **not** become a `doctrine_delta`, a `handoff_delta`, or a `story_candidate`, and it may not be written into a register or status line in the grammar of a confirmed finding. `ambiguous` is a legitimate terminal verdict; forcing it into `active` to give the audit something to execute is the failure this clause closes.
+
+This is why §3's auto-execute is safe: the safe stages act on *verified* deltas. Auto-executing on an unverified phrase match is how an audit ships a contradiction into synced prose (STD-SRCCTX-001, owner-named 2026-08-31). Do not restate the block here — point at the standard.
+
 ## 3. Auto-execute the safe stages — don't just list them
 
 The digest is not a menu. Within guardrails (the `do-all-batch-autonomy` / `finisher-drive-to-completion` posture), the terminal step **executes the safe stages immediately** and reports them as done:

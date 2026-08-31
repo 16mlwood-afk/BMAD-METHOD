@@ -50,3 +50,5 @@ The relevant check is the one that emits the diagnostic class:
 Every implementation workflow's "done/verified" step is gated by this rule. A step may only emit a "verified / gate green / tests pass" status when, for every diagnostic that surfaced during the run, either (a) a current-checkout re-run proved it clear, or (b) it was fixed/escalated as a failure. Disclose which — don't let a cleared-by-reasoning diagnostic pass silently.
 
 Pairs with each project's own pre-flight/build expectations (project `CLAUDE.md`) and with `delivery-to-main.md` (a gate that isn't green doesn't get delivered).
+
+**Investigation-side sibling.** This gate governs a claim about a *result* — "tests pass", "build green" — which is RED until a re-run proves it. Its counterpart, `shared/source-context-gate.md` (STD-SRCCTX-001), governs a claim about a *cause* — "this rule makes it behave that way" — which is a HYPOTHESIS until the governing block, exceptions and precedence, live enablement, and observed execution are established. Same discipline at opposite ends of the work: here, prove before you assert; there, read before you conclude.

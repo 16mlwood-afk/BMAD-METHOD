@@ -52,7 +52,17 @@ def out(args, cwd=None):
 # files in cash-recovery look human-authored when they were the current release verbatim.
 # Normalise both sides before hashing, or the classifier over-preserves and every repair
 # stalls on phantom local edits.
-_REWRITE = re.compile(rb"(\{project-root\}/)?_bmad/bmad-shared/")
+# NORMALISE BY EVERY REWRITE THE DISTRIBUTOR APPLIES, not just the commonest one.
+# Folding `_bmad/bmad-shared/` alone rewrites the INSTALLED side and leaves the SOURCE side
+# untouched, so a correctly delivered file hashes as differing forever. In the verifier
+# that produced seven phantom "stale" files and nearly bought a rewrite of a distributor
+# that had no bug. The same one-sided fold lived here, where its effect is the opposite and
+# worse: content that matches a release reads as USER_AUTHORED, so genuine repair is held
+# back on files nobody wrote. Every shared location folds to ONE token, including the
+# fork's own bare `shared/` form.
+_REWRITE = re.compile(
+    rb"(\{project-root\}/)?(_bmad/(bmad-shared|bmm/workflows/design/shared"
+    rb"|bmm/workflows/shared)|shared)/")
 
 
 def blob(data):
