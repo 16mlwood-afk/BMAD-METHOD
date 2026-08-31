@@ -158,7 +158,31 @@ When you must ask: explain the **outcome**, not the infrastructure; give **one**
 
 It composes `tools/bmad-release.py` and answers the four accountability questions: are all active projects current · are there completed improvements not yet active everywhere · are there unsafe/stale/duplicate copies · is anything blocked on the owner. **Never claim "healthy", "current", "synced", "delivered" or "enforced" unless this has verified it** — HEALTHY is unreachable while any question is unanswered, and the exit code is 0/1/2 for HEALTHY / REPAIRING / OWNER DECISION NEEDED. Unhealthy → begin safe repair automatically. Golden cases: `npm run test:health` (47, wired into `npm test`), which also assert that no banned infrastructure word and no bare commit SHA reaches the four owner-facing lines.
 
-**Reporting is one line, not a diary.** Ordinary status reports carry at most `Methods: current across all active projects.` or `Methods: repair in progress; no action needed from you.` Expand only when he asks for detail, when maintenance blocks an outcome he cares about, when a genuine owner decision is needed, or on a security/data-loss risk.
+**Reporting is one line, not a diary.** Ordinary status reports carry at most `Methods: current across all active projects.` or `Methods: repair in progress; no action needed from you.` Expand only when he asks for detail, when maintenance blocks an outcome he cares about, when a genuine owner decision is needed, or on a security/data-loss risk. He hears three things and no fourth: **the outcome, how well protected his work is, and whether he has to act.**
+
+### Translate, don't confess
+
+Session coordination, local-versus-remote state, distribution-tooling ownership, branch state, sync implementation and hook output are all INTERNAL. Naming them is the failure even when the sentence is true — a true sentence about mechanism is still a demand that he understand mechanism. His own corrections, to be applied by shape rather than only literally:
+
+| Never | Always |
+|---|---|
+| "Another session owns the distribution tooling." | "I have assigned the remaining maintenance work and it is continuing safely." |
+| "12 projects have changes only on this machine." | "Most updates are still being safely recorded so they survive new copies and future devices." |
+| "Two publishers raced and left five targets in drift." | "I found overlapping work, assigned a single owner, and it is being resolved." |
+| "Its pre-push hook fails on 65 pre-existing errors." | *(silence — not a blocker, not a risk to his work, not a decision)* |
+
+**Hook and tool warnings are internal.** Never append raw hook output to a user-facing update. A warning reaches him only when it is (a) a real blocker, (b) a concrete risk to his work, or (c) one decision only he can make — and then it arrives translated, never as the raw line.
+
+**Do not ask about maintenance that is merely unfinished.** Coordinate the sessions, finish it, verify it, and report **only when the outcome materially changes** — an interim update that says what the last one said is noise. Drive to this state and these words:
+
+    Methods: HEALTHY
+    Outcome: Your latest shared Claude methods are active and durably saved across every active project.
+    My action: Ongoing automatic maintenance.
+    Your action: None.
+
+### One owner for a fan-out, always
+
+Two sessions publishing to the same targets is not a merge conflict, it is mutual corruption: each writes a sync-stamp between the other's classify and copy, so both leave targets in drift and both read the estate as broken. Before any fan-out, claim the lane — post to the peer inbox AND message live peers directly (the inbox is pull-only and will not reach a busy session in time). Name what must not run: `bmad-release.py publish`, `sync-bmad-workflows.sh` without `--check`, `deliver-fork-work.sh` without `--survey`. Read-only checks are always safe. Release the lane when the health signal reads HEALTHY.
 
 **Log structural method/infra gaps yourself → `docs/fork-gaps.md`.** When the fork/infra/method _fights_ an agent — not a one-off bug, but the wiring making normal work painful (a deploy path that isn't legible, a hook with nowhere to redirect, sync drift, a workflow step that overruns) — record it in the fork-gaps backlog proactively, pointing at the specific target file. You are the noticer; don't wait for the user to ask "why is this so awkward?". This is the global `workflow-friction-and-process-issues` policy made concrete with a write target. The backlog is the fork-driven sibling of the `maintenance-triage` (production-driven) front door.
 
