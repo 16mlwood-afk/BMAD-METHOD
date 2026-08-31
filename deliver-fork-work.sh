@@ -163,18 +163,30 @@ for r in "${rows[@]}"; do
       conflicted="$(g diff --name-only --diff-filter=U)"
       [[ -z "$conflicted" ]] && { rebase_ok=false; break; }
 
-      unhandled="$(printf '%s\n' "$conflicted" | grep -v '^package\.json$' || true)"
+      unhandled="$(printf '%s\n' "$conflicted" \
+                   | grep -vE '^(package\.json|docs/fork-gaps\.md)$' || true)"
       if [[ -n "$unhandled" ]]; then
         say "   CONFLICT in files this script must not resolve for you:"
         printf '%s\n' "$unhandled" | sed 's/^/        /'
         rebase_ok=false; break
       fi
 
-      if ! (cd "$FORK" && python3 tools/resolve-package-union.py package.json); then
-        say "   package.json conflict is NOT a plain addition — a human has to choose."
-        rebase_ok=false; break
+      resolved_any=false
+      if printf '%s\n' "$conflicted" | grep -q '^package\.json$'; then
+        if ! (cd "$FORK" && python3 tools/resolve-package-union.py package.json); then
+          say "   package.json conflict is NOT a plain addition — a human has to choose."
+          rebase_ok=false; break
+        fi
+        g add package.json; resolved_any=true
       fi
-      g add package.json
+      if printf '%s\n' "$conflicted" | grep -q '^docs/fork-gaps\.md$'; then
+        if ! (cd "$FORK" && python3 tools/resolve-register-union.py docs/fork-gaps.md); then
+          say "   the register conflict is not a plain append — a human has to choose."
+          rebase_ok=false; break
+        fi
+        g add docs/fork-gaps.md; resolved_any=true
+      fi
+      $resolved_any || { rebase_ok=false; break; }
 
       if g -c core.editor=true rebase --continue >/dev/null 2>&1; then break; fi
       # another commit in the series conflicted — loop and try again
