@@ -56,7 +56,11 @@ g() { git -C "$FORK" "$@"; }
 # --- preflight -------------------------------------------------------------
 # The fork worktree must be clean in the paths the sync reads, or a rebase would carry
 # uncommitted work into custom without anyone deciding to.
-dirty="$(g status --porcelain -- custom src/modules tools test 2>/dev/null)"
+# The WHOLE tree, not just release-relevant paths. A rebase touches every path, so dirt
+# anywhere aborts it — scoping this check narrowly let a modified docs/ file through
+# preflight and then fail the rebase with a generic "conflicts" report that named the
+# wrong cause (observed 2026-08-31).
+dirty="$(g status --porcelain 2>/dev/null)"
 if [[ -n "$dirty" ]]; then
   say "The fork worktree has uncommitted changes:"
   printf '%s\n' "$dirty" | sed 's/^/    /'
