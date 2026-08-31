@@ -22,6 +22,9 @@ REAP_ONLY=false
 REAP_PATH=""
 ONLY_TARGET=""
 COMMIT_SYNCED=false
+ALLOW_UNCLEAN_SOURCE=false
+SOURCE_BRANCH=""
+SOURCE_REV=""
 
 usage() {
   echo "Usage: $0 [--check] [--force] [--only <path>] [--pull <path> | --worktree <path> | --reap [<path>]]"
@@ -31,6 +34,9 @@ usage() {
   echo "  --check         Report drift without modifying anything"
   echo "  --force         Sync even if targets have local-only content (DESTRUCTIVE)"
   echo "  --commit        After writing, scoped-commit the synced BMAD paths in each project"
+  echo "  --allow-unclean-source  Sync anyway when the FORK worktree is dirty, or when it is"
+  echo "                  not on the canonical `custom` branch. Both are refused by default"
+  echo "                  because the sync reads the working tree, not a commit."
   echo "                  (_bmad/, .claude/skills/, .claude/commands/bmad/, CLAUDE.md) so the"
   echo "                  sync has a real done-state instead of leaving a dirty tree"
   echo "  --only PATH     Sync just ONE project (its root or _bmad/bmm/workflows path); skip all others"
@@ -47,6 +53,7 @@ while [[ $# -gt 0 ]]; do
     --check) CHECK_ONLY=true; shift ;;
     --force) FORCE=true; shift ;;
     --commit) COMMIT_SYNCED=true; shift ;;
+    --allow-unclean-source) ALLOW_UNCLEAN_SOURCE=true; shift ;;
     --pull)
       [[ -z "${2:-}" ]] && { echo "ERROR: --pull requires a path argument"; usage; }
       PULL_TARGET="$2"; shift 2 ;;
@@ -83,26 +90,94 @@ for cmd in rsync jq shasum; do
   fi
 done
 
-# Durability guard (fork-gap 2026-07-05 "sync has no delivery contract", part c):
-# the sync reads the LOCAL fork working tree, so syncing while the fork is ahead of its
-# remote propagates UNPUSHED edits to every target — state that exists nowhere in version
-# control if this checkout is lost. Warn (don't block) on the main sync paths.
-# Key on the FORK's own remote branch (myfork/<branch>), NOT @{upstream} — the custom
-# branch tracks the original bmad-code-org upstream (origin/main), so @{upstream}..HEAD is
-# always ~600 (the whole fork divergence) and would fire on every sync = ignore-training noise.
-if [[ -z "$PULL_TARGET" && -z "$WORKTREE_TARGET" ]] && ! $REAP_ONLY; then
-  fork_branch=$(git -C "$SCRIPT_DIR" branch --show-current 2>/dev/null || echo custom)
-  fork_ref="myfork/${fork_branch}"
+# ---------------------------------------------------------------------------
+# FORK-SOURCE GATE (fork-gap 2026-07-05 part c, widened by FG-2026-08-31-04).
+#
+# The sync reads the fork WORKING TREE, not a commit. The original guard reasoned
+# about HEAD and counted unpushed COMMITS, so the two halves disagreed about what
+# "the source" even is, and everything in the gap shipped in silence:
+#   * uncommitted edits under custom/ or src/modules/ were distributed to every
+#     target while existing nowhere in git (observed 2026-08-31: two substantive
+#     fork changes reached inbound-flow this way);
+#   * whatever branch happened to be checked out became the source of truth, with
+#     no mention that it was not custom (observed the same day: a feature branch
+#     20 commits off custom).
+# So the gate now checks the tree the rsync actually reads, names the exact
+# revision it is distributing, and REFUSES both conditions by default.
+#
+# Refuse, do not warn: a warning here is read as noise precisely because a fork
+# checkout is dirty most of the time. --allow-unclean-source is the deliberate exit.
+# --check stays read-only and only reports.
+#
+# The unpushed-commits check keys on the FORK remote (myfork/<branch>), NOT
+# @{upstream} — custom tracks the bmad-code-org upstream, so @{upstream}..HEAD is
+# always ~600 commits and would fire on every sync = ignore-training noise.
+CANONICAL_SOURCE_BRANCH="custom"
+# Paths the fan-out actually reads. Dirt anywhere else in the fork is irrelevant
+# to what gets distributed and must not block a sync.
+SOURCE_READ_PATHS=(custom src/modules)
+
+fork_source_gate() {
+  SOURCE_BRANCH=$(git -C "$SCRIPT_DIR" branch --show-current 2>/dev/null || echo "(detached)")
+  SOURCE_REV=$(git -C "$SCRIPT_DIR" rev-parse HEAD 2>/dev/null || echo "(unknown)")
+  local short_rev subject dirty refuse=0
+  short_rev="${SOURCE_REV:0:12}"
+  subject=$(git -C "$SCRIPT_DIR" log -1 --format=%s 2>/dev/null | cut -c1-64)
+
+  echo "SOURCE ${SOURCE_BRANCH} @ ${short_rev} — ${subject}"
+
+  dirty=$(git -C "$SCRIPT_DIR" status --porcelain -- "${SOURCE_READ_PATHS[@]}" 2>/dev/null || true)
+  if [[ -n "$dirty" ]]; then
+    echo "  ⛔ the fork worktree is DIRTY in the paths this sync reads:"
+    echo "$dirty" | sed 's/^/       /'
+    echo "     The rsync copies the working tree, so these would be distributed to every"
+    echo "     target while existing nowhere in git. Commit them, or re-run with"
+    echo "     --allow-unclean-source to distribute them deliberately."
+    refuse=1
+  fi
+
+  if [[ "$SOURCE_BRANCH" != "$CANONICAL_SOURCE_BRANCH" ]]; then
+    local ahead behind
+    ahead=$(git -C "$SCRIPT_DIR" rev-list --count "${CANONICAL_SOURCE_BRANCH}..HEAD" 2>/dev/null || echo "?")
+    behind=$(git -C "$SCRIPT_DIR" rev-list --count "HEAD..${CANONICAL_SOURCE_BRANCH}" 2>/dev/null || echo "?")
+    echo "  ⛔ source branch is ${SOURCE_BRANCH}, not the canonical ${CANONICAL_SOURCE_BRANCH}"
+    echo "     (${ahead} ahead of / ${behind} behind ${CANONICAL_SOURCE_BRANCH})."
+    echo "     Every target would take its workflows from a branch that is not the one the"
+    echo "     fork treats as canonical. Merge it into ${CANONICAL_SOURCE_BRANCH} and check that"
+    echo "     out, or re-run with --allow-unclean-source to distribute this branch anyway."
+    refuse=1
+  fi
+
+  local fork_ref="myfork/${SOURCE_BRANCH}"
   if git -C "$SCRIPT_DIR" rev-parse --verify --quiet "$fork_ref" >/dev/null 2>&1; then
+    local fork_ahead
     fork_ahead=$(git -C "$SCRIPT_DIR" rev-list --count "${fork_ref}..HEAD" 2>/dev/null || echo 0)
     if [[ "${fork_ahead:-0}" -gt 0 ]]; then
-      echo "⚠  Local fork is $fork_ahead commit(s) ahead of ${fork_ref} (unpushed)."
-      echo "   Syncing now propagates UNPUSHED fork state to all targets. If this checkout is"
-      echo "   lost before you push, those projects carry wiring that exists nowhere in git."
-      echo "   Recommend: git push myfork ${fork_branch}   (then re-run sync)."
-      echo ""
+      echo "  ⚠  ${fork_ahead} commit(s) ahead of ${fork_ref} (unpushed). Committed, so"
+      echo "     recoverable from this checkout only. Recommend: git push myfork ${SOURCE_BRANCH}"
     fi
   fi
+
+  if [[ "$refuse" == "1" ]]; then
+    if $ALLOW_UNCLEAN_SOURCE; then
+      echo "  → --allow-unclean-source given; distributing this source anyway."
+      echo ""
+      return 0
+    fi
+    if $CHECK_ONLY; then
+      echo "  → --check is read-only; reporting without refusing."
+      echo ""
+      return 0
+    fi
+    echo ""
+    echo "REFUSED: nothing was written. Fix the source, or pass --allow-unclean-source."
+    exit 1
+  fi
+  echo ""
+}
+
+if [[ -z "$PULL_TARGET" && -z "$WORKTREE_TARGET" ]] && ! $REAP_ONLY; then
+  fork_source_gate
 fi
 
 SYNC_DIRS=(
@@ -1953,6 +2028,8 @@ while IFS= read -r target || [[ -n "$target" ]]; do
       cat > "$stamp_dir/sync-stamp.yaml" <<STAMP
 # Auto-generated by sync-bmad-workflows.sh — do not edit
 synced_at: "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+source_branch: "${SOURCE_BRANCH:-(unknown)}"
+source_revision: "${SOURCE_REV:-(unknown)}"
 reference_project: "${REFERENCE_ROOT:-(none)}"
 reference_version: "${ref_version:-(unknown)}"
 STAMP
