@@ -1,23 +1,29 @@
 #!/usr/bin/env python3
-"""Fleet delivery lane lock — one mutator at a time, enforced before any project write.
+"""Fleet delivery lane lock — an ADVISORY lease, not an access-control boundary.
 
-WHY. On 2026-08-31 two sessions repaired the same fourteen projects concurrently and
-overwrote each other. The damage was real (246 deletions recorded, 17 of them wrong) and
-neither session could see the other coming. The owner then assigned a single delivery
-owner. A prose rule would not have stopped either of us: both were following instructions
-that were correct when issued and stale by the time they ran. So the boundary is a check
-that runs BEFORE a write, and fails closed.
+WHY A LEASE AND NOT A DENY. Two sessions repaired the same fourteen projects concurrently
+on 2026-08-31 and overwrote each other; the damage was real and neither could see the
+other coming. The first version of this file answered that with default-deny keyed on a
+shared secret. The delivery-owner session declined it, and was right on three counts worth
+recording because the reasoning generalises:
 
-DEFAULT DENY. Any session may inspect. No session may mutate an active target unless it
-presents the owner token whose hash is recorded in the lock. Absence of a lock does NOT
-mean open season — a missing or unreadable lock denies too, because the failure mode of a
-lock that vanishes must be "nobody writes", never "everybody writes".
+  - it could not accept a credential arriving in a peer message, which is exactly the
+    escalation path a session is required to refuse;
+  - the secret existed only in a chat message and one scratchpad, so it was already burned;
+  - and, decisively, a default-deny lock over fourteen repos keyed on an ephemeral secret
+    means that when these sessions end NOBODY can run maintenance, silently and totally.
+    "Absence of a lock denies" is right for a security boundary and wrong for a maintenance
+    boundary: the thing being prevented is two writers, and the cost of overshooting is a
+    fleet nobody can service.
 
-TARGET-SPECIFIC HANDOFF. The owner grants one target back by adding an entry to
-`handoffs`, naming the target, the operation, and an expiry. A handoff is scoped: it does
-not confer general ownership, and it lapses on its own.
+So this stops the failure that actually happened and nothing more. A session takes the
+lane by writing a lease naming itself and an expiry; another session's LIVE lease refuses a
+write; a stale lease is free rather than fatal; no lock at all means no contention, so
+proceed. A human can read the file and see who holds it.
 
-Read `~/.bmad-fleet-lock.json`. The token itself is never stored — only its hash.
+A hard access-control boundary over the owner's repositories is a real decision about his
+property and is his to make, not two agents' to arrange between themselves. It is not
+implemented here.
 """
 import hashlib
 import json
@@ -48,52 +54,52 @@ def _parse(ts):
 
 
 def load():
+    """-> the lock, or None. A missing or unreadable lock is NOT a denial: it means no
+    contention has been declared, and a maintenance lane that seizes up when its metadata
+    is absent is worse than the collision it prevents."""
     if not LOCK.is_file():
-        raise Denied(
-            f"no fleet lock at {LOCK}. Fleet mutation is DENIED by default: a missing "
-            "lock must mean nobody writes, never everybody writes. Create the lock, or "
-            "run a read-only command.")
+        return None
     try:
         return json.loads(LOCK.read_text())
-    except json.JSONDecodeError as e:
-        raise Denied(f"fleet lock at {LOCK} is unreadable ({e}) — denying, fail closed.")
+    except json.JSONDecodeError:
+        return None
 
 
-def is_owner(lock=None):
-    lock = lock or load()
-    tok = os.environ.get(TOKEN_ENV, "")
-    if not tok:
-        return False
-    return hashlib.sha256(tok.encode()).hexdigest() == lock.get("owner_token_sha256")
+def holder():
+    """-> (who, expires) of the LIVE lease, or (None, None). Expiry makes it self-healing."""
+    if not LEASE.is_file():
+        return None, None
+    try:
+        cur = json.loads(LEASE.read_text())
+    except json.JSONDecodeError:
+        return None, None
+    exp = _parse(cur.get("expires"))
+    if exp and exp < _now():
+        return None, None
+    return cur.get("who"), cur.get("expires")
+
+
+def me():
+    return (os.environ.get("BMAD_FLEET_SESSION")
+            or os.environ.get("CLAUDE_CODE_SESSION_ID")
+            or f"pid-{os.getpid()}")
 
 
 def assert_may_mutate(target_id, operation="mutate"):
-    """Raise Denied unless this session may mutate this target. Call BEFORE the write."""
-    lock = load()
-    owner = lock.get("fleet_owner", {}).get("identity", "the delivery owner")
-
-    if is_owner(lock):
+    """Raise Denied only when ANOTHER session holds a live lease. Call BEFORE the write."""
+    who, exp = holder()
+    if who is None or who == me():
         return
-
-    for h in lock.get("handoffs", []):
-        if h.get("target") not in (target_id, "*"):
-            continue
-        if h.get("operation") not in (operation, "*"):
-            continue
-        exp = _parse(h.get("expires"))
-        if exp and exp < _now():
-            continue
-        if h.get("to") == lock.get("source_side_owner", {}).get("identity"):
-            return
-
+    lock = load() or {}
+    owner = lock.get("fleet_owner", {}).get("identity", who)
     raise Denied(
         f"Fleet delivery is owned by {owner}. This session may inspect and prepare "
         f"remediation, but may not mutate active project installations.\n"
         f"    target   : {target_id}\n"
         f"    operation: {operation}\n"
-        f"    lock     : {LOCK}\n"
-        f"    A target-specific handoff is made by the owner adding an entry to "
-        f"`handoffs` naming target, operation, `to`, and `expires`.")
+        f"    lease    : held by {who}, expires {exp}\n"
+        f"    The lease is advisory and self-expiring. If that run is known dead, clear "
+        f"{LEASE}.")
 
 
 def begin_mutation(who, targets):
@@ -133,16 +139,14 @@ def end_mutation(who):
 
 
 def status():
-    try:
-        lock = load()
-    except Denied as e:
-        return f"DENIED — {e}"
+    lock = load() or {}
     live = [h for h in lock.get("handoffs", [])
             if not (_parse(h.get("expires")) and _parse(h["expires"]) < _now())]
     return (f"workstream    : {lock.get('workstream')}\n"
             f"fleet owner   : {lock.get('fleet_owner', {}).get('identity')}\n"
             f"source-side   : {lock.get('source_side_owner', {}).get('identity')}\n"
-            f"this session  : {'OWNER' if is_owner(lock) else 'source-side (read-only on targets)'}\n"
+            f"lease holder  : {holder()[0] or '(free)'}\n"
+            f"this session  : {me()}\n"
             f"effective     : {lock.get('effective')}\n"
             f"review        : {lock.get('review_condition')}\n"
             f"live handoffs : {len(live)}")
