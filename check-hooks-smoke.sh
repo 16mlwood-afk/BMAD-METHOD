@@ -45,8 +45,22 @@ run check-hook-activation.sh  ''  ok "hook-activation/sessionstart"
 # friction-reflect: stop_hook_active=true MUST be silent (the heredoc-stdin bug
 # ignored this and always fired). This is the regression test for that bug.
 run check-friction-reflect.sh '{"stop_hook_active":true}'                                              empty "friction-reflect/loop-guard"
-run check-friction-reflect.sh "{\"session_id\":\"smoke-$$\",\"stop_hook_active\":false}"                json  "friction-reflect/fires-fresh"
-rm -f "/tmp/claude-fork-reflect-$(printf '%s' "smoke-$$" | python3 -c 'import hashlib,sys; print(hashlib.sha1(sys.stdin.read().encode()).hexdigest()[:16])' 2>/dev/null)" 2>/dev/null
+# CONTRACT CHANGED 2026-08-31 (owner instruction): the hook is SCOPED and WARN-ONLY.
+# It used to fire on any fresh session with no evidence at all - that unconditional
+# block is exactly what was removed, so "fires-fresh" is no longer the contract and
+# asserting it would pin the defect in place. A session with no transcript, or one
+# that never wrote to an infra surface, MUST now be silent; only a write-shaped
+# interaction with fork/hook/settings/skills/_bmad/doctrine surfaces may warn.
+run check-friction-reflect.sh "{\"session_id\":\"smoke-a$$\",\"stop_hook_active\":false}"               empty "friction-reflect/no-transcript-silent"
+FR_TR="$(mktemp -t frictionsmoke).jsonl"
+printf '%s\n' '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","name":"Read","input":{"file_path":"/x/src/app.ts"}}]}}' > "$FR_TR"
+run check-friction-reflect.sh "{\"session_id\":\"smoke-b$$\",\"stop_hook_active\":false,\"transcript_path\":\"$FR_TR\"}" empty "friction-reflect/read-only-silent"
+printf '%s\n' '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","name":"Write","input":{"file_path":"/x/.claude/hooks/z.py"}}]}}' > "$FR_TR"
+run check-friction-reflect.sh "{\"session_id\":\"smoke-c$$\",\"stop_hook_active\":false,\"transcript_path\":\"$FR_TR\"}" json  "friction-reflect/infra-write-warns"
+rm -f "$FR_TR"
+for s in "smoke-a$$" "smoke-b$$" "smoke-c$$"; do
+  rm -f "/tmp/claude-fork-reflect-$(printf '%s' "$s" | python3 -c 'import hashlib,sys; print(hashlib.sha1(sys.stdin.read().encode()).hexdigest()[:16])' 2>/dev/null)" 2>/dev/null
+done
 # claude-md-lint: non-CLAUDE.md path MUST be silent; CLAUDE.md + signals MUST nudge.
 run check-claude-md-lint.sh   '{"tool_input":{"file_path":"/x/README.md","content":"memory-library-discipline admin-merge"}}' empty "claude-md-lint/non-claude-silent"
 run check-claude-md-lint.sh   '{"tool_input":{"file_path":"/x/CLAUDE.md","content":"memory-library-discipline and admin-merge"}}'  json  "claude-md-lint/restatement-nudge"
