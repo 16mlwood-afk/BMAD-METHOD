@@ -280,8 +280,25 @@ def check_schema(entries, touched=None) -> int:
         if PLACEHOLDER in e.body.split("```")[-1]:
             add(f"{eid}: unfilled scaffold placeholder in the body prose "
                 "(Incident / Why it's structural / Fix candidates) — evidence is the entry")
+        # LEGACY ENTRIES (migration 2026-08-31). Four entries predated this schema: two
+        # had only a dated heading, two carried an id in the heading and no yaml block at
+        # all. Because they had no parseable id, the touched-entry scoping could never
+        # exclude them, so they failed EVERY commit to this file and `--no-verify` became
+        # routine. A gate that is always bypassed has stopped being a gate.
+        #
+        # They now carry a yaml header, an id, and the enums — the parts that make an
+        # entry machine-readable. `legacy: true` exempts them from exactly two rules that
+        # could not be satisfied without REWRITING somebody else's words: the id FORMAT
+        # (theirs are historical, e.g. FG-2026-08-24-A, and are cited elsewhere as such)
+        # and the `### Incident` section (they use `- **Symptom:**` prose instead).
+        #
+        # The exemption is deliberately narrow and cannot be widened by accident: it keys
+        # on an explicit flag, it does not relax the enums, the required fields, the
+        # marker rule or uniqueness, and NEW entries never get it. Pinned in both
+        # directions by test/test-fork-gap-legacy.py.
+        legacy = str(e.header.get("legacy", "")).lower() == "true"
         hid = e.header.get("id", "")
-        if hid and not ID_RE.match(hid):
+        if hid and not ID_RE.match(hid) and not legacy:
             add(f"{eid}: id `{hid}` is not FG-YYYY-MM-DD-NN")
         if hid in seen_ids:
             add(f"{eid}: duplicate id")
@@ -306,7 +323,7 @@ def check_schema(entries, touched=None) -> int:
             add(f"{eid}: state blocked requires blocked_by naming an OBSERVABLE condition")
         if state == "fork-fixed-distribution-owed" and not e.header.get("distribution"):
             add(f"{eid}: state fork-fixed-distribution-owed requires distribution")
-        if not e.has_incident:
+        if not e.has_incident and not legacy:
             add(f"{eid}: no `### Incident` block")
 
         # --- fix + delivery axes (schema v2, docs/proposals/fork-gap-axes-v2.md) ---------

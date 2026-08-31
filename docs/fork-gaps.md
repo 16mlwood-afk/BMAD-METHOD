@@ -10342,8 +10342,9 @@ class: shared-state
 scope: project
 target: "cash-recovery next.config.mjs (no distDir override) + whatever creates the .claude/worktrees/*/.next symlink (worktree setup path, not yet located in the fork)"
 marker: "distDir"
-state: fixed
-fix: "next.config.mjs distDir -> .next-worktree when cwd is under .claude/worktrees/ (cash-recovery a7844f6, PR #1426)"
+state: closed
+fix: done
+fix_detail: "next.config.mjs distDir -> .next-worktree when cwd is under .claude/worktrees/ (cash-recovery a7844f6, PR #1426)"
 owner: mason
 routing: owner-instructed 2026-08-21
 ```
@@ -10426,6 +10427,19 @@ cleared.
 
 ## 2026-08-22 — design-handoff's own bash recipes are unrunnable in the worktree the project mandates
 
+```yaml
+id: FG-2026-08-22-01
+legacy: true
+migrated_from: "dated heading, no yaml block (migrated 2026-08-31)"
+class: unknown
+scope: fork
+target: "custom/workflows/design/design-handoff/steps/step-04-deliver.md"
+marker: unknown
+state: open
+fix: none
+owner: unknown
+```
+
 **Target files:** `custom/workflows/design/design-handoff/steps/step-04-deliver.md` (§2, §3),
 `step-03-generate-brief.md` (§1); interacting with the harness worktree-isolation guard.
 
@@ -10482,6 +10496,19 @@ cannot see.
 
 ## 2026-08-22 — a brief's quoted BASE RATES rot silently; only its policy version has a detector
 
+```yaml
+id: FG-2026-08-22-02
+legacy: true
+migrated_from: "dated heading, no yaml block (migrated 2026-08-31)"
+class: unknown
+scope: fork
+target: "custom/workflows/design/design-handoff/steps/step-01-gather.md"
+marker: unknown
+state: open
+fix: none
+owner: unknown
+```
+
 **Target files:** `custom/workflows/design/design-handoff/steps/step-01-gather.md` §1b (the model),
 `_bmad/bmad-shared/brief-revision-policy.md` §2 (where a freshness field would live).
 
@@ -10527,6 +10554,19 @@ brief's whole §6 was built on a base rate whose *meaning* had moved, and the on
 it was the owner reading the draft.
 
 ## FG-2026-08-24-A — design-ingest emitted a manifest its own checker cannot parse — RESOLVED same day
+
+```yaml
+id: FG-2026-08-24-A
+legacy: true
+migrated_from: "id in the heading, no yaml block (migrated 2026-08-31)"
+class: unknown
+scope: fork
+target: "custom/workflows/implement/design-ingest/steps/step-03-emit-manifest-and-handoff.md"
+marker: unknown
+state: closed
+fix: done
+owner: unknown
+```
 - **Symptom:** `design-ingest-listing-composer.md` shipped with a 4-column grid (checker floor: 5), headings shaped `### Frame: <name> (F1) — 13 sections` (neither accepted shape A/B), and grid keyed on `F1` vs inventory `composer (F1)` → `check-ingest-manifest.js` read 0 rows and emitted 15 findings (14 derived falsehoods), blocking the CONSUMER session's pre-commit while the producer session had already handed off.
 - **Root cause — NOT missing wiring.** Step-03 §2 ("RUN THE CHECKER, do not hand-sum") exists in the fork AND in cash-recovery's synced copy (line 78). The producing session (claude-session-20260824-173118) never loaded step-03: it improvised the emit from manifest-schema.md after steps 01–02. Probabilistic-tier miss; the prose gate was skipped, and the deterministic commit-time gate never fired producer-side because ingest manifests are untracked/main-only.
 - **Resolution 2026-08-24:** manifest rewritten in place (bare frame names across inventory/headings/grid, 5-col grid, `manifest_grain: summary` + `property_rows_location` declared); `check-ingest-manifest.js` now reports CONSISTENT (121/121, 14/14). No fork edit needed or made — do NOT add a duplicate checker line to step-03.
@@ -10534,6 +10574,19 @@ it was the owner reading the draft.
 - routing: maintenance (resolved); the hardening line is new-design → owner
 
 ## FG-2026-08-24-B — harness worktree-isolation guard blocks some main-checkout register writes; no exemption surface exists — OPEN, workaround documented
+
+```yaml
+id: FG-2026-08-24-B
+legacy: true
+migrated_from: "id in the heading, no yaml block (migrated 2026-08-31)"
+class: unknown
+scope: unknown
+target: unknown
+marker: unknown
+state: open
+fix: none
+owner: unknown
+```
 - **Symptom:** from inside a worktree, an Edit/complex-Bash write to `<main-checkout>/.claude/wip-register.yaml` is refused by the HARNESS worktree-isolation check ("edit the worktree copy instead" / "too complex to verify") — pushing the one write CLAUDE.md forbids pushing into a worktree. A session had to exit its worktree to release a claim.
 - **Finding:** the refusal text exists in NO file under `~/.claude/` or the project — it is harness-internal (EnterWorktree isolation), so the proposed exemption-list fix (aligning to `DENY_EXEMPT_ZONES`) has no target. Not locally patchable.
 - **Workaround, PROVEN in-session (claude-session-20260824-141225/-174412, 5 register writes from inside worktrees):** a SINGLE-PURPOSE plain command targeting only the absolute register path passes — `cat >> /Users/.../.claude/wip-register.yaml <<'EOF' … EOF` or a python heredoc whose only write target is that file. The guard refuses compound commands (register write mixed with anything else) and complex constructs. Same shape as the collision-guard's "a mixed target is not exempt".
