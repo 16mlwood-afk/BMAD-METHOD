@@ -10,7 +10,27 @@ description: >
   system-health findings. Read-only: it diagnoses and proposes; it does not modify skills.
 metadata:
   short-description: Audit policy-skills for dormant modes / missing invocation policy / routing gaps
+provenance:
+  id: policy-skills-healthcheck
+  version: 1.0.0
+  created_at: 2026-07-24
+  author: Claude (with Mason)
+  source_research:
+    - https://smithery.ai/skills/majesticlabs-dev/skill-linter  # closest analog: audits skills on a Trigger/Structure/Steering/Pruning framework incl. empirical dormant-trigger testing
+    - https://mcpmarket.com/tools/skills/skill-specification-linter  # adjacent: lints Claude Code skill frontmatter/structure/content quality against the agentskills.io standard
+    - https://dev.to/avifenesh/your-ai-agent-configs-are-probably-broken-and-you-dont-know-it-16n1  # adjacent: agnix, a linter for AI agent configs catching silent skill-invocation failures
+  origin_type: adapted
+  exemption_reason: ""
+  predecessor_id:
+  superseded_by:
+  last_reviewed_at: 2026-07-24
+  review_notes: "Backfill under STD-SKILLPROV-001. Core method (audit a skill corpus for trigger/invocation health and dormant capabilities) mirrors external skill-linter tooling; this fork reworks it around a fork-specific 'policy-skill' necessity taxonomy, cross-skill symmetry, and PR-severity routing (S1/S2/S3 tied to STATUS.md), so it is adapted rather than adopted."
 ---
+
+## External research checked
+- Date: 2026-07-24 · Queries: "AI agent skill audit dormant modes invocation policy linter tool" · "Claude Code skills governance audit tool GitHub open source" · "BMAD-METHOD bmad-code-org workflow health check skill audit routing"
+- Sources: <https://smithery.ai/skills/majesticlabs-dev/skill-linter> · <https://mcpmarket.com/tools/skills/skill-specification-linter> · <https://dev.to/avifenesh/your-ai-agent-configs-are-probably-broken-and-you-dont-know-it-16n1>
+- Verdict: ADAPTED — external skill-linter tools already audit skills for trigger health / dormant capabilities via a generic Trigger/Structure/Steering/Pruning framework; this skill takes that core idea but reworks it around this fork's policy-skill necessity taxonomy, sister-skill symmetry, and severity-based PR routing tied to STATUS.md, with no upstream BMAD-METHOD equivalent found.
 
 # Policy-skills Health Check
 

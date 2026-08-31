@@ -8,9 +8,29 @@ description: >
   Handles standalone repos and personal forks of an external upstream, stamps a completion marker,
   and offers a teach-by-doing tutorial. Runs the deterministic onboarding script — do NOT hand-roll
   the steps or run `bmad-cli install`.
+
+provenance:
+  id: bmad-onboard
+  version: 1.0.0
+  created_at: 2026-07-24
+  author: Claude (with Mason)
+  source_research:
+    - https://github.com/bmad-code-org/BMAD-METHOD  # upstream project this fork descends from; its own installer is the adaptation source
+    - https://docs.bmad-method.org/how-to/install-bmad/  # upstream's `npx bmad-method install` onboarding flow, which this skill deliberately replaces with a custom script for a different (6.0.4 base + custom overlay) layout
+  origin_type: adapted
+  exemption_reason: ""
+  predecessor_id:
+  superseded_by:
+  last_reviewed_at: 2026-07-24
+  review_notes: "Backfill under STD-SKILLPROV-001. Core job (bootstrap a project onto BMAD) matches upstream bmad-code-org's own installer, but this skill runs a materially different local script to preserve the fork's custom layout/safety layer instead of upstream's v6.8.0 skills layout."
 ---
 
 # BMAD fork onboarding
+
+## External research checked
+- Date: 2026-07-24 · Queries: "BMAD-METHOD onboard-project script install workflow skill" · "bmad-code-org BMAD-METHOD GitHub install.js onboarding CLI"
+- Sources: <https://github.com/bmad-code-org/BMAD-METHOD> · <https://docs.bmad-method.org/how-to/install-bmad/>
+- Verdict: ADAPTED — upstream BMAD-METHOD ships its own installer/onboarding CLI (`npx bmad-method install`); this skill deliberately does NOT use it, instead running a custom `onboard-project.sh` to reproduce the fork's older, custom-layer-compatible layout and add fork-specific topology/marker/tutorial handling.
 
 The user wants a new directory wired to the Mason-BMAD fork (`~/bmad-method-v6/`) so it matches all
 their other projects — full custom workflow layer, hardened quick-dev, design-* workflows, custom

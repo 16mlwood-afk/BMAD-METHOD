@@ -3,7 +3,26 @@ name: operational-finance-ui
 description: Design and refine dense, high-stakes operational finance screens (VAT, registrations, reconciliations, filings) in the Bison product. Use when designing a new operational finance screen, refining an existing one against a screen-review artifact, lifting a screen to match updated design policy, or producing a review-only diagnostic. Locks an explicit invocation mode (new-screen, refine-screen, policy-lift, review-only) and respects the BMAD design-review → design-handoff → implementation chain. Do NOT use for full BI/executive dashboards, marketing/landing surfaces, copy-only edits, schema/backend work, or pages without an operational finance surface.
 metadata:
   short-description: Design ops-finance screens within BMAD chain
+provenance:
+  id: operational-finance-ui
+  version: 1.0.0
+  created_at: 2026-07-24
+  author: Claude (with Mason)
+  source_research:
+    - https://github.com/bmad-code-org/BMAD-METHOD  # upstream BMAD-METHOD project; source of the design-review -> design-handoff -> implementation chain this skill locks into
+    - https://deepwiki.com/bmad-code-org/BMAD-METHOD/12.2-review-and-quality-skills  # upstream's generic review/quality skill pattern (micro-file skill: persona, inputs, mandatory execution steps) this skill specializes
+  origin_type: adapted
+  exemption_reason: ""
+  predecessor_id:
+  superseded_by:
+  last_reviewed_at: 2026-07-24
+  review_notes: "Backfill under STD-SKILLPROV-001. Core design-review/design-handoff chain and mode-locked review-skill pattern trace to upstream BMAD-METHOD's UX/review workflow; this skill materially reworks it for this fork's operational finance screens (VAT/registrations/reconciliations) with a fork-specific trust hierarchy and invocation-mode contract, so no direct external analog covers the specific job."
 ---
+
+## External research checked
+- Date: 2026-07-24 · Queries: "AI design skill financial dashboard UI review tool operational finance screens" · "Claude Code skill design review financial UI GitHub open source" · "BMAD-METHOD bmad-code-org design-review design-handoff workflow finance UI skill"
+- Sources: <https://github.com/bmad-code-org/BMAD-METHOD> · <https://deepwiki.com/bmad-code-org/BMAD-METHOD/12.2-review-and-quality-skills> · <https://github.com/bitjaru/styleseed>
+- Verdict: ADAPTED — no external tool does mode-locked, finance-domain-specific screen design/review tied to this fork's design-policy trust hierarchy; the closest generic analogs are upstream BMAD-METHOD's design-review/design-handoff chain (which this skill explicitly chains into) and general Claude Code design-judgment engines like StyleSeed, neither of which is finance-specific or fork-policy-aware.
 
 # Operational Finance UI
 

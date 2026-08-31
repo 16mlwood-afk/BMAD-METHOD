@@ -3,7 +3,25 @@ name: analytics-surface-architect
 description: Decide HOW a dataset should be presented as an analytics surface — which archetype (trend, distribution, composition, ranking, coverage, flow, single-metric, correlation) fits the user's question, why, and what was rejected. Use when choosing or auditing the SHAPE of an analytics band, microchart row, or evidence layer; when a workflow needs an archetype + grounded rationale for a brief; or when someone asks "what shape should this data be?". Returns a structured decision (archetype + grounding + candidates-weighed + drill map). Invoke only when the main question is "what analytical shape should answer this user question from this dataset?" — choosing OR auditing (critique mode) an analytics band's archetype; skip a plain operational worklist with no band. Do NOT use for visual treatment / tokens / colors (that is the project design policy and operational-analytics-band), for whether a page needs a band at all (that is the upstream page-mode/band-belongs decision), or for backend/schema/data work.
 metadata:
   short-description: Pick the analytics archetype for a dataset and explain why
+provenance:
+  id: analytics-surface-architect
+  version: 1.0.0
+  created_at: 2026-07-24
+  author: Claude (with Mason)
+  source_research:
+    - https://github.com/obazoud/awesome-dashboard  # curated dashboard/visualization patterns
+    - https://github.com/topics/data-visualization  # dataviz archetype taxonomy (trend/distribution/composition/ranking/...)
+    - https://github.com/apache/superset  # BI archetype selection as a reference point
+  origin_type: original
+  exemption_reason: "No external skill/tool makes the archetype-SELECTION decision (which shape + grounded rationale + rejected candidates) for a design brief; existing tools RENDER charts once the shape is chosen. The archetype taxonomy is grounded in standard dataviz practice (sources), the decision brain is fork-original."
+  last_reviewed_at: 2026-07-24
+  review_notes: "Backfill under STD-SKILLPROV-001. Taxonomy validated externally; the selection/grounding logic is original."
 ---
+
+## External research checked
+- Date: 2026-07-24 · Queries: "analytics dashboard design chart selection methodology open source GitHub"
+- Sources: awesome-dashboard · GitHub data-visualization topic · Superset/Metabase (BI archetype references)
+- Verdict: ORIGINAL — external tools render chosen shapes; none make the grounded archetype-selection decision. Taxonomy adopted, decision logic original.
 
 # Analytics Surface Architect
 

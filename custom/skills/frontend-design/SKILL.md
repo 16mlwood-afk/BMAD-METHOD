@@ -2,7 +2,25 @@
 name: frontend-design
 description: Create distinctive, production-grade frontend interfaces with high design quality. Use this skill when the user asks to build web components, pages, or applications. Generates creative, polished code that avoids generic AI aesthetics.
 license: Complete terms in LICENSE.txt
+provenance:
+  id: frontend-design
+  version: 1.0.0
+  created_at: 2026-07-24
+  author: Anthropic (vendored); provenance backfilled by Claude
+  source_research:
+    - https://claudemarketplaces.com/skills/anthropics/skills/frontend-design  # THIS skill = Anthropic's official frontend-design skill (vendored)
+    - https://github.com/Ilm-Alan/frontend-design  # community variant (8 aesthetic anchors)
+    - https://github.com/bitjaru/styleseed  # adjacent open-source design-method engine
+  origin_type: adopted
+  exemption_reason: ""
+  last_reviewed_at: 2026-07-24
+  review_notes: "Backfill (STD-SKILLPROV-001) confirmed this is Anthropic's OFFICIAL skill vendored into the fork, NOT fork-original — the inward-only habit would have mislabeled it."
 ---
+
+## External research checked
+- Date: 2026-07-24 · Queries: "frontend design system UI component styling Claude skill / open-source GitHub"
+- Sources: Anthropic official frontend-design skill (this file's origin) · github.com/Ilm-Alan/frontend-design · github.com/bitjaru/styleseed · github.com/VoltAgent/awesome-claude-design
+- Verdict: ADOPTED — vendored from Anthropic; not built here.
 
 This skill guides creation of distinctive, production-grade frontend interfaces that avoid generic "AI slop" aesthetics. Implement real working code with exceptional attention to aesthetic details and creative choices.
 
