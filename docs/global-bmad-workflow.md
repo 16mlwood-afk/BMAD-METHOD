@@ -22,14 +22,14 @@ auto-route when verb + target are clear from the input; halt when they aren't.
 
 Default routes:
 
-| Intent | Route |
-| --- | --- |
+| Intent                                                    | Route                                                   |
+| --------------------------------------------------------- | ------------------------------------------------------- |
 | "carry on implementing the stories" / "do the next story" | `create-story` (if no valid story exists) → `dev-story` |
-| "create the next story" | `create-story` |
-| "review this code" | `code-review` |
-| "check sprint status" | `sprint-status` |
-| "run sprint planning" | `sprint-planning` |
-| "run a retrospective" | `retrospective` |
+| "create the next story"                                   | `create-story`                                          |
+| "review this code"                                        | `code-review`                                           |
+| "check sprint status"                                     | `sprint-status`                                         |
+| "run sprint planning"                                     | `sprint-planning`                                       |
+| "run a retrospective"                                     | `retrospective`                                         |
 
 **Approval boundaries — stop and confirm, do not auto-proceed:** deploy, push, commit, DB migration,
 promoting an epic / expanding scope, any live external-state write, or genuine ambiguity (two+ valid
@@ -134,29 +134,53 @@ A new repo is never missing the architecture — bootstrap guarantees the wiring
 
 You are responsible for keeping the BMAD fork and project workflows in a healthy state. The following decisions do NOT require asking the user — when you hit them, just resolve.
 
-**The decision boundary is blast radius, not difficulty.** Project-local + reversible + a clear best option → **execute the default, then report** (e.g. a scoped `sync-bmad-workflows.sh --only <project>` to clear that project's standards drift, pruning a stale worktree, re-running a stale tracker). Fork-wide OR irreversible OR outward-facing → present options and get approval (the no-arg fan-out sync across all targets, `upgrade-bmad.sh`, promoting an agent into `custom/agents/`, anything that propagates to the 13 projects). A multiple-choice menu for a safe local default is the failure mode — it hands a decided question back to the user. Report shape for the auto-execute lane: *"I did X; if you want Y (the bigger/fan-out thing), say so."* Full test → the global `feedback-lead-dont-ask` memory (blast-radius autonomy). When the user has *already named* the action in their request, it is authorized — do it; don't re-ask permission for it under the banner of caution.
+**Mason is not the operator (owner instruction, 2026-08-31).** In his words: _"I do not want to be the operator, reviewer, or decision-maker for fork mechanics."_ Fork, branches, sync, replicas, rsync, worktrees, manifests, conflicts, source commits, delivery pipelines, drift and distribution are yours. Do not explain them by default, do not ask him to maintain them, **do not ask whether to run routine maintenance**, and do not surface normal maintenance as a workstream for him to manage. Run it silently whenever it is safe and reversible; report the outcome, not the mechanism.
 
-**Log structural method/infra gaps yourself → `docs/fork-gaps.md`.** When the fork/infra/method *fights* an agent — not a one-off bug, but the wiring making normal work painful (a deploy path that isn't legible, a hook with nowhere to redirect, sync drift, a workflow step that overruns) — record it in the fork-gaps backlog proactively, pointing at the specific target file. You are the noticer; don't wait for the user to ask "why is this so awkward?". This is the global `workflow-friction-and-process-issues` policy made concrete with a write target. The backlog is the fork-driven sibling of the `maintenance-triage` (production-driven) front door.
+**Routine distribution is NO LONGER an approval gate.** The old boundary read _"fork-wide → present options and get approval (the no-arg fan-out sync across all targets … anything that propagates to the 13 projects)"_. That clause is superseded: releasing verified canonical work and fanning it out to every registered target is ordinary maintenance and is executed without asking. What still needs him is the five owner-gate classes below — nothing else. `upgrade-bmad.sh` (absorbing hundreds of upstream commits) remains a judgement call rather than routine, because it changes what the methods _are_; reconciling it is Mode 4 work, not distribution.
+
+**The decision boundary is blast radius, not difficulty — and for maintenance the radius bar has moved.** Project-local + reversible + a clear best option → **execute the default, then report** (a scoped `sync-bmad-workflows.sh --only <project>`, pruning a stale worktree, re-running a stale tracker). Cross-project distribution of verified work → **also execute**. Irreversible, outward-facing, or identity-ambiguous → the owner gate. A multiple-choice menu for a safe default is the failure mode — it hands a decided question back to the user. When the user has _already named_ the action in their request, it is authorized — do it; don't re-ask permission under the banner of caution.
+
+### The five owner-gate classes — the ONLY reasons to ask
+
+1. an irreversible deletion could remove user-authored or uncommitted work;
+2. two completed changes make genuinely incompatible product-policy choices;
+3. a target looks like a different or unknown project and could receive the wrong methods;
+4. a credential / access / financial / security decision;
+5. an external partner or system action needs his authority.
+
+When you must ask: explain the **outcome**, not the infrastructure; give **one** recommended option; say what you will continue doing while waiting; never make him choose between implementation mechanisms. Park it so it outlives the session — `python3 tools/bmad-health.py --park --question '…' --recommendation '…'` — and it will surface in the health signal until closed.
+
+### The health signal — derive it, never type it
+
+    python3 ~/bmad-method-v6/tools/bmad-health.py          # the four-line outcome
+    python3 ~/bmad-method-v6/tools/bmad-health.py --why    # + infrastructure detail, on request only
+    python3 ~/bmad-method-v6/tools/bmad-health.py --json   # machine-readable
+
+It composes `tools/bmad-release.py` and answers the four accountability questions: are all active projects current · are there completed improvements not yet active everywhere · are there unsafe/stale/duplicate copies · is anything blocked on the owner. **Never claim "healthy", "current", "synced", "delivered" or "enforced" unless this has verified it** — HEALTHY is unreachable while any question is unanswered, and the exit code is 0/1/2 for HEALTHY / REPAIRING / OWNER DECISION NEEDED. Unhealthy → begin safe repair automatically. Golden cases: `npm run test:health` (47, wired into `npm test`), which also assert that no banned infrastructure word and no bare commit SHA reaches the four owner-facing lines.
+
+**Reporting is one line, not a diary.** Ordinary status reports carry at most `Methods: current across all active projects.` or `Methods: repair in progress; no action needed from you.` Expand only when he asks for detail, when maintenance blocks an outcome he cares about, when a genuine owner decision is needed, or on a security/data-loss risk.
+
+**Log structural method/infra gaps yourself → `docs/fork-gaps.md`.** When the fork/infra/method _fights_ an agent — not a one-off bug, but the wiring making normal work painful (a deploy path that isn't legible, a hook with nowhere to redirect, sync drift, a workflow step that overruns) — record it in the fork-gaps backlog proactively, pointing at the specific target file. You are the noticer; don't wait for the user to ask "why is this so awkward?". This is the global `workflow-friction-and-process-issues` policy made concrete with a write target. The backlog is the fork-driven sibling of the `maintenance-triage` (production-driven) front door.
 
 ### The routing rule — MAINTENANCE vs NEW DESIGN
 
 **The rule, in Mason's words (ratified 2026-07-26):**
 
-> For **NEW DESIGN WORK**, do not implement any FG entry unless it carries a routing marker from Mason (or a named delegate). For **ROUTINE FORK MAINTENANCE** under a clear owner instruction (e.g. *"fix the fork gaps"*, *"do the fork maintenance"*), you may both:
+> For **NEW DESIGN WORK**, do not implement any FG entry unless it carries a routing marker from Mason (or a named delegate). For **ROUTINE FORK MAINTENANCE** under a clear owner instruction (e.g. _"fix the fork gaps"_, _"do the fork maintenance"_), you may both:
 >
 > - log gaps in `fork-gaps.md`, **AND**
 > - fix safety and coherence issues directly.
 
-**A maintenance instruction IS pointing.** *"Fix the fork gaps"*, *"do the fork maintenance"*, *"action the backlog"*, *"clear the register"* — these are owner-scope instructions and they authorise the maintenance lane. They must **not** be classified as "not routing", and you must not halt to ask which id: pick the ones you can actually finish, and say which you picked.
+**A maintenance instruction IS pointing.** _"Fix the fork gaps"_, _"do the fork maintenance"_, _"action the backlog"_, _"clear the register"_ — these are owner-scope instructions and they authorise the maintenance lane. They must **not** be classified as "not routing", and you must not halt to ask which id: pick the ones you can actually finish, and say which you picked.
 
-**Which lane is this?** Ask what the change *is*, not how big it feels.
+**Which lane is this?** Ask what the change _is_, not how big it feels.
 
-| Lane | What it covers | Authorisation |
-|---|---|---|
-| **MAINTENANCE** — fix it now | A defect in how the fork EXECUTES: a broken recipe, a gate that no-ops, a detector nothing invokes, a test polluting the shared index, drifted prose, a missing affordance the standard already mandates. Safety and coherence repairs. | A clear owner maintenance instruction is enough. |
-| **NEW DESIGN / DOCTRINE / POLICY** — needs a routing marker | Changing what the rule IS, not whether it works: a new standard, a taxonomy or enum change, a route/lane redefinition, a scope decision, a policy shift, an entry whose own text says *"doctrine-owner call"* / *"not actioned deliberately"*. | Per-entry routing from Mason. Propose it; don't ship it. |
+| Lane                                                        | What it covers                                                                                                                                                                                                                                 | Authorisation                                            |
+| ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| **MAINTENANCE** — fix it now                                | A defect in how the fork EXECUTES: a broken recipe, a gate that no-ops, a detector nothing invokes, a test polluting the shared index, drifted prose, a missing affordance the standard already mandates. Safety and coherence repairs.        | A clear owner maintenance instruction is enough.         |
+| **NEW DESIGN / DOCTRINE / POLICY** — needs a routing marker | Changing what the rule IS, not whether it works: a new standard, a taxonomy or enum change, a route/lane redefinition, a scope decision, a policy shift, an entry whose own text says _"doctrine-owner call"_ / _"not actioned deliberately"_. | Per-entry routing from Mason. Propose it; don't ship it. |
 
-The test that separates them: **am I fixing execution, or deciding policy?** Implementing a doctrine change is deciding *for* him. Repairing a mechanism that already exists and doesn't work is the job.
+The test that separates them: **am I fixing execution, or deciding policy?** Implementing a doctrine change is deciding _for_ him. Repairing a mechanism that already exists and doesn't work is the job.
 
 **Two things still stop you regardless of lane** — these are blast radius, not authorisation:
 
@@ -168,7 +192,7 @@ The test that separates them: **am I fixing execution, or deciding policy?** Imp
 - **Logging a real gap you discover is good practice** — keep doing it, proactively, per the paragraph above.
 - **It is NOT required to freeze all fixes until each FG has a specific routing line.** A missing `routing:` field blocks nothing in the maintenance lane.
 - **Never log-only merely because it is a gap.** A gap logged and left creates a second session whose entire job is to re-read it and re-derive the fix — pure overhead, and the register grows faster than it drains.
-- **Write the entry as found + fixed, in the same pass.** The audit value lives in the record and the evidence, not in the delay. *"Found this, here is the cause, here is the fix, here is the run that proves it"* is strictly better provenance than a bare backlog line, because a reader can check it.
+- **Write the entry as found + fixed, in the same pass.** The audit value lives in the record and the evidence, not in the delay. _"Found this, here is the cause, here is the fix, here is the run that proves it"_ is strictly better provenance than a bare backlog line, because a reader can check it.
 - **Prove it, don't assert it — this is the real guardrail.** A fix claimed without a run is UNVERIFIED. State what you ran and what it said. Be strict here, not about who authorised the work.
 - **`routing:` values:** `recorded` (or absent) · `routed` (Mason named it) · `retro-routed` (done under a standing maintenance instruction, noted in `routing_note`) · `in-progress` · `shipped`. `fork-fixed-distribution-owed` remains a valid `state:` for authored-but-undistributed work.
 
@@ -176,16 +200,16 @@ The test that separates them: **am I fixing execution, or deciding policy?** Imp
 
 What survives from the original incident, narrowed to what is actually right: **do not implement an entry whose own header reserves the decision for the owner**, keep the strict marker requirement for design/doctrine/policy changes, and never confuse authoring with distributing.
 
-**Retro-authorised under this rule (2026-07-26):** `FG-2026-07-25-04`, `-08`, `-10(2)` and `-12` were implemented earlier the same day under the standing *"fix the recent fork gaps"* instruction, before this text existed. Each now carries `routing: retro-routed` plus a `routing_note` recording that. They are **not** to be reverted. `FG-2026-07-25-11` and `-13` already carried routing and were left untouched. [Scope: FORK CANON — fork-local doc, does not sync to the 13 projects]
+**Retro-authorised under this rule (2026-07-26):** `FG-2026-07-25-04`, `-08`, `-10(2)` and `-12` were implemented earlier the same day under the standing _"fix the recent fork gaps"_ instruction, before this text existed. Each now carries `routing: retro-routed` plus a `routing_note` recording that. They are **not** to be reverted. `FG-2026-07-25-11` and `-13` already carried routing and were left untouched. [Scope: FORK CANON — fork-local doc, does not sync to the 13 projects]
 
-**WIRING STATUS IS A FIRST-CLASS MAINTENANCE SIGNAL — prove a guard is LIVE, never infer it (2026-07-26).** A passing unit suite proves a mechanism's **LOGIC**. Only invoking it the way the harness does proves its **WIRING**. Those are different claims, and conflating them is how a reviewed edit-guard sat unwired for a day while three artifacts asserted it was live — the file existed, its 43-case suite was green, `CLAUDE.md` said it had replaced the legacy blob, and `settings.local.json` still ran the blob. Four open fork-gap entries stayed open *for that reason alone*. So:
+**WIRING STATUS IS A FIRST-CLASS MAINTENANCE SIGNAL — prove a guard is LIVE, never infer it (2026-07-26).** A passing unit suite proves a mechanism's **LOGIC**. Only invoking it the way the harness does proves its **WIRING**. Those are different claims, and conflating them is how a reviewed edit-guard sat unwired for a day while three artifacts asserted it was live — the file existed, its 43-case suite was green, `CLAUDE.md` said it had replaced the legacy blob, and `settings.local.json` still ran the blob. Four open fork-gap entries stayed open _for that reason alone_. So:
 
 - **After editing any hook/gate, and after fanning one out, run a live probe** — one input that must be ALLOWED and one that must be BLOCKED, through the real stdin/JSON contract. Exemplar: `cash-recovery/.claude/hooks/guard-health-check.sh` (it also asserts the settings point at the reviewed implementation and that the superseded one is gone).
 - **Never write "now enforced by X" on the strength of a green test run.** Say which artifact you invoked and what it returned, or label the claim UNVERIFIED.
 - **Hooks distribute on a SEPARATE TRACK from workflows** (`settings.local.json` is gitignored and the BMAD sync does not carry it), so authoring a guard never deploys it. State the deployment state explicitly every time — this is the same failure as `FG-2026-07-25-09`.
 - **A documented override that no code honours is not an override.** It makes a gate look well-designed while pushing every real use into a tool-swap bypass. If a deny message names an escape hatch, something must implement it, and its use must be logged.
 
-**Code wins over narrative docs — verify before any destructive action (fork-gap #7).** The fork's hand-maintained narrative docs (`STATUS.md`, this file, the `~/.bmad-reference` header, migration plans, project memories) **lag the sync code** — they are decision aids, not ground truth. When such a doc says a capability is *unsupported / orphaned / cut-off / complete* and you're about to act on it — **especially before anything destructive or irreversible (a revert, a `--delete`, dropping a pilot, "rolling back X")** — first confirm the claim against the actual code (`sync-bmad-workflows.sh`, the installer, the relevant script) and the live state. If the doc and the code disagree, **the code wins**: act on the code, then fix the stale doc in the same pass. This rule exists because stale "skills-layout is unsupported / cash-recovery is orphaned" guidance once nearly drove a revert of a *working* pilot that the sync code already supported. Treat a capability claim as CHECKED (does the code path exist?), never merely asserted (see the STATUS `built: <commit|NO>` integrity rule).
+**Code wins over narrative docs — verify before any destructive action (fork-gap #7).** The fork's hand-maintained narrative docs (`STATUS.md`, this file, the `~/.bmad-reference` header, migration plans, project memories) **lag the sync code** — they are decision aids, not ground truth. When such a doc says a capability is _unsupported / orphaned / cut-off / complete_ and you're about to act on it — **especially before anything destructive or irreversible (a revert, a `--delete`, dropping a pilot, "rolling back X")** — first confirm the claim against the actual code (`sync-bmad-workflows.sh`, the installer, the relevant script) and the live state. If the doc and the code disagree, **the code wins**: act on the code, then fix the stale doc in the same pass. This rule exists because stale "skills-layout is unsupported / cash-recovery is orphaned" guidance once nearly drove a revert of a _working_ pilot that the sync code already supported. Treat a capability claim as CHECKED (does the code path exist?), never merely asserted (see the STATUS `built: <commit|NO>` integrity rule).
 
 **BMAD-managed paths.** These directories are owned by the BMAD fork sync. Treat their contents as derivable, not authored locally in projects:
 
