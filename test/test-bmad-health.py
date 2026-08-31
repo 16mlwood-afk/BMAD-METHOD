@@ -39,14 +39,18 @@ def survey(targets, *, sha="a" * 40, blocks=(), decisions=(), mismatched=(),
     undelivered = [t for t in active if t.get("local_only")]
     stranded = [m for m in blocks if "not reachable" in m.lower() or "stranded" in m.lower()]
 
+    # A dirty fork worktree blocks cutting a NEW release; it says nothing about whether the
+    # estate is current. Only a block that is not about dirt counts against health.
+    blocking = [m for m in blocks if "dirty" not in m.lower()]
+
     clean_so_far = not (decisions or identity or gated or repairable or stranded
-                        or blocks or not sha or undelivered)
+                        or blocking or not sha or undelivered)
     note = verify_note if clean_so_far else "not reached"
     bad = list(mismatched) if clean_so_far else []
 
     if decisions or identity or gated:
         verdict = "OWNER DECISION NEEDED"
-    elif (repairable or stranded or blocks or not sha or undelivered or bad
+    elif (repairable or stranded or blocking or not sha or undelivered or bad
           or (note and note != "not reached")):
         verdict = "REPAIRING"
     elif active and len(current) == len(active):
@@ -82,6 +86,33 @@ check("H2 one stale target -> REPAIRING", s["verdict"] == "REPAIRING")
 s = survey([T("a", "CURRENT")], blocks=["a branch is not reachable from the release commit"])
 check("H3 finished-but-unreleased work -> REPAIRING even with every target current",
       s["verdict"] == "REPAIRING")
+
+# Two different questions: is the estate current, and could a release be cut right now.
+# Conflating them reported a perfectly current estate as REPAIRING with the false sentence
+# "your improvements are finished but not yet released" — while nothing was finished at all,
+# someone was simply mid-edit.
+s = survey([T("a", "CURRENT"), T("b", "CURRENT")],
+           blocks=["the fork worktree is dirty in release-relevant paths:\n  M tools/x.py"],
+           verify_note="")
+check("H3a someone mid-edit in the fork does NOT make the estate unhealthy",
+      s["verdict"] == "HEALTHY")
+
+s = survey([T("a", "CURRENT")],
+           blocks=["the fork worktree is dirty in release-relevant paths:\n  M tools/x.py",
+                   "myfork/custom does not resolve"], verify_note="")
+check("H3b a real source block still downgrades, dirt alongside it or not",
+      s["verdict"] == "REPAIRING")
+
+s = survey([T("a", "STALE")],
+           blocks=["the fork worktree is dirty in release-relevant paths:\n  M tools/x.py"])
+check("H3c dirt never RESCUES an estate that is actually behind",
+      s["verdict"] == "REPAIRING")
+
+s = survey([T("a", "CURRENT")],
+           blocks=["the fork worktree is dirty in release-relevant paths:\n  M tools/x.py"],
+           verify_note="")
+check("H3d uncommitted work is not 'finished but unreleased' — that sentence must not appear",
+      "finished but not yet released" not in H.render(s))
 
 s = survey([T("a", "CURRENT")], sha=None)
 check("H4 unresolvable release commit -> REPAIRING, never HEALTHY", s["verdict"] == "REPAIRING")

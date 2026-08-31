@@ -193,18 +193,34 @@ def survey(fetch=True):
     # whether anything is current, so the answer cannot be HEALTHY.
     unresolved = not release_sha
 
+    # TWO DIFFERENT QUESTIONS, and conflating them produced a false REPAIRING on 2026-08-31.
+    #
+    #   "Are the owner's methods current everywhere?"   -> the TARGETS answer this.
+    #   "Could a new release be cut this second?"       -> the SOURCE GATE answers this.
+    #
+    # A dirty fork worktree blocks the second and says nothing about the first. When someone
+    # is simply mid-edit, the estate can be perfectly current while a release is momentarily
+    # uncuttable — and reporting that as "your improvements are finished but not yet released"
+    # is false twice over: uncommitted work is not finished, and every project already holds
+    # the current release. So a dirty tree is recorded and reported, never a health downgrade.
+    #
+    # STRANDED work is the opposite case and DOES downgrade: a branch carrying COMMITTED work
+    # that is not on the canonical channel is genuinely finished and genuinely invisible.
+    # That is the distinction — committed-and-undelivered, not merely in-progress.
+    blocking = [m for m in source_blocks if "dirty" not in m.lower()]
+
     # Content verification is the LAST gate and runs only when nothing else is wrong, because
     # it costs a worktree. Everything upstream of it — receipts, exit codes, the sync manifest
     # — has been observed lying on the same day this was written, so HEALTHY is never claimed
     # on their word alone.
     mismatched, verify_note = [], "not reached"
     if not (decisions or identity or gated or repairable or stranded
-            or source_blocks or unresolved or undelivered) and active:
+            or blocking or unresolved or undelivered) and active:
         mismatched, verify_note = content_verified(active, release_sha)
 
     if decisions or identity or gated:
         verdict = "OWNER DECISION NEEDED"
-    elif (repairable or stranded or source_blocks or unresolved or undelivered
+    elif (repairable or stranded or blocking or unresolved or undelivered
           or mismatched or (verify_note and verify_note != "not reached")):
         verdict = "REPAIRING"
     elif active and len(current) == len(active):
@@ -214,6 +230,7 @@ def survey(fetch=True):
 
     return {"at": now(), "verdict": verdict, "release_commit": release_sha,
             "mismatched": mismatched, "verify_note": verify_note,
+            "release_uncuttable": [m for m in source_blocks if "dirty" in m.lower()],
             "source_blocks": source_blocks, "stranded": stranded, "targets": targets,
             "active": len(active), "current": len(current), "identity": identity,
             "repairable": repairable, "owner_gated": gated, "decisions": decisions,
@@ -295,7 +312,8 @@ def why(s):
     sha = s["release_commit"][:12] if s["release_commit"] else "(unresolved)"
     out = ["", "--- infrastructure detail (requested) ---", f"release commit : {sha}"]
     for m in s["source_blocks"]:
-        out.append(f"source block   : {m.splitlines()[0]}")
+        kind = "release blocked" if "dirty" not in m.lower() else "not cuttable now"
+        out.append(f"{kind:<15}: {m.splitlines()[0]}")
     width = max([len(t["id"]) for t in s["targets"]] or [10]) + 2
     for t in s["targets"]:
         lo = f"  [{t['local_only']} unpushed]" if t.get("local_only") else ""
