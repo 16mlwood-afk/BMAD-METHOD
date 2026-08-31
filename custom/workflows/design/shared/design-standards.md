@@ -247,6 +247,7 @@ AI-generated UI has a recognizable "house style" — a set of patterns that sign
 | **Gradient anything**             | Gradient backgrounds on cards, headers, buttons, or text (`bg-gradient-to-r`)                                            | Gradients on UI elements signal "template" or "landing page." Production tools use flat colors.                                                                                                                 | Remove all gradients from application UI. Flat `bg-background` / `bg-muted` / `bg-card` only. Gradients are acceptable only on marketing pages.                                                                              |
 | **Shadow stacking**               | Multiple shadow layers or `shadow-lg`/`shadow-xl` on cards and containers                                                | AI adds prominent shadows for "depth." Real products use `shadow-sm` at most, or no shadow at all (border-only or spacing-only separation).                                                                     | `shadow-sm` maximum for elevated elements (dropdowns, modals, popovers). Cards and containers: no shadow — use `border` or spacing.                                                                                          |
 | **Colored borders on containers** | `border-blue-200`, `border-emerald-500`, or any non-grey border on cards/sections                                        | Colored borders are a Bootstrap-era pattern AI reproduces. Modern UI uses `border-border` (grey) exclusively for structural borders.                                                                            | All structural borders use `border-border` (the project's neutral border token). Colored borders only for: focus rings, active states, validation feedback, and status-specific indicators (a red border on an error field). |
+| **Left-border accent containers** | A tinted or neutral container carrying a 2–4px colored left rule as a callout, emphasis, or status device — `border-l-2` / `border-l-4` / `border-l-[3px]` with a color class, or CSS `border-left: 3px solid <color>` | The LLM's default admonition idiom — blockquote/callout styling carried into product UI. Invented once, it reads as a "house pattern" and self-propagates across surfaces (observed 2026-08-24: four instances in one artifact, then carried into a second). | Communicate state with the project's badge / status-dot pattern and typography. A left-border accent is permitted ONLY as a **declared identity treatment**: the project's brand identity document (§4 Component Language) must name the exact construction and where it applies. Undeclared use is a fingerprint, everywhere. |
 
 ### Category 4: Component Fingerprints
 
@@ -362,6 +363,7 @@ When evaluating a screen, check:
 - [ ] No emoji used as UI icons or in headers? (P1)
 - [ ] No marketing/enthusiastic copy in tool UI? (P1)
 - [ ] No segmented controls where tabs/dropdowns would work? (P1)
+- [ ] No left-border accent containers (colored `border-l` callout cards)? (P1 — permitted only as a declared brand-identity exception)
 - [ ] No `shadow-lg`/`shadow-xl` on cards? (P2 — shadow-sm max, or border-only)
 - [ ] No `rounded-full` on buttons/badges? (P2 — rounded-md, except avatars)
 - [ ] No `hover:scale-*` or `hover:-translate-y-*` transforms? (P2)
@@ -383,7 +385,7 @@ When reporting issues, classify by **impact** — not just visual quality. A mis
 
 - **P1 — Confusing / Dated / AI-Generated:**
   - Patterns that make the app look unprofessional (thick borders, wrong palette, emoji icons, missing hover states)
-  - **Structural AI fingerprints (P1):** patterns that fundamentally shape the page — stat card rows, dashboard-as-default layout, bento grids, hero sections on tools, feature grids, colored icon circles, rainbow status badges, AI purple accent, gradient backgrounds, enthusiastic/marketing copy. These are high-signal indicators that the page was generated, not designed.
+  - **Structural AI fingerprints (P1):** patterns that fundamentally shape the page — stat card rows, dashboard-as-default layout, bento grids, hero sections on tools, feature grids, colored icon circles, rainbow status badges, AI purple accent, gradient backgrounds, undeclared left-border accent callout containers, enthusiastic/marketing copy. These are high-signal indicators that the page was generated, not designed.
   - **3+ fingerprints on one page:** escalate to a holistic redesign pass — individual fixes won't solve the compound "AI look"
   - **Undefined concepts:** fields/filters with no discoverable definition (user must guess what "Confidence" or "Qualified" means)
   - **Missing decision support:** key information required for the page's primary job is absent or buried
@@ -397,3 +399,50 @@ When reporting issues, classify by **impact** — not just visual quality. A mis
   - **Weak labels:** "View" instead of "View details", ambiguous button text
 
 - **P3 — Nitpick:** Preference-level, fix only if touching the file anyway
+
+---
+
+## Enforcement coverage — how each category is actually checked
+
+Every fingerprint category is classified into exactly one of three enforcement classes. This table
+is the honesty ledger for this file: a category with no wired lane says so, rather than reading as
+covered because the taxonomy exists. When a lane changes (a scanner rule added, a workflow check
+removed), update this table in the same commit.
+
+**Classes:** **deterministic** — `scripts/design-fingerprint-scan.sh` matches a reliable markup/CSS
+signature and a finding fails the scan; **advisory** — a workflow instructs an agent/human judgment
+pass (the scanner names these as advisory items but cannot decide them); **unwired** — no scanner
+rule and no named workflow check currently fires for it.
+
+| Category                       | Deterministic (scanner rule)                                                                                                            | Advisory (judgment lane)                                                                       | Unwired rows                                    |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| 1 Layout                       | —                                                                                                                                        | all rows (stat cards, bento, card-wrapping, symmetric padding, hero, dashboard-as-default)     | —                                               |
+| 2 Typography                   | `uppercase-tracking` (`uppercase` + `tracking-wide/-widest`)                                                                             | size hierarchy, monospace misuse, decorative titles                                            | —                                               |
+| 3 Color & visual treatment     | `ai-purple`, `gradient`, `shadow-heavy` (`shadow-lg/-xl`), `left-border-accent`                                                          | multi-color badges, colored icon backgrounds, colored borders (general case)                   | —                                               |
+| 4 Component                    | `glassmorphism` (`backdrop-blur` / `backdrop-filter: blur`), `hover-transform` (`hover:scale-*`, `hover:-translate-y-*`)                 | stat-card-with-icon, segmented controls, empty-state illustrations, rounded-full controls, skeletons, toasts, dividers | animated counters (no static signature)         |
+| 5 Content & copy               | —                                                                                                                                        | all rows (emoji-as-UI, friendly copy, placeholder content, marketing language, tooltips)       | —                                               |
+| 6 Structural                   | —                                                                                                                                        | all rows (sidebar icon colors, footer, breadcrumb stacking, kitchen-sink settings)             | —                                               |
+| Composite test                 | scanner reports its deterministic-finding count, which feeds the composite count                                                         | final composite verdict (P1 counting needs context the scanner lacks)                          | —                                               |
+
+**The scanner's ceiling, stated plainly:** zero deterministic findings is NOT design compliance —
+most of the taxonomy is advisory by construction, and the scanner says so in its own output. A
+declared brand-identity exception is passed to the scanner as `--allow <rule-id>`; the match is
+still reported (as `DECLARED-EXCEPTION`), it just stops failing the scan.
+
+### Prose consumers — the delivery surfaces (audit these, not just the taxonomy)
+
+This file enforces nothing by existing. It reaches a design only through the consumers below, and
+each one is a drift surface: a consumer that cites this file as authority without loading or
+embedding it delivers nothing (that failure shipped a left-border-accent artifact on 2026-08-24).
+The fork validator `tools/validate-standards-delivery.mjs` fails the build when a consumer cites
+this file without a load/read/embed instruction.
+
+| Consumer                              | Role                                             | Bound by                                                             |
+| ------------------------------------- | ------------------------------------------------ | -------------------------------------------------------------------- |
+| `design/design-handoff`               | embeds the taxonomy into every brief (§5b)       | brief-template §5b machine-embed + step-03 render rule               |
+| `design/shared/claude-design-prompt.md` | the paste route's read list                    | "Files to read first" names this file                                |
+| `design/design-review`                | audits live pages against the taxonomy           | workflow.md load instruction (read, not cite)                        |
+| `design/design-review-pr`             | PR-time source-grep lane                         | runs `design-fingerprint-scan.sh` + loads this file                  |
+| `design/design-tuning`                | audits returned artifacts                        | step-01 loads this file's § AI Fingerprint Detection                 |
+| `design/design-synthesize`            | terminal-native generator                        | step-02 §4b loads the taxonomy into `{hard_failures}`                |
+| `implement/design-ingest`             | scans returned frames at the ingest boundary     | step-03 runs `design-fingerprint-scan.sh`, records result in manifest |

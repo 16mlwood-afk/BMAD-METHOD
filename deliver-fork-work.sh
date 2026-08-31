@@ -152,11 +152,58 @@ for r in "${rows[@]}"; do
 
   g checkout -q -B "$tmp" "$b" || { skipped+=("$b (could not branch)"); continue; }
 
+  # Rebase, auto-resolving ONLY the conflict shapes that are mechanical and provably
+  # safe. Every branch that adds a test collides on package.json in exactly the same
+  # additive way; on 2026-08-31 that one pattern was the only thing between two finished
+  # branches and custom. Anything else — a real content disagreement — aborts and is
+  # reported, because that is a judgement call and this script does not get to make it.
+  rebase_ok=true
   if ! g rebase "refs/heads/$CANON" >/dev/null 2>&1; then
+    while :; do
+      conflicted="$(g diff --name-only --diff-filter=U)"
+      [[ -z "$conflicted" ]] && { rebase_ok=false; break; }
+
+      unhandled="$(printf '%s\n' "$conflicted" \
+                   | grep -vE '^(package\.json|docs/fork-gaps\.md)$' || true)"
+      if [[ -n "$unhandled" ]]; then
+        say "   CONFLICT in files this script must not resolve for you:"
+        printf '%s\n' "$unhandled" | sed 's/^/        /'
+        rebase_ok=false; break
+      fi
+
+      resolved_any=false
+      if printf '%s\n' "$conflicted" | grep -q '^package\.json$'; then
+        if ! (cd "$FORK" && python3 tools/resolve-package-union.py package.json); then
+          say "   package.json conflict is NOT a plain addition — a human has to choose."
+          rebase_ok=false; break
+        fi
+        g add package.json; resolved_any=true
+      fi
+      if printf '%s\n' "$conflicted" | grep -q '^docs/fork-gaps\.md$'; then
+        if ! (cd "$FORK" && python3 tools/resolve-register-union.py docs/fork-gaps.md); then
+          say "   the register conflict is not a plain append — a human has to choose."
+          rebase_ok=false; break
+        fi
+        g add docs/fork-gaps.md; resolved_any=true
+      fi
+      $resolved_any || { rebase_ok=false; break; }
+
+      if g -c core.editor=true rebase --continue >/dev/null 2>&1; then break; fi
+      # another commit in the series conflicted — loop and try again
+      [[ -n "$(g diff --name-only --diff-filter=U)" ]] || { rebase_ok=false; break; }
+    done
+  fi
+
+  if ! $rebase_ok; then
     g rebase --abort >/dev/null 2>&1 || true
+    # `rebase --abort` restores the BRANCH, but a resolver that wrote one file before a
+    # later one refused can leave that write behind in the worktree — observed 2026-08-31,
+    # where a refused register resolution left docs/fork-gaps.md modified on custom. Safe
+    # to hard-restore because preflight already required a clean tree.
+    g checkout -q -- . 2>/dev/null || true
     g checkout -q "$CANON"; g branch -q -D "$tmp" 2>/dev/null || true
     skipped+=("$b (conflicts with $CANON — needs a human)")
-    say "   CONFLICT — left untouched. Resolve by hand:  git checkout $b && git rebase $CANON"
+    say "   left untouched. Resolve by hand:  git checkout $b && git rebase $CANON"
     continue
   fi
 

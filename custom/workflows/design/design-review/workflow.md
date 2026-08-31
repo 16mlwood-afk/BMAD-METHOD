@@ -71,6 +71,8 @@ If either is found, read and store as `{brand_identity}` (variable name retained
 
 The project policy provides project-specific visual standards (exact typography, exact colors, exact component patterns) that are more authoritative than the generic `design-standards.md`. When both exist, the policy wins on specifics — use `design-standards.md` only for categories the policy doesn't cover (functional UX, accessibility, severity levels).
 
+**Load the shared standards file — do not audit from a citation.** Read `{design_standards}` and hold its `## AI Fingerprint Detection` (all six category tables + the composite test), `## Quality Checklist`, and `## Severity Levels` sections in working state for the audit. Citing this file as authority #2 while never opening it is the exact drift that let a taxonomy-listed pattern ship unflagged (2026-08-24) — the audit evaluates against the file's CURRENT tables, not a remembered list. If the file is unreadable, say so in the review output and mark the fingerprint dimension `UNVERIFIED — standards file unreadable`; never substitute a from-memory taxonomy.
+
 **If `{project-root}/docs/design-policy.md` should exist for this project but the bash check returned nothing, STOP and report the path you tried. Silent fallback to "no policy" mode is the loader-drift bug this section exists to prevent — surface it instead of swallowing it.**
 
 ---
