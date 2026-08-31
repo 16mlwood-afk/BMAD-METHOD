@@ -6101,6 +6101,22 @@ overstatement. The true delta, measured old-code vs new-code against **one** reg
 (exactly two rows: SR-28, SR-60). The false version was avoided only because the before/after was run
 deliberately on a single file; nothing in the tool's output would have flagged it.
 
+**6. A check that passes over nothing has not passed.** All seven entries logged on this
+date — both sessions' — were written at `###`. The parser splits entries on a leading
+`## `, so not one of them was an entry: they were body text belonging to whatever `## `
+preceded them. `check-fork-gap-schema` reported `0 errors` over content it never read, and
+that result was quoted as evidence the entries were sound, in the commit message for THIS
+entry. The moment they were promoted to `##`, the checker found real defects immediately —
+every one missing `owner`, six with no `### Incident` block — which is the tell that the
+silence had been the finding all along.
+
+It is the mirror of (5), and together they cover the two ways an instrument reports success
+while doing no work: (5) reads a channel that cannot carry the signal, (6) runs a check
+over an empty set. In both the instrument is fine, the coverage is empty, and the output
+looks like good news. The distinction from (4) is worth keeping too — a guard whose
+precondition is missing never ran; a check over nothing ran perfectly and had nothing to
+look at.
+
 ### Why it is structural, not a one-off
 
 This is the surfacing sibling of the stale-`main` gap already open in this file, but it is not the
@@ -11068,5 +11084,6 @@ checked, and that each checked the other's rather than accepting it.
     Not-yet-run is not passed.
     Not-pushed is not delivered.
     A guard whose precondition is missing has not held.
+    A check that passes over nothing has not passed.
     And absence of a signal is evidence only when the channel would have carried it —
     before concluding it did not happen, show you would have seen it if it had.
