@@ -245,8 +245,22 @@ def classify(t, release_sha):
     # Drift is checked FIRST and outranks a missing receipt. Both are true of an
     # untracked replica, but only one of them means a publish would DELETE work, and
     # that is the one an operator has to see.
-    dirty = out(["git", "status", "--porcelain", "--",
-                 t.get("managed_root", "_bmad"), *MANAGED_EXTRA], cwd=real)
+    # A gitignored managed scope is UNOBSERVABLE, not clean. Four projects gitignore
+    # .claude/skills entirely, so `git status` over that pathspec returns nothing whether
+    # the tree is pristine or wrecked — and reporting that as clean is the same
+    # incomplete-path-read-as-a-verdict error the representation rule exists to stop.
+    # (`git add` on such a path also refuses outright, which is what aborted the delivery
+    # owner's commit loop on those four.) Scope the status call to what git can actually
+    # see, and carry the blind scopes into the verdict.
+    scopes_all = (t.get("managed_root", "_bmad"),) + MANAGED_EXTRA
+    observable, blind = [], []
+    for sc in scopes_all:
+        if not (real / sc).exists():
+            continue
+        ignored = sh(["git", "check-ignore", "-q", sc], cwd=real).returncode == 0
+        (blind if ignored else observable).append(sc)
+
+    dirty = out(["git", "status", "--porcelain", "--", *observable], cwd=real) if observable else ""
     if dirty:
         n = len(dirty.splitlines())
         # Name every scope the count covers. The message used to say "under the managed
@@ -254,9 +268,15 @@ def classify(t, release_sha):
         # so ten targets reported 181 changes while `git status -- _bmad` showed zero, and
         # the reader went hunting in the wrong directory. Every one was a deletion under
         # .claude/skills. A count and its label must describe the same set.
-        scopes = ", ".join((t.get("managed_root", "_bmad"),) + MANAGED_EXTRA)
-        return "LOCAL_DRIFT", (f"{n} uncommitted change(s) under [{scopes}] — a sync "
-                               "would DELETE them; inspect before releasing")
+        return "LOCAL_DRIFT", (f"{n} uncommitted change(s) under [{', '.join(observable)}] "
+                               "— a sync would DELETE them; inspect before releasing")
+
+    if blind:
+        # Content verification still covers these scopes; git-based DRIFT detection does
+        # not. Say which, rather than implying the whole target was inspected.
+        blind_note = f" (drift unobservable under [{', '.join(blind)}] — gitignored)"
+    else:
+        blind_note = ""
 
     receipt = read_receipt(real, t)
     if receipt is None:
@@ -265,8 +285,8 @@ def classify(t, release_sha):
         return "PARTIAL_RELEASE", "receipt is unreadable"
     if receipt.get("release_commit") != release_sha:
         return "STALE", (f"holds {str(receipt.get('release_commit'))[:12]}, "
-                         f"release is {release_sha[:12]}")
-    return "CURRENT", f"at {release_sha[:12]}"
+                         f"release is {release_sha[:12]}{blind_note}")
+    return "CURRENT", f"at {release_sha[:12]}{blind_note}"
 
 
 # ------------------------------------------------------------------- commands
