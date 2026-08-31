@@ -152,11 +152,41 @@ for r in "${rows[@]}"; do
 
   g checkout -q -B "$tmp" "$b" || { skipped+=("$b (could not branch)"); continue; }
 
+  # Rebase, auto-resolving ONLY the conflict shapes that are mechanical and provably
+  # safe. Every branch that adds a test collides on package.json in exactly the same
+  # additive way; on 2026-08-31 that one pattern was the only thing between two finished
+  # branches and custom. Anything else — a real content disagreement — aborts and is
+  # reported, because that is a judgement call and this script does not get to make it.
+  rebase_ok=true
   if ! g rebase "refs/heads/$CANON" >/dev/null 2>&1; then
+    while :; do
+      conflicted="$(g diff --name-only --diff-filter=U)"
+      [[ -z "$conflicted" ]] && { rebase_ok=false; break; }
+
+      unhandled="$(printf '%s\n' "$conflicted" | grep -v '^package\.json$' || true)"
+      if [[ -n "$unhandled" ]]; then
+        say "   CONFLICT in files this script must not resolve for you:"
+        printf '%s\n' "$unhandled" | sed 's/^/        /'
+        rebase_ok=false; break
+      fi
+
+      if ! (cd "$FORK" && python3 tools/resolve-package-union.py package.json); then
+        say "   package.json conflict is NOT a plain addition — a human has to choose."
+        rebase_ok=false; break
+      fi
+      g add package.json
+
+      if g -c core.editor=true rebase --continue >/dev/null 2>&1; then break; fi
+      # another commit in the series conflicted — loop and try again
+      [[ -n "$(g diff --name-only --diff-filter=U)" ]] || { rebase_ok=false; break; }
+    done
+  fi
+
+  if ! $rebase_ok; then
     g rebase --abort >/dev/null 2>&1 || true
     g checkout -q "$CANON"; g branch -q -D "$tmp" 2>/dev/null || true
     skipped+=("$b (conflicts with $CANON — needs a human)")
-    say "   CONFLICT — left untouched. Resolve by hand:  git checkout $b && git rebase $CANON"
+    say "   left untouched. Resolve by hand:  git checkout $b && git rebase $CANON"
     continue
   fi
 
