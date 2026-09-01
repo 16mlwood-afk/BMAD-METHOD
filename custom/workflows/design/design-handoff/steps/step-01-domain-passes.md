@@ -265,6 +265,13 @@ fork canon, not a project opt-in — and record an Open Question naming the miss
 fabricate a project-specific layering rule, and do NOT import another project's §4e text.** Same discipline
 as the missing §8 viewport policy at §3f and the missing ledger archetype at §3g.
 
+**Assigning something to layer 1 on purpose is a PASS, not an exception (D5a).** When the honest
+answer is *"this particular source / freshness marker / generated original must always be on
+screen"*, put it in `{work_layer_elements}` with its reason and move on — nothing needs waiving and
+gate (i) does not fire. **Do NOT reach for `n/a` to keep one visible field**: that switches off the
+type floors, the named-not-counted strip and the meaning of silence along with it, which is a large
+price for a line you could simply have written. `n/a` is for a surface with no audit contract at all.
+
 **Two orderings this pass must NOT get wrong, both carried into §4h:**
 
 1. **A visual-judgement gate OUTRANKS the disclosure model.** Where the judgement's material is an IMAGE,

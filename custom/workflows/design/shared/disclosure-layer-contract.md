@@ -102,6 +102,31 @@ the operator at the top of a generic audit page is the aggregate failure in anot
   never tightening layer 1. Floors: body ≥14px, field value 15px, field label 12px sentence case,
   group heading 11px tracked uppercase for major groups only, **nothing below 11px**.
 
+## D5a. Keeping something permanently visible is a DECLARED CHOICE, not an exception
+
+**This contract governs where each element is ASSIGNED. It does not forbid assigning a given element
+to layer 1.** A brief that deliberately places a specific source, freshness marker, derivation label
+or generated-original in the work layer — and says so in §4h with the reason — is a **PASSING**
+brief. Nothing needs waiving, no exception needs granting, and gate (i) does not fire.
+
+**The three routes out, in the order they should be reached for:**
+
+1. **Assign it to layer 1 and say why.** The correct route whenever the answer is *"this particular
+   thing must always be on screen."* Costs one line in §4h; keeps the type floors, the named-not-
+   counted strip and the meaning of silence, which are the parts that are just straightforwardly
+   good on any surface.
+2. **`disclosure_model: n/a — <why>`.** The correct route only when the surface carries **no** audit
+   contract at all (D0). It switches the whole section off, including the parts in (1).
+3. **A project design-policy section.** A project's own policy outranks this contract and the
+   step-01 §3h pass defers to it explicitly. The route for a standing, project-wide difference.
+
+**What this rule exists to prevent, and it is a misreading in BOTH directions.** Read as *"provenance
+must now be hidden"*, a designer strips something load-bearing off a screen that needed it and calls
+it compliance. Read as *"only `n/a` gets me my visible field back"*, a surface with a real audit
+contract declares itself exempt to keep one caption — and loses every other guarantee to do it.
+Neither is the contract. **The default of marking EVERYTHING is what is banned (D2); any individual
+thing you deliberately choose to show is a design decision, and stating it is the whole ask.**
+
 ## D6. The four invariants that survive the move, unchanged
 
 1. Every approved outward-facing assertion remains traceable to evidence, a stated derived rule, or
