@@ -233,3 +233,52 @@ is **deliberately NOT proposed here** — the existing brief gate documents its 
 in a repo whose artifacts dir is gitignored, and duplicating that placement would ship a check that reports
 green from seeing nothing.
 
+### 3h. Disclosure pass — does this surface owe evidence, and where does that evidence LIVE (every page)
+
+**Contract: `shared/disclosure-layer-contract.md`. Read it. Do NOT restate its doctrine into the brief —
+render the surface-specific ASSIGNMENT.** This pass answers one question and sets one field.
+
+**The question: does this surface carry an AUDIT or PROVENANCE contract?** It does when the design owes
+any of — evidence for a displayed value · the source a value came from · freshness or staleness ·
+derivation or a stated derived rule · conflicts · an override and who authored it · an audit history —
+**for something the operator COMMITS to.** Read §2 Domain Data and the mutation list, not your instinct.
+
+**The trigger is the CONTRACT, not the presence of metadata.** A `created_at` column is not an audit
+contract. An operator approving a value the system generated, where the evidence for that value is owed,
+is. When in doubt the honest answer is the narrower one — a surface wrongly marked `three-layer` costs a
+§4h section nobody needed; a surface wrongly marked `n/a` ships the schema-shaped default with no gate.
+
+**Set `{disclosure_model}`, and it is one of exactly two values:**
+
+- **`n/a — <why>`** — no audit contract. **OMIT §4h entirely.** This is the common case and it is cheap
+  on purpose; a plain worklist or a settings page does not get a layering section.
+- **`three-layer`** — an audit contract exists. Then also resolve, from §2 and the mutation list, the
+  four assignments §4h renders: `{work_layer_elements}` (identity · readiness · the ONE dominant next
+  action · every field the operator edits or commits) · `{exception_signals}` and `{neutral_signals}`
+  (the D3 split — an override is a neutral AUTHORSHIP fact and never an "issue") ·
+  `{evidence_layer_contents}` (**itemised** — *"disclosed"* is a non-answer, and an unspecified inspector
+  is how auditability is actually lost) · `{evidence_indicator_placement}`.
+
+**Where a project policy carries the doctrine, READ IT and defer to it** (cash-recovery: `docs/design-policy.md`
+§4e + hard failure 26). Where the project has no such section, the shared contract above still binds — it is
+fork canon, not a project opt-in — and record an Open Question naming the missing project section. **Do NOT
+fabricate a project-specific layering rule, and do NOT import another project's §4e text.** Same discipline
+as the missing §8 viewport policy at §3f and the missing ledger archetype at §3g.
+
+**Two orderings this pass must NOT get wrong, both carried into §4h:**
+
+1. **A visual-judgement gate OUTRANKS the disclosure model.** Where the judgement's material is an IMAGE,
+   the images are on screen at the point of judgement, at judgement size — *"one click away"* never
+   satisfies that gate. Resolve `{visual_judgement_gates}` by naming the frames it applies to, or the
+   literal string `none on this surface`. Leaving it blank is how a picker gets disclosed into a list.
+2. **A blocker is not evidence.** Anything that PREVENTS the commit stays in the work layer, named, with
+   its route to resolution. Disclosure governs the *support* for a claim, never the *obstacle* to an action.
+
+**§ Enforcement tier (honest — do not overclaim).** This pass is **PROBABILISTIC**: workflow prose the model
+executes, shipped via the fork sync. Gate class **(i)** in step-03 is a workflow halt (tier 3), the same tier
+as (e)/(f)/(h). The deterministic companion is the `disclosure-layers` absence probe in
+`tools/check-brief-readiness.py` — and like every probe there, **a fired probe is a QUESTION, not a defect.**
+**What cannot be enforced at all: whether the rendered comp is actually layered** — a comp is not a tool call,
+so no hook can block one, the identical ceiling to the canonical-viewport and ledger passes. A green gate
+means "the brief declared its layers", never "the surface is calm to work on".
+

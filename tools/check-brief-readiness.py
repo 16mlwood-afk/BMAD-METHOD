@@ -152,6 +152,57 @@ ABSENCE_PROBES = [
 PARTITION_TERMS = ["partition", "partitions", "mutually exclusive", "sums to",
                    "adds up to", "counted separately"]
 
+# --- P5 conditional probe: disclosure layers (shared/disclosure-layer-contract.md).
+#
+# CONDITIONAL, and deliberately NOT an ABSENCE_PROBE. An unconditional layering probe would fire on
+# every settings page and worklist in the corpus — the indiscriminate-detector anti-pattern that
+# gets a tool switched off. It fires only when the brief's OWN TEXT indicates an audit/provenance
+# contract (the design owes evidence, source, freshness, derivation, conflicts, override authorship
+# or audit history for something the operator commits to) AND the brief determines nothing about
+# WHERE that evidence lives.
+#
+# The failure it asks about: a brief can specify complete provenance, never say which layer it sits
+# in, and still read as rigorous. It contradicts no other field, so every other probe passes it, and
+# the generator then fills the unspecified slot by rendering the evidence model AS the interface.
+# CALIBRATED AGAINST THE REAL CORPUS, not chosen by feel. The first cut of this list also carried
+# "override", "stale", "freshness", "derivation", "traceable", "source record" and "generated
+# value", with a single-hit trigger. Measured over all 122 design briefs on cash-recovery's
+# origin/main it fired on 115 of them — an indiscriminate detector, which is what gets a tool
+# switched off. Those words are ordinary UI vocabulary; they do not mark an audit contract.
+#
+# What survives names an audit obligation directly. Firing needs AUDIT_TERM_THRESHOLD distinct
+# hits, because any one of these appears incidentally: measured distribution over the same 122
+# briefs is 0 terms:10 · 1:72 · 2:28 · 3:9 · 4:2 · 9:1, so >=3 selects 12 briefs (~10%) and the
+# selected set is the genuinely audit-contract-bearing one — listing-composer, owner-approvals,
+# ebay-publish-lifecycle, owner-staging, regrade-lineage-ledger, claims-queue-linkage,
+# canonical-unit-record, clerk-dispatch-station, owner-reimbursements.
+#
+# Re-measure before changing either the list or the threshold. `--json` over the corpus is one
+# command; a threshold picked by feel is how the first cut reached 94%.
+AUDIT_CONTRACT_TERMS = [
+    "provenance", "audit event", "audit history", "audit trail", "evidence for",
+    "attributable", "authorship", "derived rule", "override history", "who authored",
+]
+
+AUDIT_TERM_THRESHOLD = 3
+
+# Any of these means the brief HAS determined the question — the probe stays silent.
+#
+# DELIBERATELY NARROW, and this list was cut down after it failed its own positive case. The first
+# cut also carried "one action away", "default view", "at rest", "inspector", "disclosed",
+# "behind a click" and "progressive disclosure". Measured against the real 08-31 Listing Composer
+# brief — the brief this whole contract exists because of, which mandated permanent display on
+# every ingredient — a SINGLE incidental "one action away" silenced the probe. A phrase appearing
+# somewhere is not a determination: that is the mention-is-not-a-use trap, and on a silence list it
+# is worse than on a fire list, because it produces a confident quiet.
+#
+# What survives names a LAYER. A brief cannot say "confidence layer" incidentally.
+DISCLOSURE_TERMS = [
+    "disclosure_model", "disclosure model",
+    "work layer", "confidence layer", "evidence layer",
+    "three-layer", "three layer",
+]
+
 MONEY_FIELD = re.compile(
     r"\b(price|soldprice|sold_price|recoverable|net|estimatednet|estimated_net|"
     r"cost basis|costbasis|gross|fees|recovery)\b", re.I)
@@ -307,6 +358,24 @@ def analyse(path, text):
             fire("money-co-enumeration",
                  "money fields of differing semantics enumerated together",
                  f"{sorted(hits)} on one line — invites a single shared column", line=i + 1)
+
+    # --- P5 disclosure layers (CONDITIONAL — see AUDIT_CONTRACT_TERMS above).
+    # Silent when the brief already carries `disclosure_model` in its frontmatter: that field IS
+    # the determination, and `n/a — <why>` is a legitimate answer, not an omission.
+    if "disclosure_model" not in fm:
+        audit_hits = sorted({t for t in AUDIT_CONTRACT_TERMS if any_phrase(body, [t])})
+        if len(audit_hits) >= AUDIT_TERM_THRESHOLD and not any_phrase(body, DISCLOSURE_TERMS):
+            shown = ", ".join(audit_hits[:5])
+            if len(audit_hits) - 5 >= 1:
+                shown += "…"
+            fire("disclosure-layers",
+                 "audit/provenance obligations stated, but no requirement determines "
+                 "WHERE that evidence lives",
+                 f"the brief owes {shown} and never assigns a layer. Set `disclosure_model` "
+                 "and render §4h (shared/disclosure-layer-contract.md D7), or record "
+                 "`disclosure_model: n/a — <why>` if this surface carries no audit contract. "
+                 "An unassigned layer is filled by the generator's default, which is to render "
+                 "the evidence model AS the interface.")
 
     fired = [f for f in findings if not f["informational"]]
     return {

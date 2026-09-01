@@ -63,6 +63,7 @@ surface_part: {surface_part}             # sub-surface within route — a tab/se
 composition_provenance: {composition_provenance}   # policy-default | recommended-alt (decided in §5a; recommended-alt names a job-fit composition in §4a and was veto-surfaced)
 composition: {composition}               # machine-readable composition key the design-implement bundle→implement conformance gate (step-01 §SHARED.1b) diffs against. Default = the page_mode default (operational→worklist | analytical→chart-led | detail→record-view). When composition_provenance is recommended-alt, set the named job-fit composition from §4a as a kebab key (e.g. scanner-terminal, single-item-stream, source-co-present). A NON-default composition (e.g. a clerk scan station) is the signal that the gate must verify the bundle expresses the JOB LOOP (scan→feedback→tally→close), not a centered hero card.
 band_provenance: {band_provenance}       # inherited | recommended-new | recommended-drop | none
+disclosure_model: {disclosure_model}     # three-layer | n/a — <why this surface carries no audit contract>. Decided in step-01 §3h (disclosure pass). `three-layer` REQUIRES a rendered §4h assigning every element family to a layer — see shared/disclosure-layer-contract.md D7. The trigger is an AUDIT/PROVENANCE CONTRACT (the design owes evidence, source, freshness, derivation, conflicts, override authorship or audit history for a value the operator commits to), NOT the mere presence of metadata: a timestamp column is not an audit contract. Absent on a surface whose §2 names those obligations is gate class (i) in step-03.
 {# analytics_archetype is REQUIRED iff band_provenance ∈ {inherited, recommended-new}; omit the line entirely otherwise. #}
 {if has_analytics_band}
 analytics_archetype: {analytics_archetype}   # trend | distribution | composition | ranking | coverage | flow | waterfall | single-metric | correlation
@@ -724,6 +725,61 @@ Three rules, all of which `design-review-pr` checks:
 {endif}
 {if `{viewport_surface_class}` is DECIDED in policy §8.2 — render the banner matching ITS decided posture, never a hardcoded one:}
 > **Decided surface (policy §8.2) — design to the decided posture verbatim.** If **desktop-only** (e.g. a grading/bench class): ≥1280px, landscape, keyboard + hardware scanner, scanner-first; a mobile / faux-mobile card here is a policy VIOLATION (the project's clerk-web-mode hard-failure). If **handheld-first / mobile-primary** (e.g. a roaming receiving clerk): phone viewport, portrait, one-handed, mobile scanner, offline-capable per policy; a desktop-only, mouse-dependent layout is the VIOLATION here. Do NOT invert the class's decided posture.
+{endif}
+
+---
+
+## 4h. Disclosure layers — what is on screen at rest, and what is one action away
+
+{# RENDERED ONLY when disclosure_model == three-layer. When the surface carries no audit contract,
+   OMIT this whole section — Block B already records `disclosure_model: n/a — <why>` and an empty
+   layering section on a settings page is noise. Contract:
+   shared/disclosure-layer-contract.md — read it; do NOT restate its doctrine here, render the
+   surface-specific ASSIGNMENT. #}
+{if `{disclosure_model}` == "three-layer"}
+
+**The contract, in one line: *"inspectable" is what this surface owes; "permanently displayed" is
+not.*** Complete provenance, freshness, derivation, conflicts and override history are all owed and
+all reachable — see `shared/disclosure-layer-contract.md` (D1–D6, binding). What follows is THIS
+surface's assignment. **Do not render the evidence model as the interface**; a design whose default
+view spends its dominant region on provenance apparatus rather than on the task is rejected.
+
+**Layer 1 — WORK. Always visible, and the dominant visual region.**
+{`{work_layer_elements}` — identity · readiness state · the ONE dominant next action · every field
+the operator edits or commits. Name them.}
+
+**Layer 2 — CONFIDENCE. Compact and visible.**
+- Overall evidence indicator: {`{evidence_indicator_placement}` — near the commit control.}
+- Exception strip: rendered **only when action is needed**. It NAMES the affected element and the
+  reason in plain language; a bare count with nothing named FAILS (D4).
+- Field-level signals, and the split that matters (D3):
+  - **Exception signals** — {`{exception_signals}`, e.g. `Unverified` · `N conflicts` · `Stale`}.
+    Each earns a named strip entry and counts toward the strip's number.
+  - **Neutral authorship signal** — {`{neutral_signals}`, e.g. `Owner edited`}. Carries a field
+    signal, opens the inspector, and **never enters the strip or its count.**
+- **Healthy, current, uncontested evidence gets NO signal.** Silence is the affirmative statement.
+
+**Layer 3 — EVIDENCE. Complete, disclosed, one action away.**
+{`{evidence_layer_contents}` — itemise. Full provenance and source records · freshness detail with
+every state distinguished · the original generated value · conflicts and their resolution status ·
+derivation trace · override history with author, timestamp, reason and before/after · the canonical
+record · audit history. **"Disclosed" is not an answer** — an unspecified inspector is how
+auditability actually gets lost (D7).}
+- Reachable from: the overall indicator · any field-level signal · a `View evidence` / `Why this?`
+  affordance · the controls that act on the evidence itself.
+- **Deep-links** to the field, source, conflict or override that was signalled — never the top of a
+  generic audit page.
+- Never a permanently visible third column.
+
+**What does NOT move (D5) — carried here so a generator cannot read this section as a licence:**
+- {`{visual_judgement_gates}` — wherever the judgement's material is an IMAGE, the images are on
+  screen at the point of judgement, at judgement size. This OUTRANKS the disclosure model; "one
+  click away" never satisfies it. Name the frames it applies to, or state `none on this surface`.}
+- Blockers stay in layer 1, named, with their route to resolution. A blocker is not evidence.
+- Type/spacing are not the lever: body ≥14px, field value 15px, field label 12px, group heading 11px
+  tracked uppercase for major groups only, nothing below 11px. Shrinking to fit is the same failure
+  treated cosmetically.
+
 {endif}
 
 ---

@@ -188,6 +188,41 @@ what will be destroyed.
     ids, _ = fired_ids(write(tmp, "fx-money-ok.md", "| unit | price |\n"))
     check("P4b a single money field stays SILENT", "money-co-enumeration" not in ids)
 
+    # ── P5 disclosure layers (CONDITIONAL) ──────────────────────────────────────
+    # Most of these assert SILENCE on purpose. The first cut of this probe fired on 115 of the
+    # 122 real design briefs in cash-recovery; the threshold and the narrowed term list are what
+    # brought that to 10, and these cases are what stop either drifting back.
+    AUDIT3 = ("Every value carries its provenance. Each override is attributable to a person.\n"
+              "The audit history records who authored it.\n")
+    p5 = write(tmp, "fx-p5-audit-no-layers.md", AUDIT3)
+    check("P5  audit obligations with NO layer assignment FIRES",
+          "disclosure-layers" in fired_ids(p5)[0])
+
+    p5b = write(tmp, "fx-p5-declared.md", AUDIT3,
+                frames="frames: [queue]\ndisclosure_model: n/a — no audit contract")
+    check("P5b a declared disclosure_model stays SILENT (n/a is an ANSWER, not an omission)",
+          "disclosure-layers" not in fired_ids(p5b)[0])
+
+    p5c = write(tmp, "fx-p5-layered.md",
+                AUDIT3 + "The work layer holds the decision; the evidence layer is one action away.\n")
+    check("P5c a body that assigns layers stays SILENT",
+          "disclosure-layers" not in fired_ids(p5c)[0])
+
+    # Below threshold: two strong terms is ordinary vocabulary, not an audit contract.
+    p5d = write(tmp, "fx-p5-below-threshold.md",
+                "The row shows its provenance. Each edit is attributable.\n")
+    check("P5d two audit terms is BELOW threshold and stays SILENT",
+          "disclosure-layers" not in fired_ids(p5d)[0])
+
+    # The regression that actually happened: a single incidental disclosure phrase must NOT
+    # silence a brief that mandates permanent display everywhere else.
+    p5e = write(tmp, "fx-p5-incidental-phrase.md",
+                AUDIT3 + "The source record is one action away from the row.\n")
+    check("P5e an incidental 'one action away' does NOT silence the probe",
+          "disclosure-layers" in fired_ids(p5e)[0])
+
+    check("P5f the clean control is unaffected by P5", "disclosure-layers" not in fired_ids(control)[0])
+
     # ── body SHA lifecycle ──────────────────────────────────────────────────────
     a = write(tmp, "sha-a.md", COMPLETE_BODY)
     b = write(tmp, "sha-b.md", COMPLETE_BODY, frames="frames: [queue, queue--detail]\nauthor: someone-else")
