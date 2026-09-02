@@ -146,3 +146,46 @@ Draft an outreach email using my installed writing/style stack
 
 Then run your draft through writing:humanize-text before showing me.
 ```
+
+### Boundary clarification — 2026-08-31 (owner instruction)
+
+**Classification: PERMITTED, and partially already covered. Not prohibited, not ambiguous.**
+
+An internal read-only reviewer agent, **`plain-english-outcome-editor`** (`~/.claude/agents/`),
+was added 2026-08-31. Classified against the governing text rather than around it:
+
+1. **The exact prohibited capability** is a *skill that rewrites prose to be plainer, shorter
+   or less jargon-heavy*. The row's "already covered by" column names `writing:humanize-text`
+   and `writing:write-doc`.
+2. **The ledger's own scope (§ Scope) governs ADDING a capability** — "which are redundant to
+   add". It does not govern internal role definitions generally.
+3. **DECISIVE — § Status explicitly anticipates house-owned additions** and requires this file
+   be updated when one is made: *"UPDATE this file if a new decision is made (e.g. a
+   house-owned outreach skill is added)."* There is direct precedent: `outreach-email` is a
+   **house-owned skill that CLOSED a gap in this ledger** (§ summary, 2026-07-22). An in-house
+   addition is therefore a known, permitted, precedented path — not a contradiction.
+4. **The CLAUDE.md gate's required path was followed**: the conflict diagnostic was emitted,
+   and the gate's own remedy is *either* revise to match the ledger *or* explicitly propose
+   updating it. This is the second branch, taken openly.
+5. **No outward pass is owed.** The freshness rule requires one before *reusing a PROVISIONAL
+   verdict*. That verdict is not being reused — nothing external is being installed and no
+   suppression is being re-affirmed. If a future session proposes an **external** plain-English
+   skill, the row remains PROVISIONAL and the outward pass IS owed.
+
+**Safest reversible interpretation, applied.** The agent is read-only; forbidden from changing
+any fact, number, verdict or confidence level; forbidden from adding a causal claim its source
+did not make; and instructed to **route prose polish to `writing:humanize-text`** rather than
+duplicate it. Its job is narrower than the suppressed capability: it checks whether a report
+states the OUTCOME or the MECHANISM, and whether a limitation sits beside the claim it
+constrains. Reversal is deleting one file.
+
+**The suppression still stands for its stated scope** — installing an external plain-English
+*writing* skill.
+
+---
+
+## Human-Writing Capability Ledger Gate — golden-suite verification + Gmail monitor
+
+*Relocated from `~/.claude/CLAUDE.md` § Human-Writing Capability Ledger Gate — golden-suite verification + Gmail monitor by PCR-D6b, 2026-09-02. Verbatim.*
+
+Verified 2026-07-24 against an 8-case golden suite (in-scope draft/send → ASK; Write, Gmail read, label → silent allow; malformed payload → fails CLOSED to ASK). **Monitor (first 10 Gmail draft attempts, from 2026-07-24):** the attempt counter is DETERMINISTIC — the gate appends metadata-only rows (never the body) to `~/.claude/logs/gmail-humanize-gate.jsonl`; read it with `bash ~/.claude/hooks/gmail-humanize-monitor.sh`. In the session summary log the two columns no hook can know: humanized before draft? Y/N · explicit Mason exemption (quoted)? Y/N.
