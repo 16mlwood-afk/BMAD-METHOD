@@ -33,6 +33,54 @@ Before anything else, classify the target: is it a content PAGE (a route's prima
 - Capture INSTEAD, as the chrome equivalent of the data walk: (a) the **route inventory** the nav must express (every top-level destination, grouping, and ordering — from the router/nav config, not invented); (b) **states** per item (active, hover, collapsed, disabled-by-role); (c) **role visibility** (`shell_role` — which items each role sees, when the app is multi-role); (d) **breakpoints** (desktop rail vs mobile drawer trigger).
 - `frames` = the chrome variants + operator-distinct states (e.g. `nav-desktop`, `nav-mobile-drawer`, `nav-desktop--collapsed`), never empty. `route` = the shell's scope anchor (normally `/`), `surface_part` = the chrome piece (`primary-nav`, `top-bar`).
 
+### 0a. SURFACE OWNERSHIP — one surface, one owning brief (v2, 2026-09-02) — CRITICAL
+
+**Run this BEFORE anything else reads the target.** A page's spawned surfaces — a detail drawer, a
+panel, an overlay, an inspector, a §13 lookup — are **drawn as FRAMES in that page's brief**. They do
+not get their own brief.
+
+**The rule already existed as prose in this workflow and did not hold.** Measured 2026-09-02
+(cash-recovery): `design-brief-publish-drawer-next-step-2026-08-31.md` was produced BY this workflow
+(`source_workflow: design-handoff`, `mode: refine-screen`, `surface_class: drawer`) and commissioned
+eight frames for a drawer that `design-brief-ebay-publish-lifecycle-2026-08-19-r2.md` already owned
+as `publish-lifecycle-workspace` plus five state variants. Two active briefs, one surface, two
+unrelated frame vocabularies — and the frame-name chain (brief → rendered comp → `design-implement`
+grid row, keyed on the name so nothing is inferred at any hop) had two heads. A later session then
+EXTENDED the split before catching it. **The Deliverable-Completeness Principle forbade this in
+prose the whole time; nothing checked it, and the one redirect that did exist was scoped to §13
+LOOKUP drawers, so a workspace drawer walked straight past.** Resolved by folding both into one
+brief; logged `WF-20260902-013`.
+
+**The check:**
+
+1. Classify the target. Is it a whole route's primary surface, or a **part** of one — drawer, panel,
+   overlay, inspector, lookup, a named section within a page?
+2. If it is a PART, resolve its parent route and search the active briefs for one whose
+   `normalise(route)` matches that parent with `surface_part: ""`.
+3. Branch:
+
+| Found | Action |
+|---|---|
+| An active parent-page brief exists | **REDIRECT — the default.** Do not open a brief for the part. Run against the PARENT, producing a revision of it that draws the part as frames. Say so plainly: name the parent brief and that its frames now cover the part. |
+| An active parent brief exists AND `--split-surface <reason>` was given | Proceed as a separate brief. Record `split_from: <parent filename>` in Block A, and the reason. The parent's next revision must carry a pointer frame rather than silence. |
+| No active parent brief | Proceed. Set `surface_part` to name the part precisely, so the eventual parent brief can find it. |
+
+**FAILS TOWARD THE REDIRECT.** Merging two briefs is cheap and reversible. Two briefs drawing one
+surface under different frame names is expensive and **invisible until implementation infers a frame
+nobody drew**. When the parent's ownership is ambiguous, redirect and say why.
+
+**Escalation to a genuinely separate brief is reserved** for a part that has outgrown being a part —
+a deep full-page record route (§5d `needs-detail-route`). That is a DECLARED decision, never inferred
+from the fact that somebody typed the drawer's name into the invocation.
+
+**Enforcement honesty.** DETERMINISTIC where the parent page has an active brief whose route matches
+— that is a frontmatter read, not a judgement. PROBABILISTIC where the parent has no brief, or where
+two briefs describe one surface with different route strings (the existing soft cross-route stem
+check already WARNs on that and must keep warning). **This closes the case that fired; it does not
+close the class.**
+
+---
+
 ### 1. Resolve Repository URL
 
 Capture `{github_repo_url}`:
