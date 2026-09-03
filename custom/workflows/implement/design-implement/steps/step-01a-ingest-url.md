@@ -175,27 +175,47 @@ Where the two shapes diverge, each of URL.2–URL.5 carries an explicit **`.dc.h
   (Either way this is the same evidence URL.3a lifts into `{design_frame_inventory}`, counted here, not yet cataloged.)
 - **Target byte size** — `wc -c {design_dir}/{design_file}` (or the `get_file` payload size on the MCP path). Shape-independent.
 
-**Above a SOFT threshold — ≈5 frames OR ≈60KB target (thresholds, not cliffs, per the context-budget principle) — SURFACE this recommendation before continuing:**
+**Above a SOFT threshold — ≈5 frames OR ≈60KB target (thresholds, not cliffs, per the
+context-budget principle) — SAY SO IN A SENTENCE before continuing.**
+
+*Rewritten 2026-09-03 on an owner instruction. This was an ASCII status panel quoting a
+threshold. It is now a sentence, for the same reason `design-ingest` is required to talk
+like a person at its three touchpoints: a box announces, a sentence invites a correction.
+The owner's words — "Claude needs to verify with the user what's going to happen in various
+sort of human language ... hey, so you've given me the ZIP now. Given that this is a
+twelve frame, I would recommend ingest."*
 
 ```
-────────────────────────────────────────────────────────────────
-◇ Large surface — recommend routing through design-ingest first.
+You've handed me the bundle — {n} frames, {kb}KB. That's big enough that I'd catalogue it
+first rather than reading it all into one go: {one concrete reason from the list below}.
 
-  frames (est):  {n}   ·   target size:  {kb}KB
-  soft threshold: ≥5 frames OR ≥60KB
+That's two steps instead of one, and the catalogue is a file we both keep.
 
-This URL run would pull the whole design into THIS context and re-catalog it
-inline — a large surface can exhaust the context budget before the grid is even
-built. design-ingest fans out per-frame, enumerates every section under its
-completeness gate into a DURABLE manifest, and hands design-implement a
-resumable, checkpointed apply — the reason that path exists.
-
-  Recommended:  /bmad:bmm:workflows:design-ingest {design_url}
-  then:         /bmad:bmm:workflows:design-implement <the design-ingest-*.md it emits>
-────────────────────────────────────────────────────────────────
+Say "just build it" if you'd rather I went straight in.
 ```
 
-This is a **recommendation, not a hard refuse** — a clean, low-cost early exit offered while almost no context has been spent, NOT a halt. In interactive mode, prefer the exit (re-route through `design-ingest`) unless the user says to continue inline; in autonomous mode, DISCLOSE the recommendation and proceed with the inline URL ingest (same posture as the other autonomous-mode disclosures). Below the threshold, record nothing and continue silently to URL.2.
+**Rules for the sentence:**
+
+- **Give ONE concrete reason, not the mechanism.** Pick the one that is true of *this* bundle:
+  the work will span more than one sitting and a catalogue is what survives a context wipe ·
+  eleven frames is more than one read holds, and sections get missed rather than built wrong ·
+  it is a surface we will come back to and the catalogue is the resumable record. Never
+  "design-ingest fans out per-frame under its completeness gate" — that is a description of the
+  machinery, and the owner is not the one operating it.
+- **Name the cost.** Two steps instead of one. An owner who does not know it costs something
+  cannot weigh it.
+- **Recommend, do not offer.** One route named, one escape phrase. Not a menu.
+- **Below the threshold, say the SHORT half rather than nothing:** "Two frames — I'll build
+  straight from the bundle." One line, no reason needed. Silence here is what let the heavy route
+  get taken by habit and presented as the only one; the project route table
+  (cash-recovery `CLAUDE.md`, "Which door does code enter by?") requires the route to be declared
+  in one line before starting, and this is where that line is produced.
+
+**This is a recommendation, not a hard refuse** — a clean, low-cost early exit offered while almost
+no context has been spent. In interactive mode, prefer the exit unless the owner says to continue
+inline. **In autonomous mode, still SAY the route and the reason, then proceed inline** — the
+sentence costs one line and is the only record of a choice that shapes everything after it. Below
+the threshold, say the short half and continue to URL.2.
 
 ### URL.2. Read the README
 

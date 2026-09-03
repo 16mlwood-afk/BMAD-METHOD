@@ -40,9 +40,9 @@ if {input_kind} == "ingest_manifest":    → read ./step-01c-ingest-manifest.md 
 
 | citation prefix | lives in |
 |---|---|
-| `URL.1` … `URL.7` | `./step-01a-ingest-url.md` |
-| `BUNDLE.1` … `BUNDLE.6` | `./step-01b-ingest-bundle.md` |
-| `MANIFEST.1` … `MANIFEST.4` | `./step-01c-ingest-manifest.md` |
+| `URL.1` … `URL.7` | `{project-root}/_bmad/bmm/workflows/implement/design-implement/steps/step-01a-ingest-url.md` |
+| `BUNDLE.1` … `BUNDLE.6` | `{project-root}/_bmad/bmm/workflows/implement/design-implement/steps/step-01b-ingest-bundle.md` |
+| `MANIFEST.1` … `MANIFEST.4` | `{project-root}/_bmad/bmm/workflows/implement/design-implement/steps/step-01c-ingest-manifest.md` |
 | `SHARED.*` | this file |
 
 `workflow.md` also cites `step-01 §SHARED.1a` (still here) and `step-01 URL.1b` (now in `step-01a`).
@@ -66,6 +66,10 @@ Workflow.md's Input Resolution has already populated `{input_kind}`, `{design_ur
 > at the wrong column ratio. That is not a hypothetical: `design-ingest-clerk-grading-workspace-v2.md`
 > was exactly that, and it drove ten days of rework across 57 commits and 27 deploys while every
 > instrument stayed green.
+>
+> **The manifest keeps every job it is good at** — required section **denominator**, **property
+> scaffold**, **provenance record**, **arithmetic-validation input**. It loses only the implicit
+> permission to stand in for the design.
 >
 > **The cost is real and is accepted.** This re-reads the design source on every run, including
 > runs whose manifest is genuinely value-exact. The alternative is a consumer that skips the one

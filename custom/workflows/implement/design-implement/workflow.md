@@ -25,7 +25,9 @@ metadata:
 
 This uses **step-file architecture** for focused execution:
 
-- All 4 steps are FULLY AUTONOMOUS — no user interaction after invocation
+- All 4 steps run AUTONOMOUSLY on everything except **intent**, which is a named, closed list — see
+  the Critical Rule below. Autonomy is about not asking permission to do the work; it was never
+  about deciding, on the owner's behalf, what the work IS.
 - State persists via variables (see below)
 - Sequential progression: ingest design → map implementation → **capability-delta preflight (step-02b: handoff vs production, BOTH ways — DROPPED → strategy halt, ADDED/DEEPENED → build plan; §4e commit-boundary pass on a consequential surface)** → build grid → apply and deliver
 
@@ -90,7 +92,29 @@ This uses **step-file architecture** for focused execution:
 
 1. **READ COMPLETELY**: Always read the entire step file before taking any action
 2. **FOLLOW SEQUENCE**: Execute all numbered sections in order — no skipping, no optimizing
-3. **ALL STEPS ARE AUTONOMOUS**: Never halt, never present menus, never wait for input
+3. **AUTONOMOUS ON EXECUTION, NEVER ON INTENT.** Never halt for permission, never present a menu,
+   never wait for input on how to do the work. But **four intent decisions are explicitly carved
+   out** and each is defined in its own step — this list is closed, and nothing else halts:
+
+   | Intent decision | Where | Why it cannot be inferred |
+   |---|---|---|
+   | The **mode** — how much of the old page survives (`restyle-only`/`additive`/`partial`/`replacement`) | `step-02b` §4 | It sets the posture of every row that follows |
+   | **DROPPED** capabilities — what the redesign removes | `step-02b` §4 | Removing a working capability is not a treatment decision |
+   | **THINNED** capabilities — what the design deliberately shrinks | `step-02b` §3, §4 | "The comp shows less" reads identically as *the owner wants less* and *the comp didn't draw it* |
+   | **Fixture → production** ship | `step-02b` §4c | Authorization, not implementation |
+
+   **This entry previously read "Never halt, never present menus, never wait for input" while
+   `step-02b` §4 read "HALT and present the strategy choice" — a flat contradiction inside one
+   skill, resolved 2026-09-03.** It resolved itself in practice the wrong way: an agent reading the
+   front page took the documented autonomous default (keep-all), the owner was never told a mode had
+   been set, and the `/listings` surface shipped mixing two design generations. A contradiction does
+   not stay unresolved; it gets resolved by whichever line the reader hit first.
+
+   **`autonomous_mode: true` does NOT suppress the carve-outs.** It suppresses asking permission. In
+   an unattended run the mode is still STATED and still recorded as `strategy_confirmed_by: default`
+   — never as `owner` — so a silently-inherited posture is visible as one to the next reader. This
+   matches how §4c already handles the fixture-to-prod checkpoint ("Autonomous mode does NOT
+   auto-proceed"); the mode gate is the same shape, not a new kind of thing.
 4. **SAVE STATE**: Carry variables between steps
 5. **LOAD NEXT**: When directed, read fully and follow the next step file
 

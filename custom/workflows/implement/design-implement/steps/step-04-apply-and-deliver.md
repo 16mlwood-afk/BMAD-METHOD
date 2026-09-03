@@ -1,13 +1,13 @@
 ---
 name: 'step-04-apply-and-deliver'
-description: 'Apply all deltas from the comparison grid to the implementation, run build, commit, push, create PR, and merge. Deploy is delegated to the BMAD deploy contract (see shared/deployment-to-prod.md) and is not part of this workflow.'
+description: 'Apply all deltas from the comparison grid to the implementation, run build, commit, push, create PR, and merge. Deploy is delegated to the BMAD deploy contract (see {project-root}/_bmad/bmad-shared/deployment-to-prod.md) and is not part of this workflow.'
 ---
 
 # Step 4: Apply and Deliver
 
 **Progress: Step 4 of 4** — Final step
 
-**Close-out shape.** Emit the close-out per `shared/close-out-contract.md` — audience-first, process
+**Close-out shape.** Emit the close-out per `{project-root}/_bmad/bmad-shared/close-out-contract.md` — audience-first, process
 narration forbidden by default, and the **§2a two-block shape**: plain answer first; at most one
 fenced `FOR YOUR LLM ADVISER` block carrying actionable detail only (PR URL, commit SHA, row
 dispositions, unrouted findings, manifest path), never a voice and never raw build/test scroll.
@@ -25,7 +25,7 @@ element 4 is unchanged and still binds.
 - **The completion report MUST enumerate every non-applied delta with its reason (§9).** Zero non-applied deltas is stated explicitly ("all N deltas applied"); it is never left implicit. Silent partial implementation — shipping a count like "47/47" while the grid under-enumerated, or applying most rows and never listing the skipped ones — is the precise failure this step exists to prevent (accounting-tools /queries #900: 6 detail deltas dropped, caught only by user review, fixed in #903).
 - After applying fixes, re-verify by re-reading the modified files. Do not trust that the edit was correct without checking.
 - **On an `ingest_manifest` run, the apply is RESUMABLE and CHECKPOINTED — proceed frame by frame, persist each frame's dispositions back into the manifest the moment it is done, and STOP at a frame boundary before the context budget is at risk** (workflow.md Critical Rule "Resumable apply on an ingest manifest"). Pre-dispose rows from `{resume_prior_dispositions}` that are already `✓ applied` (carry as `✓ applied (prior pass)` — do not re-apply) and, if `{frame_scope}` is set, rows outside it (`⊘ deferred(out-of-scope: not in {frame_scope})`). Walk the remaining UNVERIFIED in-scope rows. **`◐ transcribed · UNROUTED` rows resume differently from both, and this is the one case that is easy to get wrong: their VALUES are already applied (do NOT re-compute their deltas — that is wasted budget) but their WIRING is owed, so they are NOT terminal.** Carry every `◐` row forward, surface them in the opening resume summary alongside the deferred frames, and this pass either wires the component — flipping its rows to `✓ applied` — or re-carries them as `◐` with the follow-up restated. A `◐` row is never silently absorbed into `✓ applied` and never quietly dropped from the outstanding set because it matched neither the applied nor the UNVERIFIED filter. A checkpointed pass is a CLEAN exit that still delivers the slice it built — it is not a failure and not a wait-for-input halt. URL and bundle runs are unaffected (single-pass as before).
-- Follow the project's CLAUDE.md for commit, PR, and merge procedures. Deploy is NOT part of this workflow — see the BMAD deploy contract at `_bmad/bmm/workflows/shared/deployment-to-prod.md` and run `./scripts/bmad-deploy.sh` after merge.
+- Follow the project's CLAUDE.md for commit, PR, and merge procedures. Deploy is NOT part of this workflow — see the BMAD deploy contract at `{project-root}/_bmad/bmad-shared/deployment-to-prod.md` and run `./scripts/bmad-deploy.sh` after merge.
 - YOU MUST ALWAYS SPEAK OUTPUT in your agent communication style with the config `{communication_language}`
 
 ## CONTEXT
@@ -120,30 +120,66 @@ Three phrasings that do **not** satisfy citation 1, because each was used and ea
 - *"the component exists / is imported"* — an unrendered import is a component nobody meets.
 - *"the manifest row says applied"* — that is the claim, not evidence for it.
 
-**`⊘ deferred(placement)` is banned as a disposition.** "The section exists but sits in the wrong
-column" asserts existence while conceding the design is not met; it reads as near-done to the next
-resume and is how a missing section survived nine passes. Such a row is **UNVERIFIED** until the
-section is where the design puts it.
+**`⊘ deferred(placement)` is BANNED as a disposition.** "The section exists but sits in the wrong
+column" asserts existence while conceding the design is not met; it reads as near-done to the
+next resume, and it is how a missing section survived nine passes. Such a row is **UNVERIFIED**
+until the section is where the design puts it.
 
-### Per-pass evidence: structure, order, geometry
+### Per-pass evidence: STRUCTURE, ORDER, GEOMETRY
 
-Every pass — not every row — emits these three, from the **source read**, before any fidelity
-verdict. They are cheap because they are per-frame, not per-section.
+Emitted **per pass, not per row** — cheap because it is per-frame — from the source read, before
+any fidelity verdict.
 
 | Evidence | What the pass states | Fails when |
 |---|---|---|
-| **STRUCTURE** | For each frame touched: the source's top-level section list, and the implementation's, as two lists. | A section is in one list and not the other. A section present-but-empty counts as absent. |
-| **ORDER** | The two lists **as sequences**, compared position by position. | Any position differs. Order is not "roughly the same set". |
+| **STRUCTURE** | For each frame touched: the source's top-level section list and the implementation's, as two lists. | A section is in one and not the other. **Present-but-empty counts as absent.** |
+| **ORDER** | The same two lists **as sequences**, compared position by position. | Any position differs. Not "roughly the same set". |
 | **GEOMETRY** | The source's declared container track for the frame's primary layout — column widths, grid template, gap, page padding — and the implementation's, as values. | A value differs and the row is still marked applied. |
 
-A pass that cannot produce one of the three says which and why; it does **not** issue a fidelity
-verdict without them. `UNVERIFIED — geometry not read` is a legitimate pass outcome. A green grid
-with no geometry evidence is not.
+**`UNVERIFIED — geometry not read` is a HELD outcome, not a partial pass (owner ruling
+2026-08-21).** A pass that cannot produce one of the three names which and why, and that frame is
+**held**: no fidelity verdict, and **no `✓ applied` claim for any row in it**. It does not
+degrade to "applied except geometry" — that phrasing is what let a near-miss read as done. Other
+frames in the same pass are unaffected; the hold is per-frame.
 
-**Why per-pass and not per-row.** Order and geometry are properties of a frame, not of a section —
-there is no row on which "the sections are in the wrong order" could ever have been recorded, which
-is exactly why the swap in the clerk bench survived every check that ran. Putting them at pass
-scope gives them somewhere to live.
+**The block is MACHINE-CHECKED. Write it in this exact shape**, once per frame that carries
+a `✓ applied` row in this pass:
+
+```
+#### FRAME EVIDENCE: <frame>
+STRUCTURE: <source top-level sections> -> <impl top-level sections>
+ORDER: <the same two lists as sequences, position by position>
+GEOMETRY: <source container track — columns, gap, padding> -> <implemented values>
+```
+
+`scripts/check-apply-evidence.mjs` fails the commit and the PR when a **newly added**
+`✓ applied` row has no such block for its frame, when a field is empty, when
+`⊘ deferred(placement)` appears, or when a frame declares
+`GEOMETRY: UNVERIFIED — geometry not read` **and** carries applied rows. It reads rows the
+change ADDS, never the 44 existing ledgers — the owner's 2026-08-21 ruling in mechanical form.
+
+**Its ceiling, so nobody over-trusts it:** it proves the evidence EXISTS, never that it is
+TRUE. An agent can write a section list it never read, exactly as a `ROUTE:` trailer can be
+declared by a push that never opened quick-dev. What it removes is the SILENT skip — a pass
+that never opened the design used to produce a ledger indistinguishable from one that did.
+Now the omission has to be an explicit lie instead.
+
+**Why per-pass and not per-row.** Order and geometry are properties of a *frame*, not of a
+section. There was never a row on which "the sections are in the wrong order" could have been
+recorded — which is exactly why the swap in the clerk bench survived every check that ran.
+
+### Existing `✓ applied` rows: retained, but not present-tense authority
+
+Every `✓ applied` row written before 2026-08-21 was graded under the old rule, where a matching
+string sufficed. **Those rows are NOT rewritten** — retro-editing a disposition an earlier pass
+recorded destroys the provenance of how it was reached.
+
+But they **no longer carry acceptance authority in the present tense.** A prior `✓ applied` is a
+record that a pass once believed the row was applied; it is not evidence that it is applied now.
+**On the next touch of a surface or frame, re-evaluate its rows under STRUCTURE / ORDER /
+GEOMETRY before making any fidelity claim about them.** Carrying one forward as
+`✓ applied (prior pass)` and issuing a fidelity verdict on that basis is the exact move that let
+`What this product should look like` sit "applied" through nine passes.
 
 Every `content-lane` row from step-03 §2c (`{content_unverified_count}` of them) is disposed `⊘ deferred(content-lane)` — its CSS may well have been applied, but its *value-formatting* is explicitly NOT certified here. Do not silently `✓` it; do not drop it. It carries into §9 under "Content-lane verification owed (live page)" with the routing command, so the run hands the content lane off out loud instead of implying the grid covered it.
 
@@ -246,7 +282,7 @@ gh pr create --title "fix: align {page-name} with Meridian design spec" --body "
 
 ## Test plan
 - [ ] Visual comparison against design artifact
-- [ ] Build passes (`npm run build`) — diagnostics gate: any new diagnostic (incl. after a merge/worktree teardown) is RED until a re-run in the current checkout proves zero errors; quote the result, never reason it away as "stale" (`shared/diagnostics-gate.md`)
+- [ ] Build passes (`npm run build`) — diagnostics gate: any new diagnostic (incl. after a merge/worktree teardown) is RED until a re-run in the current checkout proves zero errors; quote the result, never reason it away as "stale" (`{project-root}/_bmad/bmad-shared/diagnostics-gate.md`)
 - [ ] No regressions on adjacent pages
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
@@ -260,7 +296,7 @@ EOF
 gh pr merge --squash --admin
 ```
 
-After merge, the BMAD deploy contract handles deploy: run `./scripts/bmad-deploy.sh` (see `_bmad/bmm/workflows/shared/deployment-to-prod.md`). The contract decides whether to deploy or skip based on the project's `_bmad/bmm/config.yaml` `deploy:` block — this workflow does not.
+After merge, the BMAD deploy contract handles deploy: run `./scripts/bmad-deploy.sh` (see `{project-root}/_bmad/bmad-shared/deployment-to-prod.md`). The contract decides whether to deploy or skip based on the project's `_bmad/bmm/config.yaml` `deploy:` block — this workflow does not.
 
 ### 8. Brand Identity Feedback
 

@@ -38,10 +38,17 @@ From the design side (`{design_components}`, `{design_frame_inventory}`, brief �
 - **DROPPED (the regression surface)** = capabilities in `{production_capabilities}` with no match in `{handoff_capabilities}` (and not merely `handoff: unclear`). These are what the redesign would remove. → `{dropped_capabilities}`.
 - **ADDED (the uplift surface)** = capabilities in the handoff with no production match. These are **not "informational"** — they are the net-new construction the redesign exists to deliver (a new analytics/disposition band, a lane-by-handler segmentation, a disposition action column, co-view tabs, a drilled drawer the live page never had). → `{added_capabilities}`.
 - **DEEPENED** = a capability present in BOTH but **materially richer** in the handoff — same capability *class*, fundamentally more capable shape (a country-filter that became handler-lane segmentation with per-lane counts + capital; a flat status column that became a disposition band with a verdict vocabulary + per-row action). A deepening is a **build task, not a treatment delta** — its net-new sub-structure cannot "flow through the grid" because the grid is CSS-only (component × state × property) and will at best score the new sub-components `MISSING in impl` while the agent reads the parent as "same component, restyle." → `{deepened_capabilities}`.
-- **CHANGED (treatment-only)** = same capability, same shape, different *treatment* (colour/spacing/radius). THIS is what flows through the normal grid — and only this.
+- **THINNED (the deliberate-reduction surface)** = a capability present in BOTH, where the handoff draws a **materially smaller** form of it on purpose — a ranking band replaced by one summary line, a multi-column table replaced by a single figure, a tabbed panel replaced by a disclosure. The inverse of DEEPENED, and it is a **removal task, not a treatment delta**: the old, larger form must be TAKEN OUT, and nothing else in this workflow will take it out. → `{thinned_capabilities}`, each carrying `prod_evidence` (the larger production form) and `handoff_evidence` (the smaller drawn form).
 
-Store all three lists. Each entry: `{ capability, class, evidence, why_it_matters (one line), status }`.
+  **This class was added on 2026-09-03 because its absence shipped a defect, and the shape of that defect is the argument for it.** The v57 `/listings` comp replaced a blocker-ranking band ("What is holding up the most stock") with a one-line `Blocked by: aspect 1 · price 1 · …`. That is not DROPPED — something is still there. Not ADDED, not DEEPENED. With no THINNED class it fell to CHANGED, whose whole definition is "flows through the normal grid" — and the grid is CSS-only, so it scored the new line as a missing component, built it, and **left the old band standing beside it**. The page shipped with two answers to "what is blocking", and the owner found it by eye.
+
+  **A THINNED item is NOT auto-removable and NEVER defaults to keep.** It goes to §4 as its own question, because "the design shows less" has two readings that look identical in a bundle: *the owner wants less*, or *the comp did not bother drawing it*. Only the owner can say which. Where a brief exists, its own fields settle it — the `/listings` case was settled by `has_analytics_band: false` in the current brief against `band_provenance: inherited` in the superseded one, and **that check is cheap and must be run before asking**.
+
+- **CHANGED (treatment-only)** = same capability, same shape, different *treatment* (colour/spacing/radius). THIS is what flows through the normal grid — and only this. **A capability that changed SIZE or KIND is not CHANGED** — it is THINNED or DEEPENED. Routing a structural reduction here is what produced the two-bands defect above; CHANGED is the narrowest class and the burden is on classifying OUT of it.
+
+Store all four lists. Each entry: `{ capability, class, evidence, why_it_matters (one line), status }`.
 - `{dropped_capabilities}` — `status: absent | unclear` (handoff side).
+- `{thinned_capabilities}` — `prod_evidence` (the larger form) + `handoff_evidence` (the smaller drawn form) + `brief_says` (the governing brief's own field where one settles it, e.g. `has_analytics_band: false`, or `none`).
 - `{added_capabilities}` and `{deepened_capabilities}` — `evidence` is the handoff side (`{design_components}` / `{design_frame_inventory}` / brief §7); for DEEPENED also carry `prod_evidence` (the thinner production form it replaces).
 
 Compute the combined **`{uplift_capabilities}` = `{added_capabilities}` ∪ `{deepened_capabilities}`** — the net-new construction surface. This is the symmetric twin of `{dropped_capabilities}` and drives §4b.
@@ -92,6 +99,69 @@ Rules:
 - **Do not spend a new artifact on it.** Signals A and B are git plus a list §3 already computed. If it ever needs more than that, it is doing too much.
 
 ### 4. Branch on the DROPPED set (regression → halt for intent)
+
+**BEFORE ANYTHING ELSE IN §4 — SAY THE MODE OUT LOUD, IN THE OWNER'S WORDS.**
+
+*Owner instruction, 2026-09-03. This is not a restatement of the advisory below; it is the thing the advisory was missing.*
+
+The four strategies — `restyle-only`, `additive`, `partial`, `replacement` — decide **how much of the
+old page survives**, and every downstream row inherits that decision. Until this rule, the mode was
+never spoken: the halt asked per-capability ("keep the search box?"), the owner answered "keep", and
+the mode was *derived* from his answers by the rule further down this file. He was answering about a
+widget. He was setting the posture of the entire run.
+
+**That is exactly how the `/listings` mixture shipped.** The owner said keep the search, then keep the
+chips. Both are recorded (`design-ingest-ebay-publish-lifecycle-2026-09-02.md` §8.2, §25.1). Neither
+answer was wrong. But `additive` — *keep everything production has* — was set from them and stayed
+set across **three passes and two briefs**, so a band the newest brief had explicitly retired
+(`has_analytics_band: false`) survived beside its own replacement. Nobody chose that. Nobody was
+asked.
+
+**So state the mode in one plain sentence and let the owner correct it**, before the per-capability
+advisory and before any code moves:
+
+```
+I'm about to implement. Mode: ADDITIVE — I keep what the live page already does and build the
+new design on top. That means the search box and the filter chips stay even though the comp
+doesn't draw them.
+
+The alternative is REPLACEMENT — the page becomes what the comp draws, and anything it doesn't
+draw goes.
+
+Say "replacement" (or name the bits to drop) if that's wrong; otherwise I'll go additive.
+```
+
+**Rules for this sentence — it is a recommend-and-confirm, never a menu.** The workflow's standing
+rule against blank menus (below, and `workflow-personas.md` §2a) binds here too: pick the mode you
+believe is right, say what it *means for this page in concrete terms*, name the one real alternative,
+and proceed unless corrected. Four options listed as a numbered list is the offload this file already
+forbids.
+
+- **Say the CONSEQUENCE, not the mode name.** "Mode: additive" alone is jargon and is what got us
+  here. Every statement of a mode names at least one thing that visibly survives or dies because of
+  it — "the search box and the chips stay", "the ranking band goes".
+- **Speak it EVERY implement run, not once per surface.** The mode is sticky across runs and briefs;
+  that stickiness is the defect. A mode inherited silently from a pass three weeks ago is
+  indistinguishable from one chosen today.
+- **A THINNED item is named here explicitly**, because `additive` and `replacement` answer it in
+  opposite directions and the owner cannot know that from the mode name: "the comp shows a one-line
+  summary where the page has a ranking band — additive keeps both, which is probably not what you
+  want."
+- **Check the brief FIRST.** Where a governing brief settles an item by its own fields
+  (`has_analytics_band: false` against an inherited `true` in the superseded brief), that is a
+  contract, not a preference — apply it, and report it as applied rather than asking.
+- **This is PROBABILISTIC and cannot be otherwise.** No hook can read a sentence and tell whether the
+  mode was actually stated in terms the owner recognised. The deterministic half available is narrow
+  and real: `{implementation_strategy}` and `{strategy_confirmed_by}` are persisted to the preflight
+  artifact (§4d), so a later reader can see whether a mode was *confirmed by the owner* or
+  *defaulted* — see `{strategy_confirmed_by}` below.
+
+**`{strategy_confirmed_by}` — `owner` | `brief` | `default`.** Set when the mode is settled and
+written into the §4d preflight artifact and the step-04 close-out. `owner` = stated to them and they
+approved or corrected it in this run. `brief` = a governing brief field decided it. `default` = an
+autonomous run took the documented default with nobody in the loop. **`default` is legitimate and
+must never be reported as `owner`** — the whole point of the field is that a silently-inherited mode
+is visible as one.
 
 **If `{dropped_capabilities}` is empty:**
 Record one line — "Regression surface: none — the handoff retains every production capability." Do **NOT** infer a strategy from this alone: an empty DROP set means nothing is being *removed*, it says nothing about what is being *built*. Proceed to §4b to settle the uplift surface and the strategy. No halt.
@@ -297,6 +367,7 @@ I'll build that unless you'd rather change it.
 - For every capability marked **keep** (`restyle-only`, `additive`, kept rows of `partial`): the apply must **preserve** it. Its render sites / actions / lookup drawers are **protected** — the redesign's treatment is applied *around* them; they are not deleted just because the handoff frame omits them. A grid row that would remove a kept capability is re-classified `deferred(capability-protected)` with the reason, never silently applied.
 - For every capability marked **drop** (`replacement`, dropped rows of `partial`): the handoff governs; the capability is removed — AND step-04 §9's "Capabilities removed (orphaned actions)" check runs over exactly these, confirming the removal is clean (no orphaned action, no half-loss) and disclosing it in the completion report.
 - For every capability in **`{uplift_capabilities}`** (ADDED / DEEPENED): it is a **BUILD task**. Step-03 §2h tags it `capability-build` so its net-new structure is NOT scored as a treatment delta or a stray "MISSING component" note; step-04 constructs it and the §9 report enumerates each built capability (`built: {capability}`) alongside the kept/dropped lists. An uplift item that ships unbuilt is a step-04 failure, the exact mirror of a kept capability that ships removed.
+- Carry `{strategy_confirmed_by}` ∈ `owner | brief | default` alongside it, and **carry `{thinned_capabilities}` too**. `owner` = the mode was stated to them in plain terms this run and they approved or corrected it. `brief` = a governing brief field settled it. `default` = an unattended run took the documented default. **A `default` must never be written as `owner`** — the field exists so that a mode inherited silently from a run three weeks ago is legible as one, which is precisely what was not legible when the `/listings` surface shipped mixing two design generations.
 - Carry `{implementation_strategy}` + `{capability_dispositions}` + `{uplift_capabilities}` into step-03 (the grid notes protected capabilities AND build tasks) and step-04 (the apply ledger honors keep/drop/build and the §9 report states the chosen strategy + every kept/dropped/built capability).
 
 ## COMPLETION
@@ -308,6 +379,8 @@ Read fully and follow: `{project-root}/_bmad/bmm/workflows/implement/design-impl
 - `{production_capabilities}` and `{handoff_capabilities}` inventoried at the feature level (routing, §13 lookups, economics, status/header, activity/audit, actions) — not CSS.
 - The delta is computed **both ways**: `{dropped_capabilities}` (regression), `{added_capabilities}` + `{deepened_capabilities}` → `{uplift_capabilities}` (net-new build). An undrawn-but-promised handoff frame (brief §7 / `{design_frame_inventory}`) is NOT mis-scored as dropped; a thinner production form replaced by a richer handoff form IS scored DEEPENED (not "same component, restyle").
 - The scope verdict was computed from the three lists, NOT asserted before them. `restyle-only` was licensed ONLY when DROPPED and uplift were both empty; "production is a structural superset" was asserted ONLY after confirming the uplift is empty. No "just tokens / superset / no net-new" conclusion was drawn from treatment evidence or while the map was still resolving (running-blind gate).
+- **The mode was SAID, in a sentence naming what survives or dies because of it, before any code moved** — and `{strategy_confirmed_by}` records who settled it. A run that resolved a mode without stating it is not compliant, however correct the mode turned out to be.
+- **Every `{thinned_capabilities}` entry reached a disposition.** A thinned item left unresolved means the larger production form is still standing beside its own replacement — the defect this class was added for.
 - If the dropped set is non-empty, the run **halted** with the regression report + strategy menu and recorded `{implementation_strategy}` + `{capability_dispositions}` — it did NOT proceed to the grid on an unconfirmed replacement.
 - If the uplift set is non-empty, the run **named it** (ADDED / DEEPENED), set strategy to at least `additive`, and carried `{uplift_capabilities}` to step-03/04 as build tasks — it did NOT flatten the uplift into "treatment alignment."
 - Kept capabilities are marked protected for step-03/04; dropped capabilities are routed to the step-04 §9 orphaned-action confirmation; uplift capabilities are routed to step-03 §2h / step-04 as `capability-build`.
