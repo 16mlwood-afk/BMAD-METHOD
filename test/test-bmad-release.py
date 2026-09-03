@@ -23,13 +23,28 @@ def check(label, got, want):
           + ("" if got == want else f"\n          got={got!r} want={want!r}"))
 
 
+# A git hook runs with GIT_INDEX_FILE, GIT_DIR and friends EXPORTED, pointing at the
+# repository being committed. Any `git` this suite shells out to inherits them, so a
+# `git add` meant for a throwaway fixture repo writes into the REAL fork index instead.
+# Observed 2026-09-03: the G-case fixture's `git add -A` staged its `f.txt` into the
+# fork's index, then the fixture directory was deleted -- leaving an index entry whose
+# blob no longer existed. Every subsequent commit died with
+#   error: invalid object 100644 <sha> for 'f.txt' / error: Error building trees
+# and the pre-commit gate could not commit at all. The suite passed; the repo broke.
+# Scrub the inherited git environment so a fixture's git can only ever touch itself.
+_CLEAN_ENV = {k: v for k, v in os.environ.items()
+              if not (k.startswith("GIT_") and k not in ("GIT_ASKPASS",))}
+
+
 def run(*args, cwd=None):
     return subprocess.run([sys.executable, str(TOOL), *args, "--no-fetch"],
-                          cwd=cwd or FORK, capture_output=True, text=True)
+                          cwd=cwd or FORK, capture_output=True, text=True,
+                          env=_CLEAN_ENV)
 
 
 def git(*args, cwd=FORK):
-    return subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True)
+    return subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True,
+                          env=_CLEAN_ENV)
 
 
 print("bmad-release release-boundary golden cases:\n")

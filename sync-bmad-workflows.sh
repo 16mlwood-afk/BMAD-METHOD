@@ -6,6 +6,7 @@ SOURCE="$SCRIPT_DIR/custom/workflows"
 SKILLS_SOURCE="$SCRIPT_DIR/custom/skills"
 SCRIPTS_SOURCE="$SCRIPT_DIR/custom/scripts"
 GITHOOKS_SOURCE="$SCRIPT_DIR/custom/githooks"
+CLAUDE_HOOKS_SOURCE="$SCRIPT_DIR/custom/hooks"
 AGENTS_SOURCE="$SCRIPT_DIR/custom/agents"
 HOOKS_SRC="$SCRIPT_DIR/src/modules/bmm/_module-installer/assets/hooks.json"
 WORKTREE_INCLUDE_SRC="$SCRIPT_DIR/src/modules/bmm/_module-installer/assets/worktreeinclude.template"
@@ -544,6 +545,49 @@ _githooks_repo_is_bespoke() {
   return 1
 }
 
+# Sync portable Claude guard hooks from custom/hooks/ to a project's .claude/hooks/.
+#
+# WHY THIS EXISTS (2026-09-03). Until now the fork distributed workflows, skills,
+# agents, scripts and git-hooks, but had NO channel for the .claude/hooks/*.py guards.
+# They therefore only ever existed where they were written -- cash-recovery had 55
+# tracked; amazon-removal-assistant had 4, none of them wired, none of them tracked.
+# Worse, assets/hooks.json shipped the SUPERSEDED inline edit-guard blob to every
+# project while never referencing bash_edit_guard.py, so every target ran the old
+# regex chain that the reviewed guard was written to replace.
+#
+# PER-FILE, AND DELIBERATELY NOT DESTRUCTIVE. Unlike the skills rsync, this never
+# uses --delete: a project's OWN guards (cash-recovery's ledger and dispatch guards,
+# for instance) live in the same directory and must survive a sync. Only basenames
+# the fork actually ships are touched.
+#
+# Args: $1 = project root, $2 = mode ("check" or "sync")
+# Returns count via stdout.
+sync_claude_hooks_for_project() {
+  local project_root="$1" mode="$2"
+  local count=0
+
+  [[ ! -d "$CLAUDE_HOOKS_SOURCE" ]] && { echo "0"; return; }
+
+  local hooks_target="$project_root/.claude/hooks"
+  for hook_file in "$CLAUDE_HOOKS_SOURCE"/*; do
+    [[ ! -f "$hook_file" ]] && continue
+    local hook_name hook_dst
+    hook_name="$(basename "$hook_file")"
+    hook_dst="$hooks_target/$hook_name"
+
+    if [[ ! -f "$hook_dst" ]] || ! cmp -s "$hook_file" "$hook_dst"; then
+      if [[ "$mode" == "sync" ]]; then
+        mkdir -p "$hooks_target"
+        cp -p "$hook_file" "$hook_dst"
+        case "$hook_name" in *.sh|*.py) chmod +x "$hook_dst" ;; esac
+      fi
+      count=$((count + 1))
+    fi
+  done
+
+  echo "$count"
+}
+
 # Sync canonical git-hook entrypoints from custom/githooks/ to a project's
 # ./.githooks/ — ONLY for repos the fork manages (gate-less, or already carrying the
 # fork dispatcher). A repo with a bespoke entrypoint is skipped wholesale (its gate
@@ -1054,6 +1098,7 @@ if [[ -n "$WORKTREE_TARGET" ]]; then
 
   skills_copied=$(sync_skills_for_project "$wt_project_root" "sync")
   scripts_copied=$(sync_scripts_for_project "$wt_project_root" "sync")
+  sync_claude_hooks_for_project "$wt_project_root" "sync" >/dev/null 2>&1 || true
   agents_copied=$(sync_agents_for_project "$wt_project_root" "sync")
 
   msg="OK    Worktree synced: $WORKTREE_TARGET ($copied dirs"
@@ -1276,6 +1321,7 @@ deliver_skills_layout_project() {
   # 3. Hand-authored custom skills (the 4) + scripts + agents (same as old layout)
   local cs; cs=$(sync_skills_for_project "$proot" "sync"); [[ "$cs" -gt 0 ]] && echo "  OK    custom skills ($cs)"
   sync_scripts_for_project "$proot" "sync" >/dev/null 2>&1 || true
+  sync_claude_hooks_for_project "$proot" "sync" >/dev/null 2>&1 || true
   sync_agents_for_project "$proot" "sync" >/dev/null 2>&1 || true
   sync_githooks_for_project "$proot" "sync" >/dev/null 2>&1 || true
   activate_hooks_for_project "$proot" "sync" >/dev/null 2>&1 || true
@@ -1810,6 +1856,16 @@ while IFS= read -r target || [[ -n "$target" ]]; do
       echo "  ↳  scripts ($scripts_drift script(s) missing/outdated)"
     fi
 
+    # Check Claude guard hooks sync (.claude/hooks/)
+    claude_hooks_drift=$(sync_claude_hooks_for_project "$project_root" "check")
+    if [[ "$claude_hooks_drift" -gt 0 ]]; then
+      if ! $dirty; then
+        echo "STALE $project"
+        dirty=true
+      fi
+      echo "  ↳  guard hooks ($claude_hooks_drift hook(s) missing/outdated)"
+    fi
+
     # Check custom agent personas sync
     agents_drift=$(sync_agents_for_project "$project_root" "check")
     if [[ "$agents_drift" -gt 0 ]]; then
@@ -1917,6 +1973,13 @@ while IFS= read -r target || [[ -n "$target" ]]; do
       rsync -a --delete --exclude='.DS_Store' "$src_path/" "$dst_path/"
       echo "  OK    $dir"
     done
+
+    # Sync Claude guard hooks from custom/hooks/ into .claude/hooks/. Delivering the
+    # FILE is what makes the assets/hooks.json wiring resolvable in every project.
+    claude_hooks_synced=$(sync_claude_hooks_for_project "$project_root" "sync")
+    if [[ "$claude_hooks_synced" -gt 0 ]]; then
+      echo "  OK    guard hooks ($claude_hooks_synced hook(s) synced)"
+    fi
 
     settings_dir="$project_root/.claude"
     settings_file="$settings_dir/settings.local.json"
