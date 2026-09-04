@@ -10,7 +10,7 @@ The single index of the standards every BMAD-managed project follows. If you're 
 
 ## How to use this
 
-- **Starting a deploy flow?** Check `STD-DEPLOY-001` (and `STD-PRODREADY-001` if the project isn't deploy-ready yet) before writing anything.
+- **Starting a deploy flow?** Check `STD-DEPLOY-001` (and `STD-PRODREADY-001` if the project isn't deploy-ready yet) before writing anything. **Building or changing the thing that deploys?** `STD-DEPLOY-002` is what it must be able to prove — run `python3 tools/check-deploy-lane.py --project .` before calling a lane done.
 - **Changing how memory is written/read?** See the memory section below (`memory-library-discipline` / `memory-retrieval-policy`).
 - **Touching a webhook boundary?** `STD-WEBHOOK-001` is the contract of record.
 - **The Home doc is the source of truth.** A project's `CLAUDE.md` only *points at* a standard; a restatement that disagrees is drift — log it in `docs/fork-gaps.md` and fix it. Reference by path, never copy (`cash-recovery` is the reference shape).
@@ -27,6 +27,13 @@ ID: STD-DEPLOY-001
 Version: v1
 Breaking: no
 Home: shared/deployment-to-prod.md
+Applies: all
+
+deploy-lane-standard — the minimum a project's DEPLOY LANE must prove before a deploy is called verified (ten requirements with mechanical probes; checker `tools/check-deploy-lane.py`; feeds `bmad-health.py`). The layer inside STD-DEPLOY-001.
+ID: STD-DEPLOY-002
+Version: v1
+Breaking: no
+Home: shared/deploy-lane-standard.md
 Applies: all
 
 delivery-to-main — getting an artifact from local disk to origin/<default-branch> so external consumers can read it.

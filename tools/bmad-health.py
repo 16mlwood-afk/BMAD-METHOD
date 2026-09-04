@@ -46,6 +46,31 @@ _spec.loader.exec_module(R)
 
 DECISIONS = Path.home() / ".bmad-owner-decisions.jsonl"
 
+# STD-DEPLOY-002 — the deploy-lane standard. Loaded the same way as the release
+# helper; a missing checker is reported as such, never as "met".
+_lane_spec = importlib.util.spec_from_file_location(
+    "check_deploy_lane", Path(__file__).resolve().parent / "check-deploy-lane.py")
+try:
+    L = importlib.util.module_from_spec(_lane_spec)
+    _lane_spec.loader.exec_module(L)
+except Exception:  # noqa: BLE001
+    L = None
+
+
+def deploy_lane(targets):
+    """-> the STD-DEPLOY-002 fleet summary over the ACTIVE targets, or a stub that
+    says the checker was unavailable. Never rounds up: an unreadable project is
+    UNKNOWN, and UNKNOWN keeps the fleet off STANDARD MET."""
+    if L is None:
+        return {"fleet": "UNAVAILABLE", "results": [], "gaps": [], "not_declared": [],
+                "unknown": [], "on_trust": {}, "note": "tools/check-deploy-lane.py missing"}
+    try:
+        results = [L.assess_project(Path(t["path"])) for t in targets if t.get("path")]
+        return L.summarise(results)
+    except Exception as e:  # noqa: BLE001
+        return {"fleet": "UNAVAILABLE", "results": [], "gaps": [], "not_declared": [],
+                "unknown": [], "on_trust": {}, "note": f"{type(e).__name__}: {e}"}
+
 # A target in one of these states is not a maintenance problem — it is an identity problem,
 # and the owner-gate rule reserves identity for Mason ("a target project appears to be a
 # different/unknown project and could receive the wrong methods").
@@ -209,6 +234,14 @@ def survey(fetch=True):
     # That is the distinction — committed-and-undelivered, not merely in-progress.
     blocking = [m for m in source_blocks if "dirty" not in m.lower()]
 
+    # STD-DEPLOY-002. A project that ships without a lane that meets the standard, or
+    # that has not said whether it ships, is a REPAIR (Claude's), never an owner
+    # question — unless an inspection cannot tell, which is parked as a decision.
+    lane = deploy_lane(active)
+    lane_gaps = list(lane.get("gaps", [])) + list(lane.get("not_declared", [])) \
+        + list(lane.get("unknown", []))
+    lane_unmet = lane.get("fleet") != "STANDARD MET"
+
     # Content verification is the LAST gate and runs only when nothing else is wrong, because
     # it costs a worktree. Everything upstream of it — receipts, exit codes, the sync manifest
     # — has been observed lying on the same day this was written, so HEALTHY is never claimed
@@ -223,12 +256,24 @@ def survey(fetch=True):
     elif (repairable or stranded or blocking or unresolved or undelivered
           or mismatched or (verify_note and verify_note != "not reached")):
         verdict = "REPAIRING"
+    elif lane_unmet:
+        verdict = "REPAIRING"
     elif active and len(current) == len(active):
         verdict = "HEALTHY"
     else:
         verdict = "REPAIRING"
 
     return {"at": now(), "verdict": verdict, "release_commit": release_sha,
+            "deploy_lane": {"fleet": lane.get("fleet"), "gaps": lane.get("gaps", []),
+                            "not_declared": lane.get("not_declared", []),
+                            "unknown": lane.get("unknown", []),
+                            "on_trust": lane.get("on_trust", {}),
+                            "note": lane.get("note", ""),
+                            "results": [{"id": r["id"], "state": r["state"],
+                                         "rows": r.get("rows", {}),
+                                         "why": r.get("notes", {}).get("why", "")}
+                                        for r in lane.get("results", [])]},
+            "lane_gaps": lane_gaps,
             "mismatched": mismatched, "verify_note": verify_note,
             "release_uncuttable": [m for m in source_blocks if "dirty" in m.lower()],
             "source_blocks": source_blocks, "stranded": stranded, "targets": targets,
@@ -241,6 +286,7 @@ def survey(fetch=True):
                                              or bool(undelivered) or bool(mismatched)),
                 "unsafe_or_duplicate_copies": bool(identity) or bool(gated),
                 "blocked_on_owner": bool(decisions) or bool(identity) or bool(gated),
+                "deploy_lane_standard_met": not lane_unmet,
             }}
 
 
@@ -256,6 +302,26 @@ def render(s):
 
     if s["verdict"] == "REPAIRING":
         u, m = len(s.get("undelivered", [])), len(s.get("mismatched", []))
+        lg = s.get("lane_gaps", [])
+        only_lane = lg and not (s.get("repairable") or s.get("stranded") or s.get("source_blocks")
+                                or not s.get("release_commit") or s.get("undelivered") or m)
+        if only_lane:
+            dl = s.get("deploy_lane", {})
+            g, nd = len(dl.get("gaps", [])), len(dl.get("not_declared", []))
+            parts = []
+            if g:
+                parts.append(f"{g} ship to production through a deploy method that cannot yet "
+                             f"prove what it shipped")
+            if nd:
+                parts.append(f"{nd} have not yet said whether they ship at all")
+            outcome = (f"Your methods are current everywhere, but of your {n} projects "
+                       + " and ".join(parts) + ". I am bringing them up to the deploy standard.")
+            lines.append(f"Outcome: {outcome}")
+            lines.append("My action: Inspecting each of those projects and either building its "
+                         "deploy lane to the standard or recording that it does not ship. "
+                         "No action is needed from you.")
+            lines.append("Your action: None")
+            return "\n".join(lines)
         if m:
             outcome = (f"{m} of {n} projects are not yet holding exactly the methods they "
                        f"should be. I am putting that right.")
@@ -320,6 +386,13 @@ def why(s):
         out.append(f"  {t['id']:<{width}}{t['state']:<16}{t['detail'][:60]}{lo}")
     for d in s["decisions"]:
         out.append(f"  OPEN {d['id']}: {d['question']}")
+    dl = s.get("deploy_lane") or {}
+    out.append(f"  deploy lane (STD-DEPLOY-002): {dl.get('fleet', '?')}"
+               + (f" — {dl['note']}" if dl.get("note") else ""))
+    for r in dl.get("results", []):
+        rows = " ".join(f"{k}:{'✓' if v == 'verified' else '~' if v == 'declared' else '✗'}"
+                        for k, v in r.get("rows", {}).items())
+        out.append(f"    {r['id']:<{width - 2}}{r['state']:<13}{rows or r.get('why', '')[:60]}")
     for k, v in s["questions"].items():
         out.append(f"  {k:<28}{v}")
     return "\n".join(out)

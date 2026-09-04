@@ -55,6 +55,8 @@
     "test:channels": "node test/test-installer-channels.js",
     "test:commit-boundary": "node test/test-commit-boundary-check.js",
     "test:deletion-policy": "python3 test/test-deletion-policy.py",
+    "test:deploy-lane": "python3 tools/test/test-check-deploy-lane.py",
+    "test:deploy-lane-guard": "python3 custom/hooks/test_deploy_lane_guard.py",
     "test:di-grid": "node test/test-design-implement-grid-check.js",
     "test:fingerprint-scan": "node test/test-fingerprint-scan.js",
     "test:fork-gap-detector": "node test/test-fork-gap-detector.js",
