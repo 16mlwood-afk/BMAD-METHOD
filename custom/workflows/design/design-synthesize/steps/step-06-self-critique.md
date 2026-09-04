@@ -876,7 +876,7 @@ On `pass`:
   [POLICY HALF]
   hard failures:        0/{len(hard_failures)} rules violated
   positive assertions:  0/{len(positive_allowlist)} assertions failed
-  drift:                0 regions (refine-screen) or n/a (fresh-design)
+  drift:                0 regions (refine-screen) or n/a (fresh-design / policy-delta / elevation)
 
   [BRIEF-FAITHFULNESS HALF]
   internal consistency: 0 contradictions

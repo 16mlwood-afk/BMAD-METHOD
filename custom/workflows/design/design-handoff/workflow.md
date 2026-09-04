@@ -254,9 +254,10 @@ Set `{design_system}` = "existing" — tokens will be extracted from the codebas
 
 ### Refine-Screen Detection & Artifact Loading
 
-The workflow handles two modes:
+The workflow handles four modes (`{handoff_mode}` under Variables). Only `refine-screen` changes the artifact loading and brief shape described in this section:
 
 - **`fresh-design`** (default) — new page, new feature, structural redesign. The brief is open and creative. The rest of this section does not apply.
+- **`policy-delta`** / **`elevation`** — settled-composition revisions of an active predecessor brief. Brief shape follows `fresh-design` (FRESH §6 variant, no refine-screen fields, plain `{feature-slug}`) with the predecessor brief's frames and states as INPUT — see the Anti-Bias Principle above and `brief-revision-policy.md` §2 `mode` row. The rest of this section does not apply.
 - **`refine-screen`** — iteration on an existing baseline screen. The brief is tightly scoped to the diagnostic from a `design-review` artifact. NO USER COMPLAINTS ARE COLLECTED — the diagnostic is automated.
 
 **Select mode — ASK, do not infer (v2, 2026-09-02).** Matching on the words *refine / iterate / tighten / polish* is a guess about intent wearing the costume of a decision: the same sentence can mean "this screen has defects", "policy moved", or "this is fine, make it better", and those are three different briefs. Resolve in this order:

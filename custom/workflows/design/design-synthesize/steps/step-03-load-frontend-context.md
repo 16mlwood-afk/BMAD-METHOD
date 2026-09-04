@@ -16,7 +16,7 @@ description: 'Detect frontend framework, parse Tailwind config, build the projec
 - **Discovery, not prescription.** This step reads what the project already has. It does NOT decide whether the project SHOULD have Tailwind / token files / a particular framework — those decisions belong to the project, not to this workflow.
 - **A missing token file is not an error.** Some projects don't have one. Synthesis falls back to inline `style="..."` values in step 4. The 5-cap on proposed tokens still applies (an inline literal counts as 0 proposed tokens; a `var(--*)` whose name doesn't exist in any project token file counts as 1 proposed token).
 - **`bundle/<screen>.html` is always emitted.** Framework-specific scaffolds (`.svelte`, `.tsx`) are *additional* convenience outputs, never replacements. The HTML is what `design-implement` reads.
-- **Prior implementation lookup is refine-screen only.** In `fresh-design` mode, skip the prior-impl steps — there is no baseline.
+- **Prior implementation lookup is refine-screen only.** In `fresh-design`, `policy-delta` or `elevation` mode, skip the prior-impl steps — there is no baseline (`policy-delta` / `elevation` read the predecessor BRIEF, never the prior implementation — policy §2 `mode` row).
 - YOU MUST ALWAYS SPEAK OUTPUT in your agent communication style with the config `{communication_language}`.
 
 ---
@@ -266,7 +266,7 @@ Populate `{exemplars_consulted_mode}` as a map keyed by path:
   token files:         {len(project_token_paths)} ({comma-separated basenames})
   project tokens:      {len(project_tokens)}
   component library:   {len(component_library) or "none"}
-  prior impl files:    {len(prior_impl_paths) or "n/a (fresh-design)"}
+  prior impl files:    {len(prior_impl_paths) or "n/a ({mode} — no prior-impl baseline)"}
   frontend skill:      {frontend_skill} (resolved via {frontend_skill_source})
   exemplars:           {len(exemplars)} ({comma-separated basenames or "waived: " + waiver_reason})
   consultation:        {comma-separated `<basename>:<consulted_mode>`}

@@ -231,7 +231,7 @@ Confirm populated:
 - `{user_context}` ✓
 - `{brand_identity}` ✓ (may be empty)
 - `{design_system}` ✓ ("branded", "existing", or "external")
-- `{handoff_mode}` ✓ ("fresh-design" or "refine-screen")
+- `{handoff_mode}` ✓ ("fresh-design", "policy-delta", "elevation", or "refine-screen")
 - If `{handoff_mode}` = "refine-screen": `{review_artifact_path}`, `{refine_focus}`, `{required_variants}`, `{peer_steals}`, `{already_fine}` ✓ (loaded by workflow.md before this step)
 
 **Refine-screen mode reminder:** Do NOT ask the user "what feels wrong?" or "what are the top issues?" — those came from the artifact loaded in workflow.md. The user-context question (who uses this, how often) is still valid; the diagnostic question is not.

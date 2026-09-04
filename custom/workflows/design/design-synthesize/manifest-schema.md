@@ -37,7 +37,7 @@ synthesis:
       reason: {skill_tool_unavailable | skill_not_in_available_list | tool_call_failed | tool_call_skipped}
 
 # Mode and scope — authoritative
-mode: {fresh-design | refine-screen}            # synthesis mode
+mode: {fresh-design | policy-delta | elevation | refine-screen}   # synthesis mode (inherited verbatim from the brief)
 page_mode: {operational | analytical | detail}  # policy §6 / §7 composition mode
 target_slug: {kebab-case slug}
 target_route: {single route or null}

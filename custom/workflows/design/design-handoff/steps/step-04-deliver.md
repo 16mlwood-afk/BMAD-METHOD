@@ -261,6 +261,7 @@ docs(design-handoff): {handoff_mode} brief for {feature_name}
 {2-3 line description: what the brief is, what consumer will read it, what scope it covers.
 For refine-screen briefs: cite the screen-review artifact this brief derives from.
 For fresh-design briefs: cite the feature scope and target route.
+For policy-delta / elevation briefs: cite the predecessor brief superseded and (policy-delta) the policy versions moved between.
 If {has_analytics_band} is true: add a line noting the commit also includes the analytics presentation rationale (design-rationale-{target_slug}-{date}.md) — the record-of-decision behind the page-mode/band/archetype choices.}
 
 Co-Authored-By: design-handoff workflow via Claude Code
@@ -319,7 +320,7 @@ gh pr create --title "docs(design-handoff): {handoff_mode} brief for {feature_na
 
 - {1-2 line description of what this brief is}
 - {Consumer that will read it (Claude Design, design-synthesize, design-implement)}
-- {Scope: refine-screen V1-V3 with edge-state variants, OR fresh-design with N open questions}
+- {Scope: refine-screen V1-V3 with edge-state variants, OR fresh-design / policy-delta / elevation with N open questions}
 - {If {has_analytics_band} is true: "Includes an analytics presentation rationale (design-rationale-…) — a human-facing record of WHY the page-mode/band/archetype were chosen. Not a design input; Claude Design reads the brief only."}
 
 ## Why this is doc-only

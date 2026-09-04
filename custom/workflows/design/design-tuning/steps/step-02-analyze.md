@@ -74,7 +74,7 @@ Identify what pages/views are shown in the screenshot(s):
 
 ### 1a. Coverage Gate (all-screens-or-partial)
 
-If the brief lists required edge-state variants in §6 (refine-screen mode) OR names multiple screens / states the mockup must include (fresh-design mode), compare the inventoried screens from §1 against that list:
+If the brief lists required edge-state variants in §6 (refine-screen mode) OR names multiple screens / states the mockup must include (fresh-design / policy-delta / elevation mode), compare the inventoried screens from §1 against that list:
 
 - **Full coverage** — every required screen is present in the provided screenshots. Proceed to §1b.
 - **Partial coverage** — one or more required screens is missing. **The run cannot produce an APPROVAL.** Continue with the analysis on the screens that ARE present (violations found are still real), but record `{coverage_partial} = true` and the list of missing screens in `{missing_screens}`. Step-03 must surface this in the correction/status message and refuse the approval path; the user must provide the missing screens before approval is possible.

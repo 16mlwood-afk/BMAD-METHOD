@@ -168,7 +168,7 @@ synthesis:
   skills_invoked:
     - {each entry in skills_invoked, one per line}
 
-mode: {mode}                              # synthesis mode (fresh-design | refine-screen)
+mode: {mode}                              # synthesis mode (fresh-design | policy-delta | elevation | refine-screen)
 page_mode: {page_mode}                    # composition mode (operational | analytical | detail) — policy §6 / §7
 target_slug: {target_slug}
 target_route: {target_route or null}
@@ -252,7 +252,7 @@ exemplars:
 policy_sections_cited:
   - {each entry in policy_sections_cited, one per line}
 
-# Refine-screen scope (omit entire blocks if mode == fresh-design)
+# Refine-screen scope (omit entire blocks unless mode == refine-screen)
 targeted_changes:
   - region: {name}
     rationale: {text}
@@ -292,7 +292,7 @@ flow_invariants:
   - ...
 ```
 
-For single-screen bundles, omit `flow_invariants` (or set to `[]`). For `fresh-design` mode, omit `targeted_changes` and `unchanged_regions`.
+For single-screen bundles, omit `flow_invariants` (or set to `[]`). For any mode other than `refine-screen` (`fresh-design`, `policy-delta`, `elevation`), omit `targeted_changes` and `unchanged_regions`.
 
 **The `violations:` section is unconditional.** Always emit it, with all sections present — even when each is empty `[]` / `{}`. An empty array is the affirmative "no violations" claim; omission is opaque and forbidden. This is the structural difference between "passed and we know it" and "passed but we have no record of what was checked":
 
@@ -307,7 +307,7 @@ violations:
     #   snippet: {text}
   positive_assertions: []                             # or [{assertion, source_line, file, line, snippet}, ...]
   drift: []                                           # or [{region, file, lines, prior_file, prior_lines, diff}, ...]
-                                                       # (refine-screen only; fresh-design still emits [])
+                                                       # (refine-screen only; every other mode still emits [])
 
   # Brief-faithfulness half (step 6 §5a g/h/i) — added 2026-05-28
   # All three sections mandatory, empty [] / {} on pass. These cap visual_quality and

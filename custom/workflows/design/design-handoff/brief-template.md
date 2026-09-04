@@ -54,7 +54,7 @@ surface_admission:                       # `pre-existing`, or the five answers b
   record: {admission_record}             # pointer to the register row carrying the argument, and who read it
 
 # Block B — Content (see shared/brief-revision-policy.md §2)
-mode: {handoff_mode}                     # fresh-design | refine-screen
+mode: {handoff_mode}                     # fresh-design | policy-delta | elevation | refine-screen — the REAL {handoff_mode}, never fresh-design as a stand-in
 surface_class: {surface_class}           # page | chrome (absent ⇒ page). chrome = app-shell (nav/top-bar/sidebar/shell): page_mode is n/a and the composition/band lines below are OMITTED ENTIRELY — see brief-revision-policy.md Block B surface_class row
 page_mode: {page_mode}                   # operational | analytical | detail — or n/a iff surface_class: chrome
 route: {route}                           # primary route this brief targets (chrome: the shell's scope anchor, normally "/")
@@ -76,7 +76,7 @@ shell_role:
   forbidden_chrome: {forbidden_chrome}   # chrome that MUST NOT appear on this surface (e.g. owner global nav, financial/approvals views). An ancestor layout injecting any of these OVER this surface is a Tier-1 shell violation — the owner-nav-on-a-clerk-station case.
 {endif}
 frames: {frames_list}                    # machine-readable list of the §7 Surface Inventory contract-key ids (e.g. [receive-station, active-session-workspace, resume-rail, close-reconcile-summary, resolved-unit-expand, matched-shipment-lookup]). The bundle→implement conformance gate diffs the bundle's DRAWN frames against THIS list; the §7 table stays the human-readable detail. Keep the two in sync — identical ids. NEVER empty: at minimum the primary frame.
-{# In refine-screen mode the following four fields are REQUIRED. In fresh-design mode they MUST be omitted entirely. #}
+{# In refine-screen mode the following four fields are REQUIRED. In every other mode (fresh-design, policy-delta, elevation) they MUST be omitted entirely. #}
 {if handoff_mode == "refine-screen"}
 screen_review_ref: {review_artifact_path_relative_to_repo_root}
 targeted_changes:
@@ -937,7 +937,7 @@ The audit found these aspects already work. The refinement must preserve them:
 - Do NOT add a "get radical" alternative — see step-01 of `design-review` for that conversation; refine-screen is bounded by design.
 - DO produce the edge-state variants — they are required, not optional.
 
-**--- VARIANT FRESH: `{handoff_mode}` = "fresh-design" (or unset) ---**
+**--- VARIANT FRESH: `{handoff_mode}` = "fresh-design", "policy-delta" or "elevation" (or unset) ---**
 
 {Write the ask using the mode-specific pattern below, then append 3-5 feature-specific questions.}
 

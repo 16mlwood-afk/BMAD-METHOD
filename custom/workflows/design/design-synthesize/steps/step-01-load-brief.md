@@ -96,7 +96,7 @@ Re-run design-handoff to regenerate it, or back-fill the provenance block per br
 See: {project-root}/_bmad/bmm/workflows/design/shared/brief-revision-policy.md
 ```
 
-**Check 1b — field values in-enum.** BEFORE Check 2, halt if any closed-enum field is outside its allowed set (§2 field-semantics) — Check 2's invariants are conditionals keyed on valid enum values, so an out-of-enum value slips through unvalidated otherwise. Enforce: `brief_status ∈ {active, superseded}`; `revision_mode ∈ {workflow_generated, manual_minor_revision, spec_derived}`; `change_class ∈ {original, clarification, material_revision}`; `last_modified_by ∈ {workflow, human}`; `mode ∈ {fresh-design, refine-screen}`; `surface_class ∈ {page, chrome}` (absent ⇒ `page`); `page_mode ∈ {operational, analytical, detail}` — **except when `surface_class: chrome`, where the allowed value is exactly `n/a`** and `composition`/`composition_provenance`/`band_provenance` are absent by design (their absence is NOT a Check-1a failure — policy invariant 1a); `composition_provenance ∈ {policy-default, recommended-alt}`; `band_provenance ∈ {inherited, recommended-new, recommended-drop, none}`; `analytics_archetype` (when present) ∈ the nine archetypes. `composition` is OPEN vocab — validate only non-empty kebab, never a closed set. Halt naming the field, its value, and the allowed set (see `brief-revision-policy.md` §5 Check 1b diagnostic).
+**Check 1b — field values in-enum.** BEFORE Check 2, halt if any closed-enum field is outside its allowed set (§2 field-semantics) — Check 2's invariants are conditionals keyed on valid enum values, so an out-of-enum value slips through unvalidated otherwise. Enforce: `brief_status ∈ {active, superseded}`; `revision_mode ∈ {workflow_generated, manual_minor_revision, spec_derived}`; `change_class ∈ {original, clarification, material_revision}`; `last_modified_by ∈ {workflow, human}`; `mode ∈ {fresh-design, policy-delta, elevation, refine-screen}` (`policy-delta` / `elevation` follow the `fresh-design` path everywhere in this workflow — policy §2 `mode` row); `surface_class ∈ {page, chrome}` (absent ⇒ `page`); `page_mode ∈ {operational, analytical, detail}` — **except when `surface_class: chrome`, where the allowed value is exactly `n/a`** and `composition`/`composition_provenance`/`band_provenance` are absent by design (their absence is NOT a Check-1a failure — policy invariant 1a); `composition_provenance ∈ {policy-default, recommended-alt}`; `band_provenance ∈ {inherited, recommended-new, recommended-drop, none}`; `analytics_archetype` (when present) ∈ the nine archetypes. `composition` is OPEN vocab — validate only non-empty kebab, never a closed set. Halt naming the field, its value, and the allowed set (see `brief-revision-policy.md` §5 Check 1b diagnostic).
 
 **Check 2 — invariants.** Run the invariants from `brief-revision-policy.md` §2 (items 2–8). Specifically:
 
@@ -162,7 +162,7 @@ These flow into `manifest.synthesis.brief_provenance` so downstream tooling (and
 Extract the frontmatter block between the first two `---` lines. Parse into `{brief_frontmatter}` as a map. Required keys:
 
 - `target_slug` (kebab-case identifier for the feature/flow, e.g., `data-quality`, `avask-vat-reclaim`)
-- `mode` (`fresh-design` or `refine-screen`)
+- `mode` (`fresh-design`, `policy-delta`, `elevation`, or `refine-screen`)
 - `route` (single route) OR `routes` (list of routes for multi-screen)
 
 For each missing required key, attempt the auto-lift in §5b BEFORE halting. Halt with `brief frontmatter missing required field(s): <list>` only for fields that §5b could not resolve from the body. Report ALL unresolved fields in one halt — do not halt-on-first-miss.
@@ -176,7 +176,7 @@ Initialize `{frontmatter_lifts} = {}` (map of lifted-field → source-region). F
 | Missing field | Resolution rule | Halt if |
 |---|---|---|
 | `target_slug` | Derive from `{brief_path}` filename: strip prefix (`design-handoff-` / `design-brief-` / `design-response-` / `handoff-`) and the trailing `-{date}.md`. The remainder is the slug. | Filename does not match the prefix-slug-date convention. |
-| `mode` | Scan `{brief_frontmatter}` and `{brief_content}` for refine-screen signals: presence of `screen_review_ref`, a body reference to a `screen-review-*.md` artifact, V1/V2/V3 issue blocks tied to a prior review, or explicit "refinement of" / "refine-screen" language in §1 or the design ask. If any are present → `refine-screen`. Otherwise → `fresh-design`. | Body contains BOTH refine-screen and fresh-design signals (e.g., references a screen-review but also says "new screen, no prior implementation"). |
+| `mode` | Scan `{brief_frontmatter}` and `{brief_content}` for refine-screen signals: presence of `screen_review_ref`, a body reference to a `screen-review-*.md` artifact, V1/V2/V3 issue blocks tied to a prior review, or explicit "refinement of" / "refine-screen" language in §1 or the design ask. If any are present → `refine-screen`. Otherwise → `fresh-design`. Never lift `policy-delta` or `elevation` — those values are stamped only by `design-handoff`, and a brief with no `mode` key predates the widening. | Body contains BOTH refine-screen and fresh-design signals (e.g., references a screen-review but also says "new screen, no prior implementation"). |
 | `route` / `routes` | Search the body for explicit route lines. Patterns: `Route: <pathname>`, `Routes:\n- <pathname>\n- ...`, a "Route" or "Routes" section heading, or a code fence containing `/<segment>/...` lines. Lift the first unambiguous match. Single route → set `route`; multiple → set `routes`. | Body contains no explicit route declaration, OR multiple distinct route candidates without an authoring marker (`Route:`, "Routes:", a section heading) to disambiguate. |
 
 For each successful lift, record in `{frontmatter_lifts}`:
@@ -197,7 +197,7 @@ If any required field cannot be lifted per the rule above, append it to the halt
 | Frontmatter field | State variable | Notes |
 |---|---|---|
 | `target_slug` | `{target_slug}` | Used in `{bundle_dir}` naming |
-| `mode` | `{mode}` | Synthesis mode (`fresh-design | refine-screen`), locked here; never reconsidered |
+| `mode` | `{mode}` | Synthesis mode (`fresh-design | policy-delta | elevation | refine-screen`), locked here; never reconsidered. `policy-delta` / `elevation` take the `fresh-design` pipeline path (no prior-impl baseline, no drift contract); their one difference is that the predecessor BRIEF is a design input while the current implementation still is not (policy §2 `mode` row) |
 | `page_mode` | `{page_mode}` | Page composition mode (`operational | analytical | detail`), see §6a below |
 | `route` | `{target_route}` | Single-screen runs only |
 | `routes` | `{target_route}` = null, `{screens}` derived from `routes` | Multi-screen runs |
@@ -339,7 +339,7 @@ The brief body is structured prose. Extract the following sections into state fo
 
 If a section is missing AND it is required for the mode:
 
-- `fresh-design`: all sections except `analytics_structure` are required.
+- `fresh-design`, `policy-delta`, `elevation`: all sections except `analytics_structure` are required.
 - `refine-screen`: `feature_purpose`, `data_shape`, `design_ask` are required; the rest are inherited from the screen-review baseline.
 
 Halt with the missing-section list. Do not invent content.
