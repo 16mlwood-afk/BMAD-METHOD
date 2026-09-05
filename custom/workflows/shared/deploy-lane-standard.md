@@ -101,6 +101,7 @@ project is MET and nothing is NOT DECLARED.
 | Tier | Mechanism | Class |
 |---|---|---|
 | Awareness | this doc, indexed in `STANDARDS.md`; the health line at session start | PROBABILISTIC |
+| Awareness, first-priority | `~/.claude/hooks/deploy-lane-setup.sh` (SessionStart, global, installed from `custom/claude-global/hooks/` by `install-global-assets.sh`): when the project a session opens is GAPS / NOT DECLARED / UNKNOWN, injects a bounded "FIRST PRIORITY THIS SESSION" instruction naming the state, the missing rows, the reference, and the done-condition. Silent when MET / N/A / non-BMAD. Dated snooze ≤14 days, logged. | DETERMINISTIC delivery, PROBABILISTIC action |
 | Gate | `deploy_lane_guard.py` on the raw ship command (PreToolUse; warn → deny per project) | DETERMINISTIC (delivery); action is denied only in `deny` mode |
 | Gate | the lane's own refusals (R2, R4, R5-behind/diverged, R6) | DETERMINISTIC, inside the lane |
 | Proof | R6 fingerprint · R5 read-back · the checker's `verified` rows | DETERMINISTIC over artefacts |
@@ -114,3 +115,6 @@ Reference implementation: `cash-recovery/scripts/deploy.sh` (Railway; R1–R9 ve
 
 - **v1 (2026-09-04)** — created from the wrong-directory-upload finding. Ten requirements,
   checker, health integration, generic guard.
+- **v1.1 (2026-09-05)** — first-priority SessionStart nudge (`deploy-lane-setup.sh`), owner
+  instruction: "the next agent in the relevant directory will auto-setup as their first
+  priority".

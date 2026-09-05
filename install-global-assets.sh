@@ -74,6 +74,9 @@ def ensure_cmd(event, matcher, command, needle, timeout=5):
 def ensure(event, matcher, script):
     return ensure_cmd(event, matcher, f"{hooks}/{script}", script)
 ch = (ensure('SessionStart', None, 'prod-readiness-probe.sh')
+      # STD-DEPLOY-002 awareness: first-priority setup nudge when THIS project's deploy
+      # lane is GAPS / NOT DECLARED / UNKNOWN; silent when MET, N/A or non-BMAD
+      + ensure('SessionStart', None, 'deploy-lane-setup.sh')
       + ensure('PreToolUse', 'Bash', 'prod-readiness-deploy-gate.sh')
       + ensure('PreToolUse', 'Edit|Write', 'enforcement-expert-nudge.sh')
       # fork-of-upstream destructive-op guard (self-gates on the onboarding topology stamp)
