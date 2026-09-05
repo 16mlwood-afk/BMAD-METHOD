@@ -1,0 +1,154 @@
+---
+name: 'step-02-health-check'
+description: 'Check each workflow individually for structural issues — broken step chains, missing state variables, stale pointers, frontmatter errors'
+---
+
+# Step 2: Health Check
+
+**Progress: Step 2 of 4** — Next: Contract Analysis (autonomous)
+
+## RULES:
+
+- FULLY AUTONOMOUS. No user interaction. No menus. No halting.
+- Check every workflow — don't sample. The audit is only valuable if it's exhaustive.
+- Every finding must include the specific file and what's wrong. No vague "some workflows have issues."
+
+## AVAILABLE STATE
+
+From Step 1:
+
+- `{workflow_inventory}` — structural map of all workflows
+- `{handoff_map}` — which workflows suggest which follow-ups
+
+## STATE VARIABLES (set in this step)
+
+- `{health_checks}` — list of findings per workflow, each with category, severity, file, and fix
+
+## SEQUENCE OF INSTRUCTIONS
+
+### 1. Step Chain Integrity
+
+For each workflow in `{workflow_inventory}`:
+
+- **Verify the chain is complete.** Starting from step-01, follow `nextStepFile` pointers. Every step except the last must have a `nextStepFile`. The last step must NOT have one (or must be null).
+- **Verify pointers resolve.** Each `nextStepFile` value (e.g., `./step-02-foo.md`) must correspond to an actual file in the steps directory.
+- **Verify numbering is sequential.** step-01 → step-02 → step-03, no gaps, no duplicates.
+- **Verify the workflow.md references step-01.** The workflow entry point must point to the first step file.
+
+**Finding categories:**
+- `broken-chain` (critical) — nextStepFile points to a file that doesn't exist
+- `orphaned-step` (moderate) — step file exists but no other step points to it
+- `numbering-gap` (low) — step numbers skip (step-01, step-03) or are out of order
+- `missing-entry-point` (critical) — workflow.md doesn't reference step-01
+
+### 2. State Variable Flow
+
+For each workflow:
+
+- **Verify producers before consumers.** If step-03 consumes `{gaps}`, verify that step-01 or step-02 produces it.
+- **Verify the workflow.md state list is accurate.** The state variables listed in workflow.md should be the union of all variables produced across all steps.
+- **Check for orphaned variables.** Variables produced by one step but never consumed by any subsequent step.
+- **Check for unproduced variables.** Variables consumed by a step but never produced by any prior step.
+
+**Finding categories:**
+- `unproduced-var` (critical) — step consumes a variable no prior step produces
+- `orphaned-var` (low) — step produces a variable no subsequent step or output uses
+- `stale-var-list` (low) — workflow.md state list doesn't match actual step production
+
+### 3. Frontmatter Consistency
+
+For each step file:
+
+- **name field present and matches filename convention** (e.g., `step-03-render-pipeline`)
+- **description field present** and is a meaningful sentence (not empty or placeholder)
+- **nextStepFile uses relative path** (`./step-02-foo.md`, not absolute)
+
+**Finding categories:**
+- `missing-frontmatter` (moderate) — required field missing
+- `name-mismatch` (low) — name field doesn't match filename
+
+### 4. Workflow.md Consistency
+
+For each workflow.md:
+
+- **Phase count matches step count.** If it says "5 phases" but has 6 step files, flag it.
+- **Phase list matches step names.** If it says "map → snapshot → render" but step names are different, flag it.
+- **Config references resolve.** If it references `{main_config}`, verify `config.yaml` exists.
+
+**Finding categories:**
+- `phase-count-mismatch` (moderate) — documented phase count doesn't match actual step count
+- `stale-phase-list` (low) — phase names don't match step descriptions
+
+### 5. Context Budget
+
+Workflows are dense instruction documents executed by a model with a finite *usable* context. A step that is too long or too instruction-dense gets silently compressed and detail gets dropped — the workflow's logic is fine but its output is wrong because it couldn't be ingested reliably. For each step file:
+
+- **Count the hard must-dos.** A step carrying more than ~10 distinct must-do instructions is in the curse-of-instructions danger zone — it is doing more than one job and should be split.
+- **Check for inlined corpora.** A step that inlines a large body of content (a whole file's text, a big table, a long reference) it could instead point to and read on demand drives context rot. Flag it for pointer-over-inline.
+- **Check constraint placement.** Load-bearing constraints buried in the middle of a long step (rather than at the top + restated at their point of use) are followed less reliably (lost-in-the-middle).
+- **Check read-heavy steps for delegation.** A step whose job is a large multi-file scan / research / audit, performed inline rather than delegated to a sub-agent that returns a distilled artifact, pulls raw material into the orchestrator's context unnecessarily.
+
+**Finding categories:**
+- `overdense-step` (moderate) — a step carries 15+ hard must-dos, or two-plus distinct jobs; recommend splitting into one-job-per-step
+- `inlined-corpus` (low) — a step inlines content it could reference on demand
+- `buried-constraint` (low) — a load-bearing rule sits mid-step, not at the top + point of use
+- `undelegated-read` (low) — a read-heavy/parallelizable step inlines its corpus instead of delegating to a sub-agent
+
+(Decision-rule and thresholds: the `context-budget` durable principle — see the mason-bmad-workflow-expert skill's `references/context-budget.md`.)
+
+### 5b. Policy-skill / router quality
+
+Applies ONLY to a workflow that **owns policy** (it encodes necessity, materiality, domain ownership, or safety/correctness — *when it should engage at all* and *who owns a decision*) OR acts as a **router** that dispatches between skills/sub-flows. Skip a plain mechanical-transform workflow. This is the audit-time counterpart of create-workflow's step-03b policy-skill axis — authoring-time builds it right, this catches drift across the corpus. For each such workflow:
+
+- **Check the ownership declaration.** Does `workflow.md` state, near the top, its **purpose / ownership / "do not use when"** (a plain-language materiality gate — use / don't-use / if-uncertain), its **skill dependencies** (`uses_skills:`), and an **abstain behavior** ("if uncertain, abstain by …")? A policy-owning flow with none of these can't be invoked correctly or know when to stay out.
+- **Check the skills it depends on.** For every skill in `uses_skills:` (and any skill the workflow introduces), confirm the four policy-skill rules: a plain-language invoke block, every declared mode wired to a real caller, sister-skill symmetry, and routing documented both ways. For a full read-only sweep of the affected skills, call the **`policy-skills-healthcheck`** skill (it runs exactly these checks and returns findings — it does not modify anything).
+
+**Finding categories:**
+- `missing-ownership-decl` (moderate) — a policy-owning/router workflow with no purpose/ownership/"do not use when", `uses_skills:`, or abstain declaration
+- `missing-invoke-block` (moderate) — a depended-on policy-skill with no plain-language invocation policy
+- `dormant-mode` (low) — a declared skill mode with no real caller
+- `asymmetric-sibling` (low) — a skill not wired at the same lifecycle points as its domain siblings
+- `undocumented-routing` (low) — the workflow names no skill caller, or a caller re-derives policy the skill owns
+
+(Doctrine: the mason-bmad-workflow-expert skill's "Policy-skills — invocation health" section + the `policy-skills-healthcheck` skill.)
+
+### 6. Compile Health Report
+
+For each finding:
+
+```
+{
+  workflow: string,
+  file: string,
+  category: string,
+  severity: "critical" | "moderate" | "low",
+  description: string,
+  fix: string
+}
+```
+
+Store as `{health_checks}`.
+
+### 7. Proceed to Contract Analysis
+
+Read fully and follow: `{project-root}/_bmad/bmm/workflows/meta/orchestrate-workflows/steps/step-03-contract-analysis.md`
+
+---
+
+## SUCCESS METRICS
+
+- Every workflow checked for step chain integrity
+- Every state variable flow verified (producer before consumer)
+- Frontmatter consistency checked across all step files
+- Workflow.md phase counts and lists verified
+- Every step checked against the context budget (must-do density, inlined corpora, constraint placement, undelegated reads)
+- Every policy-owning or router workflow checked for ownership declaration + depended-on-skill invocation health (or cleanly skipped if mechanical)
+- All findings stored with specific file references and fixes
+- `{health_checks}` populated
+
+## FAILURE MODES
+
+- Checking only a subset of workflows ("the main ones")
+- Reporting "step chain looks fine" without actually tracing nextStepFile pointers
+- Not distinguishing severity levels (a broken chain is critical; a naming mismatch is low)
+- Vague findings without file paths

@@ -1,0 +1,56 @@
+#!/usr/bin/env sh
+# .githooks/pre-push — fork-distributed gate dispatcher (STD-HOOKACTIVATE-001).
+#
+# THIN BY DESIGN. The gate LOGIC lives in ./scripts/* (distributed via the fork
+# scripts rail). This entrypoint only wires git → those gates, reading the list
+# from .githooks/gates.conf (project-owned) and .githooks/gates.d/*.conf
+# (fork-owned drop-ins — gap 496, so a new fork gate retrofits the fleet without
+# a per-repo gates.conf edit). A gate script not present in this repo is skipped,
+# so the conf can name the full fleet set without breaking a repo that lacks one.
+# Do not list one script in both registries (it would run twice); fork gates live in gates.d.
+#
+# Enforcement class: best-effort GATE (deterministic only when activated via
+# core.hooksPath=.githooks; bypassable with `git push --no-verify`, which git
+# logs). The fail-CLOSED guarantee is the CI tier (deferred) — NOT this hook.
+set -eu
+
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+status=0
+RAN=""   # dedup: a script listed in both gates.conf and gates.d runs only once
+
+# Run every gate registered for event $2 in conf file $1 (absent file / script → no-op).
+run_gates_from() {
+  conf="$1"
+  want="$2"
+  [ -f "$conf" ] || return 0
+  while IFS= read -r line || [ -n "$line" ]; do
+    case "$line" in '' | \#*) continue ;; esac
+    event=$(printf '%s' "$line" | awk '{print $1}')
+    [ "$event" = "$want" ] || continue
+    # strip the event, any trailing inline "# comment", and trailing whitespace —
+    # without the comment strip, "$ROOT/$cmd" includes the comment, [ -f ] fails,
+    # and the gate is SILENTLY skipped (bit every gates.d conf, which carry
+    # inline comments — the design-brief/dataflow gates were inert fleet-wide)
+    cmd=$(printf '%s' "$line" | sed 's/^[^[:space:]]*[[:space:]]*//; s/[[:space:]]*#.*$//; s/[[:space:]]*$//')
+    [ -n "$cmd" ] || continue
+    case "$RAN" in *"|$cmd|"*) continue ;; esac   # already ran this script
+    RAN="$RAN|$cmd|"
+    script="$ROOT/$cmd"
+    [ -f "$script" ] || continue   # gate absent in this repo → no-op
+    printf 'pre-push gate: %s\n' "$cmd" >&2
+    if ! sh "$script" </dev/null; then
+      printf 'pre-push BLOCKED by %s. Override (logged): git push --no-verify\n' "$cmd" >&2
+      status=1
+    fi
+  done < "$conf"
+}
+
+run_gates_from "$ROOT/.githooks/gates.conf" pre-push
+if [ -d "$ROOT/.githooks/gates.d" ]; then
+  for drop in "$ROOT"/.githooks/gates.d/*.conf; do
+    [ -f "$drop" ] || continue
+    run_gates_from "$drop" pre-push
+  done
+fi
+
+exit "$status"

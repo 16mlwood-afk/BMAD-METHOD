@@ -1,0 +1,318 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "name": "bmad-scope-extension-router",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "_in=$(cat 2>/dev/null); printf '%s' \"$_in\" | grep -qiwE 'add|adds|adding|extend|extends|extending|extended|deepen|deepening|deepen|expand|expanding|expanded|broaden|enhance|persist|persisted|persisting|integration' || exit 0; printf '{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"SCOPE-EXTENSION ROUTER (STD-SCOPEROUTE-001): add/deepen/extend ask -> route to a BMAD mechanism BEFORE discussing it, answer in 4 parts (mechanism, lead lane + why, downstream artifacts, exact next step). Lanes: settled surface with no new capability/source/model -> design-elevation; owner-added or scope-altering -> correct-course (+ scope-register); new table / external source / schema-level model / PRD FR / epic -> correct-course -> PRD/Architecture -> create-epics-and-stories; mixed -> name both and which LEADS. Guardrails -> MATERIALITY: small clerk field/enum -> quick-spec, not the capability lane; PREMISE-CHECK: do not call it a new source if we already ingest it. Do not answer no-button without naming the lane. Detail: shared/scope-extension-routing.md.\"}}\\n'",
+            "timeout": 5,
+            "statusMessage": "Checking for scope-extension intent..."
+          }
+        ]
+      },
+      {
+        "matcher": "",
+        "name": "bmad-parallel-session-check",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "case \"$PWD\" in */.claude/worktrees/*) exit 0;; esac; count=$(ps -eo command 2>/dev/null | grep -c \"^claude\"); [ \"$count\" -le 1 ] && exit 0; MARK=\"$PWD/.claude/.parallel-warn-last\"; if [ -f \"$MARK\" ]; then   last=$(/usr/bin/stat -f %m \"$MARK\" 2>/dev/null || /usr/bin/stat -c %Y \"$MARK\" 2>/dev/null || echo 0);   now=$(/bin/date +%s);   age=$((now - last));   [ \"$age\" -lt 1800 ] && exit 0; fi; /bin/mkdir -p \"$PWD/.claude\" 2>/dev/null; /usr/bin/touch \"$MARK\" 2>/dev/null; printf '{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"PARALLEL SESSIONS DETECTED (%s CLI sessions active): You MUST call EnterWorktree before editing any files if you have not already. See CLAUDE.md ALWAYS Use Worktrees section.\"}}\\n' \"$count\"",
+            "timeout": 5,
+            "statusMessage": "Checking for parallel sessions..."
+          }
+        ]
+      },
+      {
+        "matcher": "",
+        "name": "bmad-delivery-check",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null); [ \"$branch\" = \"main\" ] && exit 0; [ \"$branch\" = \"HEAD\" ] && exit 0; ahead=$(git rev-list --count main..\"$branch\" 2>/dev/null || echo 0); dirty=$(git status --porcelain 2>/dev/null | head -1); if [ \"$ahead\" -gt 0 ] || [ -n \"$dirty\" ]; then printf '{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"UNDELIVERED WORK on branch %s (%s commits ahead of main, %s). Complete delivery: commit -> push -> PR -> merge -> deploy. See CLAUDE.md.\"}}\\n' \"$branch\" \"$ahead\" \"$([ -n \"$dirty\" ] && echo \"has uncommitted changes\" || echo \"clean working tree\")\"; fi",
+            "timeout": 5,
+            "statusMessage": "Checking delivery status..."
+          }
+        ]
+      },
+      {
+        "matcher": "",
+        "name": "bmad-undeployed-merge-check",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "case \"$PWD\" in */.claude/worktrees/*) exit 0;; esac; BMM=\"$PWD/_bmad/bmm/workflows\"; [ -d \"$BMM\" ] || exit 0; SID=\"${CLAUDE_CODE_SESSION_ID:-${CLAUDE_PID:-$PPID}}\"; SLUG=$(printf '%s' \"$PWD\" | /usr/bin/tr -c 'A-Za-z0-9' '_'); START_MARK=\"/tmp/claude-bmad-session-main-$SID$SLUG\"; CUR=$(/usr/bin/git -C \"$PWD\" rev-parse --verify --quiet origin/main 2>/dev/null || /usr/bin/git -C \"$PWD\" rev-parse --verify --quiet main 2>/dev/null); [ -z \"$CUR\" ] && exit 0; if [ ! -f \"$START_MARK\" ]; then   /bin/echo \"$CUR\" > \"$START_MARK\" 2>/dev/null;   exit 0; fi; START=$(/bin/cat \"$START_MARK\" 2>/dev/null); [ \"$START\" = \"$CUR\" ] && exit 0; DEPLOY_MARK=\"/tmp/claude-bmad-deployed-$SID\"; [ -f \"$DEPLOY_MARK\" ] && exit 0; CFG=\"$PWD/_bmad/bmm/config.yaml\"; if [ -f \"$CFG\" ] && /usr/bin/grep -q \"bmad_contract: *skip\" \"$CFG\"; then exit 0; fi; REMIND_MARK=\"$PWD/.claude/.undeployed-warn-last\"; if [ -f \"$REMIND_MARK\" ]; then   last=$(/usr/bin/stat -f %m \"$REMIND_MARK\" 2>/dev/null || /usr/bin/stat -c %Y \"$REMIND_MARK\" 2>/dev/null || echo 0);   now=$(/bin/date +%s);   age=$((now - last));   [ \"$age\" -lt 900 ] && exit 0; fi; /usr/bin/touch \"$REMIND_MARK\" 2>/dev/null; N=$(/usr/bin/git -C \"$PWD\" rev-list --count \"$START\"..\"$CUR\" 2>/dev/null); [ -z \"$N\" ] && N=\"an unknown number of\"; printf '{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"UNDEPLOYED MERGE: origin/main has moved %s commit(s) since this session started (%s -> %s) but ./scripts/bmad-deploy.sh has not run this session. Run it to ship the merged changes, or document why a deploy was deliberately skipped.\"}}\\n' \"$N\" \"${START:0:7}\" \"${CUR:0:7}\"",
+            "timeout": 5,
+            "statusMessage": "Checking for undeployed merges..."
+          }
+        ]
+      },
+      {
+        "matcher": "",
+        "name": "bmad-design-handoff-router",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "_in=$(cat 2>/dev/null); printf '%s' \"$_in\" | grep -qiE 'claude\\.ai/design/p/|api\\.anthropic\\.com/v1/design/' || exit 0; printf '%s' \"$_in\" | grep -qiE 'Implement:|claude_design' || exit 0; printf '{\"hookSpecificOutput\":{\"hookEventName\":\"UserPromptSubmit\",\"additionalContext\":\"CLAUDE DESIGN HANDOFF DETECTED: route this through the design-implement workflow. Do NOT call the claude_design MCP and implement directly (that bypasses the fork safety layer: regression-surface preflight, bundle->brief conformance gate, supersede awareness, exhaustive grid, apply ledger). Invoke /bmad:bmm:workflows:design-implement with the embedded claude.ai/design/p/<uuid> share-link; it resolves the Implement: / ?file= target and runs every gate. For a large multi-frame design, run /bmad:bmm:workflows:design-ingest first.\"}}\\n'",
+            "timeout": 5,
+            "statusMessage": "Checking for Claude Design handoff..."
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Skill",
+        "name": "bmad-specialist-load-marker",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "_in=$(cat 2>/dev/null); FILE=$(printf '%s' \"$_in\" | jq -r '.tool_input.file_path // empty' 2>/dev/null); [ -z \"$FILE\" ] && FILE=\"${CLAUDE_TOOL_INPUT_FILE_PATH:-}\"; CMD=$(printf '%s' \"$_in\" | jq -r '.tool_input.command // empty' 2>/dev/null); [ -z \"$CMD\" ] && CMD=\"${CLAUDE_TOOL_INPUT_COMMAND:-}\"; SKILL=$(printf '%s' \"$_in\" | jq -r '.tool_input.skill // empty' 2>/dev/null); [ -z \"$SKILL\" ] && SKILL=\"${CLAUDE_TOOL_INPUT_SKILL:-}\"; skill=\"$SKILL\"; [ \"$skill\" = \"mason-bmad-workflow-expert\" ] || exit 0; MARK=\"/tmp/claude-bmad-specialist-$PPID\"; /usr/bin/touch \"$MARK\" 2>/dev/null; exit 0",
+            "timeout": 3,
+            "statusMessage": "Recording specialist load..."
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|Bash",
+        "name": "bmad-fork-specialist-gate",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "_in=$(cat 2>/dev/null); FILE=$(printf '%s' \"$_in\" | jq -r '.tool_input.file_path // empty' 2>/dev/null); [ -z \"$FILE\" ] && FILE=\"${CLAUDE_TOOL_INPUT_FILE_PATH:-}\"; CMD=$(printf '%s' \"$_in\" | jq -r '.tool_input.command // empty' 2>/dev/null); [ -z \"$CMD\" ] && CMD=\"${CLAUDE_TOOL_INPUT_COMMAND:-}\"; SKILL=$(printf '%s' \"$_in\" | jq -r '.tool_input.skill // empty' 2>/dev/null); [ -z \"$SKILL\" ] && SKILL=\"${CLAUDE_TOOL_INPUT_SKILL:-}\"; FORK=\"/Users/masonwood/bmad-method-v6\"; touches_fork=false; case \"$FILE\" in   \"$FORK\"/*) touches_fork=true;; esac; case \"$CMD\" in   *sync-bmad-workflows.sh*) ;;   *\"$FORK\"/*) touches_fork=true;; esac; $touches_fork || exit 0; MARK=\"/tmp/claude-bmad-specialist-$PPID\"; if [ ! -f \"$MARK\" ]; then printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"BLOCKED: about to edit a fork file (%s) but the mason-bmad-workflow-expert skill has not been loaded this session. Load it first via the Skill tool, then retry. The specialist enforces policy invariants and prevents drift class incidents (e.g., the destructive reaper). See CLAUDE.md Cross-Repo Edits section.\"}}\\n' \"${FILE:-$CMD}\"; fi",
+            "timeout": 3,
+            "statusMessage": "Checking fork-specialist gate..."
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "name": "bmad-worktree-guard",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "_in=$(cat 2>/dev/null); FILE=$(printf '%s' \"$_in\" | jq -r '.tool_input.file_path // empty' 2>/dev/null); [ -z \"$FILE\" ] && FILE=\"${CLAUDE_TOOL_INPUT_FILE_PATH:-}\"; CMD=$(printf '%s' \"$_in\" | jq -r '.tool_input.command // empty' 2>/dev/null); [ -z \"$CMD\" ] && CMD=\"${CLAUDE_TOOL_INPUT_COMMAND:-}\"; SKILL=$(printf '%s' \"$_in\" | jq -r '.tool_input.skill // empty' 2>/dev/null); [ -z \"$SKILL\" ] && SKILL=\"${CLAUDE_TOOL_INPUT_SKILL:-}\"; case \"$PWD\" in */.claude/worktrees/*) _wt_repo=\"${PWD%/.claude/worktrees/*}\"; _wt_rest=\"${PWD#*/.claude/worktrees/}\"; _wt_name=\"${_wt_rest%%/*}\"; _wt_root=\"${_wt_repo}/.claude/worktrees/${_wt_name}\"; case \"$FILE\" in \"${_wt_root}\"/*|*/_bmad-output/*|*/.claude/*|*/_bmad/.sprint-apply-*|/Users/*/bmad-method-v6/*) exit 0;; \"${_wt_repo}\"/*) printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"BLOCKED: target %s is inside THIS project (%s) but outside the active worktree %s \u2014 editing the main checkout (or another worktree) from here is the cross-session collision the guard prevents. Use a relative path inside the worktree.\"}}\\n' \"$FILE\" \"$_wt_repo\" \"$_wt_root\"; exit 0;; /*) printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"allow\",\"permissionDecisionReason\":\"Cross-repo edit: %s is outside this session project (worktree of %s). A worktree of THIS project cannot isolate a different repo, so the worktree rule does not apply \u2014 allowed (the sanctioned cross-repo path). Ensure no parallel session is editing that repo.\"}}\\n' \"$FILE\" \"$_wt_repo\"; exit 0;; *) exit 0;; esac;; esac; case \"$FILE\" in */_bmad-output/*|*/.claude/*|*/_bmad/.sprint-apply-*|/Users/*/bmad-method-v6/*) exit 0;; esac; _proj=$(git -C \"$PWD\" rev-parse --show-toplevel 2>/dev/null || echo \"$PWD\"); case \"$FILE\" in \"$_proj\"/*) ;; /*) printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"allow\",\"permissionDecisionReason\":\"Cross-repo edit: %s is outside this session project %s. A worktree of THIS project cannot isolate a different repo, so the worktree rule does not apply here \u2014 allowed (the sanctioned cross-repo path). Ensure no parallel session is editing that repo.\"}}\\n' \"$FILE\" \"$_proj\"; exit 0;; *) ;; esac; if [ \"${BMAD_ALLOW_MAIN_EDIT:-}\" = \"1\" ]; then { echo \"$(date -u +%Y-%m-%dT%H:%M:%SZ) main-edit-override FILE=$FILE PWD=$PWD\" >> \"$_proj/.claude/main-edit-overrides.log\"; } 2>/dev/null; printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"allow\",\"permissionDecisionReason\":\"Main-checkout maintenance edit override (BMAD_ALLOW_MAIN_EDIT=1) \u2014 LOGGED to .claude/main-edit-overrides.log. Confirm no parallel session is editing %s.\"}}\\n' \"$FILE\"; exit 0; fi; count=$(ps -eo command 2>/dev/null | grep -c \"^claude\"); if [ \"$count\" -gt 1 ]; then printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"BLOCKED: %s parallel claude sessions detected and you are NOT in a worktree. Set BMAD_ALLOW_MAIN_EDIT=1 for a LOGGED main-checkout maintenance edit, call EnterWorktree, or use the bash cross-repo route. See CLAUDE.md.\"}}\\n' \"$count\"; fi",
+            "timeout": 5,
+            "statusMessage": "Worktree guard..."
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "name": "bmad-bash-edit-guard",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "R=\"${CLAUDE_PROJECT_DIR:-$PWD}\"; case \"$PWD\" in */.claude/worktrees/*) R=\"${PWD%%/.claude/worktrees/*}\";; esac; S=\"$R/.claude/hooks/bash_edit_guard.py\"; _in=$(cat 2>/dev/null); if [ -f \"$S\" ]; then printf '%s' \"$_in\" | python3 \"$S\" || printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"additionalContext\":\"bash_edit_guard ERRORED (non-zero exit), so the write-target check did not complete for this command. Treat it as unchecked.\"}}\\n'; exit 0; fi; printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"additionalContext\":\"BASH EDIT GUARD IS MISSING (.claude/hooks/bash_edit_guard.py not found). Write-target classification is UNCHECKED for this command. This project has not yet received custom/hooks/ from the fork - run sync-bmad-workflows.sh.\"}}\\n'; exit 0",
+            "timeout": 5,
+            "statusMessage": "Bash write-target guard..."
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "name": "bmad-single-track-guard",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "_in=$(cat 2>/dev/null); CMD=$(printf '%s' \"$_in\" | jq -r '.tool_input.command // empty' 2>/dev/null); [ -z \"$CMD\" ] && CMD=\"${CLAUDE_TOOL_INPUT_COMMAND:-}\"; cmd=\"$CMD\"; [ -z \"$cmd\" ] && exit 0; echo \"$cmd\" | grep -qE \"(^|[[:space:];&|])git[[:space:]]+merge([[:space:]]|$)\" || exit 0; echo \"$cmd\" | grep -qE \"(^|[[:space:]])--(ff-only|abort|continue|quit)([[:space:]]|=|$)\" && exit 0; [ -d \"$PWD/_bmad/bmm/workflows\" ] || exit 0; branch=$(git -C \"$PWD\" rev-parse --abbrev-ref HEAD 2>/dev/null); [ \"$branch\" = \"main\" ] || exit 0; printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"BLOCKED: git merge into local main forks it from origin/main \u2014 the single-delivery-track violation that creates the recurring divergence (domain work piling up on an unpushed local main). Deliver via PR instead: push the branch, gh pr create, gh pr merge --squash. Local main only moves by git merge --ff-only origin/main. See CLAUDE.md ALWAYS Deliver Your Work.\"}}\\n'",
+            "timeout": 5,
+            "statusMessage": "Single-track delivery guard..."
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "name": "bmad-fork-commit-atomicity",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "_in=$(cat 2>/dev/null); CMD=$(printf '%s' \"$_in\" | jq -r '.tool_input.command // empty' 2>/dev/null); [ -z \"$CMD\" ] && CMD=\"${CLAUDE_TOOL_INPUT_COMMAND:-}\"; cmd=\"$CMD\"; [ -z \"$cmd\" ] && exit 0; echo \"$cmd\" | grep -qE \"(^|[[:space:];&|])git[[:space:]]+commit([[:space:]]|$)\" || exit 0; echo \"$cmd\" | grep -qE \"[[:space:]]-o([[:space:]]|$)|--only([[:space:]]|=)\" && exit 0; FORK=\"/Users/masonwood/bmad-method-v6\"; tf=false; case \"$PWD\" in \"$FORK\"|\"$FORK\"/*) tf=true;; esac; case \"$cmd\" in *bmad-method-v6*) tf=true;; esac; $tf || exit 0; count=$(ps -eo command 2>/dev/null | grep -c \"^claude\"); [ \"$count\" -gt 1 ] || exit 0; printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"FORK COMMIT WITHOUT -o while %s parallel claude sessions are active: ~/bmad-method-v6 has ONE shared git index, so a plain git commit captures whatever ANY session has staged (the commingling hazard, parallel-sessions.md D3 \u2014 wrong provenance / latent lost work). Re-run scoped to your files only: git commit -o <your paths> -m ... . Proceed unscoped ONLY if you are certain no other session has staged fork work.\"}}\\n' \"$count\"",
+            "timeout": 5,
+            "statusMessage": "Fork-commit atomicity guard..."
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "name": "bmad-workflow-guard",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "_in=$(cat 2>/dev/null); FILE=$(printf '%s' \"$_in\" | jq -r '.tool_input.file_path // empty' 2>/dev/null); [ -z \"$FILE\" ] && FILE=\"${CLAUDE_TOOL_INPUT_FILE_PATH:-}\"; CMD=$(printf '%s' \"$_in\" | jq -r '.tool_input.command // empty' 2>/dev/null); [ -z \"$CMD\" ] && CMD=\"${CLAUDE_TOOL_INPUT_COMMAND:-}\"; SKILL=$(printf '%s' \"$_in\" | jq -r '.tool_input.skill // empty' 2>/dev/null); [ -z \"$SKILL\" ] && SKILL=\"${CLAUDE_TOOL_INPUT_SKILL:-}\"; FILE=\"$FILE\"; case \"$FILE\" in */_bmad/bmm/config.yaml|*/_bmad/_config/*|*/_bmad/.sprint-apply-*) exit 0;; */_bmad/*) printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"BLOCKED: %s is managed by BMAD sync and will be overwritten. Edit the source in ~/bmad-method-v6/ (custom/workflows/ for custom workflows, reference project for upstream), then run sync-bmad-workflows.sh to distribute.\"}}\\n' \"$FILE\";; esac",
+            "timeout": 3,
+            "statusMessage": "Workflow source guard..."
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "name": "bmad-board-contention-note",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "_in=$(cat 2>/dev/null); FILE=$(printf '%s' \"$_in\" | jq -r '.tool_input.file_path // empty' 2>/dev/null); [ -z \"$FILE\" ] && FILE=\"${CLAUDE_TOOL_INPUT_FILE_PATH:-}\"; case \"$FILE\" in *sprint-status.yaml) ;; *) exit 0;; esac; count=$(ps -eo command 2>/dev/null | grep -c \"^claude\"); [ \"$count\" -gt 1 ] || exit 0; MARK=\"$PWD/.claude/.board-contention-warn-last\"; if [ -f \"$MARK\" ]; then last=$(/usr/bin/stat -f %m \"$MARK\" 2>/dev/null || /usr/bin/stat -c %Y \"$MARK\" 2>/dev/null || echo 0); now=$(/bin/date +%s); [ $((now - last)) -lt 900 ] && exit 0; fi; /bin/mkdir -p \"$PWD/.claude\" 2>/dev/null; /usr/bin/touch \"$MARK\" 2>/dev/null; printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"additionalContext\":\"BOARD CONTENDED (%s claude sessions active): sprint-status.yaml is a single shared untracked file with no locking. RE-READ it immediately before this write, and edit PER-KEY (one value per line, parallel-sessions.md B1/B1a) \u2014 never a whole-file or multi-line block rewrite, which stale-anchors and silently clobbers another session. Story prose belongs in the per-story .md, not the board.\"}}\\n' \"$count\"",
+            "timeout": 5,
+            "statusMessage": "Board contention note..."
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "name": "bmad-secrets-loader",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -n \"$CLAUDE_ENV_FILE\" ] && [ -f \"$HOME/.secrets\" ]; then source \"$HOME/.secrets\" 2>/dev/null && env | grep -vE \"^(_|SHELL|HOME|USER|LOGNAME|PATH|TERM|PWD|OLDPWD|SHLVL|CLAUDE_)\" | while IFS='=' read -r k v; do case \"$v\" in *'|'*|*'&'*|*';'*) continue;; esac; printf '%s=%s\\n' \"$k\" \"$v\"; done >> \"$CLAUDE_ENV_FILE\"; fi",
+            "timeout": 5,
+            "statusMessage": "Loading secrets..."
+          }
+        ]
+      },
+      {
+        "name": "bmad-project-concept-card",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "PC=\"\"; ROOTS=\"$PWD\"; case \"$PWD\" in */.claude/worktrees/*) ROOTS=\"$PWD ${PWD%/.claude/worktrees/*}\";; esac; for r in $ROOTS; do for f in \"$r/_bmad-output/project-context.md\" \"$r/project-context.md\" \"$r/docs/project-context.md\"; do [ -f \"$f\" ] && PC=\"$f\" && break 2; done; done; [ -z \"$PC\" ] && exit 0; SECTION=$(awk 'tolower($0) ~ /^## product concept/{f=1;print;next} f&&/^## /{exit} f{print}' \"$PC\" 2>/dev/null); [ -z \"$SECTION\" ] && exit 0; printf '%s' \"$SECTION\" | jq -Rs '{hookSpecificOutput:{hookEventName:\"SessionStart\",additionalContext:(\"PROJECT CONCEPT \u2014 load this before reasoning about product direction (the task tracker shows what is BUILT, never what the product IS):\\n\\n\" + .)}}' 2>/dev/null || exit 0",
+            "timeout": 5,
+            "statusMessage": "Loading project concept..."
+          }
+        ]
+      },
+      {
+        "name": "bmad-sync-check",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "SYNC=\"$HOME/bmad-method-v6/sync-bmad-workflows.sh\"; [ -x \"$SYNC\" ] || exit 0; check_output=$(\"$SYNC\" --check 2>/dev/null); stale=$(echo \"$check_output\" | grep -c \"^STALE\" || true); skill_drift=$(echo \"$check_output\" | grep -c \"\u21b3  skills\" || true); if [ \"$stale\" -gt 0 ]; then assets=\"workflows\"; [ \"$skill_drift\" -gt 0 ] && assets=\"workflows/skills\"; printf '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"BMAD DRIFT: %s project(s) have stale %s. Run ~/bmad-method-v6/sync-bmad-workflows.sh or /project-health.\"}}\\n' \"$stale\" \"$assets\"; fi",
+            "timeout": 30,
+            "statusMessage": "Checking BMAD sync status..."
+          }
+        ]
+      },
+      {
+        "name": "bmad-memory-integrity",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "MEM_DIR=\"$HOME/.claude/projects\"; issues=\"\"; changelogs=\"\"; for idx in \"$MEM_DIR\"/*/memory/MEMORY.md; do [ -f \"$idx\" ] || continue; dir=\"$(dirname \"$idx\")\"; proj=\"$(basename \"$(dirname \"$dir\")\")\"; cl=\"$dir/memory-changelog.md\"; if [ -f \"$cl\" ] && [ -n \"$(find \"$cl\" -mtime -1 2>/dev/null)\" ]; then changelogs=\"$changelogs $proj\"; fi; for f in \"$dir\"/*.md; do [ -f \"$f\" ] || continue; bn=\"$(basename \"$f\")\"; [ \"$bn\" = \"MEMORY.md\" ] && continue; [ \"$bn\" = \"memory-changelog.md\" ] && continue; if ! grep -qF \"$bn\" \"$idx\" 2>/dev/null; then issues=\"$issues orphan:$proj/$bn\"; fi; done; for ref in $(grep -oE \"\\\\([^)]+\\\\.md\\\\)\" \"$idx\" 2>/dev/null | tr -d \"()\" || true); do [ -z \"$ref\" ] && continue; if [ ! -f \"$dir/$ref\" ]; then issues=\"$issues broken:$proj/$ref\"; fi; done; done; msg=\"\"; if [ -n \"$issues\" ]; then msg=\"MEMORY INTEGRITY issues:$issues. Run /audit-memory to fix.\"; fi; if [ -n \"$changelogs\" ]; then [ -n \"$msg\" ] && msg=\"$msg \"; msg=\"${msg}RECENT MEMORY CHANGES in:$changelogs -- read memory-changelog.md for details.\"; fi; if [ -n \"$msg\" ]; then printf '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"%s\"}}\\n' \"$msg\"; fi",
+            "timeout": 10,
+            "statusMessage": "Checking memory integrity..."
+          }
+        ]
+      },
+      {
+        "name": "bmad-auto-register",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "TARGETS=\"$HOME/.bmad-targets\"; [ -f \"$TARGETS\" ] || exit 0; case \"$PWD\" in */.claude/worktrees/*) exit 0;; esac; BMM=\"$PWD/_bmad/bmm/workflows\"; [ -d \"$BMM\" ] || exit 0; grep -qF \"$BMM\" \"$TARGETS\" 2>/dev/null && exit 0; ORIGIN=$(git -C \"$PWD\" remote get-url origin 2>/dev/null); ORIGIN=\"${ORIGIN%.git}\"; if [ -n \"$ORIGIN\" ]; then while IFS= read -r _t; do _td=\"${_t%/_bmad/bmm/workflows}\"; [ -d \"$_td\" ] || continue; _to=$(git -C \"$_td\" remote get-url origin 2>/dev/null); _to=\"${_to%.git}\"; if [ -n \"$_to\" ] && [ \"$_to\" = \"$ORIGIN\" ]; then printf '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"This checkout (%s) shares its git remote with an already-registered sync target (%s) \u2014 NOT auto-registered (a second checkout of one repo would double-sync and drift). If THIS is the canonical checkout, prune the other in ~/.bmad-targets.\"}}\\n' \"$PWD\" \"$_td\"; exit 0; fi; done < \"$TARGETS\"; fi; echo \"$BMM\" >> \"$TARGETS\"; printf '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"Auto-registered %s in ~/.bmad-targets. Run sync to distribute workflows.\"}}\\n' \"$BMM\"",
+            "timeout": 3,
+            "statusMessage": "Checking BMAD registration..."
+          }
+        ]
+      },
+      {
+        "name": "bmad-health-reminder",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "TS=\"$HOME/.bmad-last-health-check\"; if [ ! -f \"$TS\" ]; then printf '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"PROJECT HEALTH: No /project-health run on record. Run /project-health for a full cross-project maintenance audit.\"}}\\n'; exit 0; fi; last=$(cat \"$TS\" 2>/dev/null || echo 0); now=$(date +%s); age=$(( (now - last) / 86400 )); if [ \"$age\" -ge 7 ]; then printf '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"PROJECT HEALTH: Last /project-health run was %s days ago. Run /project-health for a full cross-project maintenance audit.\"}}\\n' \"$age\"; fi",
+            "timeout": 3,
+            "statusMessage": "Checking health audit freshness..."
+          }
+        ]
+      },
+      {
+        "name": "bmad-handoff-backlog",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "ART=\"$PWD/_bmad-output/implementation-artifacts\"; [ -d \"$ART\" ] || exit 0; pending=0; cutoff=$(date -v-7d +%Y-%m-%d 2>/dev/null || date -d \"7 days ago\" +%Y-%m-%d 2>/dev/null); [ -z \"$cutoff\" ] && exit 0; for hf in \"$ART\"/handoff-*.md; do [ -f \"$hf\" ] || continue; fdate=$(basename \"$hf\" .md | grep -oE \"[0-9]{4}-[0-9]{2}-[0-9]{2}$\"); [ -z \"$fdate\" ] && continue; [[ \"$fdate\" < \"$cutoff\" ]] && continue; body=$(sed -n \"/^## Recommended Follow-ups/,/^## /{/^## /d;p;}\" \"$hf\" 2>/dev/null | sed \"/^$/d\" | head -3); [ -z \"$body\" ] && continue; echo \"$body\" | head -1 | grep -qi \"^none\" && continue; echo \"$body\" | grep -qE \"^[0-9]+\\.\" && pending=$((pending + 1)); done; if [ \"$pending\" -gt 0 ]; then printf '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"HANDOFF BACKLOG: %s handoff(s) from the last 7 days have unactioned follow-ups. Run /bmad:bmm:workflows:dispatch-followups to triage.\"}}\\n' \"$pending\"; fi",
+            "timeout": 10,
+            "statusMessage": "Checking handoff backlog..."
+          }
+        ]
+      },
+      {
+        "name": "bmad-design-policy-drift",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "POLICY=\"$PWD/docs/design-policy.md\"; CHECKLIST=\"$PWD/docs/review-checklist.md\"; [ -f \"$POLICY\" ] && [ -f \"$CHECKLIST\" ] || exit 0; pv=$(awk '/^version:/ {print $2; exit}' \"$POLICY\"); cv=$(awk '/^policy_version:/ {print $2; exit}' \"$CHECKLIST\"); [ -z \"$pv\" ] || [ -z \"$cv\" ] && exit 0; if [ \"$pv\" != \"$cv\" ]; then printf '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"DESIGN POLICY DRIFT: design-policy.md is at v%s but review-checklist.md is pinned to policy_version %s. PR-time enforcement is %s versions behind. Update the checklist or run /bmad:bmm:workflows:apply-design-policy-change to scope the impact.\"}}\\n' \"$pv\" \"$cv\" \"$((pv - cv))\"; fi",
+            "timeout": 3,
+            "statusMessage": "Checking design policy drift..."
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "name": "bmad-deploy-run-marker",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cmd=\"$CLAUDE_TOOL_INPUT_COMMAND\"; case \"$cmd\" in   *bmad-deploy.sh*)     MARK=\"/tmp/claude-bmad-deployed-${CLAUDE_CODE_SESSION_ID:-${CLAUDE_PID:-$PPID}}\";     /usr/bin/touch \"$MARK\" 2>/dev/null;     ;; esac; exit 0",
+            "timeout": 3,
+            "statusMessage": "Recording deploy run..."
+          }
+        ]
+      },
+      {
+        "matcher": "EnterWorktree",
+        "name": "bmad-worktree-autosync",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "case \"$PWD\" in */.claude/worktrees/*) ;; *) exit 0;; esac; [ -d \"$PWD/_bmad/bmm/workflows\" ] || exit 0; SYNC=\"$HOME/bmad-method-v6/sync-bmad-workflows.sh\"; [ -x \"$SYNC\" ] || exit 0; output=$(\"$SYNC\" --worktree \"$PWD\" 2>&1 | /usr/bin/tail -1); case \"$output\" in   OK*)     printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"BMAD auto-sync (PostToolUse EnterWorktree): %s\"}}\\n' \"$output\";;   *)     printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"BMAD auto-sync attempted but did not report OK \u2014 manual sync may be needed: %s\"}}\\n' \"$output\";; esac",
+            "timeout": 30,
+            "statusMessage": "Auto-syncing BMAD workflows into worktree..."
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "name": "bmad-credential-scan",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "_in=$(cat 2>/dev/null); FILE=$(printf '%s' \"$_in\" | jq -r '.tool_input.file_path // empty' 2>/dev/null); [ -z \"$FILE\" ] && FILE=\"${CLAUDE_TOOL_INPUT_FILE_PATH:-}\"; CMD=$(printf '%s' \"$_in\" | jq -r '.tool_input.command // empty' 2>/dev/null); [ -z \"$CMD\" ] && CMD=\"${CLAUDE_TOOL_INPUT_COMMAND:-}\"; SKILL=$(printf '%s' \"$_in\" | jq -r '.tool_input.skill // empty' 2>/dev/null); [ -z \"$SKILL\" ] && SKILL=\"${CLAUDE_TOOL_INPUT_SKILL:-}\"; FILE=\"$FILE\"; case \"$FILE\" in */.claude/*/memory/*.md) ;; *) exit 0;; esac; if grep -qiE '(password|passwd|token|secret|api.?key|bearer|credential)[[:space:]]*[:=][[:space:]]*[\"]?[A-Za-z0-9_/+=.-]*[0-9]' \"$FILE\" 2>/dev/null || grep -qE '(whk_|sk_|pk_|ghp_|gho_|xox[bpas]-|eyJ[A-Za-z0-9])' \"$FILE\" 2>/dev/null || grep -qE '[A-Za-z0-9+/]{60,}' \"$FILE\" 2>/dev/null; then printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"WARNING: Potential credential/secret detected in memory file %s. Remove it immediately and store in ~/.secrets instead.\"}}\\n' \"$FILE\"; fi",
+            "timeout": 3,
+            "statusMessage": "Scanning for credentials..."
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "name": "bmad-auto-format",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "_in=$(cat 2>/dev/null); FILE=$(printf '%s' \"$_in\" | jq -r '.tool_input.file_path // empty' 2>/dev/null); [ -z \"$FILE\" ] && FILE=\"${CLAUDE_TOOL_INPUT_FILE_PATH:-}\"; CMD=$(printf '%s' \"$_in\" | jq -r '.tool_input.command // empty' 2>/dev/null); [ -z \"$CMD\" ] && CMD=\"${CLAUDE_TOOL_INPUT_COMMAND:-}\"; SKILL=$(printf '%s' \"$_in\" | jq -r '.tool_input.skill // empty' 2>/dev/null); [ -z \"$SKILL\" ] && SKILL=\"${CLAUDE_TOOL_INPUT_SKILL:-}\"; FILE=\"$FILE\"; case \"$FILE\" in *.py) ruff format --quiet \"$FILE\" 2>/dev/null || .venv/bin/ruff format --quiet \"$FILE\" 2>/dev/null;; *.ts|*.tsx|*.js|*.jsx|*.json|*.css|*.svelte) npx --no-install prettier --write --log-level silent \"$FILE\" 2>/dev/null;; esac; exit 0",
+            "timeout": 10,
+            "statusMessage": "Auto-formatting..."
+          }
+        ]
+      },
+      {
+        "matcher": "Skill",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "_in=$(cat 2>/dev/null); SK=$(printf '%s' \"$_in\" | jq -r '.tool_input.skill // empty' 2>/dev/null); case \"$SK\" in analytics-rigor|decision-analysis) ;; *) exit 0;; esac; ROOT=\"${CLAUDE_PROJECT_DIR:-$PWD}\"; [ -d \"$ROOT/.claude\" ] || exit 0; TS=$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null); printf '{\"skill\":\"%s\",\"at\":\"%s\",\"pid\":\"%s\"}\\n' \"$SK\" \"$TS\" \"$PPID\" >> \"$ROOT/.claude/.depth-pass-invocations.jsonl\" 2>/dev/null; exit 0"
+          }
+        ]
+      }
+    ]
+  },
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "defaultMode": "bypassPermissions"
+  },
+  "enableAllProjectMcpServers": true
+}

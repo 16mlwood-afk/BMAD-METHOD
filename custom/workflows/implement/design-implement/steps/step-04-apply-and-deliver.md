@@ -1,0 +1,600 @@
+---
+name: 'step-04-apply-and-deliver'
+description: 'Apply all deltas from the comparison grid to the implementation, run build, commit, push, create PR, and merge. Deploy is delegated to the BMAD deploy contract (see {project-root}/_bmad/bmad-shared/deployment-to-prod.md) and is not part of this workflow.'
+---
+
+# Step 4: Apply and Deliver
+
+**Progress: Step 4 of 4** — Final step
+
+**Close-out shape.** Emit the close-out per `{project-root}/_bmad/bmad-shared/close-out-contract.md` — audience-first, process
+narration forbidden by default, and the **§2a two-block shape**: plain answer first; at most one
+fenced `FOR YOUR LLM ADVISER` block carrying actionable detail only (PR URL, commit SHA, row
+dispositions, unrouted findings, manifest path), never a voice and never raw build/test scroll.
+The `persona_slot` (workflow.md → OUTPUT CONTRACT & VOICE SLOT) may speak in block 1 only.
+**A CHECKPOINTED or HALTED disposition is stated in block 1 in plain language** — never left for
+the reader to find in block 2. The `completion_disposition` requirement in close-out-contract §2
+element 4 is unchanged and still binds.
+
+## RULES:
+
+- FULLY AUTONOMOUS. No user interaction. No menus. No halting.
+- Fix EVERY delta from Step 3's grid — Tier 1, Tier 2, and Tier 3. No "good enough."
+- **Apply is GRID-DRIVEN, never holistic.** Every fix traces to a specific `{comparison_grid}` row. "Rebuild the page until it looks like the design" is FORBIDDEN — it is the exact shortcut that silently drops enumerated deltas: it satisfies "looks right" at composition scale while leaving individual grid rows (a sender clause, a kbd hint, a sort control, a secondary label) unapplied. Walk the grid row by row; do not eyeball the whole.
+- **Every grid row ends this step with an explicit disposition: `applied` | `deferred(reason)` | `dropped(reason)`.** A row left with no disposition means the run is INCOMPLETE — you cannot declare done. `deferred`/`dropped` are legitimate (needs server data the load doesn't provide, genuinely out of scope, a judgment call) — but only when *named with a reason*, never by omission. This is the apply ledger (§5).
+- **The completion report MUST enumerate every non-applied delta with its reason (§9).** Zero non-applied deltas is stated explicitly ("all N deltas applied"); it is never left implicit. Silent partial implementation — shipping a count like "47/47" while the grid under-enumerated, or applying most rows and never listing the skipped ones — is the precise failure this step exists to prevent (accounting-tools /queries #900: 6 detail deltas dropped, caught only by user review, fixed in #903).
+- After applying fixes, re-verify by re-reading the modified files. Do not trust that the edit was correct without checking.
+- **On an `ingest_manifest` run, the apply is RESUMABLE and CHECKPOINTED — proceed frame by frame, persist each frame's dispositions back into the manifest the moment it is done, and STOP at a frame boundary before the context budget is at risk** (workflow.md Critical Rule "Resumable apply on an ingest manifest"). Pre-dispose rows from `{resume_prior_dispositions}` that are already `✓ applied` (carry as `✓ applied (prior pass)` — do not re-apply) and, if `{frame_scope}` is set, rows outside it (`⊘ deferred(out-of-scope: not in {frame_scope})`). Walk the remaining UNVERIFIED in-scope rows. **`◐ transcribed · UNROUTED` rows resume differently from both, and this is the one case that is easy to get wrong: their VALUES are already applied (do NOT re-compute their deltas — that is wasted budget) but their WIRING is owed, so they are NOT terminal.** Carry every `◐` row forward, surface them in the opening resume summary alongside the deferred frames, and this pass either wires the component — flipping its rows to `✓ applied` — or re-carries them as `◐` with the follow-up restated. A `◐` row is never silently absorbed into `✓ applied` and never quietly dropped from the outstanding set because it matched neither the applied nor the UNVERIFIED filter. A checkpointed pass is a CLEAN exit that still delivers the slice it built — it is not a failure and not a wait-for-input halt. URL and bundle runs are unaffected (single-pass as before).
+- Follow the project's CLAUDE.md for commit, PR, and merge procedures. Deploy is NOT part of this workflow — see the BMAD deploy contract at `{project-root}/_bmad/bmad-shared/deployment-to-prod.md` and run `./scripts/bmad-deploy.sh` after merge.
+- YOU MUST ALWAYS SPEAK OUTPUT in your agent communication style with the config `{communication_language}`
+
+## CONTEXT
+
+From Step 3 you have:
+- `{comparison_grid}` — the full delta table with severity tiers
+- `{delta_count}` — number of properties to fix
+- `{impl_components}` — paths to all implementation files
+- `{impl_config}` — Tailwind config and class resolution table
+- `{baseline_commit}` — Git SHA before changes
+
+## SEQUENCE OF INSTRUCTIONS
+
+### 1. Plan Fix Strategy
+
+For each delta, determine the correct fix approach:
+
+| Fix Type | When | Example |
+|----------|------|---------|
+| Tailwind class swap | A Tailwind class maps to the wrong value | `rounded-lg` → `rounded` (when config maps `rounded` to `4px`) |
+| Tailwind arbitrary value | No Tailwind class matches the design value | `rounded-[3px]`, `text-[22px]`, `tracking-[-0.015em]` |
+| Inline style change | Property is set via `style` attribute | `width="20"` → `width="24"` |
+| Grid template edit | Column widths differ | `grid-cols-[28px_1fr_auto]` → `grid-cols-[32px_1fr_auto]` |
+| Content text change | Label or sub-text differs | `{count} invoices scored` → `vs previous batch` |
+| New component | Design has a component the implementation lacks | Create the component file |
+| Capability build | A `capability-build` row (step-03 §2h) — the net-new structure of an ADDED/DEEPENED capability from `{uplift_capabilities}` (a new band, lane segmentation, action column, drawer) | Construct it — wire its data + actions, not just its markup. This is feature work, not a CSS swap; it is `✓ applied (built)` in the ledger, never deferred as "MISSING component, out of scope." |
+
+### 2. Apply Fixes Component by Component
+
+Process one component at a time. For each:
+
+1. Read the current implementation file
+2. Apply all fixes for that component
+3. Re-read the file to verify the edits landed correctly
+4. Check that no adjacent code was broken by the edit
+
+**Order:** Fix Tier 1 (structural) first, then Tier 2 (visual), then Tier 3 (micro). Within a component, apply all tiers together — the ordering is for prioritization if something goes wrong, not for separate passes.
+
+**Sibling-implementation divergence (step-03 §2a Tier-1) is fixed by consolidation, not by patching each copy.** When a primitive has ≥2 implementations that disagree, the fix is to make every render site use ONE implementation (promote a shared component, delete the inline reimplementations), then align that single implementation to the design. Patching each copy toward the design separately leaves the duplication in place and the next edit re-forks it — you would be back here next run. If consolidation is genuinely out of scope for this pass, say so explicitly in the delivery notes and leave the divergence Tier-1-open rather than silently patching one copy.
+
+### 3. Handle Tailwind Config Conflicts
+
+If the design requires a value that conflicts with the project's Tailwind config:
+
+- **Prefer arbitrary values** (`rounded-[4px]`) over changing the Tailwind config
+- **Never modify `tailwind.config.js`** unless the user explicitly requested it — the config affects the entire project, not just this page
+- If a Tailwind utility class happens to resolve correctly through the existing config, use the class (e.g., `rounded` if it maps to `4px`)
+
+### 4. Run Build Check
+
+```bash
+npm run build
+```
+
+If the build fails:
+1. Read the error output
+2. Fix the issue (likely a template nesting error from edits)
+3. Re-run `npm run build`
+4. If it fails again, diagnose more carefully — read the affected file region
+
+### 5. Apply Ledger — disposition every grid row
+
+Re-read each modified file, then walk the Step-3 grid **row by row** and give EVERY row an explicit disposition. The ledger is the proof the apply was grid-driven, not holistic — a grid with `{delta_count}` rows must end with `{delta_count}` dispositions.
+
+| Disposition | Meaning | Required note |
+|---|---|---|
+| `✓ applied` | The delta is fixed in the implementation, **and the row cites both halves of the evidence below**. | **Two citations, both required — see "What `applied` costs" beneath this table.** |
+| `⊘ deferred` | Intentionally not applied this pass. | **Reason, one of:** `needs-data` (the page load / server doesn't provide the value — name the field), `out-of-scope` (explicitly outside this run's target), `judgment` (a product decision the implementer made — state it), `content-lane` (a formatter/enum-driven identifier cell from step-03 §2c — its rendered value cannot be verified against a mock-data bundle; routed to design-review / design-tuning on the LIVE page), `foundation-token-drift` (a step-03 §2i Foundation-token row — the app's canonical token VALUE diverges from the design system AND/OR `docs/design-policy.md`'s declared scale; routed to `apply-design-policy-change` for a single-source token migration, NEVER patched in-component and NEVER encoded as a dead `var(--token, <literal>)` fallback), `capability-protected` (the row would remove a production capability the user chose to KEEP at step-02b — `{capability_dispositions}` marks it `keep`; the handoff's treatment is applied around it, the capability is not deleted). |
+| `✗ dropped` | Cannot or will not apply at all. | **Reason** — why it's not implementable as specified. |
+
+### What `✓ applied` costs — two citations, or it is not applied (owner ruling 2026-08-21)
+
+**A matching prop, a copied string, or a manifest cell is NOT evidence that a design section is
+applied.** Every `✓ applied` row cites:
+
+1. **The implemented surface** — `file:line` of the **rendered** thing. Not an import, not a
+   prop, not a constant, not a test. If the row is a section, the citation points at the element
+   a reader meets on the page.
+2. **The source-design evidence** — where in the authoritative design that section lives: the
+   frame, and its position in that frame's ordered section list.
+
+**The failure this replaces, verbatim from the ledger it produced.** Pass 4 of the clerk grading
+manifest ran `grep -c "What this product should look like"`, got `1`, and marked the row applied.
+The hit was a `<Drawer label=…>` prop. The section the design draws first did not exist for
+another 16 hours and 22 commits, and the grid cell asserting it was applied never changed in
+between. The same inference produced the Pass 6 retraction and the Pass 15 sweep. **A grep proves
+a string is in the file; only a render proves a clerk can see it.**
+
+Three phrasings that do **not** satisfy citation 1, because each was used and each was wrong:
+
+- *"the string is present"* — it was, in a prop.
+- *"the component exists / is imported"* — an unrendered import is a component nobody meets.
+- *"the manifest row says applied"* — that is the claim, not evidence for it.
+
+**`⊘ deferred(placement)` is BANNED as a disposition.** "The section exists but sits in the wrong
+column" asserts existence while conceding the design is not met; it reads as near-done to the
+next resume, and it is how a missing section survived nine passes. Such a row is **UNVERIFIED**
+until the section is where the design puts it.
+
+### Per-pass evidence: STRUCTURE, ORDER, GEOMETRY
+
+Emitted **per pass, not per row** — cheap because it is per-frame — from the source read, before
+any fidelity verdict.
+
+| Evidence | What the pass states | Fails when |
+|---|---|---|
+| **STRUCTURE** | For each frame touched: the source's top-level section list and the implementation's, as two lists. | A section is in one and not the other. **Present-but-empty counts as absent.** |
+| **ORDER** | The same two lists **as sequences**, compared position by position. | Any position differs. Not "roughly the same set". |
+| **GEOMETRY** | The source's declared container track for the frame's primary layout — column widths, grid template, gap, page padding — and the implementation's, as values. | A value differs and the row is still marked applied. |
+
+**`UNVERIFIED — geometry not read` is a HELD outcome, not a partial pass (owner ruling
+2026-08-21).** A pass that cannot produce one of the three names which and why, and that frame is
+**held**: no fidelity verdict, and **no `✓ applied` claim for any row in it**. It does not
+degrade to "applied except geometry" — that phrasing is what let a near-miss read as done. Other
+frames in the same pass are unaffected; the hold is per-frame.
+
+**The block is MACHINE-CHECKED. Write it in this exact shape**, once per frame that carries
+a `✓ applied` row in this pass:
+
+```
+#### FRAME EVIDENCE: <frame>
+STRUCTURE: <source top-level sections> -> <impl top-level sections>
+ORDER: <the same two lists as sequences, position by position>
+GEOMETRY: <source container track — columns, gap, padding> -> <implemented values>
+```
+
+`scripts/check-apply-evidence.mjs` fails the commit and the PR when a **newly added**
+`✓ applied` row has no such block for its frame, when a field is empty, when
+`⊘ deferred(placement)` appears, or when a frame declares
+`GEOMETRY: UNVERIFIED — geometry not read` **and** carries applied rows. It reads rows the
+change ADDS, never the 44 existing ledgers — the owner's 2026-08-21 ruling in mechanical form.
+
+**Its ceiling, so nobody over-trusts it:** it proves the evidence EXISTS, never that it is
+TRUE. An agent can write a section list it never read, exactly as a `ROUTE:` trailer can be
+declared by a push that never opened quick-dev. What it removes is the SILENT skip — a pass
+that never opened the design used to produce a ledger indistinguishable from one that did.
+Now the omission has to be an explicit lie instead.
+
+**Why per-pass and not per-row.** Order and geometry are properties of a *frame*, not of a
+section. There was never a row on which "the sections are in the wrong order" could have been
+recorded — which is exactly why the swap in the clerk bench survived every check that ran.
+
+### Existing `✓ applied` rows: retained, but not present-tense authority
+
+Every `✓ applied` row written before 2026-08-21 was graded under the old rule, where a matching
+string sufficed. **Those rows are NOT rewritten** — retro-editing a disposition an earlier pass
+recorded destroys the provenance of how it was reached.
+
+But they **no longer carry acceptance authority in the present tense.** A prior `✓ applied` is a
+record that a pass once believed the row was applied; it is not evidence that it is applied now.
+**On the next touch of a surface or frame, re-evaluate its rows under STRUCTURE / ORDER /
+GEOMETRY before making any fidelity claim about them.** Carrying one forward as
+`✓ applied (prior pass)` and issuing a fidelity verdict on that basis is the exact move that let
+`What this product should look like` sit "applied" through nine passes.
+
+Every `content-lane` row from step-03 §2c (`{content_unverified_count}` of them) is disposed `⊘ deferred(content-lane)` — its CSS may well have been applied, but its *value-formatting* is explicitly NOT certified here. Do not silently `✓` it; do not drop it. It carries into §9 under "Content-lane verification owed (live page)" with the routing command, so the run hands the content lane off out loud instead of implying the grid covered it.
+
+Rules:
+- **A `capability-build` row (step-03 §2h) must be `✓ applied (built)` — never `⊘ deferred(out-of-scope: MISSING component)`.** The step-02b uplift inventory makes the net-new structure in-scope by definition; a `capability-build` row left deferred-as-out-of-scope is the exact "read the uplift as a reskin" failure, just relocated to the ledger. Build it, or carry it as an explicit `✗ dropped` with a named reason the user will see in §9 — never let it lapse silently. An UNBUILT uplift capability surfaces in the §9 "Capabilities built" section as a Tier-1 incompletion.
+- **No row without a disposition.** A grid row you neither applied nor explicitly deferred/dropped means the run is incomplete — go back and resolve it. "I didn't get to it" is not a disposition.
+- **`deferred`/`dropped` must carry a reason from the table above.** A bare "deferred" is the silent-drop in disguise.
+- **Persist-as-you-go — the `URL-path apply ledger` (ALL paths, not only the manifest).** The on-disk grid artifact step-03 wrote is the durable ledger. Write each row's disposition into the artifact file **the moment that section is applied and re-verified** — not in one batch at the end — and update the summary line each time. Then **commit the artifact early** (force-add per §6's recipe) so durable per-row state lands on a branch BEFORE any auto-summarization boundary can drop it. This is the URL/bundle-path equivalent of §5a's manifest persistence (workflow.md Critical Rule "Resumable apply on an ingest manifest" → the durability-generalizes bullet): on a `claude_design_url` / `synthesize_bundle` run the grid artifact — not a manifest — carries the progress, and a small-to-ingest bundle can still specify a large apply, so the grid-artifact-written-once-at-the-end pattern is the exact mid-apply-compaction hole this closes. (Auto-resume from the artifact is NOT added here — a re-run re-ingests; the durable write is what prevents the silent loss.) Summary line:
+  `Applied: {A}/{delta_count} · Deferred: {D} · Dropped: {X}` (A + D + X must equal `{delta_count}`).
+  **Verify that arithmetic with the checker, not by eye** — `node ~/bmad-method-v6/tools/check-design-implement-grid.js --grid {artifact_path}` must report `consistent` before §6 commits. It re-derives `{delta_count}` from the tables as well as closing the ledger, which matters here specifically: this invariant is satisfied by an UNDER-COUNTED denominator just as happily as by a correct one, so checking it against a self-reported total proves nothing (step-03 §3, FG-2026-08-03-16).
+- The deferred + dropped rows are carried verbatim into the §9 completion report's mandatory "Deltas not applied" section — they are NOT allowed to live only in the artifact where the user won't see them.
+- **Ledger ROUTING when the surface already has a manifest (`{prior_ingest_manifest} != none`, step-01 §SHARED.1a-iii).** A URL/bundle re-run on a slug that already carries an ingest manifest appends its pass to **that manifest's** ledger — under the full multi-writer contract below (§5a's marker + stamped pass identity + append-only + commit by explicit path apply here too) — instead of minting a fresh `design-implement-grid-*` artifact beside it. Two ledgers for one surface each read as complete, and the older one holds the prior "Flagged — NOT applied (intent, not treatment)" decisions this run must not silently reverse. Auto-*resume* is still manifest-path-only (a URL re-run re-ingests); this is about where the durable record LANDS, not about skipping work.
+
+### 5a. Resumable manifest apply — persist-as-you-go + frame-boundary checkpoint
+
+**This sub-section applies ONLY when `{input_kind} == "ingest_manifest"`.** On a URL/bundle run, skip the *manifest checkpoint + auto-resume* machinery below — the pass is single-window and there is no reviewed scaffold to resume from. But do NOT read "skip §5a" as "skip durability": the persist-as-you-go + early-commit discipline in §5 (the `URL-path apply ledger`) still applies on the URL/bundle path — it is the URL-path equivalent of this section's frame-by-frame manifest persistence. The difference is auto-resume + frame-boundary checkpointing, which are manifest-only; the durable per-row write before compaction is universal.
+
+The manifest's grid scaffold is the durable ledger (workflow.md Critical Rule "Resumable apply on an ingest manifest"). Execute the apply as a sequence of frames, not one undifferentiated walk:
+
+1. **Pre-dispose carried rows (no work).** Rows in `{resume_prior_dispositions}` already `✓ applied` → write `✓ applied (prior pass)`; rows outside `{frame_scope}` (if set) → `⊘ deferred(out-of-scope: not in {frame_scope})`. These are already terminal — do not read their component files.
+   - **A row that arrives already stamped `⊘ deferred(<reason>)` — from `design-ingest`'s scaffold or an earlier pass — is equally terminal and is NEVER auto-selected.** Carry it forward verbatim, reason intact; do not re-open it, do not silently reclassify it to `UNVERIFIED`, and do not count it as remaining work. A deferral is usually an owner ruling or a policy boundary (`manifest-schema.md` → `status` vocabulary), so re-enabling it must be a deliberate edit of the status cell by someone who knows the ruling changed — never a side effect of a resume. **Surface it rather than swallow it:** name the deferred frames and their reasons in the opening resume summary, so the run states its scope up front instead of leaving it to be reconstructed from the manifest body. (fork-gap 2026-07-25)
+2. **Apply one frame at a time.** For each in-scope frame with UNVERIFIED rows: apply every section's deltas (the §2–§5 ledger discipline, unchanged), re-verify by re-reading, then **write that frame's dispositions back into the manifest file on disk immediately** (`Edit`/`Write` the scaffold rows from `UNVERIFIED` → `✓ applied` / `⊘ deferred(reason)` / `✗ dropped(reason)`). Durable progress lands at each frame boundary, BEFORE any auto-summarization can drop it — this is the whole point.
+3. **Checkpoint decision (after each completed frame) — the OBJECTIVE trigger is primary.** The gate is the **count**: do not attempt more than ~one heavy frame or ~10–12 sections in a pass. Apply it first, because it is checkable by anyone reading the ledger afterwards. *"Can I apply AND re-verify another full frame without my recall of earlier frames' exact values degrading?"* is an **early-stop only** — stop sooner if recall feels lossy, but **never continue past the count on the strength of feeling fine.** A self-assessment of one's own degradation is the single judgment a degrading context makes worst, and the failure it guards is silent by construction: a degraded pass does not error, it **misremembers exact values and reports green rows that were never really compared.** If continuing is safe, take the next frame. If not, **checkpoint**: set `{run_completion_mode} = checkpointed`, stop taking new frames (never mid-frame), and proceed to deliver what you built. Otherwise, when no in-scope UNVERIFIED rows remain, set `{run_completion_mode} = complete`.
+   - **Record WHY, not just that.** Set `{checkpoint_reason}` in the grid frontmatter — `section-budget` · `recall-degrading` · `frame-scope` · `blocked:<what>`. The grid previously stored only the mode, so a reader could not tell a routine budget stop from a blocked one without re-deriving it from the section count. One field; it is exactly the ambiguity that made an owner ask why a pass "failed" when it had not. (FG-2026-07-26-02)
+4. **A checkpointed pass still delivers.** The frames you DID apply are real code changes — commit → push → PR → merge them in §6/§7 as normal, AND include the updated manifest in the commit (force-add; it lives under gitignored `_bmad-output/`) so the persisted progress travels to main and a fresh session/worktree resumes from it. Then report per §9 with the resume command.
+5. **A checkpointed pass with unapplied rows is OWNER-VISIBLE RESIDUE — say so, out loud, in the report.** *(Owner decision 2026-07-26, FG-2026-07-26-02.)*
+   - **Why this changed.** The remainder was classified `agent-resumable` and explicitly NOT `owner_gated_residue` — both true, and together they produced silence: the pass wrote *"I am not finished"* into a grid that **nothing reads** (`run_completion_mode` is matched by this workflow's own files and no hook, surfacer, sprint-status, register or banner). "An agent will resume it" named no owner, no trigger and no surface. Observed: `/inbound` pass 1 of 2 merged at 17/28 rows and sat unresumed for a full day while the owner did not know it had stopped.
+   - **Do NOT relabel it `owner_gated_residue`.** The owner has nothing to *clear* — the remaining frames are usually fully buildable. Collapsing the two would make every routine budget checkpoint look like a credential blocker and destroy the distinction that field exists for. It is a **third** state: agent-resumable *and* owner-visible.
+   - **What the run must do:** state the unfinished status as a headline in the §9 report — not a footnote after the merge line — naming rows applied / rows deferred, the `{checkpoint_reason}`, and the resume command. **Never let "PR merged" be the last thing said about a pass that did not finish.**
+   - **Enforcement honesty:** this bullet is PROBABILISTIC prose. The deterministic tier is a repo-side scanner over grid frontmatter (`run_completion_mode: checkpointed` + `rows_deferred > 0`) wired at SessionStart — it is **machine-local and does NOT ship with this workflow**, so in any project without it, this instruction is the only tier.
+
+**Multi-writer rules — binding on every ledger write (`docs/manifest-contract.md`).** The manifest is a SHARED artifact and multi-writer is its designed mode; assume another session is in it right now. Four rules, in the order they bite:
+
+- **Take the current-editor marker BEFORE the first ledger write, release it at handoff.** `python3 ~/.claude/hooks/manifest-contract-gate.py --acquire {ingest_manifest_path} --intent "frames={frame_scope}"` … `--release` at §9. The marker lives in the main checkout (`git rev-parse --git-common-dir`), so it is visible from every worktree immediately — no commit needed. **A live marker held by another `session_id` forces explicit reconciliation: coordinate scope, pick a non-overlapping frame, or wait. Never silently merge.** (Take the same read the 2026-07-20 session took by hand — it read the live claims and deliberately chose the one frame outside every declared scope, which is why that pass collided with nothing.)
+- **Stamp the pass identity; never compute it.** Every `### Pass …` section carries, immediately under the heading, an identity block: `<!-- pass_id: <session_id>-<UTCcompact> | session_id: <harness id> | author: <display label> | started_at: <UTC Z> | frames: … | branch: … | seq: <derived> -->`. **Do NOT derive the pass number by reading the file and adding one to the highest `Pass N`** — that is a read-modify-write race, and it is what produced two `Pass 4`s and then two `Pass 5`s in `design-ingest-clerk-receive.md` inside 90 minutes. `session_id` is authoritative; the `claude-session-<timestamp>` header is a DISPLAY LABEL and collides between concurrent sessions.
+- **Append only.** Never renumber, reorder, or re-identify an existing pass record — not even to "tidy" a sequence that merged out of order. `seq` is derived from `started_at`; if file order cannot equal run order, add an explicit run-order note to the out-of-order record instead. The `(frame, section)` grid rows remain mutable — they are resume state, not pass narrative.
+- **Commit the manifest explicitly by path.** `git add -f {ingest_manifest_path}` in §6. **Never** reach for a broad `git add -A` / `git add .` / `git stash` while another session's manifest edits are dirty in the shared checkout — that is how one session's uncommitted ledger work is scooped into another's commit (observed: a staged foreign pass also blocked `git merge --ff-only origin/main`).
+
+A PreToolUse hook (`manifest-contract-gate.py`) detects violations of all four deterministically, but **warns rather than blocks** — compliance here is still yours.
+
+### 5b. Copy & chrome fidelity, then the render-compare done-gate
+
+The apply ledger above dispositions every *grid* row — but the grid has no row for **copy** or for **frame chrome** (workflow.md Critical Rules: the grid is CSS-only). Those are exactly the deltas that ship looking "done": every radius/colour cell matched, so the run felt exhaustive, while the header, breadcrumb, footer, and wording silently drifted via small "I'll improve this" substitutions. Close that gap here, with two passes that are NOT optional.
+
+**1. Transcription pass (copy + chrome).** Walk the design frame's wrapper and its literal text. For each, the impl must reproduce it **verbatim** OR carry a logged deviation — same bar as the grid rows:
+
+- **Frame chrome:** the drawer/page header, the `‹ Back to …` breadcrumb, the footer (its caption AND its cross-link label/target), the close affordance. Substituting a generic shell primitive (e.g. a stock `SheetHeader`) for the design's breadcrumbed header is a deviation, not a free "match the siblings" call.
+- **Copy:** every group title, button/link label, sub-caption, and phrasing — e.g. "deferred import" (not "import"), "Open full cost record" (not "Open full order"), "EUR → GBP @ 0.855" (not "€ → £"). A paraphrase, a relabel, or a code↔symbol swap is a deviation.
+- Each deviation gets a ledger row — `⊘ deferred(judgment: …)` or `✗ dropped(reason)` — under the SAME forced-and-logged bar as Critical Rules: allowed only when *forced* (e.g. "design links to `Order Cost Reconciliation.html`; no such route exists → linked to `/orders?order=…`"), never as a silent "I'll improve this." These rows flow into the §9 "Deltas not applied" list like any other — no new report section.
+
+**2. Render-compare (the done-gate).** Render the built surface and place it **beside the design render** — the bundle is runnable HTML; a synthesize bundle ships a screenshot; a handoff run has the design image. Step through it top to bottom: header, every group, every figure, the footer. Any visible difference (missing header, changed label, paraphrased copy, off spacing) is a delta — resolve it, or log it per pass 1. **This, not the green grid, is the gate on "done."** (The bundle README's "don't render/screenshot" governs *reading values during ingest*, not verification — render to verify.)
+
+**Fallback ladder when the BUILT surface cannot be rendered in this run** (a recurring case — a prod-only repo with no local dev server, an auth-walled deploy whose creds aren't in-session, or no bootable surface; gap "done-check unreachable on prod-only auth-walled"):
+
+1. **Render the BUNDLE beside the design image (primary fallback, not a skip).** On a `claude_design_url` or `synthesize_bundle` run the *bundle* HTML is always present and runnable — render IT beside the design render and step through it top-to-bottom exactly as above. The bundle is the design made concrete, so this still catches copy / chrome / layout / spacing drift even when the built app can't be booted. Then state plainly in §9 that the *built* surface was verified by the transcription pass + green build + token parity (NOT a live render), and that the bundle render stood in for the built-surface compare.
+2. **The built-surface render-compare is then OWED, not skipped** — route it (`verify` skill, or design-review live Chrome once the surface is reachable/auth'd) in the §9 report, exactly as the content-lane and behavior cedes do.
+
+**3. State-render coverage — the axis a render silently under-covers.** A live/local render can only paint the states the SEED DATA contains, so a default-state render that "matches" leaves every non-default state-variant the design implements — `hover`/`failed`/`empty` plus domain state-variants (a split/pack workspace, an open §13 drawer, a claimed-elsewhere banner) — **visually unverified** while reading as a full pass. This is the same shape as the content-lane cede: the verification EVIDENCE (seed data) cannot cover a contract AXIS (state). So when the done-check is a live/local render, **enumerate the grid's non-default state rows and mark each `painted` vs `no-data-to-paint`**, then CEDE the unpainted ones explicitly — name them, mark `visually-unverified (static/unit-covered only)`, and drop them into a short prod-smoke checklist in §9 — exactly the disclose-don't-fake posture the content lane uses. Never let a clean default-state screenshot read as state-axis coverage. (Adjunct, not gating: a per-state seed helper — e.g. `db:local:sample --states` — that injects one row per declared state-variant so the render can actually cover the axis.)
+
+Declaring "done" off the grid alone — no render-compare, no bundle-render fallback, no owed-disclosure — is non-conformant. It is the precise false-green this section exists to stop: the supply-order cost drawer shipped with a generic header, a relabeled footer, and paraphrased copy while every CSS cell matched.
+
+### 6. Commit and Push
+
+Follow the project's CLAUDE.md commit procedures:
+
+```bash
+git add {list of modified files}
+# The comparison grid artifact lives under gitignored `_bmad-output/` but is a REFERENCED
+# deliverable (linked in the PR body §9 and cited for regression by future sessions), so it must
+# be force-added on ALL paths (mirroring §5a's manifest force-add). A plain `git add` silently
+# drops it, and the PR body then links a path that never reached `main` — a 404 for any reviewer.
+git add -f {artifact_path}
+# Assert it actually staged — a gitignored path can no-op silently:
+git ls-files --error-unmatch {artifact_path} >/dev/null || { echo "grid artifact not tracked — force-add failed"; exit 1; }
+git commit -m "$(cat <<'EOF'
+fix: align data-quality page with Meridian design spec
+
+Resolves {delta_count} design deltas identified by component × property
+comparison grid. Key changes: border-radius (tokens.radius → Tailwind
+arbitrary values), font sizes, grid column widths, SVG dimensions,
+and content text.
+
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
+EOF
+)"
+```
+
+Push and create a PR:
+
+```bash
+git push -u origin {branch-name}
+gh pr create --title "fix: align {page-name} with Meridian design spec" --body "$(cat <<'EOF'
+## Summary
+- Resolves {delta_count} design deltas found by exhaustive comparison grid
+- Key areas: border-radius, font sizes, grid column widths, icon dimensions
+- Comparison grid artifact: {artifact_path}
+
+## Changes
+{list of files changed with one-line summary each}
+
+## Test plan
+- [ ] Visual comparison against design artifact
+- [ ] Build passes (`npm run build`) — diagnostics gate: any new diagnostic (incl. after a merge/worktree teardown) is RED until a re-run in the current checkout proves zero errors; quote the result, never reason it away as "stale" (`{project-root}/_bmad/bmad-shared/diagnostics-gate.md`)
+- [ ] No regressions on adjacent pages
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+EOF
+)"
+```
+
+### 7. Merge and Deploy
+
+```bash
+gh pr merge --squash --admin
+```
+
+After merge, the BMAD deploy contract handles deploy: run `./scripts/bmad-deploy.sh` (see `{project-root}/_bmad/bmad-shared/deployment-to-prod.md`). The contract decides whether to deploy or skip based on the project's `_bmad/bmm/config.yaml` `deploy:` block — this workflow does not.
+
+### 8. Brand Identity Feedback
+
+After successful delivery, check if a brand identity document exists:
+
+```bash
+ls {project-root}/_bmad-output/planning-artifacts/brand-identity.md 2>/dev/null
+```
+
+If it exists, evaluate:
+
+1. **Reference page candidate:** If this page is now at the same quality level as the brand identity's listed reference pages, suggest adding it.
+2. **Token drift:** If any deltas required values outside the brand identity's documented system (e.g., a new color, a new font size, a border radius not in the scale), flag them — the brand identity may need updating.
+3. **Component pattern evolution:** If the design introduced a new component pattern (e.g., a new type of card, a new badge variant), suggest adding it to the brand identity's component language section.
+
+Output these as a `**Brand Identity Updates**` section in the completion report. Do NOT modify the brand identity file directly.
+
+### 9. Report Completion
+
+Output — the **"Deltas not applied" section is mandatory and never omitted.** If everything was applied, say so explicitly; if anything was deferred or dropped, every such delta is listed here with its reason (pulled from the §5 apply ledger). The user must be able to see, from the completion report alone and without opening the artifact, exactly what did NOT make it in.
+
+```
+{if prior_applied.verdict in ("already-shipped", "prior-pass-residual-deltas"):}
+◇ THIS DESIGN WAS ALREADY APPLIED — this run is a VERIFICATION / RESIDUAL-DELTA pass, not a build.
+
+  applied by: {prior_applied.commit} {prior_applied.subject}
+  state:      {deployed — ancestor of live {sha} | merged, NOT deployed | unknown}
+
+Say this FIRST, before any "applied N rows" line. A report that leads with the row count over an
+already-shipped surface reads as *this run did the work* — a false claim of authorship, and the
+more misleading of the two failure modes here (there is no wrong output, only a wrong attribution).
+Attribute the build to the prior pass; claim only what THIS pass changed.
+{if prior_applied.verdict == "already-shipped": Note that no capability delta remained. If a grid
+was built anyway (a legitimate verification re-run), report its treatment findings normally — an
+empty CAPABILITY delta never implied a green GRID, and must not be reported as though it did.}
+
+{if run_completion_mode == "checkpointed":}
+⚠ NOT FINISHED — Design implementation CHECKPOINTED. {rows_deferred} row(s) remain and
+NOTHING WILL RESUME THEM ON ITS OWN.
+
+Stopped because: {checkpoint_reason}.
+
+This is owner-visible residue, not silent background work (FG-2026-07-26-02). A clean exit is
+not a completed one — say the unfinished status FIRST, and never let "PR merged" be the last
+thing reported about a pass that did not finish.
+
+Design implementation CHECKPOINTED — slice delivered, more frames remain.
+
+This pass applied {frames_applied} of {frames_in_scope} in-scope frames and stopped at a
+frame boundary to stay inside the context budget (a single pass over the whole manifest would
+risk auto-summarization silently dropping rows). Progress is persisted in the manifest. Resume
+in a FRESH session — same command, no flags — to continue from here:
+
+  /bmad:bmm:workflows:design-implement {ingest_manifest_path}
+
+Remaining (still UNVERIFIED in the manifest): {comma-separated remaining frame ids}
+{else:}
+Design implementation complete.
+{/if}
+
+Scope: {frames_in_scope} of {frames_total} frames in scope.
+Deferred (terminal — NOT remaining work): {deferred frame ids with their reasons, e.g.
+"4–7 (policy §8.2b: clerk grading stays desktop-only), 8–9 (no offline backend)"; or "none"}
+<!-- Enumerating deferred frames here is mandatory. "Remaining" and "deferred" are different
+     states and must never be collapsed: remaining is work waiting, deferred is work ruled out.
+     Stating scope up front stops a later session re-deriving it by reading the manifest body,
+     which is exactly the discretionary protection that failed. (fork-gap 2026-07-25) -->
+
+Baseline: {baseline_commit}
+Implementation strategy (step-02b): {implementation_strategy}
+{if dropped_capabilities was non-empty:}
+  Regression surface vs production: {N} capabilit(y/ies) the handoff dropped —
+  {for each: capability — KEPT (protected) | DROPPED (removed, confirmed clean below)}
+{else:}
+  Regression surface vs production: none — handoff retained every production capability.
+{if uplift_capabilities was non-empty:}
+  Uplift surface vs production: {N} net-new/deepened capabilit(y/ies) the handoff added —
+  {for each: capability — BUILT (constructed, see "Capabilities built" below) | UNBUILT (Tier-1 failure — must not ship)}
+{else:}
+  Uplift surface vs production: none — handoff added no capability the live page lacked (a true restyle).
+Deltas: applied {A}/{delta_count} · deferred {D} · dropped {X}
+PR: {pr_url}
+Completion: {completion_disposition} (STD-COMPLETION-001) — {if run_completion_mode == "complete": `pr_merged`} {if run_completion_mode == "checkpointed": `pr_merged` for the delivered slice; remaining frames are agent-resumable via the command above (a budget checkpoint, NOT owner_gated_residue); name owner_gated_residue only for blockers the owner alone can clear (a credential, a prod mutation)}
+Deploy: handled by ./scripts/bmad-deploy.sh — run after merge per the BMAD contract
+
+Comparison grid: {artifact_path}
+
+Deltas not applied:
+{if D + X == 0:}
+  None — all {delta_count} deltas applied.
+{else, one bullet per deferred/dropped row:}
+  - ⊘ {grid row id / short description} — deferred ({reason}: {detail})
+  - ✗ {grid row id / short description} — dropped ({reason})
+
+Frame coverage ({brief §7 Surface Inventory | bundle frame inventory (URL) | manifest}):
+{Mandatory whenever step-03 §2f resolved a frame contract from ANY of its three sources — the
+ brief §7, OR (raw-URL run, no brief) the bundle's declared `{design_frame_inventory}`, OR the
+ manifest. Never omitted. Enumerate EVERY frame in the contract by name (from step-03 §2f).
+ "There was no brief" does NOT license skipping this on the URL path: the bundle declares its own
+ lookup frames (§2f source 2) — that IS the contract. If NO source yielded a frame set, say so
+ and mark the section needs-human-confirmation. "All green" is only legitimate when every frame
+ in the contract is accounted for here; a report that declares the run complete without this
+ section — when a frame contract exists — is non-conformant, re-emit it. On a no-brief URL run the
+ §13 lookup drawers (warehouse / inbound-batch / import-run / accounting-outcome / catalog /
+ supply-source) are exactly the frames this section exists to keep from vanishing.}
+{Lookup reconciliation (§2f) — state the AUTHORITATIVE denominator first: the detail drawer
+ renders `{len(design_linked_record_rows)}` linked-record rows ({comma-separated labels}), so that
+ many §13-lookup frames must be accounted for. Every rendered row maps to a Frame-coverage line
+ below; a row whose lookup frame the harvest missed is LOOKUP UNDER-ENUMERATED, NOT silently absent.}
+{if every contract frame is present (and deep) in both bundle and impl:}
+  All {N} contract frames built — {frame_1}, {frame_2}, … present in impl and component-swept.
+  §13 lookups: all {len(design_linked_record_rows)} linked-record rows covered & swept for depth.
+{else, one bullet per gap:}
+  - {frame} — FRAME MISSING in impl (Tier-1: designed-but-unbuilt) → carried in "Deltas not applied" above; this is feature work, not a CSS apply
+  - {lookup} — LOOKUP UNDER-ENUMERATED (rendered as a Linked-records row, no harvested frame) → re-trace the bundle for this lookup's frame; if absent, needs human confirmation. This is the "often missed" lookup (e.g. Shipping lane); counted in {frame_uncovered_count}
+  - {frame} — PRESENT BUT THIN in impl (Tier-1: drawer opens, interior under-built vs the bundle) → its missing interior rows are in "Deltas not applied" above; "the drawer exists" is not "the drawer matches"
+  - {frame} — FRAME NOT DRAWN in bundle (routed, NOT inferred) → /bmad:bmm:workflows:design-handoff (re-render the frame); counted in {frame_uncovered_count}
+Frames in contract: {N} · built & swept: {B} · missing-in-impl (Tier-1): {M} · thin-in-impl (Tier-1): {T} · under-enumerated (routed): {U} · not-drawn (routed): {frame_uncovered_count}
+Linked-records rows (authoritative §13-lookup denominator): {len(design_linked_record_rows)} · §13-lookup frames accounted: {must be ≥ the row count}
+
+Foundation-token reconciliation owed (token migration):
+{Mandatory whenever step-03 §2i emitted any Foundation-token row. Never omitted.}
+{if foundation_token_drift_count == 0:}
+  None — the app's canonical foundation (type scale / control heights / radii / status colours) agrees with the design system and docs/design-policy.md.
+{else, one bullet per drift + the headline caveat:}
+  ⚠ {foundation_token_drift_count} foundational token(s) diverge — component type/radius rows were
+     compared at the app's foundation scale, which is NOT the design system / policy scale, so their
+     green verdicts are NOT proven parity until the tokens are reconciled.
+  - {token} — app canonical {app_value} vs design {design_value} / policy {policy_value} ({kind}) →
+    route to /bmad:bmm:workflows:apply-design-policy-change (single-source token migration of src/styles/tokens.css)
+  {if any dead_fallback_sites:}
+  - DEAD-FALLBACK (inert): {site} writes var(--{token}, {literal}) but the global is defined → the
+    literal never applies; remove it and reconcile the token, do NOT add more.
+  This is NOT fixable in this workflow — patching each component (or adding a var(--token, <literal>)
+  fallback) is the #2412 anti-pattern. The fix is one token migration owned by apply-design-policy-change.
+
+Content-lane verification owed (live page):
+{if content_unverified_count == 0:}
+  None — no formatter/enum-driven identifier cells on this surface.
+{else:}
+  {content_unverified_count} identifier cell(s) had their CSS aligned but their RENDERED VALUE
+  not certified (mock-data bundle cannot exercise the real enum/label variants). Verify on the
+  live page before trusting them:
+  - {cell} — {identifier_class}, value from {formatter_ref}
+  → run:  /bmad:bmm:workflows:design-review   (live Chrome §13(a) check)
+     or:  /bmad:bmm:workflows:design-tuning   (step-02 §2b, live screenshots)
+
+Token provenance (non-canonical — resolved but not from the canonical token surface):
+{if token_noncanonical_count == 0:}
+  None — every design-mapped token resolves from the canonical surface (tokens.css / @theme).
+{else:}
+  {token_noncanonical_count} shared-semantic token(s) (status / colour / type) resolve ONLY from a
+  per-screen stylesheet, not the canonical token surface (docs/design-policy.md §8). The render
+  works on this screen, but the token is not a system token — a sibling surface that doesn't load
+  that CSS won't reproduce the value (§3/§13 cross-surface drift). Promotion is a token-architecture
+  call, NOT gated here:
+  - {token} — resolves from {source_file}, not tokens.css / @theme
+  → run:  /bmad:bmm:workflows:design-review   (decide promote-to-canonical vs leave; token architecture)
+  (This is a disclosure, not a delta — the run did NOT collapse it into "tokens map 1:1.")
+
+Policy-conformance & behavior (ceded — NOT certifiable from a generated bundle-diff):
+  Treatment + structure + page-shell were verified against the bundle/policy. These were NOT,
+  because the bundle is a Claude-Design-generated proposal that can itself violate the policy:
+  - Prohibitions / tone / motion / iconography (docs/design-policy.md "never" list) →
+    /bmad:bmm:workflows:design-review   (live audit)  ·  enforced at PR-time by design-review-pr
+  - Behavior / interaction wiring (drawer stack, Esc, mutation flow, live-feed, sort/filter) →
+    the `verify` skill (drive the live app and exercise it)  ·  or design-review (live Chrome)
+  Do not let "implementation complete" imply these were checked here.
+
+Capabilities built (uplift — net-new / deepened structure the handoff added):
+{Mandatory whenever step-02b's `{uplift_capabilities}` was non-empty. Enumerate EVERY added/deepened
+ capability and confirm it was CONSTRUCTED — the mirror of the "Capabilities removed" disclosure below.
+ An uplift item that did not get built is a Tier-1 failure: the run must NOT declare done while a
+ capability the handoff specified ships unbuilt. This is the section that stops an uplift redesign from
+ being silently delivered as a reskin (the inbound-flow supply-orders miss: lanes + analytics/disposition
+ band + action column + co-views, read as "treatment alignment" and never built).}
+{if uplift_capabilities was empty:}
+  None — handoff added no capability (pure restyle/regression run).
+{else, one bullet per added/deepened capability:}
+  - {capability} ({ADDED | DEEPENED}) — built at {file(s)} ⇒ {one-line: what the operator can now do}.
+  {or, if any was NOT built:}
+  - {capability} ({ADDED | DEEPENED}) — ✗ UNBUILT (Tier-1) ⇒ the handoff specified it and it is not in the impl. This run is INCOMPLETE — build it or carry it as an explicit, named deferral, never ship silently as "done."
+
+Capabilities removed (orphaned actions):
+{Derive this MECHANICALLY, do not recall it. If the apply DELETED or REPLACED any component
+file (a redesign that swaps the surface — not a pure in-place restyle), then for every server
+action / mutation those removed files imported or called, grep the post-apply tree for remaining
+callers. Any action now with ZERO callers is a capability the redesign dropped — list it.}
+{if no components were deleted/replaced, OR every action the removed code called still has a caller:}
+  None — no capability lost (no components removed, or every action the removed code called is still wired).
+{else, one bullet per now-orphaned action:}
+  - {action name} — was called by {deleted file}; now has zero callers ⇒ the {one-line capability, e.g. "manual EAN→ASIN remap"} is no longer reachable in the UI.
+  → If the drop is intended, confirm it. If not, it was a silent capability loss — restore the affordance (the backend action is intact) or route it through /bmad:bmm:workflows:design-handoff to redesign the capability deliberately.
+
+Entry point / discoverability (can a user reach what this run built, at all?):
+{Mandatory whenever this run CREATED ANY COMPONENT FILE — not only when it mounted a route. Also
+ mandatory when a change REMOVED a component's last non-test importer (the mirror of the orphaned-action
+ grep above: that finds an action left with zero callers, this finds a component left with zero importers).
+
+ THE TRIGGER IS MECHANICAL AND HAS NO EXCEPTIONS. Do NOT ask yourself whether a component "should be
+ reachable" and skip the check when you judge that it shouldn't — that judgement is exactly what makes a
+ check advisory, and it is re-litigable on every component. Ask the mechanical question of EVERY file
+ this run created, then let `◐ transcribed · UNROUTED` + a named follow-up carry the "this one is
+ deliberately not wired yet" case. Detection is mechanical; the deliberateness is DECLARED, not assumed.
+
+ The grid certifies the frames; it is structurally blind to whether anything REACHES them. Two shapes:
+   - route-level — a surface mounted at a route that nothing LINKS to: an UNLINKED ISLAND, reachable
+     only by typing the URL (the §L miss: /recovery/cross-check shipped URL-only; the owner added the
+     link by hand, #195).
+   - component-level — a component inside an EXISTING route that nothing IMPORTS. The old trigger
+     ("mounted a new route") was structurally blind to this: its condition was a route, the failure is
+     a component. cash-recovery /receive shipped 1,241 LOC across two frames this way — transcribed,
+     tested, reviewed, merged, and reachable by nobody for six days, with their own file headers
+     asserting an importer that did not exist (docs/fork-gaps.md FG-2026-07-26-05).
+
+ Resolve the intended entry point from the brief's §7 `entry_point` (the primary frame's "Opens from /
+ trigger") if present, else infer from page_mode + route.}
+{ENUMERATE the entry surfaces this run created — broader than routes:}
+  - routes
+  - top-level views
+  - named drawers / sheets / modals that must be reachable from some trigger
+  - any other named entry surface the brief treats as a thing an operator arrives at
+{REQUIRE evidence per surface — both halves, or it is not verified:}
+  - WHERE it is reachable from — the parent route or the trigger component
+  - HOW the operator gets there — nav entry, link, row-drill, or the action that opens it
+{The mechanical test for a component: does a NON-TEST file import it, along a chain that terminates at
+ a route entry? A test importer DOES NOT COUNT — "it has tests" is the precise false green that let the
+ /receive frames pass as delivered work for six days. Grep for it; never assume it.}
+{Decide the SHAPE first — a sub-surface is NOT a nav peer:}
+  - a top-level operational / analytical PAGE → a global-nav entry is the right entry point
+  - a detail / drawer / record-view / §13 SUB-SURFACE → its entry point is a LINK or ROW-DRILL from its
+    named parent surface, NEVER a global-nav peer (that is nav-bloat and misrepresents a sub-surface as a sibling page)
+{Verify the affordance actually EXISTS in the impl — a nav <Link>, a link/drill from the parent surface's
+ component, or a row onClick that opens this surface. Do not assume it; grep for it.}
+{if at least one reachable affordance is present:}
+  Reachable — entry point: {global-nav "X" | link from {parent route} | row-drill from {worklist}} (verified present in {file}).
+{else, route-level:}
+  ⚠ UNLINKED ISLAND — surface mounted at {route} but nothing links to it (reachable only by URL).
+    Add the entry point now in the correct shape (above), or carry it as an explicit, named deferral —
+    never report "complete" while the surface is unreachable. If a full entry-point wiring is a separate
+    epic (e.g. the parent worklist is live-data-wired and the drawer-over-parent merge is deferred), a
+    quiet link from the parent surface is the minimum bridge and ships in THIS run.
+{else, component-level:}
+  ⚠ UNROUTED COMPONENT — {file} was created by this run and NO non-test file imports it.
+    Wire it now, or set every one of its grid rows to `◐ transcribed · UNROUTED` with a named
+    follow-up (who wires it, into what). Those rows are NOT `✓ applied` and NOT `⊘ deferred`.
+
+REFUSAL (hard — this is not advisory):
+- A frame holding any `◐ transcribed · UNROUTED` row is NOT fully applied. Do NOT report it applied,
+  do NOT count it toward frame coverage as built, and do NOT let the pass close as green on it.
+- A `◐` row without a named follow-up plan is non-conformant — the report is re-emitted with one.
+- `◐` rows are listed ABOVE the grid as an explicit open item, never left to be read out of a table
+  cell and never written only in narrative below the grid. The precedent this exists to stop: the
+  /receive pass DID write "not yet wired — the largest un-owed piece", 60 lines under a table of nine
+  green ticks, and three later sessions read the manifest without reopening it.
+- Do NOT downgrade a `◐` to `⊘ deferred` to close a pass. `⊘ deferred` means nothing was built; `◐`
+  means code exists and cannot be reached. Swapping them leaves live, unreachable code that no row is
+  tracking.
+```
+
+A completion report that prints a fixed-count but omits the "Deltas not applied" section is non-conformant — re-emit it. The whole point of this section is that a partial implementation announces itself instead of shipping silently as "done." The **"Frame coverage" section is equally mandatory** whenever step-03 §2f resolved a frame contract from ANY source — the brief §7, the bundle's declared `{design_frame_inventory}` on a raw-URL run, or the manifest — and it is the gate on the most expensive false-green this workflow produces: a grid that ran the component sweep only over the frames that already exist in the impl, matched them, and reported "0 deltas — green" while frames the bundle *did* draw were never built. Two shapes of this miss: (a) the inbound-flow `/orders` run that passed 5 of 9 §7 frames and called it green — 4 designed-but-unbuilt drawers, inbound-batch / import / shipping-lane / comms-case, silently absent; and (b) the **no-brief URL run** where, with no §7 to consult, the §13 lookup drawers (warehouse / inbound-batch / import-run / accounting-outcome / catalog / supply-source — the "link to records (lookups)") fell out entirely because their shared inner primitives matched elsewhere in the impl. "All green" is a claim about the whole frame contract — not about whatever frames the sweep happened to find, and NOT excused by the absence of a brief — so the report must enumerate the whole list and account for every frame as built / missing-in-impl (Tier-1) / not-drawn (routed), or it is non-conformant. The **"Content-lane verification owed" section is equally mandatory** and never omitted: design-implement aligning a marketplace/supplier/ASIN cell's CSS is NOT the same as certifying it renders the right value on real data — that lane belongs to the live-page workflows, and the report must say so rather than let "implementation complete" imply the identifier values were checked. The **"Capabilities removed (orphaned actions)" section is equally mandatory** whenever the apply deleted or replaced components: a redesign that swaps the surface can silently strip a capability whose action call lived in a removed file and was never a grid delta (the EOS batch-detail EAN→ASIN remap — `overrideWholesaleAsinAction` left with zero callers — is the canonical miss). The grid-driven apply ledger cannot catch this because the lost capability was never a row in the grid; the orphaned-action grep is the backstop, and it must reach the report, not stay silent. The **"Entry point / discoverability" section is equally mandatory** whenever the run **CREATED ANY COMPONENT FILE** — not merely when it mounted a route — and whenever a change removed a component's last non-test importer: the grid certifies the frames but is blind to whether anything REACHES them, so built work can ship unreachable in two shapes. Route-level, a surface can ship as an unlinked island reachable only by URL (the §L recovery-cross-check miss — `/recovery/cross-check` shipped URL-only, the owner added the link by hand in #195). Component-level, a component inside an EXISTING route can ship with nothing importing it — which the old route-scoped trigger was structurally blind to, its condition being a route while the failure is a component (cash-recovery `/receive`: 1,241 LOC across two transcribed frames, tested, reviewed, merged, reachable by nobody for six days, file headers asserting an importer that did not exist — `docs/fork-gaps.md` FG-2026-07-26-05). **The trigger is mechanical and admits no "should this be reachable?" judgement** — ask it of every created file, and let `◐ transcribed · UNROUTED` plus a named follow-up carry the deliberately-not-wired-yet case; a test importer never counts as reachability. The report must state the verified entry point per created entry surface (WHERE from + HOW the operator arrives) or flag the island/unrouted component, and the entry point's shape obeys the sub-surface rule — a detail/drawer/§13 sub-surface is reached by a link or row-drill from its named parent, never a global-nav peer. **A frame holding any `◐` row is NOT fully applied and may not be reported as such.** The **"State-render coverage (prod-smoke owed)" section is equally mandatory** whenever the §5b done-check was a live/local render: a render can only paint the states the seed data contains (§5b.3), so every non-default state row (domain state-variants + `hover`/`failed`/`empty` as applicable) must be marked `painted` or `no-data-to-paint`, and each `no-data-to-paint` state named and ceded `visually-unverified (static/unit-covered only)` with a prod-smoke checklist entry — or the section states "all declared states painted". A render-only pass that omits it lets a clean default-state screenshot read as state-axis coverage — the precise false-green §5b.3 exists to stop, and the exact miss that shipped mapping-queue v8 (the `pack_split` workspace, open §13 drawer, and claimed-elsewhere banner had zero local seed rows, so the passing render never exercised them). This section is N/A only when no render was run — a bundle-render fallback or an owed-and-routed built-surface render still carries whatever state coverage the render it stood in for could reach.
+
+---
+
+## SUCCESS METRICS
+
+- **Every grid row has an explicit disposition** (`applied` / `deferred(reason)` / `dropped(reason)`) — `A + D + X == {delta_count}`, no undisposed rows
+- Apply was grid-driven (every fix traces to a row), not a holistic rebuild
+- Every applied delta is fixed and re-verified by re-reading the file
+- **The completion report's "Deltas not applied" section is present** — enumerating every deferred/dropped delta with its reason, or stating "None — all N applied"
+- **The completion report's "Frame coverage" section is present whenever step-03 §2f resolved a frame contract from ANY source** (brief §7, or the bundle's `{design_frame_inventory}` on a raw-URL run, or the manifest) — every contract frame accounted for as built / missing-in-impl (Tier-1) / not-drawn (routed); a "green" report that never enumerated the frame contract is non-conformant, including the no-brief URL run where the §13 lookup drawers are the contract
+- **The completion report's "Content-lane verification owed (live page)" section is present** — every `content-lane` deferral (step-03 §2c) enumerated with its formatter ref + the design-review / design-tuning routing, or stating "None"
+- **The completion report's "Token provenance (non-canonical)" section is present** — every shared-semantic token that resolved only from a per-screen stylesheet (step-03 §2g) enumerated with its source file + the design-review cede, or stating "None". A run must never report token mapping as "1:1 / matches" while a per-screen-only shared-semantic token is unsurfaced
+- **The completion report's "Capabilities built (uplift)" section is present whenever step-02b's `{uplift_capabilities}` was non-empty** — every added/deepened capability enumerated and confirmed BUILT (with its file + what the operator can now do), or any UNBUILT one flagged Tier-1 incomplete. A run that read an uplift redesign as "treatment alignment" and shipped without constructing the net-new surface is non-conformant — this is the mirror of the orphaned-action disclosure.
+- **The completion report's "Entry point / discoverability" section is present whenever the run CREATED ANY COMPONENT FILE** — not merely when it mounted a route — with, per created entry surface, WHERE it is reachable from and HOW the operator arrives; or an explicit `⚠ UNLINKED ISLAND` / `⚠ UNROUTED COMPONENT` flag. The importer test is mechanical and a test importer never counts. **A frame holding any `◐ transcribed · UNROUTED` row is NOT fully applied** and may not be reported applied, counted as built in frame coverage, or downgraded to `⊘ deferred` to close the pass. Golden cases: `unrouted-golden-matrix.md`.
+- **The completion report's "Capabilities removed (orphaned actions)" section is present whenever the apply deleted/replaced components** — derived by grepping for now-zero-caller actions among those the removed files invoked, or stating "None — no capability lost". A surface-swapping redesign never ships without this disclosure.
+- **Copy & frame chrome are transcribed verbatim or logged as a forced deviation (§5b)** — every literal string and wrapper element (header / breadcrumb / footer) matches the design, or its deviation is in the ledger with a reason; and the **render-compare done-gate was run** (built surface beside the design render), or explicitly marked owed-and-routed. "Done" is never declared off the green grid alone.
+- **The completion report's "State-render coverage (prod-smoke owed)" section is present whenever the §5b done-check was a live/local render (§5b.3)** — every non-default state row (domain state-variants + `hover`/`failed`/`empty`) marked `painted` / `no-data-to-paint`, each `no-data-to-paint` state named and ceded `visually-unverified (static/unit-covered only)` with a prod-smoke checklist entry, or stating "all declared states painted". A default-state render that "matches" never reads as state-axis coverage — the seed data can only exercise the states it contains, exactly as a mock-data bundle can only certify mock content (§2c content-lane).
+- Build passes; PR created and merged; grid artifact updated with dispositions; no regressions introduced
+- **Every drilled frame (detail/create/§13-lookup) has a Frame-composition row (§2d-bis), and every `{frame_composition_deltas}` entry from step-02b became one** — section order + group naming + header/footer chrome compared against the design; a renamed/regrouped/reordered drawer or a black-vs-blue footer button is surfaced Tier-1, never passed because each inner component matched
+- **On an `ingest_manifest` run: dispositions were persisted into the manifest frame-by-frame (not only at the end), prior-pass `✓ applied` rows were skipped, and if the pass stopped early it set `{run_completion_mode} = checkpointed` and printed the exact resume command** — a large manifest is never attempted as one undifferentiated single-window pass
+
+## FAILURE MODES
+
+- **Holistic rebuild instead of grid-driven apply** — "make the page look like the design" satisfies composition while silently dropping enumerated rows (band sender clause, kbd hints, a sort control). This is the dominant leak and the reason the apply ledger exists (accounting-tools /queries #900).
+- **Reporting a count without the "Deltas not applied" list** — "47/47" or "deltas fixed: X" with no enumeration of what was deferred/dropped. A partial that omits the disclosure ships looking complete. The §9 section is mandatory.
+- **Declaring "0 deltas / green" off a sweep of only the frames that already exist in the impl.** The component grid is structurally blind to a whole frame the impl never built — it produces zero rows for an absent frame, so "all matched" reads as "all present." Without the §7 Frame-coverage enumeration (step-03 §2f → the §9 Frame-coverage section), a run greens out having silently skipped every designed-but-unbuilt drawer. This is the inbound-flow `/orders` miss: 9 §7 frames promised, 5 swept and matched, 4 (inbound-batch / import / shipping-lane / comms-case) never built and never surfaced — "green" meant "we only looked at what was already there." The §7 list, not the found-frame set, is the denominator for a green claim. The **no-brief URL variant** is the same leak without a brief to consult: the bundle's own declared frame inventory (`{design_frame_inventory}`, step-01 URL.3a — the §13 lookup drawers Orders.html consumes) is the denominator, and skipping coverage because "there was no brief" lets those lookups vanish exactly as the 4 `/orders` drawers did.
+- **A bare `deferred` with no reason** — the silent drop wearing a label. Every deferral names `needs-data` / `out-of-scope` / `judgment` / `content-lane` + detail.
+- **Letting "implementation complete" imply the identifier *values* were checked.** design-implement aligns a marketplace/supplier/ASIN cell's CSS against the bundle; it does NOT verify the formatter renders the right value on real data (the bundle is mock data). Omitting the "Content-lane verification owed" section ships that false implication — it is the design-implement counterpart of the inbound-flow `/orders` raw-enum leak that the grid's mock-data comparison could never catch.
+- **Collapsing a per-screen-only token into "tokens map ~1:1."** A shared-semantic token (status / colour / type) that resolves only from a per-screen stylesheet is design debt per `docs/design-policy.md` §8, not a clean canonical mapping — and "the bundle was generated from that same CSS" does not launder it (the bundle is a generated proposal, §2e). Declaring 1:1 because the token is "defined somewhere" buries the §3/§13 cross-surface-drift risk. Disclose it (§2g / §9) and cede promotion to design-review; do NOT gate the render on it either — the token works, placement is an architecture call this workflow does not own.
+- **Shipping an uplift redesign as a reskin — the net-new capability never built.** The mirror of the orphaned-action miss: step-02b inventoried `{uplift_capabilities}` (a new analytics/disposition band, lane-by-handler segmentation, an action column, a co-view, a drawer), step-03 tagged them `capability-build`, and the apply restyled the existing shell while never constructing them — then declared done off a green-ish grid. The "Capabilities built" §9 disclosure is the backstop: every added/deepened capability must be confirmed built, or flagged Tier-1 incomplete. This is the inbound-flow supply-orders failure that read lanes + the disposition band + the action column as "treatment/token alignment, production is a superset."
+- **Shipping a component nobody can reach — the APPLIED-BUT-UNREACHABLE miss.** The third member of this family, and the quietest: the grid certifies values, so a transcribed-but-unimported component is `✓ applied` under every available reading — the row is not wrong, the state was inexpressible until `◐` existed. The old route-scoped entry-point trigger could not see it, because its condition was a route while the failure is a component. cash-recovery `/receive` shipped 1,241 LOC across two frames this way: transcribed, tested, reviewed, merged, reachable by nobody for six days, file headers asserting an importer that did not exist — and the pass's own honest warning sat 60 lines below nine green ticks, where three later resume reads did not look. The mechanical importer check + `◐` above the grid is the backstop.
+- **Deleting/replacing components without the orphaned-action check.** A surface-swapping redesign removes files that called server actions; if the new surface doesn't re-wire one, that capability is silently gone — and because it was never a grid row, the apply ledger can't catch it. The grid-driven apply makes this *more* likely, not less, by focusing attention on enumerated deltas. The orphaned-action grep + the "Capabilities removed" disclosure is the backstop; skipping it is how the EOS batch-detail EAN→ASIN remap shipped as a silent loss.
+- **Interpreting where transcription was required — copy & chrome drift.** The grid has no row for a literal string or a wrapper element, so relabeling a footer, paraphrasing a sub-caption, swapping currency codes for symbols, or substituting a stock shell for the design's breadcrumbed header all leave the CSS grid all-green while the surface reads visibly worse than the handoff. Each is a small "I'll improve this" the workflow gives no license for (workflow.md Critical Rules). The grid's CSS-exhaustiveness *manufactures* the false confidence — "every cell matched" feels done. The §5b transcription pass + render-compare done-gate is the backstop; declaring done off the green grid is the leak (the supply-order cost drawer: generic header, relabeled footer, "import" for "deferred import", "€ → £" for "EUR → GBP" — every cell green).
+- **A recomposed drawer passing on an all-green component grid (the §2d-bis miss).** Each section's inner pixels match and §2f-bis confirms each section exists, so the grid greens out — while the drawer's *arrangement* is wrong: renamed groups (`Cost & sourcing`→`Economics`), a standalone group folded away (`Lifecycle`→header), a split/merged group (`Related records` + Lifecycle → `Routing & source`), reordered sections, or a footer the design draws black and the impl ships blue. No single component owns the arrangement, so without the Frame-composition row (§2d-bis) "the drawer looks completely different" never becomes a delta. This is the page-shell blind spot (PR #2017) inside a drawer — the inbound-flow supply-order miss. The frame's footer is the sharpest edge: not being a cataloged section, it has no other grid row.
+- **Forcing a whole large manifest through one pass (`context-budget-overflow`).** Attempting all frames × all sections in a single window hits the harness auto-summarization boundary, which drops the exact CSS values and per-row dispositions first — so rows get marked `✓ applied` that were never really verified, and the run reads "green." The fix is structural, not vigilance: apply frame-by-frame, persist into the manifest at each frame boundary, and checkpoint (§5a). Not checkpointing a large manifest "because the step says fully autonomous" is the misread — the checkpoint is a clean terminal exit that delivers a slice, not a wait-for-input halt.
+- **Re-applying prior-pass rows on resume.** A fresh resume session that re-reads and re-applies rows already `✓ applied` in the manifest wastes the budget it was trying to save and risks re-forking consolidated components. Honor `{resume_prior_dispositions}` — skip them.
+- Fixing some deltas but not all ("the rest are minor" — fix them all, or defer-with-reason)
+- Editing without re-reading to verify (edits can silently fail or land in the wrong location)
+- Changing `tailwind.config.js` when an arbitrary value would work
+- Committing without running `npm run build`

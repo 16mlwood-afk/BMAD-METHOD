@@ -421,6 +421,15 @@ function cleanBuildDirectory() {
     fs.rmSync(BUILD_DIR, { recursive: true });
   }
   fs.mkdirSync(BUILD_DIR, { recursive: true });
+
+  // Also clear Astro's own content-layer/build cache (fork-gap #94). The astro build
+  // crashes with "Cannot find module .../build/site/pages/404.astro.mjs" when this cache
+  // is stale — wiping build/ alone does not clear it, so the failure recurred independent
+  // of the diff. Removing website/.astro forces a clean SSG compile.
+  const astroCache = path.join(PROJECT_ROOT, 'website', '.astro');
+  if (fs.existsSync(astroCache)) {
+    fs.rmSync(astroCache, { recursive: true });
+  }
 }
 
 // =============================================================================

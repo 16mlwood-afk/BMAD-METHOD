@@ -1,0 +1,84 @@
+# Sprint Status Template
+# This is an EXAMPLE showing the expected format
+# The actual file will be generated with all epics/stories from your epic files
+
+# generated: {date}
+# project: {project_name}
+# project_key: {project_key}
+# tracking_system: {tracking_system}
+# story_location: {story_location}
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created, ready for development
+#   - in-progress: Developer actively working on implementation
+#   - review: Implementation complete, ready for review
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# Milestone Status (STD-SCOPEREG-001 route R4 — operational milestone):
+#   - blocked: A precondition is unmet
+#   - in-progress: Preconditions met, milestone being executed
+#   - done: The real-world observable was achieved
+#
+# WORKFLOW NOTES:
+# ===============
+# - Mark epic as 'in-progress' when starting work on its first story
+# - SM typically creates next story ONLY after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then Dev runs code-review (fresh context, ideally different LLM)
+#
+# MILESTONES vs EPICS (STD-SCOPEREG-001 §7) — do not conflate:
+# ============================================================
+# An OPERATIONAL MILESTONE is scope with NOTHING TO BUILD: running, verifying, proving, or
+# physically executing something with already-shipped code (a proving run, a credential
+# provisioning, a prod verification, a backfill execution, a pilot measurement). It is the
+# home for scope-register route R4 — an R4 item converted into build stories manufactures
+# code for a problem that is a config check or a physical action.
+#
+# A milestone is NOT an epic: it has no stories, no retrospective, and NEVER enters
+# create-story. `sprint-status` reports it SEPARATELY from epic progress, so a blocked
+# milestone can never be read as build progress.
+#
+# EVERY milestone item carries an owner in its comment — `owner: operator` (a human does it),
+# `owner: agent` (the system can drive it), or `owner: external` (a third party gates it).
+# An item with no owner is inert scope one level down: agreed, tracked, owned by nobody.
+#
+#   # ---- MILESTONE: <name> ----
+#   # <the real-world observable that proves this milestone>
+#   # Source: scope-register SR-<id>
+#   <milestone-key>: blocked      # blocked-by: <the unmet preconditions>
+#   <item-key-1>: blocked         # owner: operator — <physical/manual action>
+#   <item-key-2>: blocked         # owner: agent    — <the system drives this>
+#   <item-key-3>: blocked         # owner: external — <third party gates this>
+
+# EXAMPLE STRUCTURE (your actual epics/stories will replace these):
+
+generated: 05-06-2-2025 21:30
+project: My Awesome Project
+project_key: NOKEY
+tracking_system: file-system
+story_location: "{story_location}"
+
+development_status:
+  epic-1: backlog
+  1-1-user-authentication: done
+  1-2-account-management: ready-for-dev
+  1-3-plant-data-model: backlog
+  1-4-add-plant-manual: backlog
+  epic-1-retrospective: optional
+
+  epic-2: backlog
+  2-1-personality-system: backlog
+  2-2-chat-interface: backlog
+  2-3-llm-integration: backlog
+  epic-2-retrospective: optional

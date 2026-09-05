@@ -1,0 +1,256 @@
+---
+name: 'step-01b-decide'
+description: 'Decide page mode, composition fit, and the analytics decision stack (band-belongs, archetype, rigor, decision analysis). The §5–§5c-3 block, split out of step-01-gather for context budget — same content, no behaviour change.'
+---
+
+# Step 1b: Page Mode & Analytics Decisions (Bias-Free)
+
+**Progress: Step 1b of the step-01 gather** — continues from `step-01-gather.md`; next is `step-01c-topology.md`.
+
+This step carries forward ALL state set in `step-01-gather.md` (`{data_shape}`, `{api_surface}`, `{feature_purpose}`, `{user_context}`, `{linked_records_inventory}`, `{must_support_capabilities}`, the finance-pass fields, `{injected_placement}`/`{injected_archetype}` if passed, etc.). Apply each section below in order; the anti-bias RULES at the top of step-01-gather still hold.
+
+## EXECUTION SEQUENCE (continued)
+
+### 5. Determine Page Mode
+
+**Chrome short-circuit:** if step-01 §0 set `{surface_class}` = `chrome`, this whole file is n/a — `page_mode` is already `n/a`, there is no composition-fit question and no band gate for app-shell chrome (contract: `brief-revision-policy.md` Block B `surface_class` row). **NEXT:** skip directly to `step-01c-topology.md`.
+
+Set `{page_mode}` based on the feature's **dominant user task**:
+
+- **"operational"** — the user processes, reviews, approves, reconciles, files, or resolves records. The page is a worklist. The design should prioritize throughput, scanability, and status visibility. Most pages are operational.
+- **"analytical"** — the user discovers trends, compares segments, diagnoses anomalies, explains changes, or moves from summary insight to supporting evidence. The page is an analysis tool.
+- **"detail"** — the user reads or edits the fields of **one record**. The page is a drawer or full-page extension of an operational list (the thing you reach by drilling INTO a worklist row), not a queue and not an analysis tool. The design should prioritize legible single-record layout, field grouping, and inline edit/action affordances. Composition is neither table-first nor chart-led — it is a record view. (Per project policy §6/§7: "a drawer or full-page extension of an operational list, never a re-skin.")
+
+**Signals for analytical:** user goals center on "understand", "compare", "spot trends", "review performance", "analyze", "diagnose", or the data has time-series dimensions and the user's job is pattern discovery rather than row processing.
+
+**Signals for detail:** the route is single-entity (ends in `/[id]`, `/[slug]`, a record drawer), the primary surface is ONE record's fields rather than a multi-row table, and the page is reached by drilling from a worklist. A detail page almost never carries an analytics band — a single record has no aggregate dimension (§5b will resolve `band_provenance: none`).
+
+**Hybrid handling:** Some pages mix modes.
+- If analysis exists to support immediate row-level action (e.g., a summary chart above a worklist), keep the page in **operational** mode.
+- If row-level detail exists mainly to verify or explain summarized behavior (e.g., a trend chart with a drill-down table), keep the page in **analytical** mode.
+- A page that contains a worklist AND a per-row detail surface is **operational** — `detail` is for a page whose dominant (often only) job is the single record.
+- The dominant user task determines the mode — not the presence of a chart or a table.
+
+If unclear, default to "operational." These three values are the full `page_mode` enum the whole brief contract uses (`brief-revision-policy.md` Block B; consumed by `design-synthesize` / `design-implement`) — emit one of them, never a fourth.
+
+#### 5-pre. Verify the mode, don't just pick it — this field has the widest blast radius in the gather
+
+**`page_mode` is not a label, it is the input to five later decisions** — and it is the ONE major gather value with no derivation basis (contrast §3 data shape ← schema, §3a linked records ← the edge map, §5f frames ← §5/§5a/§3a, §5h completeness ← a hard halt). It drives §5a's default composition · §5b's band gate (whose shortcut is literally *"a single record has no aggregate dimension"*) · §5f rule 2, which decides whether a drilled detail drawer is emitted **at all** · §5f rules 4/5 · §5g list-rendering.
+
+**A wrong value produces no error. It produces a self-consistent brief describing the wrong surface, and every existing gate passes it** — §5h finds no missing frame (none was expected), the commit-time completeness check finds no missing field, and `design-synthesize` draws only what §7 lists. Observed 2026-07-27: a five-column worklist-plus-drawer surface was stamped `detail`, so **the worklist was never enumerated as a frame** and the generator would have produced a per-unit page with no list, looking finished (`FG-2026-07-28-01`).
+
+Two checks are MANDATORY before leaving this section.
+
+**(a) A predecessor's `page_mode` is PROVENANCE, NOT EVIDENCE — never inherit it.**
+On any `material_revision`, re-derive the mode from the surface and the job **as if no predecessor existed**. "The previous brief said `detail`" is not a reason and must not appear in `{page_mode_rationale}`. **If your rationale would collapse without the predecessor, you have not derived the mode.** This is the documented causal chain in the 2026-07-27 miss — a stale mode carried across a revision whose whole purpose was to correct the brief — and it is the same trap a project design policy names when it rules that an approved artifact is a record of a past decision, not evidence it was right.
+
+**(b) `redesign` scope — run the SELECTION test against the built code and record the answer.**
+You are already in those files: the §3 mutation-derivation audit has you grep the target's own components for server actions. While there, answer one question and write the answer into `{page_mode_rationale}`:
+
+> **Does this surface render many instances of its OWN primary record type, which the operator selects among?**
+
+- **Yes → it is not `detail`.** A page that lists its subject and drills into one is `operational` (per the hybrid rule above), however rich the drilled view is.
+- **No → `detail` survives**, and state why the lists you found are *child collections of one record* rather than a selection set.
+
+**Deliberately NOT "does it contain a list".** A `detail` page legitimately renders lists — line items, audit history, a photo set, raw source rows — so treating any `.map()` as disqualifying would flag nearly every correct `detail` brief. **The discriminator is SELECTION, not repetition.**
+
+**Honest tier.** Both checks are PROBABILISTIC — prose you execute. A judgment field cannot be decided by a hook, and a gate that tried would be the indiscriminate-detector anti-pattern. The DETERMINISTIC companion is deliberately narrow and **WARN-only, permanently**: a per-project commit-time brief check flags one high-precision conjunction — `page_mode: detail` **and** a route with no dynamic segment **and** `list_rendering_verdict: single-render` **and** a repeated-row construct in the resolved components. That clears `/units/[id]` (dynamic route, correctly `detail` with child lists) and a static settings page (no selection set), while catching the observed miss. It covers `redesign` only — a `new`-scope brief has no code to read — and it says so rather than reading green. **It distributes on the per-project hooks track, not with this workflow: authoring this section does not deploy that check.**
+
+**Capture the reasoning (not just the label).** Set `{page_mode_rationale}` to the concrete signal that selected the mode — the user-goal phrasing or data property that decided it (e.g. "user goal is 'spot which week slipped' → pattern discovery, not row processing"). This is recorded verbatim in the analytics rationale artifact (step-03b) when a band exists; capturing it now means the deliberation is not thrown away once the mode label is set. (Skip the capture only when `{has_analytics_band}` resolves to `false` below — no rationale artifact is emitted then.)
+
+### 5a. Composition Fit Check — does the page-mode's default composition fit THIS surface?
+
+Page mode (§5) names the *kind of work*; the project design policy attaches a **default composition** to each mode (operational → table-first worklist + right-side detail drawer; analytical → chart-led; detail → record-view). That default is a sensible starting point, **not** a certification that this surface's job fits it. Stamping it in unquestioned is the policy-default bias (see workflow.md Anti-Bias Principle II) — as real as inheriting the legacy layout, and harder to see because it feels like "just following the system."
+
+So decide the **primary composition** the same way §5b decides the band: by the **job**, not by the policy default and not by the legacy render. Answer three questions about the feature:
+
+1. **Selection model** — does the operator *choose the next item by scanning* a list (a worklist's core competency), or is the work *dispensed / pull-based* (the system hands them the next item — a queue, an inbox, a "next task")? If the work is dispensed, a table's scan-to-select competency is dead weight.
+2. **Per-item cost** — is the dominant cost *scanning many rows* (favours a table), or a *decision / comparison on one item* that needs width — image, candidates, evidence side-by-side (which a ~400px right-side drawer physically cannot hold at legible size)?
+3. **Dominant loop** — does the operator live *in the list* (scan → pick → glance → next), or *in one item at a time* (read → decide → advance)? A one-item loop is served by a focused full-surface composition, not list + drawer.
+
+The three questions above decide list-bearing modes. **For `detail` mode there is no list to select from — the operator is already inside one record — so the fit turns on the record's *interaction verb*, not list-vs-item.** Ask one more question:
+
+4. **Interaction verb (`detail` mode)** — is the record surface's job (a) **data entry** (create / fill a new record), (b) **passive review** (read or confirm an existing record's fields), or (c) **verification against a source** (confirm extracted, imported, OCR'd, or scraped field values against the originating document — an order-confirmation email, a receipt image, a customs PDF, a parsed web page)? For (a) and (b) the grouped-fields record view fits. For (c) the operator's eye must move **value ↔ source**, so the source has to be **co-present** with the fields — which a plain grouped-fields record view does not provide. A verify-against-source surface wants a **source-co-present verification layout** (extracted record and source rendered together, the source sticky), and is therefore `recommended-alt`. The in-system exemplar is the **CDS customs page** (extracted record left / source PDF right, per-line values highlighted on the document). The cost of missing this: a "capture form" that discards the source the moment it is consumed, breaking the verify loop the surface exists for.
+
+Set `{composition_provenance}`:
+
+- **`policy-default`** — the page-mode's default composition fits the job. The common case. (Most operational pages really are scan-to-select worklists; most detail pages really are record views.)
+- **`recommended-alt`** — the answers point away from the default: the job wants a different *primary* composition than the policy attaches to this mode. This is a **net-scope / IA recommendation** — surface it to the user for veto before it lands in the brief (one line — "this surface is `{page_mode}`, but its job is {dispensed / comparison-heavy / single-item}; the policy's default {table-first / chart-led / …} doesn't fit — recommend {named composition} as the primary surface, with {the table demoted to a triage view / …}. Use it?"). Handoff recommends; it never silently overrides the policy's composition.
+
+**Named recommended-alt archetype — `source-mirror` (faithful source mirror / raw-records).** When the surface's job is to **mirror a raw source verbatim** — a `raw-records` surface the project design-policy declares as a distinct archetype (NOT the worklist, NOT a derived/analytical view): render the source rows at fidelity for scan/trace/audit, privileging source faithfulness over interaction. Signals: policy §3 declares a `raw-records` archetype for it; the operator's job is "see exactly what the source said" (an ingested report, a raw feed); identifiers (ASIN, order-id) appear because they are IN the source, not because the surface navigates to them. This is `composition: source-mirror`, always `composition_provenance: recommended-alt` (a mirror is not the operational `worklist` default), and it **sets `{suppress_expand_in_context} = true`** (read by §3a/§5f). Like every `recommended-alt`, surface it for veto (one line: "this is a raw-records archetype per policy §3 — recommend `source-mirror` (faithful source table, no §13 expand-in-context); use it?").
+
+**Faithful-mirror §13 guard — `source-mirror` suppresses expand-in-context.** A `source-mirror` surface shows canonical identifiers as **verbatim scan/trace anchors, NOT §13 expand-in-context lookups**. So when `composition: source-mirror`: (a) the `{linked_records_inventory}` derived in §3a does NOT seed lookup-drawer frames — the identifiers render as plain source columns, not navigable relations (the surface is §13-exempt, treated like a leaf for frame purposes); (b) `{spawned_surfaces}` (§5f) collapses to the **primary mirror frame only** — no detail drawer, no per-identifier lookup drawers. This is the guard that stops §3a/§5f/§7 over-producing the drawer frames a faithful mirror must not have. (The `raw-records` proving run found this exact over-production; `brief-revision-policy.md` §2 registers the `source-mirror` key + suppression.)
+
+**Named recommended-alt archetype — `operational-cockpit` (decision-first triage + workspace).** When an `operational` surface is a **triage queue feeding a single-item decision workspace** — questions 1–3 all point the same way (work is *dispensed / pull-based* rather than scan-to-select; the per-item cost is a *decision on one item* that needs width; the loop is *one item at a time*) — the fit is the operational cockpit the project design-policy declares as its decision-first sub-pattern (**§6 "Operational cockpit"**), NOT the table-first `worklist` default. This is `composition: operational-cockpit`, always `composition_provenance: recommended-alt` (a cockpit is not the `worklist` default). It carries the cockpit doctrine the **`operational-cockpit` skill** defines — the single canonical source of truth for this archetype (M1–M6 mandatory floor: classify-first · queue+workspace co-present · per-item momentum · keyboard-first · consequence-visibility before an irreversible commit · no working blind; plus H1–H5 heuristics). §4a renders that **skill reference**, NOT a restated checklist — the two IA rules the older inline checklist carried (truthful labels; waiting ≠ actionable) are carried directly by the skill (they are not in the family overlay or project residue), so nothing is lost. Like every `recommended-alt`, surface it for veto (one line: "this operational surface is a decide-one triage + workspace, not a scan-many worklist — recommend the `operational-cockpit` composition per policy §6; use it?"). **Unlike `source-mirror`, a cockpit does NOT suppress §13** — it still drills into a detail workspace and spawns lookup drawers, so §3a/§5f produce frames normally. (`brief-revision-policy.md` §2 registers the `operational-cockpit` key.)
+
+**`composition_provenance` does NOT change `{page_mode}`.** A pull-based mapping/resolution queue is still `operational` — it processes records — but its *composition* may be a single-item decision surface, not a worklist table. The two axes are orthogonal: `{page_mode}` = what kind of work; `{composition_provenance}` = whether the mode's default composition is the right shape for it. Keep `{page_mode}` honest (the work type) and let `{composition_provenance}` carry the composition deviation.
+
+**Capture the reasoning.** Set `{composition_rationale}` to the three answers + the named alt composition + (for `recommended-alt`) the veto outcome (`accepted | declined | pending`), so step-03 §4a renders the override with its justification and the deviation stays auditable. If the three questions genuinely don't resolve, do not silently default — ask the user the one composition question above.
+
+This check applies to every mode but bites differently per mode. `operational` is where the table-first default is most over-applied — questions 1 and 3 decide it. `detail` is `policy-default` for data-entry and passive-review surfaces, but `recommended-alt` when the verb is verification-against-a-source (question 4) — the source must be co-present, which the record-view default does not provide. This is the detail-mode analogue of the operational table-vs-resolve miss, and just as easy to wave through, because the bare record view *feels* like correctly following the system. `analytical` is usually chart-led, but a surface whose real job is a single ranked decision can still warrant `recommended-alt`.
+
+### 5b. Decide Whether an Analytics Band Belongs
+
+**Injected-placement short-circuit (consumability contract).** If `{injected_placement}` is set (passed via `--placement` or by `analytics-placement-triage`), the band decision for this surface was already made upstream by *this same §5b brain* applied at the placement-triage gate. Honor it: `band` / `tab` / `sibling-page` → a band belongs (`{band_provenance}` = `inherited` if the page already shows an analytics surface, else `recommended-new`); `remove-band` → `{band_provenance}` = `recommended-drop`. Stamp the provenance note `injected-by-triage`, verify only that it does not *flatly contradict* the data (if it does, surface the conflict — do not silently override the upstream call), and SKIP the three-question re-derivation below. When `{injected_placement}` is empty (the default), ignore this short-circuit and derive normally.
+
+This is a **design judgment about the data and the user's job — not a detection of what the legacy page renders.** `design-handoff` exists to start the designer from a blank canvas; inheriting band presence/absence from the current layout is the one place that mandate matters most. A bare legacy table sitting on time-series, multi-segment data where the user's real job is "spot which one slipped" *should* get a band even though the current page has none.
+
+So do NOT decide by inspecting the current render. Decide by answering three questions about the feature itself:
+
+1. **Aggregate dimension** — does the data carry a dimension the rows don't expose (time, segment, category, stage, completeness)?
+2. **Pattern job** — is part of the user's job pattern / comparison / anomaly / coverage work, rather than pure row-by-row processing?
+3. **Changes next action** — would seeing an aggregate layer change what the user does next (which rows they open, which exception they chase)?
+
+If the **pattern job** answer is yes, a band belongs — regardless of whether the legacy page had one.
+
+Set `{band_provenance}` to record *why* the band exists (or doesn't), keeping the blank-canvas reasoning auditable:
+
+- **`inherited`** — the legacy page already had an analytics surface AND the data + job still justify it.
+- **`recommended-new`** — the legacy page had no band, but the three questions justify one. This is a **net-new scope recommendation**: surface it explicitly to the user for veto before it lands in the brief (one line — "this feature has no analytics surface today; the data + job warrant one of shape X — include it?"). Handoff recommends; it never silently invents scope.
+- **`recommended-drop`** — the legacy page has a band, but the job is pure row-processing and the band is ornamental. Recommend removing it (also veto-surfaced).
+- **`none`** — no analytics surface justified. Pure data-entry forms, single-record detail views, settings pages, list-only pages with no aggregate dimension. Section 4b is omitted entirely from the brief.
+
+`{has_analytics_band}` = `true` iff `{band_provenance}` ∈ {`inherited`, `recommended-new`}. When `true`, section 4b (Analytics Structure) MUST be filled in step 3. When `false` (`none` or `recommended-drop`), section 4b is omitted.
+
+`{page_mode}` = "analytical" forces `{has_analytics_band}` = `true` (an analytical page is analytics-led by definition); set `{band_provenance}` to `inherited` or `recommended-new` accordingly.
+
+If the three questions genuinely don't resolve, do not default to a band *or* to none silently — ask the user the one band question above. A guessed band is worse than an asked one.
+
+**Capture the reasoning.** When `{has_analytics_band}` is `true`, set `{band_decision_log}` to the three questions answered for THIS feature — each a one-liner of `yes/no + the specific dimension / job / next-action`, exactly as they'll appear in step-03b §2. If `{band_provenance}` is `recommended-new` or `recommended-drop`, also record the veto outcome (`accepted | declined | pending`) so the rationale can state that the scope recommendation was surfaced, not silently injected.
+
+### 5c. Select the Analytics Archetype
+
+Skip this section entirely if `{has_analytics_band}` is `false` — `{analytics_archetype}` and all the capture fields below stay empty.
+
+**Injected-archetype short-circuit (consumability contract).** If `{injected_archetype}` is set (passed via `--archetype` or by `analytics-placement-triage`, which already selected the shape at the placement-triage gate using *this same* `analytics-surface-architect` skill), do not re-select: set `{analytics_archetype}` = `{injected_archetype}` with provenance `injected-by-triage` and SKIP the `select` invocation below. **Sanity-gate it first (mirroring §5b):** confirm it is one of the nine archetypes and not *flatly* contradicted by the data (e.g. `trend` on data with no time dimension); if it flatly contradicts, surface the conflict rather than silently honoring it. The archetype was already chosen by this same skill upstream, so honor that choice rather than re-deriving it — this threads provenance and avoids the redundant re-derivation. If a rationale artifact is being written (step-03b), populate its supporting fields (candidates / drill-map / prohibited) by invoking the skill in **`explain`** mode around the fixed archetype, OR carry them from the upstream placement-decision artifact — never re-run `select` (that would re-open the choice the gate already made). When `{injected_archetype}` is empty (the default), ignore this short-circuit and select normally below.
+
+When `{has_analytics_band}` is `true`, the archetype selection is delegated to the **`analytics-surface-architect` skill** — the single brain for this decision, so handoff, design-review-pr, and any human all reason the same way instead of re-deriving it. Do not hand-reason the archetype inline when the skill is available.
+
+**Multiple analytics surfaces on one page.** A page can carry more than one distinct analytics surface — e.g. a product view with price-over-time, sales-rank, and competitor-share, which are three surfaces, not one band. When it does, run this selection **once per surface** (each gets its own captured archetype), and **§5e** then ranks them into hero / supporting / drill. For the common single-surface page, run it once exactly as written below.
+
+**Invoke the skill (mode: `select`).** Load `analytics-surface-architect` via the Skill tool and pass it:
+- the **data shape** (`{data_shape}` — the domain entities and their dimensions from §3),
+- the **user's question** in their words (from `{feature_purpose}` / `{user_context}` — the single thing the band must answer),
+- the **page mode** (`{page_mode}`).
+
+The skill runs its selection procedure (start from the question, ground-or-flag, weigh candidates incl. an explicit ruling on `trend` when time is in the data, pick one dominant + at most one subordinate, map every element to a drill target) and returns its **decision object**. Capture it field-for-field — the names already match what step-03b and §4b consume:
+
+| Skill output field | Capture into | Consumed by |
+|---|---|---|
+| `archetype` | `{analytics_archetype}` (one of the nine, or `unclear`) | frontmatter, §4b, rationale |
+| `candidates` | `{archetype_candidates}` (chosen / secondary / rejected + why) | rationale §3 table |
+| `winner_reason` | `{archetype_winner_reason}` | rationale §3 |
+| `secondary` | `{archetype_secondary}` (or `none`) | rationale §3 |
+| `time_present_check` | `{time_present_check}` (set iff time in data) | rationale §3 |
+| `drill_map` | `{archetype_drill_map}` | §4b C, rationale §3 evidence |
+| `prohibited` | `{archetype_prohibited}` | §4b E, rationale §4 |
+
+**Ground-or-flag is preserved through the skill:** if it returns `archetype: unclear` (it could not name BOTH a data dimension and a user question), do NOT default to `trend` — ask the user the one resolving question the skill surfaced, then re-invoke. A guessed archetype is worse than an asked one.
+
+**Fallback (skill not available).** If the `analytics-surface-architect` skill is not present in this project (e.g. an older sync), apply `shared/analytics-archetypes.md`'s selection rule directly — identical logic — and populate the same capture fields by hand: name the dominant archetype from the nine; ground-or-flag (data dimension AND user question, else `unclear` → ask); record the candidates weighed with the most-tempting rejected alternative (for time-bearing data, almost always `trend`); the winner reason; the secondary or `none`; and the time-in-data check. The skill is the preferred path because it makes the road-not-taken and the drill map mandatory outputs rather than easily-skipped prose, but handoff must not hard-fail when it is absent.
+
+Either path populates the same state, so step-03b renders identically. `{analytics_archetype}` empty ⇒ no band.
+
+### 5c-2. Specify the Analytics Rigor — depth, not shape
+
+§5c picked the *shape* of the analytics band; this picks the *depth* of **every decision-bearing figure on the surface** — and depth is **not** confined to the band. A correctly-shaped band can still be schoolboy-grade (every figure a naked point estimate, nothing compared to a baseline, no connective read — *correct and useless*), and so can a **bandless decision surface**: a `detail` buy/verdict page whose hero shows `ROI 42%`, `+£840 est. net profit`, `Headroom 18%` is exactly the case — those are decision numbers in the §4a record/hero, not in any §4b band, and they are the worst schoolboy offenders.
+
+**Gate — `{has_decision_numbers}` (broader than `{has_analytics_band}`).** Set `{has_decision_numbers}` = `true` iff the surface presents one or more figures the user **acts on** — a verdict, recommendation, score, ROI / margin / profit, KPI, or any number that drives the next decision. Concretely:
+- `{has_analytics_band}` is `true` → `true` (a band is decision context).
+- `{page_mode}` ∈ {`detail`, `analytical`} AND the record/hero/verdict cluster presents figures the user acts on → `true` (this is the lead-detail case the band gate misses).
+- A single-item **decision composition** (§5a `recommended-alt`) whose surface is one ranked/scored decision → `true`.
+- Pure **data-entry**, **passive-review**, or list-only CRUD with no figure the user acts on → `false`. Rigor does not apply; leave all `{rigor_*}` empty and skip the rest of this section.
+
+**Per surface.** When the page carries multiple analytics/decision surfaces (the §5e gate fired), run this **once per surface**, exactly as §5c does — each surface gets its own rigor spec. For the common single-surface page, run it once.
+
+> **STATUS FIRST — `analytics-rigor` is NOT AUTHORED in any resolution root today** (global /
+> workspace / project), so on every current run the **fallback below is the expected path** and
+> `rigor_source: inline-fallback` is the NORMAL outcome, not a failure or a degradation to explain
+> away. Do not spend a turn hunting for the skill, and do not claim `rigor_source: skill` because the
+> instruction below says to load it. Authoring it is a design-lane decision, not a maintenance fix
+> (`FG-2026-07-20-04`). This status line lives HERE, at the instruction, because
+> `analytics-archetypes.md` has carried the same warning since 2026-07-20 while this step — the one
+> that actually tells a session to load it — did not: two fork docs disagreeing, with the
+> instruction-giving one uninformed.
+
+**Invoke the skill (mode: `spec`).** Load `analytics-rigor` via the Skill tool and pass it:
+- the **surface's decision-bearing figures**, wherever they sit (the §4b band's values AND the §4a record/hero/verdict numbers — not just the band),
+- the **decision the surface serves**, in the user's words (from `{feature_purpose}` / `{user_context}`),
+- the **§5c archetype** if a band exists (the shape it must deepen; omit for a bandless decision surface).
+
+The skill runs its procedure (state the decision; list the decision-bearing numbers; run the eight rigor moves; name the deciding field per series; find the connective read; separate fixes from data gaps; cut ornament) and returns its **rigor decision object**. Capture it field-for-field:
+
+| Skill output field | Capture into | Consumed by |
+|---|---|---|
+| `read_sentence` | `{rigor_read_sentence}` (or `none`) | brief §4d, rationale §3b |
+| `decision_numbers` (metric · uncertainty · base_rate) | `{rigor_decision_numbers}` | brief §4d (the design contract `C-RIGOR-01` checks) |
+| `deciding_field_check` | `{rigor_deciding_fields}` | brief §4d, `C-RIGOR-01` |
+| `data_gaps` | `{rigor_data_gaps}` | brief §4d — surfaced as enrichment requirements |
+| `verdict` | `{rigor_verdict}` (analyst-grade / schoolboy / mixed) | brief §4d, rationale §3b |
+
+The rigor spec lands in the **brief §4d** (a surface-level section — it covers decision numbers whether they sit in the band or the record/hero), so it reaches the designer and `C-RIGOR-01` even when there is no band. The rationale §3b additionally records the *reasoning* when a rationale exists (i.e. when `{has_analytics_band}`), parallel to how §3 records the archetype reasoning while the brief carries the conclusion.
+
+**Honesty gate (mirrors §5c's ground-or-flag).** If a required uncertainty or base rate is not computable from the available data, the skill returns it as a `data_gap`, NOT a fabricated figure. Carry the gap into the brief as a data requirement — never instruct the designer to draw a confidence interval the data can't support. **False precision is worse than an honest bare number**; a decorative error bar lies. This is the same honesty posture as the no-silent-fallbacks rule.
+
+**Fallback (skill not available).** Apply the eight rigor moves by hand — lead with the read; no naked decision number; sensitivity to drivers; base rate; deciding field; trend magnitude + dispersion; rank by impact; missing-vs-weak — and populate the same fields. The skill is preferred because it makes the read sentence and per-number uncertainty mandatory outputs rather than skippable prose.
+
+**PROVENANCE IS MANDATORY ON BOTH PATHS — set `{rigor_source}`.** The two paths above produce an *identical-looking* §4d, and every downstream consumer (`step-01c`, brief §4d, `design-review-pr` step-01 §7 → `{brief_rigor_map}`) treats a populated §4d as evidence the pass ran. Left undeclared, the fallback does not merely under-enforce — **it manufactures the evidence that the enforcement succeeded**, and `C-RIGOR-01` (which checks the *rendered surface against §4d*, taking §4d as ground truth) is then structurally incapable of catching it. The perverse result: the only §4d the gate can fail is an honest one, because an author who declares `data_gaps` and a `mixed` verdict hands the reviewer things to flag while a hand-waved block reads clean. So:
+
+- `{rigor_source}` = **`skill`** — the `analytics-rigor` skill was actually invoked this run. Record its version if it reports one.
+- `{rigor_source}` = **`inline-fallback`** — this fallback produced §4d. **Record the reason** (skill absent / older sync / invocation failed). This is a legitimate, sanctioned path — it is not a failure, and it must not be hidden.
+- `{rigor_source}` = **`not-applicable`** — `{has_decision_numbers}` is `false`; there is no §4d.
+
+Step-03 renders this as a **required** `rigor_source:` line inside brief §4d. A §4d with no `rigor_source` is malformed — the deterministic tier-6 gate (`.githooks/check-design-brief-completeness.sh`) warns on it at commit time, outside this workflow, whether or not `design-handoff` ran.
+
+**Honest ceiling — do not overclaim this.** `{rigor_source}` is **self-reported**: it makes the fallback path *visible*, it does not make a `skill` claim *true*. Only the tier-7 acknowledgment marker (a `PostToolUse` on `Skill` recording the invocation, cross-checked by the commit gate) turns "the skill ran" into proof — and even that proves *invocation*, never *quality*. Rigor itself (is the base rate apt, is the deciding field the real one) is irreducibly PROBABILISTIC and no gate will ever decide it.
+
+Set `{has_decision_numbers}`, `{rigor_source}`, and the `{rigor_*}` fields (all empty when `{has_decision_numbers}` is `false`, except `{rigor_source}` = `not-applicable`).
+
+### 5c-3. Decision analysis — the executive layer (capital-commitment surfaces only)
+
+Skip unless the surface is a **capital decision** — its primary job is to commit a scarce resource (capital, inventory slots, time) under uncertainty with a real downside (a buy / reorder / sizing / go-no-go-with-stake). This is **narrower than §5c-2**: a coverage strip, a trend dashboard, or a status worklist carries decision *numbers* but commits nothing — it stops at rigor. Set `{is_capital_decision}` accordingly; when `false`, leave all `{decision_*}` empty and skip the rest of this section.
+
+§5c-2 made the figures honest (senior-analyst grade); this models and sizes the *decision* (executive / quant-desk grade). A surface can pass rigor — honest ranges, named gaps — and still leave the operator to decide how much to bet and whether the downside is survivable. Closing that is a distinct discipline.
+
+> **STATUS FIRST — `decision-analysis` is NOT AUTHORED in any resolution root today**, exactly like
+> its `analytics-rigor` sibling above. The fallback is the expected path and
+> `decision_source: inline-fallback` is the NORMAL outcome. Same reasoning, same lane: authoring it is
+> a design decision (`FG-2026-07-20-04` names §5c-2 and §5c-3 as the *same* defect side by side).
+
+**Invoke the skill (mode: `spec`).** Load `decision-analysis` via the Skill tool and pass it:
+- the **commitment the surface serves** — action · stake (capital at risk) · horizon · downside,
+- the **rigor figures** from §5c-2 (the honest inputs it builds the decision on),
+- the **data sources** for the uncertain inputs (live data, an owned-history reference class, or absent).
+
+The skill runs its procedure (frame the bet; model the outcome distribution; size to the loss tail; find the breakeven driver; compute the reference class; weight the decision-relevant regime; state the value-of-information gap; decide under asymmetry) and returns its **decision object**. Capture it field-for-field:
+
+| Skill output field | Capture into | Consumed by |
+|---|---|---|
+| `frame` (action · stake · horizon · payoff) | `{decision_frame}` | brief §4e, rationale §3c |
+| `outcome` (method · P(success) · EV · P10 · P90) | `{decision_outcome}` | brief §4e (the design contract `C-DECISION-01` checks) |
+| `sizing` (quantity · basis · downside_survived) | `{decision_sizing}` | brief §4e, `C-DECISION-01` |
+| `sensitivity` (swing driver · breakeven threshold) | `{decision_sensitivity}` | brief §4e, `C-DECISION-01` |
+| `reference_class` / `regime` / `value_of_info` / `asymmetry` | `{decision_context}` | brief §4e, rationale §3c |
+| `gaps` | `{decision_gaps}` | brief §4e — surfaced as enrichment requirements |
+| `verdict` | `{decision_verdict}` (decision-grade / risk-modelled / single-scenario) | brief §4e, rationale §3c |
+
+**Model-honesty gate (paramount — outranks the rest).** If the key probabilistic input is missing AND no reference class is computable, the skill returns `verdict: single-scenario` with the VOI gap — NOT a fabricated outcome distribution. Carry that honestly into the brief: an honest single-scenario read plus the named gap, never a confident P(success) off an invented win-rate. A fake distribution is worse than an honest point estimate. Same honesty posture as §5c-2 and the no-silent-fallbacks rule.
+
+**Per surface.** On a page with more than one capital decision, run once per decision surface.
+
+**Fallback (skill not available).** Apply the eight decision moves by hand — frame the bet; model the outcome distribution; size to the loss tail; breakeven driver; compute the reference class; weight the regime; value of information; asymmetry — and populate the same fields.
+
+**PROVENANCE IS MANDATORY ON BOTH PATHS — set `{decision_source}`.** Identical contract to §5c-2's `{rigor_source}`, and the stakes are higher here: §4e carries a modelled outcome distribution and a position size, so a hand-rolled block that reads confident is a *sizing* recommendation with no model behind it. `C-DECISION-01` checks the rendered surface against §4e and takes §4e as ground truth, so it cannot catch a fabricated model either.
+
+- `{decision_source}` = **`skill`** — the `decision-analysis` skill was actually invoked this run.
+- `{decision_source}` = **`inline-fallback`** — this fallback produced §4e. **Record the reason.** Sanctioned, but never hidden.
+- `{decision_source}` = **`not-applicable`** — `{is_capital_decision}` is `false`; there is no §4e.
+
+Step-03 renders this as a **required** `decision_source:` line inside brief §4e; the same tier-6 commit gate warns when §4e exists without it. The §5c-3 **model-honesty gate still outranks this**: an un-modellable decision is an honest `single-scenario` verdict plus a named VOI gap, never a fabricated distribution — and `decision_source: inline-fallback` does not license inventing one.
+
+Set `{is_capital_decision}`, `{decision_source}`, and the `{decision_*}` fields (all empty when `{is_capital_decision}` is `false`, except `{decision_source}` = `not-applicable`).
+
+
+---
+
+Then load and follow: `{project-root}/_bmad/bmm/workflows/design/design-handoff/steps/step-01c-topology.md`

@@ -1,0 +1,357 @@
+---
+name: 'step-04-synthesize'
+description: 'Invoke sister skills, generate bundle/<screen>.html and bundle/tokens.css per screen with explicit visual values, enforce the 5-token proposal cap (Gate 3).'
+---
+
+# Step 4: Synthesize
+
+**Goal:** Produce the actual design artifact. For each screen in `{screens}`, emit `bundle/<screen>.html` + a shared `bundle/tokens.css` such that `design-implement` can extract every visual value at parse time without interpretation.
+
+**Gate owned:** Gate 3 — token cap (workflow.md §APPROVAL GATES). Halt before emitting if synthesis would require more than 5 tokens that don't already exist in `{project_tokens}`.
+
+**Loop target:** This step is the target of step 6's self-critique loop. On the 2nd or 3rd entry, the synthesizer receives a `{correction_note}` from step 6 — apply the correction precisely; do not rewrite unrelated regions.
+
+---
+
+## RULES
+
+- **The bundle is the design.** Do not produce a parallel markdown summary. The brief already exists upstream.
+- **Every visual value is explicit at parse time.** Visual values — color, spacing, type size/weight, sizing, radius, shadow, borders — must appear as inline `style="…"` attributes or `var(--*)` references defined in `bundle/tokens.css`. **Config-dependent Tailwind utility classes are forbidden** — any class whose computed value comes from `tailwind.config.js` (e.g., `text-primary`, `rounded-lg`, `p-4`, `bg-status-warning`). Structural utility classes whose meaning is universal (`flex`, `grid`, `hidden`, `sr-only`, `block`, `relative`, `absolute`, `inset-0`) are fine — they encode layout topology, not values.
+- **Token reuse first, propose second.** When you need a value, check `{project_tokens}` for a matching token. Only if no project token matches the brief's intent do you propose a new one. Each proposal counts against the 5-cap.
+- **No lorem ipsum.** Realistic content comes from `{data_shape}`. If the brief says the table shows invoices with VAT rates, populate rows with realistic invoice numbers, supplier names, GBP amounts at plausible VAT rates. Empty states, error states, loading states — render them with realistic copy too.
+- **The HTML is canonical; framework files are scaffolds.** Emit `<screen>.html` first, every time. The framework file (e.g., `<screen>.svelte`) is an OPTIONAL convenience for the implementer; if you emit it, it must match the HTML's visual decisions exactly. `design-implement` reads the HTML.
+- **Station ≠ dashboard — a non-default `composition` overrides the page-mode default.** When the brief's `composition` is a non-default key (a `recommended-alt` such as `scanner-terminal` / `single-item-stream` / `source-co-present` — `brief-revision-policy.md` §2 Block B), that named job-fit composition WINS over the `{page_mode}` default skill routing in §2 below: prioritize **job-loop clarity and density** (e.g. scan → feedback → tally → close) over hero / landing aesthetics and decorative whitespace. And treat the brief's `frames` list as the **checklist to satisfy before compressing layout** — draw every frame first, then arrange; never collapse the surface to a single centered card in dead space. (Two biases, deliberately — not a wall of MUSTs — to make the receive-station "centered hero card" default less likely at the source.)
+- **Refine-screen: respect the scope.** In `refine-screen` mode, regions declared in `{unchanged_regions}` must match `{prior_impl_content}` byte-for-byte (modulo token substitution). Touching them is a step-6c failure.
+- **Existing UI is not a visual baseline.** When the brief references current implementation files for context (its "Implementation Files" section, references to current pages by route), treat the reference as **IA-only by default** — use it for routes, fields, data binding, and the sequence of user actions, but DO NOT inherit visual treatments (type scale, density, column composition, spacing, chip styling, table framing, filter pills, action button treatment). Re-derive every presentational decision from the brief's visual direction, the policy, and `{exemplars}`. A surface earns visual-baseline status only when its current rendering traces back to a documented `design-handoff → design-synthesize → design-implement` (or `design-review`-approved) chain — surfaces from `quick-dev` / `quick-spec` / unreviewed paths are low-design-provenance and do not. See workflow.md Critical Rules → "IA vs visual trust" and §3 "Provenance check during planning" below.
+- YOU MUST ALWAYS SPEAK OUTPUT in your agent communication style with the config `{communication_language}`.
+
+---
+
+## EXECUTION SEQUENCE
+
+### 1. Resolve the bundle directory
+
+```
+{bundle_dir} = {implementation_artifacts}/bundles/{target_slug}-{date}/
+```
+
+Where `{date}` is `YYYY-MM-DD` from the system clock. Create the directory if it doesn't exist:
+
+```bash
+mkdir -p {bundle_dir}
+```
+
+If a `{target_slug}-{date}` bundle already exists from an earlier run today, append a run suffix (`-r2`, `-r3`, …). Do NOT overwrite a prior bundle — each run is a separate artifact for audit.
+
+### 2. Invoke sister skills (first iteration only) — driven by `{page_mode}`
+
+Per workflow.md §SKILL ROUTING, skill routing is **driven by `{page_mode}`**, not by free-text screen-type inference. This makes routing deterministic. Skill invocation is cached across self-critique iterations — load once per run.
+
+**Always invoke in every run (every page_mode, both synthesis modes):**
+
+- `design-policy-canonical` — the policy is the floor; the skill enforces the trust hierarchy and refuses anti-default compositions.
+- **`{frontend_skill}`** (resolved in step 3 §8 — MANDATORY). Synthesis emits HTML and tokens; layout, hierarchy, typography, and visual patterns MUST be chosen by a skill with frontend/design competence — not by policy or domain skills alone. Per the role split in workflow.md §SKILL ROUTING → "Role of each skill", this skill owns taste (hierarchy, rhythm, density calibration, aesthetic restraint) — without it, synthesis produces a policy-compliant wireframe rather than a designed screen. Gate 5a in step 3 already halted the workflow if this skill couldn't be resolved.
+
+**Actual invocation — not paraphrasing (workflow.md Critical Rules → "Synthesis honesty"):**
+
+For EACH skill named above (and each conditional skill below), invocation means calling the `Skill` tool with that skill's name AND receiving its content into context. Do NOT add a skill to `{skills_invoked}` unless you actually invoked it:
+
+- **Skill loads successfully** → append to `{skills_invoked}` and proceed.
+- **Skill is not in the runtime's available-skills list AND the cwd is a worktree** → before recording it unloaded, check the MAIN checkout: a project skill synced into `.claude/skills/` but never committed is invisible to `git worktree add` (tracked sisters carry over, the untracked one doesn't — the documented `operational-finance-ui` worktree-visibility failure, fork-gaps 2026-06-29). Probe and, if present, READ the skill file directly:
+
+  ```bash
+  main_root="$(dirname "$(git rev-parse --git-common-dir)")"
+  ls "$main_root/.claude/skills/{skill_name}/SKILL.md"
+  ```
+
+  If the file exists, Read it (and any files it directs you to load) so its content is genuinely in context, then append to `{skills_invoked}` with `loader: main_checkout_read`. This is REAL grounding, not paraphrasing — the same content the Skill tool would have delivered was loaded; only the loader differs. It does NOT trip the honesty rule below, which forbids operating from a summary, not from the skill itself.
+- **Skill is absent in BOTH the runtime list and the main checkout** OR the Skill tool call fails OR you chose to skip it → append to `{skills_unloaded}` with `{name, reason}` and proceed. The bundle's `compliance_state` becomes `under_grounded` in step 6.
+- **You operated "in the spirit of" the skill without loading it** (read this workflow's prose summary of the skill's rules, applied your own taste, etc.) → that is NOT invocation. Record in `{skills_unloaded}` with `reason: tool_call_skipped`.
+
+The downstream `under_grounded` label exists so the synthesizer doesn't need to lie about skill loading to ship a bundle. A `pass` bundle whose `skills_invoked` falsely lists an un-loaded skill is worse than an `under_grounded` bundle whose `skills_unloaded` is honest about what happened — the former leaks visually un-grounded work into `design-implement`; the latter routes it to human review.
+
+**Consult `{exemplars}` (loaded in step 3 §9) BEFORE composing each screen.** Read 1–2 exemplars whose page-mode and surface-family best match the screen being synthesized. Anchor hierarchy, density, top-band summary patterns, table framing, and state presentation to the exemplars unless the brief explicitly authorizes a departure. Step 6 (f) will flag unauthorized deviation as `exemplar_failed`.
+
+**Drive by `{page_mode}`:**
+
+| `{page_mode}` | Mandatory in addition to always-invoke | Conditional |
+|---|---|---|
+| `operational` | `operational-finance-ui` — table-first composition, filter bar, status hierarchy, dense row treatment per policy §6 | `operational-analytics-band` if the screen carries a narrow analytics band above or beside the table |
+| `analytical` | `operational-analytics-band` — chart-led composition, drill-down evidence, no card-grid openers per policy §6 | `operational-finance-ui` if drill-down tables are part of the brief |
+| `detail` | `operational-finance-ui` — drawer/detail extends an operational list; same surface, typography, badges per policy §7 | `operational-analytics-band` is **NOT applicable** — detail views forbid KPI cards / charts per policy §7 |
+| `n/a` (`surface_class: chrome`) | — none beyond the always-invoke pair — the finance/analytics sisters model PAGES, not app-shell chrome; compose the chrome from the policy's visual system + `{frontend_skill}` taste, against the brief's route inventory / states / breakpoints | — |
+
+**Composition override — `operational-cockpit`.** When the brief carries `composition: operational-cockpit` (a decide-one triage + single-item decision workspace, design-handoff §5a), **additionally invoke the `operational-cockpit` skill** — the canonical doctrine for the decide-one archetype (M1–M6 floor + H1–H5) — alongside `operational-finance-ui`. It governs the queue↔workspace composition and the interaction spine (momentum, keyboard, consequence-visibility, no working blind) that the page-mode routing above does not. Record it in `{skills_invoked}`. This is orthogonal to `{page_mode}` (a cockpit is still `operational`).
+
+Record every invocation into `{skills_invoked}` (a list). This list is written to `manifest.skills_invoked` in step 7. A bundle emitted with `{skills_invoked}` missing the mandatory entries for `{page_mode}` (or `operational-cockpit` when `composition: operational-cockpit`) is a routing failure — step 6's enforcement rule rewinds to this step.
+
+**Track policy citations:** as each skill is invoked, record which policy sections it points at into `{policy_sections_cited}` (e.g., `["§1 Visual Direction", "§2 Layout Principles", "§6 Operational mode"]`). This list is written to `manifest.policy_sections_cited` per the exemplar-disclosure rule (`design-policy-canonical` skill §"Exemplars" / policy §10) so a reader of the manifest can trace any composition decision back to the policy line that ratified it.
+
+**Iteration cache:** On 2nd or 3rd entry to this step (from step 6's loop), reuse the cached skill context — do not re-invoke. The skills' guidance does not change mid-run. `{policy_sections_cited}` may grow as later iterations consult additional sections (e.g., §5 Anti-default compositions during a hard-failure correction).
+
+### 3. Plan the bundle structure (before writing files)
+
+For each screen in `{screens}`, plan:
+
+- **Layout topology:** what flex/grid containers, what major regions, what nesting depth. Refer to the project frontend skill's page composition vocabulary. Avoid decorative wrappers — every container should justify its existence (it groups content, it provides spacing, it constrains width).
+- **Components:** which named components appear (e.g., `WorkSurface`, `FilterRow`, `DataTable`, `StatusBadge`). These names go into `{components_emitted}` and the manifest. Component identity is stable across screens — the same `StatusBadge` should look identical wherever it appears.
+- **Data binding:** which fields from `{data_shape}` populate which regions. Realistic content only.
+- **Density:** dense vs comfortable. Driven by `{user_context}` (operator-facing → dense; auditor-facing → comfortable).
+- **State variations:** if the brief asks for empty/loading/error states, plan their treatment. For multi-screen bundles, plan each screen's state variations independently.
+- **Spawned-drawer frames (`render_as: drawer-over-{parent}`, §1 step-01 §7a):** a §7 Surface Inventory frame whose `render_as` is `drawer-over-{parent_frame}` is a §13 expand-in-context drawer, not a standalone page — compose it as the foreign record's **right-side §7 drawer open over its parent frame** (the parent rendered behind a scrim, the drawer anchored right), NOT as a full-bleed page. Its body is exactly the frame's §7 **Must contain** field groups, with every **Figures** number rendered **basis-complete** per `docs/design-policy.md` §15 (VAT + currency basis, GBP frame — never a bare `€60`) and every **Lookups** field shown as a quiet §13 read-through (never a code/type/status stub — the §2a richness floor). The drawer frame's name (e.g. `catalog-lookup`) is the `<screen>.html` basename verbatim, so `design-implement` §2f matches it. A lookup drawer is the surface most prone to shipping thin — drawing it here to its §7 spec is the entire point of the frame being in `{screens}`.
+
+**Refine-screen scope (mode == refine-screen):**
+
+- Mark each planned region as `targeted` (in `{targeted_changes}`) or `unchanged` (in `{unchanged_regions}`).
+- For `unchanged` regions, copy the prior implementation's markup (translated to inline-style HTML if it currently uses Tailwind classes — token substitution is allowed, structural changes are not).
+- For `targeted` regions, apply the brief's correction.
+
+**Provenance check during planning (every mode):**
+
+Before adopting any visual treatment from a referenced implementation file, ask: "did this surface ship through `design-handoff → design-synthesize → design-implement` (or `design-review`-approved)?"
+
+- **Yes (high-provenance)** — its rendering MAY anchor your visual decisions (alongside `{exemplars}`).
+- **No, or unknown (low-provenance)** — treat the reference as IA-only. Use it for routes, fields, data binding, and the sequence of user actions, but do not inherit type scale, density, column composition, spacing, chip styling, table framing, filter pills, or action button treatment. Re-derive those from the brief's visual direction (precedence 1) + the project policy (2) + `{exemplars}` (anchoring rule).
+
+Heuristics for classifying provenance when the brief doesn't say:
+
+- A surface that the brief's §6 / "Reference Pages" / "Visual register to match" lists is high-provenance by definition (the brief author selected it as a visual exemplar).
+- A surface the brief mentions only in §8 "Implementation Files" (technical reference) without separately listing in §6 is presumed **low-provenance** unless the brief explicitly says otherwise.
+- A surface the brief explicitly describes with language like "currently behaves as if…", "the chrome here is wrong", "redesign", "don't reproduce either page's current chrome" is **low-provenance** by the brief author's own framing.
+- A surface produced by `quick-spec` / `quick-dev` (visible in commit history, or in the brief's mention of one-off implementation paths) is **low-provenance**.
+- When in genuine doubt, presume **low**. Re-deriving from policy + exemplars is safer than perpetuating an un-designed treatment as canon.
+
+The provenance verdict is per-surface, not per-bundle. A bundle may legitimately treat one referenced page as a visual anchor (high-provenance exemplar) and another as IA-only (low-provenance context).
+
+Do not write any file yet. Planning happens first so the token budget is known before emission.
+
+### 4. Build the proposed token list (Gate 3 check)
+
+For each visual value in the plan, decide: token (reuse) or literal (inline)?
+
+**Prefer tokens** when the value has semantic meaning the policy or brief names:
+
+- "Status warning amber" → token (`--status-warning`).
+- "Brand primary" → token (`--primary` or `--color-primary`).
+- "Compact row height" → token (`--row-height-compact`).
+- "Surface background" → token (`--surface`, `--bg-card`).
+
+**Prefer literals** when the value is purely structural or one-off:
+
+- A specific pixel offset for a decorative element.
+- An interpolated value that won't recur (a unique mask-image, a one-off shadow combination).
+
+For each token chosen, check `{project_tokens}`:
+
+- **Hit:** the token name + value already exists in the project. Use it directly. Add to `{tokens_used}` with `source: "project"`. No cap impact.
+- **Miss:** the token name doesn't exist, OR the name exists but with a different value. **This is a proposal.** Add to `{tokens_used}` with `source: "proposed"` and to `{tokens_proposed}` with a `justification` tying back to the brief section that motivated it.
+
+**Gate 3 enforcement:**
+
+```
+if len({tokens_proposed}) > 5:
+    halt with:
+      "Gate 3 (token cap): this bundle would introduce N>5 new tokens.
+       Proposed tokens:
+         {list each with --name → value and justification}
+       Options:
+         (a) Extend docs/design-policy.md to ratify the new tokens — run modify-design-policy.
+         (b) Revise the brief to reuse existing project tokens — list of available tokens at {project_token_paths}.
+         (c) Inline more values as literals instead of var(--*) references.
+       Do not bypass this gate."
+```
+
+The 5-cap is a deliberate forcing function — silently expanding the design system is exactly the failure mode this cap exists to prevent. Halting here is correct.
+
+### 5. Emit `bundle/tokens.css`
+
+Write the shared tokens file. Structure:
+
+```css
+/* tokens.css — design-synthesize bundle for {target_slug}
+ * synthesized: {iso8601}
+ * policy version: {policy_version_hash[:12]}
+ * brief: {repo-relative brief path}
+ */
+
+:root {
+  /* Project tokens (source: {project_token_paths}) */
+  --status-warning: #f59e0b;       /* src/app.css:142 */
+  --status-success: #10b981;       /* src/app.css:143 */
+  --row-height-compact: 32px;      /* src/app.css:201 */
+  /* ... every token referenced in any <screen>.html that came from {project_tokens} ... */
+
+  /* Proposed tokens (NOT YET in project; flagged in manifest.tokens.proposed) */
+  --accent-warm: #f97316;          /* PROPOSED — brief §4 visual direction */
+  /* ... up to 5 proposed tokens ... */
+}
+```
+
+Token rules:
+
+- Every `var(--*)` referenced in any `<screen>.html` MUST be defined here. Unresolved references fail step 7's validation pass.
+- Project tokens cite their source file:line as a comment, so the implementer can verify the bundle's value matches the project's.
+- Proposed tokens carry a `/* PROPOSED — {justification} */` comment.
+- Do NOT include tokens that aren't referenced in any HTML. Unused tokens muddy the manifest.
+
+If the project supports dark mode (detected in step 3 by scanning for `[data-theme="dark"]` or `.dark` scopes in `{project_token_paths}`) AND the brief calls for dark-mode awareness, emit a `[data-theme="dark"]` block with the overridden values.
+
+### 6. Emit `bundle/<screen>.html` for each screen
+
+For each screen in `{screens}`:
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{target_slug} — {screen}</title>
+  <link rel="stylesheet" href="tokens.css">
+  <style>
+    /* Reset / normalize — minimal. The bundle is a design artifact, not a production page. */
+    body { margin: 0; font-family: system-ui, -apple-system, sans-serif; background: var(--bg-app, #f9fafb); color: var(--fg, #111827); }
+    *, *::before, *::after { box-sizing: border-box; }
+  </style>
+</head>
+<body>
+  <!-- All visual values below are inline style="..." or var(--*) references.
+       NO config-dependent Tailwind classes. Structural utilities (flex, grid, hidden) are fine. -->
+
+  <!-- CANONICAL-VIEWPORT LABEL — REQUIRED whenever the brief §4g declares one.
+       Emit it as VISIBLE page text, not a comment: a reader of the rendered artifact must be able
+       to see which viewport is the design without opening the manifest or the brief. Omit only on
+       an owner surface whose mobile ambition is still OPEN (no decided posture to declare). -->
+  <p style="font: 12px/1.4 ui-monospace, monospace; color: var(--fg-faint, #6b7280); margin: 0 0 12px;">
+    Canonical viewport: {canonical_viewport} — the interaction model is designed and judged here.
+    Any additive verification render appears below, subordinate; it is a check, not a co-equal design.
+  </p>
+
+  <!-- ARTIFACT COMPOSITION — handheld-first surfaces (brief §4g Handheld-First Declaration present).
+       Contract: shared/operator-artifact-contract.md B1-B6. Three generator rules, non-negotiable:
+       (1) Synthesize the CANONICAL PHONE SURFACE FIRST and structure the whole bundle around it —
+           it is the deliverable; everything else is subordinate to it. Emit it first in the
+           document, largest, alone above the fold.
+       (2) Do NOT emit a symmetric row of phone/tablet/desktop comps. A comp board is the wrong
+           shape here even when the phone is leftmost and correctly labelled — it is the REVIEW
+           BOARD failure shape, and it is what a generator defaults to when composition is left
+           unspecified.
+       (3) Do NOT let variant states become separate mini-products. Emit each state as a degraded
+           state OF the canonical surface — same skeleton, same chrome, same primary-action
+           position, ONE changed region — in a subordinate "States of this surface" strip beneath
+           the canonical render, never beside it and never at equal size.
+       Order of the emitted document: canonical surface -> states strip -> additive viewports ->
+       notes/rationale LAST. Rationale never opens the artifact and never splits the canonical
+       render from its states. Inside the canonical render the primary action + next-step loop
+       outrank every heading and caption (the squint test), and on-surface copy stays operator
+       register — short, imperative; long-form explanation goes to the notes block. -->
+
+  <!-- IN-SURFACE COMPOSITION — table-first surfaces (primary content is a list/table/queue/worklist).
+       Contract: shared/operator-artifact-contract.md B7. Checked at review as C5. This is SEPARATE
+       from the block above: that one arranges the ARTIFACT, this one composes the SURFACE, and a
+       bundle can pass every rule above and still emit a generic app hero. Rule (4), non-negotiable:
+       (4) Emit the canonical render as a COMPRESSED OPERATIONAL STACK — a compact header block,
+           then data, immediately. Specifically:
+           - The header is ONE compact operational block on the worklist's own grid and vertical
+             rhythm; it reads as the TOP OF THE LIST, not a band above it. Never a banner, hero,
+             opener card, or summary card. If the header could be lifted onto an unrelated page
+             unchanged, it is a banner - re-compose it.
+           - The loud count and the primary action MAY dominate, but only INLINE in the worklist
+             header row. Forbidden: a large empty half opposite them, a full-bleed/billboard CTA
+             row of their own, or a distinct background/border/elevation making the header its own
+             card. Exactly ONE element carries display weight - count + action as a single unit.
+           - Secondary counts, caveats, filters and sort controls collapse into the same vertical
+             rhythm at label/body weight. NO CHIP WALL - no wrapping grid of pills, status chips,
+             or metric tiles as an opener band.
+           - At least ONE real data row must be visible at rest, without scrolling, at the
+             canonical viewport. Emit real sample rows, not an empty table shell.
+       "Make the action loud" means loud WITHIN the header, never "give the action its own
+       billboard." A billboard CTA satisfies the squint test by construction - loudness was never
+       the question, shape is. The failure shape is named DASHBOARD OPENER. Omit this block on a
+       single-record cockpit with no list. -->
+
+  <!-- Page shell width follows the CANONICAL viewport, not a habitual 1440.
+       Handheld-first surface => the canonical frame is a phone frame (max-width ~375px); a 1440px
+       shell on a phone-primary brief is the desktop premise re-entering through the wrapper. -->
+  <main style="max-width: 1440px; margin: 0 auto; padding: 24px;">
+    {synthesized content per the plan, with inline styles for every visual decision}
+  </main>
+</body>
+</html>
+```
+
+Visual-value rules (the workflow's central invariants):
+
+- **Inline `style="..."`** for one-off values: `style="padding: 16px; border-radius: 8px; background: #ffffff;"`.
+- **`var(--name)`** for semantic values: `style="background: var(--surface); color: var(--fg-muted);"`.
+- **Structural utility classes** are fine: `class="flex items-center gap-3"`. (Note: `gap-3` resolves to a spacing value in Tailwind, which IS config-dependent. Use `style="gap: 12px"` or `style="gap: var(--spacing-3)"` instead.) Stick to truly structural classes: `flex`, `grid`, `hidden`, `block`, `absolute`, `relative`, `inset-0`.
+- **Stable component identifiers** via `data-component="WorkSurface"` etc. — `design-implement` uses these to map bundle regions to implementation regions.
+- **Region anchors** for refine-screen targeted/unchanged regions: `data-region="header"`, `data-region="filter-row"`. These map to `manifest.targeted_changes` and `manifest.unchanged_regions` entries.
+
+### 7. Emit framework scaffolds (optional)
+
+If `{framework} != "none"`, optionally emit `bundle/<screen>.<ext>` matching the project's component format. The scaffold:
+
+- Translates the HTML into framework syntax (`{#each items}` for Svelte, `{items.map(...)}` for React).
+- Preserves every visual decision from the HTML (same inline styles, same `var(--*)` references).
+- Wires up the data binding using realistic types derived from `{data_shape}`.
+- Is NOT authoritative. If the scaffold and HTML disagree on a visual fact, the HTML wins.
+
+This is optional convenience for the implementer. Skipping it does not break the bundle.
+
+### 8. Take screenshots (deferred to step 5)
+
+Do not invoke Playwright here. Step 5 owns rendering. This step only writes HTML + tokens (and optional scaffolds).
+
+### 9. Record components and tokens used
+
+Populate state for step 7's manifest emission:
+
+- `{components_emitted}` — list of `{name: "WorkSurface", screen: "main", region_span: "main > [data-component='WorkSurface']"}` records.
+- `{tokens_used}` — list of `{name: "--status-warning", source: "project" | "proposed"}` records.
+- `{tokens_proposed}` — subset of `{tokens_used}` with `source == "proposed"`. Already validated against the 5-cap.
+
+### 10. Print the synthesis summary and proceed
+
+```
+✓ Synthesis emitted:
+  bundle:           {bundle_dir}
+  screens:          {comma-separated screen filenames}
+  framework files:  {comma-separated scaffold filenames, or "none"}
+  tokens:           {len(tokens_used)} used ({len(project tokens used)} project, {len(tokens_proposed)} proposed)
+  components:       {comma-separated component names}
+  skills invoked:   {comma-separated skills_invoked}
+  iteration:        {iteration_count + 1}/3
+
+Proceeding to step 5: render screenshots.
+```
+
+Then load `step-05-render-screenshot.md` and follow it.
+
+---
+
+## INTERACTION WITH STEP 6 (self-critique loop)
+
+This step is invoked up to 3 times per run. The second and third invocations carry a `{correction_note}` from step 6 describing the failure:
+
+- **Hard-failure correction:** "Step 6a: bundle/main.html line 47 commits the 'colored pill badge' anti-pattern (policy line 89). Replace with a token-driven status badge."
+- **Positive-allowlist correction:** "Step 6b: status indicators in bundle/main.html use raw color #f59e0b instead of --status-warning (policy line 134)."
+- **Drift correction:** "Step 6c: bundle/list.html region 'footer' diverged from prior implementation (src/routes/.../+page.svelte:412-440) but 'footer' is declared in unchanged_regions. Either eliminate the diff or move 'footer' into targeted_changes."
+
+Apply the correction narrowly. Do NOT rewrite unrelated regions. Re-run the steps in this file from §4 (token budget recheck) → §5 (re-emit tokens.css if tokens changed) → §6 (re-emit the affected HTML file). Then return to step 5.
+
+On the 3rd correction attempt that still fails, step 6 will record the failure mode in `{compliance_state}` and proceed to step 7 with the failed bundle flagged. Step 4 itself never halts the workflow; that's step 6's job.
+
+---
+
+## STATE CHECKPOINT
+
+After this step, the following state variables MUST be populated:
+
+- `{bundle_dir}` (directory exists)
+- `{skills_invoked}` (non-empty)
+- `{tokens_used}` (may be empty if no var(--*) used), `{tokens_proposed}` (length ≤ 5)
+- `{components_emitted}` (non-empty)
+- Files exist: `{bundle_dir}/tokens.css`, `{bundle_dir}/<screen>.html` for every `screen ∈ {screens}`
+
+Any unset required variable or missing file is a workflow bug — halt before step 5.

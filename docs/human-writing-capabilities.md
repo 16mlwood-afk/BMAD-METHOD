@@ -1,0 +1,191 @@
+# Human-Writing Capability Ledger
+
+**Scope:** humanizer / human-writing / plain-English / voice / tone / cold-email capabilities — which are already covered by installed skills, which are redundant to add, and where a genuine gap remains.
+
+**Last updated:** 2026-07-25 · Sessions: claude-session-20260725-174238 (freshness rule added — `Evidence basis` + `Last verified` per row, PROVISIONAL condition for stale/non-measured `Do not install` verdicts, symmetric conflict diagnostic; actions the 2026-07-24 fork-gap) + 2026-07-24 Sessions: claude-session-20260724-195406 (humanizer row re-decided on evidence after a bake-off; provenance register added — see Provenance § and `humanizer-bakeoff-2026-07-24.md`) + claude-session-20260724-195919 (Selection gate § added — the `humanizer-selection` meta-skill now governs every future change to these rows, with the objective explicitly framed as signs-of-LLM-writing removal, not detector evasion)
+
+**Status:** CANONICAL. Treat this as the single source of truth for these 7 capabilities. In any future thread evaluating humanizer/human-writing/voice/tone/email skills, consult this ledger FIRST, reuse its verdicts and default actions **subject to the freshness rule below**, and UPDATE this file if a new decision is made (e.g. a house-owned outreach skill is added).
+
+## Freshness rule — a verdict is only as live as its evidence (added 2026-07-25)
+
+The old staleness condition was *"unless the installed skill set has changed."* **That keys on the wrong variable.** It detects change inside this machine and is structurally blind to change outside it — and a better external tool appearing is precisely the event that should invalidate a *Do not install*. It was an outside human, not this ledger, who surfaced that the canonical humanizer was single-sourced while a 50-source alternative existed. Three rules replace it:
+
+1. **Every row states its `Evidence basis` and `Last verified`.** A verdict decided on trigger-collision (routing overlap) is visibly *not* a quality judgement, and must never be quoted as one.
+2. **A `Do not install` row is PROVISIONAL — not reusable as-is — when any of these hold:** its `Last verified` is unrecorded; it is older than **90 days**; its basis is anything other than a measured comparison; or **named external evidence has been put to you** (a specific skill, repo, or paper). In every one of those cases run the outward pass (`humanizer-selection`, or at minimum a web + GitHub search) BEFORE reusing the verdict, then update the row. Reporting a provisional row as settled is the failure this rule exists to stop.
+3. **The conflict diagnostic is SYMMETRIC.** It must fire just as loudly when a session is about to *re-affirm* a suppression as when a session proposes contradicting one. "The ledger says Redundant / Do not install" is a conclusion that needs its basis checked, not a shortcut past checking. A stale suppression re-affirmed silently is the same error as a canonical verdict overridden silently — only quieter, and therefore more likely.
+
+This resolves the doctrine tension the 2026-07-24 fork-gap named: the Ledger Gate said *reuse the stored verdict* while `skill-provenance-and-external-discovery` said *discovery goes outward, never inward-only*. Under the rule above the two agree — a fresh, measured row is reusable; a stale or non-quality row sends you outward, which is what the discovery doctrine wanted all along.
+
+---
+
+## Selection gate — how these rows get decided (added 2026-07-24)
+
+**Never install, swap, re-route, or retire a humanizer without running the `humanizer-selection` skill** (`~/.claude/skills/humanizer-selection/SKILL.md`). This ledger records *what* was decided; that skill is *how* it gets decided, so the two are read together. It runs a fixed pipeline — frame the objective, outward discovery (web + GitHub, never installed-only), candidate screen, golden-gate evaluation on real Mason emails, an explicit ADOPT / ADAPT / BUILD call, then the ledger and provenance record you are reading. Its citation list is `~/.claude/skills/humanizer-selection/references.md`.
+
+**The objective these rows are scored against — stated once, because getting it wrong is the standing trap.** We are removing **signs of LLM writing** so text reads as Mason. We are **not** beating AI detectors. Detector-evasion research is the better-cited corpus in this space and licenses moves that damage our actual use case: inventing specificity, stripping hedges that carry commercial or legal meaning, dissolving the numbered lists a lender, supplier, or tax office needs. Fixed scoring order: **recipient-fit > meaning preservation > tell removal > detector score.** A detector run is a tie-break between candidates already equal on the first three, never a target. (Basis: the Wikipedia guide's own caveat that detectors carry non-trivial error rates and humans judge AI authorship near chance; the 2026 *International Journal for Educational Integrity* detector-reliability evaluations. Full citations in `references.md`.)
+
+This is why the best-sourced skill did not win the email route. `humanize-research` (harshaneel, 50+ peer-reviewed sources) is rigorous — against detector evasion. `writing:humanize-text` is single-sourced and won outbound email on domain fit, measured, in the 2026-07-24 bake-off. Evidence weight and domain fit are separate axes; this ledger scores the second one first.
+
+**Enforcement tier (honest):** PROBABILISTIC. `humanizer-selection` is a skill body — it makes a session aware of the gate, it does not block a write to `~/.claude/skills/`. Deterministic delivery comes from the `UserPromptSubmit` ledger-reminder hook (its keyword list must include `humanizer`). If a bad swap ever ships anyway, the deterministic upgrade is a `PreToolUse` ASK on Write/Edit under `~/.claude/skills/*humaniz*` naming this gate. Do not describe the gate as enforced.
+
+---
+
+## Verdict
+
+**5 redundant, 1 re-decided on evidence, 1 gap CLOSED in-house.** The gap was not "email" in general — it was **outbound outreach (cold intro + follow-up) and reply-to-inbound-interest framing**, filled 2026-07-22 by the house-owned `outreach-email` skill.
+
+**Correction to the provenance narrative (2026-07-24).** An earlier reading of this ledger could suggest Mason authored his humanizer. He did not. `writing:humanize-text` is **installed, not authored** — an external community plugin from the LorcanChinnock marketplace lineage, built on the Wikipedia *Signs of AI writing* pattern catalogue. **`outreach-email` is the sole in-house writing skill**, built only after an external-discovery pass found no community cold-email skill worth adopting. One external skill (`humanize-research`) was added 2026-07-24 as an evidence-checked alternate. Adopt-over-build has been the operating default throughout; the single build was a documented decision, not a reflex.
+
+## Installed writing stack (as of last-updated)
+
+- `lorcan-claude-marketplace/writing` — `humanize-text`, `humanize-code`, `write-doc`
+- `danielrosehill/content-writing` — `editorial-pipeline` + proofreader/archive/version agents
+- `cw/creative-writing-skills` — `llm-writing`, `prose-writing`, `style-analysis`, `style-creator`, `prose-critique`, etc.
+- `harshaneel/humanize` — `humanize-research` (vendored 2026-07-24 to `~/.claude/vendor/harshaneel-humanize`, installed to `~/.claude/skills/humanize-research`)
+- House skills — `outreach-email` (the only in-house *writing* skill), `amazon-md-escalation-email` (one narrow escalation format), `cold-dev` (dev-handoff stance, not email tone)
+- Global doctrine — jargon-translated-once, no-AI-tells answer shape, `feedback-no-emojis`
+
+## Provenance register
+
+Per `skill-provenance-and-external-discovery` (STD-SKILLPROV-001 DRAFT), a skill without a recorded origin and source basis is UNVERIFIED. Status of the three skills this ledger governs:
+
+| Skill | Origin | Source corpus | Intended domain | Frontmatter | Status |
+|---|---|---|---|---|---|
+| `writing:humanize-text` | **Installed, not authored.** LorcanChinnock marketplace (`github.com/LorcanChinnock/lorcan-claude-marketplace`), MIT | Wikipedia *Signs of AI writing* (WikiProject AI Cleanup) — single source, 31 patterns, no benchmark | Short prose and outbound email. **Canonical email route.** | **Cannot carry durable frontmatter** — see note below | **VERIFIED here** (this register is its durable provenance record) |
+| `humanize-research` | `github.com/harshaneel/humanize`, MIT, commit `4ec7973` (2026-07-10), author Harshaneel Gokhale | 50+ peer-reviewed detection papers through Apr 2026 (DetectGPT; Binoculars ICML 2024; "Base Models Look Human" arXiv 2605.19516); 25-case benchmark vs Binoculars | Long-form / public-facing / detector-sensitive prose. Explicit invocation only. | **Yes** — `~/.claude/skills/humanize-research/SKILL.md` | **VERIFIED** |
+| `outreach-email` | **In-house**, authored 2026-07-22, no upstream | None — encodes Mason's voice constraints + global CLAUDE.md doctrine. Structure/framing skill, delegates prose to a humanizer. `source_research: []` and that is the honest answer. | Outbound outreach and replies to prospects/partners/suppliers | **Yes** — `~/.claude/skills/outreach-email/SKILL.md` | **VERIFIED** |
+
+**Why `writing:humanize-text` carries no on-disk frontmatter.** It is vendored third-party code inside a marketplace git checkout. Editing its `SKILL.md` or dropping a sidecar there would be silently reverted on the next plugin update, and would leave the marketplace checkout dirty or with untracked files — the same failure class as the BMAD in-place-edit gate. Its provenance therefore lives here, in the canonical registry, which is the durable home. Local modification made to `humanize-research`: frontmatter `name`/`description` rewritten for the alias and to prevent trigger collision; **skill body is byte-identical to upstream `4ec7973`** (verified by diff).
+
+## Ledger
+
+| Requested capability | Installed coverage | Verdict | Evidence basis | Last verified | Blast-radius of external add | Default action |
+|---|---|---|---|---|---|---|
+| **Strip AI tells (Humanizer)** | **CANONICAL for outbound email: `writing:humanize-text`** (Wikipedia *Signs of AI writing* catalogue, 31 patterns). **Optional alternate: `humanize-research`** (harshaneel/humanize, MIT, commit `4ec7973`, 50+ peer-reviewed sources, Binoculars-validated benchmark) — installed 2026-07-24 under an alias, explicit invocation only, for long-form / public-facing / detector-sensitive prose. Also `cw:llm-writing`. | **Decided on evidence — both halves of the golden gate** (`humanizer-bakeoff-2026-07-24.md`): part 1 damage test, n=3 real sent emails; part 2 tell-removal test, n=2 AI-ish drafts of the same briefs. Same winner on both. | **MEASURED** — golden-gate bake-off on real Mason emails (n=3 sent + n=2 AI-ish drafts of the same briefs), both halves, same winner (`humanizer-bakeoff-2026-07-24.md`) | 2026-07-24 | Alias + narrowed description prevents trigger collision; both retained | **Email → `writing:humanize-text`. Long-form/detector-sensitive → `humanize-research` by name.** |
+| Write-like-human prose (Human Writing) | `writing:humanize-text`, `cw:prose-writing` | Redundant | **Trigger-collision only — NOT a quality comparison.** No output was compared | unrecorded — **PROVISIONAL** | Duplicate routing | **Do not install** |
+| Plain/short/less-jargon (Plain English) | `writing:humanize-text`, `writing:write-doc` | Redundant | **Trigger-collision + doctrine overlap — NOT a quality comparison** | unrecorded — **PROVISIONAL** | Overlap w/ 2 skills + doctrine | **Do not install** |
+| Reusable voice profile (Brand Voice) | `cw:style-analysis` / `style-creator` (emits VOICE PROFILE) | Redundant | **Mechanism-duplication argument** (style-file emission) — no output compared | unrecorded — **PROVISIONAL** | Duplicate style-file mechanism | **Do not install** |
+| Tone control formal/warm/casual (Tone/Voice Guide) | `cw:style-analysis` + `prose-writing` | Redundant | **Mechanism-duplication argument** — no output compared | unrecorded — **PROVISIONAL** | Duplicate | **Do not install** |
+| Infer style from samples (Voice Analyzer) | `cw:style-analysis` (near-exact match) | Redundant | **Near-exact capability match** with `cw:style-analysis` — the strongest of the redundancy arguments, still not a measured one | unrecorded — **PROVISIONAL** | Duplicate | **Do not install** |
+| **Outreach/cold-email + reply framing (Cold Email)** | **Filled 2026-07-22 by house-owned `outreach-email` skill** (`~/.claude/skills/outreach-email/SKILL.md`) — 3 modes (cold intro / follow-up / reply-to-interest) × 3 tone dials; defers polish to `writing:humanize-text`, voice-match to `cw:style-analysis` | **Gap CLOSED (in-house)** | **Outward discovery ran** — no community cold-email skill worth adopting; documented build decision | 2026-07-22 | N/A — house-owned, no external code | **Use `outreach-email` skill; no external Cold Email install** |
+
+**Row staleness rule (added 2026-07-24).** A verdict states what it was decided ON, not just what it decided. Any *Do not install* row decided on trigger-collision or duplication grounds alone — with no comparison of provenance or output quality — is **PROVISIONAL**, and a session about to reuse it must run a fresh outward pass (web + GitHub) before treating it as canonical. "Unless the installed skill set has changed" is NOT sufficient: it keys on change inside the machine and is structurally blind to a better external tool appearing, which is exactly the event that should invalidate a suppression verdict. The ledger-conflict diagnostic applies symmetrically — it fires just as loudly when re-affirming a stale suppression as when proposing to contradict one. (Origin: the Humanizer row above sat at *Redundant / Do not install* on trigger-collision reasoning for three weeks while a materially better-sourced skill existed unexamined; an outside human surfaced it, not the mechanism. Logged in `fork-gaps.md` 2026-07-24.)
+
+**Humanizer row — evidence basis (2026-07-24).** Full record: `humanizer-bakeoff-2026-07-24.md`. Three real sent emails (agent outreach, funder reply, accountant query; 65–128 words) run through both routes. Findings: (1) Mason's unassisted email **already passes** the research skill's headline burstiness lever on every applicable sample, so its most-cited contribution has nothing to fix on this corpus; (2) exactly one mechanical AI-tell existed across all three emails — a single semicolon; (3) the research route catches that semicolon but dissolves scannable bullet lists, drops numbered structures that mirror a sender's numbered asks, and cuts cooperative closers, all net-negative for correspondence; (4) its Lever 5 (specificity insertion) creates pressure to add grounding detail, a **correctness risk** in factual replies to an accountant, funder, or agent. The peer's provenance critique was correct; the consequence did not follow, because that research optimises for detector survival on long-form prose and Mason's problem is short transactional correspondence.
+
+**Cold Email row — default behavior:** invoke the house-owned `outreach-email` skill. The outreach prompt pattern below remains a valid manual fallback. Any future change to how outreach email is handled MUST update this ledger row — no free-floating outreach-email skill.
+
+## The one real gap — precise scope
+
+Not "email." The gap is **outbound outreach / cold-email workflow and reply/follow-up framing**.
+
+### Minimum in-house scope for an `outreach-email` skill
+
+- **Modes:** (1) cold intro email · (2) follow-up email · (3) reply to inbound interest
+- **Tone controls:** direct / warm / restrained
+- **Constraints (baked in):** plain English, no AI tells, no hype, no emojis unless asked; inherits global doctrine; defers prose polish to `writing:humanize-text`
+- **Provenance:** house-owned, modeled on the existing `amazon-md-escalation-email` skill pattern
+- **Deliberately narrow:** stops at structure + framing; humanizing/tone-analysis stays with existing skills, so it complements rather than duplicates.
+
+## Install gate for external community skills
+
+- **Open decision:** house-owned `outreach-email` skill **vs** external community Cold Email install. **Owner: Mason.**
+- **Default if no decision:** use the current writing stack + the outreach prompt pattern below. **No external install.**
+- **If external install is later requested:** required read-before-install review of provenance, trigger overlap, maintenance cost, and why the in-house option is insufficient. No blind `npx skills add`.
+
+## Enforcement (classified per enforcement-expert)
+
+**Which humanizer the doctrine uses (settled 2026-07-24, post-bake-off).** The "Email humanization default" rule in `~/.claude/CLAUDE.md` names **`writing:humanize-text`**, and that remains correct — it is now the *evidence-backed* canonical route for outbound email, not merely the incumbent. Gate and ledger agree. `humanize-research` is NEVER the automatic email route; it fires only when Mason names it or the text is long-form/public-facing. Its description is deliberately narrowed to suppress auto-trigger on a bare "humanize this".
+
+**GATE STATUS: CLOSED (owner-confirmed 2026-07-24).** Mason accepted the email-humanization stop as implemented and verified. Do not re-open, re-scope, or "improve" it as part of routine humanizer work — humanizer effort belongs on the `humanizer-selection` skill and the bake-off corpus, not here. Two design points are **settled, do not re-litigate**:
+
+1. **ASK every time in scope is correct and deliberate.** Never infer compliance from the body and silently allow a clean-looking draft. A low tell-count is not evidence the humanizer ran; treating it as such re-creates the exact self-exemption the gate exists to block. The SCAN output is decision *signal* for Mason, never an auto-allow condition. The friction is the feature — Mason decides path A vs path B in the moment.
+2. **The honest ceiling is accepted, not a defect.** `writing:humanize-text` writes no marker, so no gate can PROVE the skill ran. Until a marker exists, the deterministic tier is the stop plus the log, and the approval judgment is Mason's. State it that way; do not describe the gate as proving prose quality.
+
+**Trip-wire for the next upgrade (owner-set).** If a genuinely bad un-humanized draft is ever approved through, that event — not a scheduled review — triggers the tier-7 upgrade already sketched: an opt-in marker written by the humanizer into the text or metadata, and a gate that checks for the marker instead of guessing from prose. Until then, no further gate work.
+
+**Gate verification (2026-07-24, session claude-session-20260724-195919).** The `PreToolUse` ASK gate was audited against an explicit 5-part spec and verified with an 8-case golden suite, all passing: in-scope `create_draft` and `send_message` → ASK (clean body, exempted body, and tell-heavy body alike — the gate is unconditional in scope, so a clean-looking draft cannot buy an auto-allow); `Write`, Gmail read, and Gmail label → silent allow (out of scope); malformed payload → **fails CLOSED to ASK**. Three gaps were closed in the same pass: the Mason-exemption path now requires the assistant to **quote his exact exempting words** (paraphrase does not count); the gate appends metadata-only rows to `~/.claude/logs/gmail-humanize-gate.jsonl` so the 10-attempt monitor is a **deterministic counter** rather than a prose-tracked one that cannot survive a cold session; and `gmail-humanize-monitor.sh` reads it back. Body content is never logged — outbound email carries PII.
+
+**Tell-removal half completed (2026-07-24, session 195919) — verdict unchanged, one new rule.** Part 1 tested both routes on Mason's already-human emails, which measures damage, not tell removal. Part 2 supplied the missing half: AI-ish drafts of the Uncapped funder reply and the American Pharma Wholesale supplier enquiry, carrying the same facts and the same commitments, run through both routes. Result: **the research route removes more tells than part 1 implied** (its counted pre-output gate catches what a literal self-check list misses, and it enforces sentence rhythm the wiki route has no rule for) — **and its correctness risk is HIGHER on AI-ish input than on human input.** AI drafts are vaguer, so Lever 5 (specificity insertion) has more abstract claims to ground, and it grounds them by inventing: on the supplier enquiry it produced the fabricated regulatory claim "the NDC follows them through customs", asserted to a pharmaceutical wholesaler in an email about import documentation. A humanizer that fabricates *more* when the input is *worse* is backwards for us, because worse input is exactly when a humanizer is invoked. Both routes preserved the hard obligations ("no substitution… even at the same price", "as a condition of our order"); only the research route dissolved the numbered asks, dropped a filing year and account context, and converted an offer to supply more into an assertion of completeness. **No routing change** — the research route's advantage sits on the third-ranked axis and is paid for on the second.
+
+**Guard rule earned by the tell-removal half — PROMOTED TO GLOBAL DOCTRINE 2026-07-25 at Mason's direction.** Any clause a humanizer *adds* — especially a causal or explanatory one ("because…", "which means…") — must be checked against the source facts before the text ships. Rewriters are licensed to remove and reshape, never to explain. In correspondence about regulated goods, tax, or funding, an invented justification is a bigger liability than the AI tell it was added to disguise. Now lives in three places by enforcement path, not by duplication: the rule itself is an always-on Reactive Guardrail in `~/.claude/CLAUDE.md` (applies to ANY rewrite, not just humanizer work); the evaluation procedure is `humanizer-selection` Test B (added-clause check, hard fail); the evidence is part 2 of `humanizer-bakeoff-2026-07-24.md`.
+
+**Enforcement of the guard, classified per `enforcement-expert` (2026-07-25).** Two tiers. (1) PROBABILISTIC — the CLAUDE.md guardrail, covering every rewrite in every context; no hook can inspect prose for factual grounding, and none ever will. (2) DETERMINISTIC surfacing on the single highest-liability path — `~/.claude/hooks/gmail-draft-humanize-gate.py` now scans outbound draft bodies for causal connectives and names them in the pre-draft ASK prompt alongside the AI-tell scan. **Design note that makes it safe:** it is *not* a new blocking condition. That gate already stops every `create_draft` unconditionally, so the check rides an existing stop and costs zero additional interruptions — which matters because causal connectives are common and legitimate in real business email ("because we resell and import these units" is Mason's own wording), and a gate that *fired* on them would be the indiscriminate-detector anti-pattern. **Honest limit:** it detects the pattern class only. It cannot see the pre-rewrite text, so "was this clause ADDED" is not machine-knowable at the hook layer, and it cannot judge whether a claim is true. Deterministic detection, probabilistic verification. Regression-tested on three cases (tells + causal, clean, legitimate-causal-only); the legitimate case surfaces as a check and is never labelled an AI-tell. Distribution: the script plus its `settings.json` entry — global hooks track, not synced docs.
+
+**Status of the email routing decision: SETTLED 2026-07-25 — do not re-litigate.** Outbound email is `writing:humanize-text`; `humanize-research` is explicit-invocation-only for long-form / public-facing / detector-sensitive prose. Decided on both halves of the golden gate, confirmed by Mason. The row-staleness rule above still applies in its proper scope — it triggers a fresh *outward pass* for new candidates on the 6-month clock — but it does not reopen this verdict. **Reopening requires exactly one thing: a new golden gate run on an EMAIL corpus** (tightened by Mason 2026-07-25). A promising candidate is explicitly NOT sufficient, and neither is calendar time. This was narrowed after the 2026-07-25 out-of-sample test run, where a strong new repo created real pull toward reopening a settled question on screening evidence alone — screen it, PARK it, leave the route alone.
+
+**Open frontier — the one thing this ledger has NOT tested.** Every sample across both halves is short structured correspondence (65–250 words, replies to structured asks), which is the shape that most disadvantages the research route. The long-form / public-facing route therefore rests on *inference*, not evidence. **Part 3, on the next real investor memo or published appraisal: run the long-form golden gate on `humanize-research` vs `timolabs-ai/claude-humanize-skill`** (contenders set by Mason 2026-07-25). Note the contenders CHANGED — parts 1 and 2 compared the incumbent against `humanize-research`; part 3 does not re-test `writing:humanize-text`, because the email verdict is settled and the incumbent is not in contention for long-form. Corpus definition for a long-form gate is in `humanizer-selection` Step 4. Only after part 3 may the long-form route change. Until that exists, do not describe the long-form route as evidence-backed.
+
+**Do not harvest the parked candidate's rules into email.** Timolabs' fidelity guard is broader than ours (it also catches *hardened* commitments). It is noted for long-form evaluation only — importing it into the settled email path without a gate is precisely the unevidenced change the selection gate exists to prevent.
+
+**PARKED CANDIDATE for the long-form route — `timolabs-ai/claude-humanize-skill` (found 2026-07-25 on an out-of-sample test run of `humanizer-selection`).** MIT, 8 stars, last commit 2026-06-01, no research citations, 516-line single-file rulebook, no `references/`. Verdict: **PARK, not adopt** — no golden gate has been run on it, and it must not be installed before one is. Why it is interesting: it is the only candidate seen so far whose rulebook is built around the axis our incumbent documents least — it states an explicit priority hierarchy in which **factual fidelity outranks every style ban** ("no added, dropped, softened, or hardened facts, claims, commitments, or uncertainty"; "if a style ban would distort a fact… the style ban yields"), separates *empty hedges* from *epistemic qualifiers that carry real uncertainty* and preserves the second, runs a final fidelity check, and flags unverifiable load-bearing claims for review rather than deleting them. That is our added-clause guard, already written, and in one respect broader — it also catches *hardened* commitments, which our guard names only implicitly. Why it is NOT a candidate for email, and does **not** meet the bar to reopen that settled row: it targets long-form business documents by design (proposals, board materials, RFP responses), and it rebuilds structure wholesale from a source inventory — explicitly "do not preserve the original sentence order, paragraph order, section rhythm" — which is the same structural-rebuild behaviour that disqualified `humanize-research` on numbered correspondence. It also collides head-on with the incumbent's triggers (`name: humanize`, "humanize this", "de-AI this") so it would need aliasing, and both published install paths (blind `curl` into `~/.claude/skills/`, or a symlinked clone) violate our vendor-a-pinned-copy hygiene. **Evaluate it in part 3, against `humanize-research`, on a real long-form artifact.**
+
+**Trigger placed on the drafting surface, not just here (2026-07-25).** A note that only lives in this ledger fires when someone asks about *humanizers* — never when someone is *drafting a memo*, which is the moment that matters. So the part-3 trigger is wired into `property-appraisal`'s mandatory pre-publish gate (step 7), where a published appraisal — the exact long-form artifact this frontier needs — cannot be shipped without the offer being surfaced. Deliberately an OFFER, never a gate: it must not delay a publish, and a decline is recorded as "frontier still open" rather than blocking. Investor memos have no equivalent house skill to hook, so that path remains PROBABILISTIC until one exists.
+
+**Rule adopted from the losing contender (2026-07-24).** The bake-off's one transferable win — semicolon detection, hard rule 2 in `humanize-research`, absent from `writing:humanize-text`'s self-check literals, and the only mechanical tell present in the real corpus — is now wired into the DETERMINISTIC pre-draft scan in `~/.claude/hooks/gmail-draft-humanize-gate.py`. Conservative implementation: HTML entities and comma-containing lists (the legitimate semicolon uses) are excluded; regression-tested on 4 cases. This captures the research route's sole demonstrated advantage as a mechanical check without importing its format damage. Same honest boundary as the rest of the gate: it surfaces a signal, it does not verify prose quality.
+
+- **PROBABILISTIC (tier-2 prose):** the "Human-Writing Capability Ledger Gate" in global `~/.claude/CLAUDE.md` — MUST-read-ledger-first + ledger-conflict diagnostic. Awareness that degrades under context pressure; the model must choose to comply.
+- **DETERMINISTIC delivery / PROBABILISTIC action (tier-4, WIRED 2026-07-22 — active next session):** the `UserPromptSubmit` hook script `~/.claude/hooks/human-writing-ledger-reminder.sh` (WARN-only, entry appended to `~/.claude/settings.json`) keyword-matches the prompt (`humanizer`, `human writing`, `plain english`, `brand voice`, `tone guide`, `voice analyz`, `cold email`, `email skill`, `writing skill`) and injects this ledger's path + "read first, emit ledger-conflict diagnostic on contradiction". Delivery is guaranteed once wired; acting on it is still the model's choice. Inert until referenced from `settings.json`.
+- **No deterministic GATE exists here.** The regulated output is a natural-language answer, not a gated tool call — no PreToolUse/CI hook can inspect or block it. "Hard gate" in this context therefore means **prompt-level deterministic reminder + probabilistic model compliance**, NOT tool-call blocking.
+- **Distribution caveat:** the hook lives in `settings.json`, NOT in synced docs — writing this ledger + the CLAUDE.md rule + the script does NOT activate the hook. Until the `settings.json` entry is added, enforcement is prose-only (probabilistic).
+- **Email-humanization strengthening (2026-07-24, active — belt-and-suspenders).** After an accountant-query draft shipped un-humanized (the reminder hook's keywords didn't match a neutral "send them queries?" prompt, and humanize-text wasn't self-invoked), three probabilistic layers were added: (1) the `UserPromptSubmit` hook `human-writing-ledger-reminder.sh` gained an **email-drafting branch** (broad keywords: `email|gmail|outreach|write to <addr>|compose`) that nudges "route through `writing:humanize-text` unless exempted; skipped = UNVERIFIED"; (2) a new **`PostToolUse` hook on Gmail `create_draft`** (`gmail-humanize-warn.sh`, wired in `settings.json`) fires after every draft and injects the same reminder; (3) a **CLAUDE.md "Email humanization default"** line under this gate. **Honest limit (enforcement-expert):** all three are DETERMINISTIC delivery / PROBABILISTIC action — none rewrites prose or blocks a send, and the PostToolUse hook CANNOT verify humanize-text ran (session skill-state isn't exposed to hooks), so it warns unconditionally. There is still no deterministic guarantee for prose quality; this is a strong probabilistic guarantee (reminded in, warned out, doctrine-backed), not a gate.
+
+## Outreach prompt pattern (live now — use immediately)
+
+```
+Draft an outreach email using my installed writing/style stack
+(writing:humanize-text for polish, cw:style-analysis if a sample is given).
+
+- Audience & relationship: [who they are; cold or warm; any prior contact]
+- Goal of the email:        [meeting | reply | intro | reactivation]
+- Desired tone:             [direct | warm | restrained]
+- Hard constraints:         plain English; no hype; no AI tells; no emojis
+                            unless I ask; length cap [e.g. <150 words];
+                            [must-mention / never-mention; CTA]
+- Voice sample (optional):  [paste 1-2 of my past emails to match my voice]
+
+Then run your draft through writing:humanize-text before showing me.
+```
+
+### Boundary clarification — 2026-08-31 (owner instruction)
+
+**Classification: PERMITTED, and partially already covered. Not prohibited, not ambiguous.**
+
+An internal read-only reviewer agent, **`plain-english-outcome-editor`** (`~/.claude/agents/`),
+was added 2026-08-31. Classified against the governing text rather than around it:
+
+1. **The exact prohibited capability** is a *skill that rewrites prose to be plainer, shorter
+   or less jargon-heavy*. The row's "already covered by" column names `writing:humanize-text`
+   and `writing:write-doc`.
+2. **The ledger's own scope (§ Scope) governs ADDING a capability** — "which are redundant to
+   add". It does not govern internal role definitions generally.
+3. **DECISIVE — § Status explicitly anticipates house-owned additions** and requires this file
+   be updated when one is made: *"UPDATE this file if a new decision is made (e.g. a
+   house-owned outreach skill is added)."* There is direct precedent: `outreach-email` is a
+   **house-owned skill that CLOSED a gap in this ledger** (§ summary, 2026-07-22). An in-house
+   addition is therefore a known, permitted, precedented path — not a contradiction.
+4. **The CLAUDE.md gate's required path was followed**: the conflict diagnostic was emitted,
+   and the gate's own remedy is *either* revise to match the ledger *or* explicitly propose
+   updating it. This is the second branch, taken openly.
+5. **No outward pass is owed.** The freshness rule requires one before *reusing a PROVISIONAL
+   verdict*. That verdict is not being reused — nothing external is being installed and no
+   suppression is being re-affirmed. If a future session proposes an **external** plain-English
+   skill, the row remains PROVISIONAL and the outward pass IS owed.
+
+**Safest reversible interpretation, applied.** The agent is read-only; forbidden from changing
+any fact, number, verdict or confidence level; forbidden from adding a causal claim its source
+did not make; and instructed to **route prose polish to `writing:humanize-text`** rather than
+duplicate it. Its job is narrower than the suppressed capability: it checks whether a report
+states the OUTCOME or the MECHANISM, and whether a limitation sits beside the claim it
+constrains. Reversal is deleting one file.
+
+**The suppression still stands for its stated scope** — installing an external plain-English
+*writing* skill.
+
+---
+
+## Human-Writing Capability Ledger Gate — golden-suite verification + Gmail monitor
+
+*Relocated from `~/.claude/CLAUDE.md` § Human-Writing Capability Ledger Gate — golden-suite verification + Gmail monitor by PCR-D6b, 2026-09-02. Verbatim.*
+
+Verified 2026-07-24 against an 8-case golden suite (in-scope draft/send → ASK; Write, Gmail read, label → silent allow; malformed payload → fails CLOSED to ASK). **Monitor (first 10 Gmail draft attempts, from 2026-07-24):** the attempt counter is DETERMINISTIC — the gate appends metadata-only rows (never the body) to `~/.claude/logs/gmail-humanize-gate.jsonl`; read it with `bash ~/.claude/hooks/gmail-humanize-monitor.sh`. In the session summary log the two columns no hook can know: humanized before draft? Y/N · explicit Mason exemption (quoted)? Y/N.
