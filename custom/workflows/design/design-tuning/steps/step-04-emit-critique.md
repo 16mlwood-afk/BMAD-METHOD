@@ -96,6 +96,15 @@ Route each finding **once**. The lanes are closed (`shared/design-gate-artifacts
 | `implementation-data` | It is about data, wiring or feasibility, not the design | the verification / spec route |
 | `visual` | Density, hierarchy, cramping, treatment | bounded `design-tuning`, or a recorded decline |
 
+**Binding travels with the lane (`shared/brief-binding-contract.md`).** Every finding keeps the
+`binding: truth | advisory` step-02 §0b gave it. `brief-violation` is for a broken **truth test
+or T0** (or a legacy MUST PRESERVE item) — the only brief statements that bind. A design that
+departs from the brief's **advisory** guidance (a suggested frame, a layout, a token, a style
+floor item) has not violated the brief: file it `visual`, `binding: advisory`, and
+`declined-with-reason` is a legitimate close for it. A truth-class policy rule the brief failed to
+carry in Part 2 is a `brief-gap`; a layout or composition choice the brief left open is not — making
+it is the designer's job.
+
 **The `brief-gap` / `brief-violation` distinction is the one that matters, and it is the one
 most often got wrong.** A brief that stated a requirement clearly and was ignored is a finding
 against the DESIGN. Filing it as a brief gap inflates the apparent defect rate of the brief and
@@ -163,6 +172,8 @@ pauses; autonomy covers method decisions, not the owner's product decisions.
 
 **7c. Promotion to Phase 2 (blocking on findings) is a separate owner decision.** No agent may
 make it by editing this step; the evidence it needs is in `shared/design-gate-artifacts.md` §2c.
+Whatever that decision is, it cannot widen what fails a design: a Phase-2 block could only ever
+land on `binding: truth` findings and T0 (`shared/brief-binding-contract.md` §4).
 
 ### 8. Surface — one line, plus any owner decision
 

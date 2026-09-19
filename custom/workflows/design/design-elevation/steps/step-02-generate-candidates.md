@@ -17,7 +17,7 @@ description: 'Generate enhancement candidates that deepen the core job, then run
 
 ## AVAILABLE STATE
 
-From step-01: `{surface_name}`, `{core_job}`, `{built_surface_refs}`, `{policy_constraints}`, `{brief_path}`, `{screen_review_path}`, `{prior_candidates}`.
+From step-01: `{surface_name}`, `{core_job}`, `{built_surface_refs}`, `{policy_constraints}` (each rule classed truth/advisory), `{page_answer}`, `{dominant}`, `{truth_tests}`, `{brief_path}`, `{screen_review_path}`, `{prior_candidates}`.
 
 ## SEQUENCE OF INSTRUCTIONS
 
@@ -41,8 +41,10 @@ For each raw idea, apply the filter in `checklist.md` (the leverage rubric + the
 - **Adds a capability unrelated to the core job.** A new view, a new report, a settings panel, an export the job doesn't need. Scope creep. → `{rejected_candidates}`.
 - **Is pure decoration or "delight."** Animation, illustration, a hero, a metric-card grid, color-for-personality. No leverage on the decision. → `{rejected_candidates}`.
 - **Is a default/expected affordance with no leverage on THIS surface's job.** "Add dark mode", "add keyboard shortcuts" in the abstract, "add a help tooltip" — generic completeness, not depth. → `{rejected_candidates}` (note: a *specific* keyboard path that walks the verify fields IS leverage; "add keyboard shortcuts" in general is not — be precise about which you mean).
-- **Violates a named anti-default in `{policy_constraints}`.** Hard reject regardless of apparent leverage. → `{rejected_candidates}` with the policy rule cited.
-- **Competes with the primary surface for attention.** On operational/hybrid pages, an addition that pulls focus from the worklist/primary action is subtraction, not addition. → `{rejected_candidates}`.
+- **Breaks a truth test, the five-second answer, or a truth-class policy rule.** Hard reject regardless of apparent leverage — it would make the page say something false or stop giving its answer. → `{rejected_candidates}` with the test id or rule cited (`shared/brief-binding-contract.md`).
+- **Competes with the primary surface for attention.** An addition that pulls focus from what must dominate (`{dominant}` where the brief names it; otherwise the worklist/primary action) is subtraction, not addition. → `{rejected_candidates}`.
+
+**Not a reject — an advisory note.** A candidate that deepens `{core_job}` but departs from a style, layout or composition rule in `{policy_constraints}` (including a named anti-default that is about look) **survives**, carrying `advisory_note: "<rule, quoted> — <what the candidate does differently>"`. The user decides whether the gain is worth the departure; Claude Design may find a version that keeps both. Rejecting a leveraged idea on a style rule is the over-binding the contract removed.
 - **Was already proposed and declined in a prior pass** (`{prior_candidates}`). Drop silently unless the user re-opened it.
 
 Survivors → `{candidates}`. Each survivor must carry a one-line **why it deepens the job** grounded in the real surface ("the duplicate check fires only on Save; surfacing it live answers the brief's reach-the-user-before-they-commit goal continuously").

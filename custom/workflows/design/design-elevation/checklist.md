@@ -23,8 +23,10 @@ Reject — and record in `{rejected_candidates}` with a one-line reason — any 
 - [ ] **Unrelated capability** — Adds a view, report, panel, or export the core job does not need. Scope creep, reject.
 - [ ] **Decoration / "delight"** — Animation, illustration, hero, metric-card grid, color-for-personality, gradients. No leverage on the decision, reject.
 - [ ] **Generic completeness** — A default affordance added for its own sake ("add dark mode", "add shortcuts", "add a help tooltip") with no leverage on THIS surface's job. Reject. (Be precise: a *specific* keyboard path that walks the verify fields is leverage and survives; "add keyboard shortcuts" in the abstract is chrome.)
-- [ ] **Policy anti-default** — Violates a named anti-default in `docs/design-policy.md`. Hard reject regardless of apparent leverage; cite the rule.
-- [ ] **Competes with the primary surface** — On operational/hybrid pages, pulls attention from the worklist/primary action. Addition that subtracts focus, reject.
+- [ ] **Breaks a truth** — Would break one of the brief's truth tests, the five-second answer (T0), or a truth-class policy rule (`shared/brief-binding-contract.md` §2). Hard reject regardless of apparent leverage; cite the test or rule.
+- [ ] **Competes with the primary surface** — Pulls attention from what must dominate (the brief's `dominant`, else the worklist/primary action). Addition that subtracts focus, reject.
+
+**Not a gate — a note:** a candidate that departs from a policy **style/layout/composition** rule or a look-based anti-default is NOT rejected. It survives with an advisory note citing the rule, and the user weighs it at the step-03 halt.
 - [ ] **Already declined** — Proposed in a prior pass and declined by the user. Drop silently unless re-opened.
 
 ## Sweep-Balance Self-Test (step-02 §3)

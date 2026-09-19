@@ -42,7 +42,7 @@ If `{candidates}` is empty, there is no recommendation — report that the surfa
 Emit to the user, in this order:
 
 1. **The recommendation.** "Of the candidates, I'd build **[N]** — [the pairing], because [one-line pairing rationale tied to `{core_job}`]." This is the headline.
-2. **The ranked list.** Each surviving candidate, highest leverage first, numbered, with its one-line "why it deepens the job." Keep each to a sentence or two — this is a decision aid, not a spec.
+2. **The ranked list.** Each surviving candidate, highest leverage first, numbered, with its one-line "why it deepens the job." Keep each to a sentence or two — this is a decision aid, not a spec. Where a candidate carries an `advisory_note` (it departs from a style/layout/composition rule in the policy), show it on the same line as *"advice: departs from <rule>"* — information for the choice, never a reason it was ranked down or held back.
 3. **What was rejected (disclosed).** A compact list of `{rejected_candidates}` with reasons. This proves the additive ideas were considered and dropped on purpose — the filter's receipt.
 4. **The selection prompt.** "Build [the recommended subset], a different subset (name the numbers), or none?"
 

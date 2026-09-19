@@ -19,11 +19,26 @@ metadata:
 
 # Design Tuning Workflow
 
-**Goal:** After Claude Design produces mockups from a design-handoff brief, iterate toward a design that meets all constraints. Compare each iteration's screenshots against the original brief, visual product references, and corporate guardrails — then generate a structured correction message the user can paste back into Claude Design.
+**Goal:** After Claude Design produces mockups from a design-handoff brief, iterate toward a design that meets every truth test and gives the page's answer in five seconds, with the rest of the policy and references passed along as advice. Compare each iteration's screenshots against the original brief, visual product references, and corporate guardrails — then generate a structured correction message the user can paste back into Claude Design.
 
 **Your Role:** You are a design critic who evaluates AI-generated mockups against explicit written constraints. You catch constraint violations that Claude Design's visual priors override, track what's been fixed across iterations, and produce correction messages that are specific enough to get compliance on the next pass.
 
 **Key Insight:** AI design tools have strong visual priors from training data (SaaS templates, Dribbble shots) that override written constraints. Negative constraints ("don't use bento grids") are weaker signals than positive references ("match the table density of {named reference product from project policy}"). This workflow combines both — it flags violations AND points to named product references from the project's `docs/design-policy.md` as positive anchors. The specific reference products vary by project; this workflow does not assume any particular ones.
+
+---
+
+## WHAT MAY FAIL A DESIGN — BINDING vs ADVISORY (2026-09-19) — CRITICAL
+
+Owner, verbatim: *"the biggest takeaway is claude design should do the heavy lifting everything else is mostly advisory"*. Contract: `{project-root}/_bmad/bmm/workflows/design/shared/brief-binding-contract.md` (STD-BRIEF-BINDING-001). It **outranks every "hard failure", "block approval" and "policy wins" instruction below** wherever they disagree.
+
+A design iteration may be scored **FAIL** on exactly two grounds:
+
+1. **A broken truth test** — one of the brief's Part 2 tests (legacy brief: an item of its Design Contract "MUST PRESERVE" list), or a policy rule that passes the one-question classification test: *if a design broke this rule, could a reader come away believing something false about the data, the money, the state of the work, or who may see what?*
+2. **A failed five-second answer (T0)** — a reader who has not seen the page cannot state the brief's `page_answer` within five seconds of it loading. Judged by reading the screenshot as that reader, never by counting frames.
+
+**Everything else is an advisory note** — suggested frames not drawn, a different layout, layer, order or composition, tokens, pills, colour, radius, density, the style/layout/composition rules of the design policy, the AI-fingerprint rows and composite, the comfort floor, treatment/canonical-component divergence, visual-reference deviations. Notes are still found, evidenced, tracked across iterations and sent to Claude Design — as **suggestions it may trade**, never as failures and never as approval blockers. Every finding therefore carries `binding: truth | advisory` (step-02 §0b); only a `truth` finding may carry severity `truth-failure`.
+
+The evidence discipline below (treatment reads source, composition reads pixels, content reads strings, keepers are re-verified) is unchanged — it decides whether a finding is *real*. The binding split decides whether a real finding *fails the design*. Keep the two questions apart.
 
 ---
 
@@ -44,8 +59,12 @@ This uses **step-file architecture** for focused execution:
 - `{state_file_path}` — Path to the persistent iteration state file
 - `{brand_identity}` — Contents of the project's brand identity document (if it exists). When present, this is the PRIMARY reference for evaluating design alignment — supersedes generic corporate guardrails.
 - `{brand_identity_path}` — Path to the brand identity document
-- `{brief_constraints}` — Hard constraints extracted from the brief (section 4 identity + section 5 constraints)
-- `{hard_failures}` — Non-negotiable anti-patterns from the brand identity (section 8) or from the brief's guardrails
+- `{brief_shape}` — `outcome-first` (Block B `brief_shape: outcome-first`) or `legacy` (absent). Set in step-01 §2a.
+- `{page_answer}` — the brief's one-line answer the page must give (T0 target). Empty on a legacy brief.
+- `{truth_tests}` — the ONLY brief items that can fail a design: T0 plus the Part 2 tests (legacy: the Design Contract "MUST PRESERVE" list, one test per item). Set in step-01 §2a.
+- `{advisory_notes}` — every real finding with `binding: advisory` (step-02 §0b). Tracked and sent, never scored as a failure.
+- `{brief_constraints}` — Constraints extracted from the brief (section 4 identity + section 5 constraints) — ADVISORY unless an item is also a truth test
+- `{hard_failures}` — The policy's hard-failure list, each item classified `truth` or `advisory` in step-01 §1b by the contract's one-question test. Only the `truth` items can fail a design.
 - `{visual_references}` — Named product references and what to borrow from each (from brand identity section 7, or user-provided)
 - `{corporate_guardrails}` — Anti-patterns and hard failure conditions (from brand identity or brief section 4a — legacy compatibility)
 - `{previous_violations}` — Violations from the previous iteration (empty on first run)
@@ -70,10 +89,11 @@ This uses **step-file architecture** for focused execution:
 
 ### Critical Rules
 
-- **NEVER suggest layout or design ideas of your own.** You are a constraint enforcer, not a designer. Flag what violates the brief — don't propose alternatives unless the brief or visual references provide them.
+- **NEVER suggest layout or design ideas of your own.** You are a critic, not a designer — Claude Design does the heavy lifting. Flag what breaks a truth test or departs from the advice — don't propose alternatives unless the brief or visual references provide them. Where the brief invites options (Part 5), say so rather than prescribing one.
 - **Be specific.** "Badge colors exceed the 4-color limit" not "the colors feel wrong."
 - **Track across iterations.** The value of this workflow is knowing what got fixed and what persists — without that, it's just a review.
-- **Policy is authoritative; the brief is derivative.** If the brief explicitly allows something but the project design policy prohibits it, the policy wins — flag the violation. If the brief explicitly prohibits something the policy permits, the brief wins for this feature (the brief may narrow but not loosen). When in doubt, cite the policy.
+- **Only truth fails (see BINDING vs ADVISORY above).** A truth test or T0 broken → FAIL. Anything else → an advisory note, labelled as one, never a blocker.
+- **Policy outranks the brief on WORDING; it does not make style binding.** If the brief softens or drops a policy rule, the policy's wording is what gets evaluated — but the rule keeps its class: a truth-class rule dropped from the brief is still binding (and the drop is a brief gap), a style/layout/composition rule is advisory whether the brief restates it or not. If the brief explicitly prohibits something the policy permits, the brief wins for this feature (the brief may narrow but not loosen). When in doubt, cite the policy — and when a rule's class is in doubt, classify it advisory (contract §2).
 
 ---
 
@@ -129,7 +149,7 @@ When this workflow encounters conflicting guidance, the order of authority is:
 - **Treatment lane → artifact source is authoritative.** Ring presence and opacity (`ring-{c}/20` vs `/30` vs none), `border-radius`, `padding`, `font-size`/`font-weight`, `letter-spacing`, exact color tokens, presence of a leading status dot. These are *sub-visible or sub-pixel* — a 20%-opacity 1px inset ring is invisible in a screenshot, so eyeballing it is a guess. Read the value from the bundle and compare it to the canonical codebase component (`{canonical_components}`). **This is the lane the iter-4 Amazon V18 miss lived in:** the pill was scored "resolved" off a PNG when a `ring-rose-500/20` divergence was sub-visible; reading the bundle source would have caught it as an exact-value mismatch.
 - **Composition lane → screenshot is authoritative.** Layout, hierarchy, density, "is this a stat-card grid / bento / hero," whether an analytics band reads as subordinate. These are gestalt judgments the rendered image is genuinely the right input for, and the exact CSS would not tell you. The "rendered beats source" rule above governs this lane in full.
 
-When no artifact source is available (`{treatment_evidence_mode} == screenshot-degraded`), the treatment lane has no exact-value evidence — its checks are downgraded to `unverified-treatment` and CANNOT be certified resolved (same honesty posture as the coverage gate). Do not silently fall back to pixel-guessing a treatment and call it resolved — that is the exact failure this carve-out exists to prevent.
+When no artifact source is available (`{treatment_evidence_mode} == screenshot-degraded`), the treatment lane has no exact-value evidence — its checks are downgraded to `unverified-treatment` and CANNOT be certified resolved. Do not silently fall back to pixel-guessing a treatment and call it resolved — that is the exact failure this carve-out exists to prevent. **But treatment is advisory** (ring, radius, padding, font, colour token, dot): an unverified treatment is reported as an unverified *note*, and it never holds back an approval on its own (step-02 §7). The honesty is in saying it was not read; the design is not failed for it.
 
 ---
 

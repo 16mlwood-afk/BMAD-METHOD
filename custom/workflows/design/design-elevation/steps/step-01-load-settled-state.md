@@ -27,7 +27,7 @@ From the user's input, locate the actual implementation:
 
 ### 2. Load the design policy directly
 
-Read `{project-root}/docs/design-policy.md` → `{policy_constraints}`. Capture especially its **named anti-defaults** — the patterns the policy explicitly forbids. These are hard rejects in step-02 regardless of how much leverage a candidate appears to have.
+Read `{project-root}/docs/design-policy.md` → `{policy_constraints}`. Capture especially its **named anti-defaults** — the patterns the policy explicitly forbids — and **classify every rule `truth` or `advisory`** by the one-question test in `{project-root}/_bmad/bmm/workflows/design/shared/brief-binding-contract.md` §2 (*could a design that broke it make a reader believe something false about the data, the money, the state of the work, or who may see what?*). Truth-class rules are hard rejects in step-02 regardless of leverage; advisory rules (most anti-defaults are about look) travel with a candidate as a note. Ambiguous → advisory.
 
 **If `docs/design-policy.md` is absent on main, sweep sibling worktrees before proceeding without it** — a policy authored via `create-design-policy`/`onboard-design-system` is commonly worktree-resident and unmerged: `ls {project-root}/.claude/worktrees/*/docs/design-policy.md 2>/dev/null`. If found, read it and note it is worktree-resident (not yet on main). Elevating without the policy's named anti-defaults loaded means the step-02 reject gate runs blind.
 
@@ -54,7 +54,9 @@ If a brief is found → set `{brief_path}` and run the **6 intake checks** from 
 5. No forbidden material-change-as-hand-edit (the §3 forbidden combination).
 6. The brief's content is consistent with the built surface — if the brief describes a surface materially different from what the code shows, the brief is stale; note it and prefer the code (precedence rule 2 > 3).
 
-On any check failure, **halt** with the prescribed diagnostic (what failed, which check, what would satisfy it). Read the 10-field provenance block into `{brief_provenance}` for carry-forward.
+On any check failure, **halt** with the prescribed diagnostic (what failed, which check, what would satisfy it) — this is a provenance halt about which brief is current, which the binding contract keeps (§4), not a judgement on any design. Read the 10-field provenance block into `{brief_provenance}` for carry-forward.
+
+**Capture the binding contract.** Outcome-first brief (`brief_shape: outcome-first`): read `page_answer`, `dominant` and `truth_tests` (T0 + Part 2) → `{page_answer}`, `{dominant}`, `{truth_tests}`. Legacy brief: `{truth_tests}` = the Design Contract "MUST PRESERVE" list, `{page_answer}` and `{dominant}` empty. Everything else in the brief — suggested frames, layout, §4 onward, Advisory guidance — is advice, and elevation may propose to change it.
 
 If no brief exists, that is allowed — many surfaces are elevated from code + screen-review alone. Set `{brief_provenance}` empty and derive `{core_job}` from the code and screen-review.
 
@@ -64,7 +66,7 @@ If `{state_file_path}` exists, load `{prior_candidates}` plus prior selections a
 
 ### 5. Derive the core-job statement — the deliverable of this step
 
-Write `{core_job}`: one sentence naming the **primary decision or action this surface exists to enable** — the thing the user is here to do, the moment that matters. Ground it in the brief's stated purpose and what the built surface is actually optimized around.
+Write `{core_job}`: one sentence naming the **primary decision or action this surface exists to enable** — the thing the user is here to do, the moment that matters. Ground it in the brief's stated purpose and what the built surface is actually optimized around. **Where `{page_answer}` exists, start from it and from `{dominant}`** — the brief's Part 1 moment already names the decision; the core job is that decision, and it must not contradict the answer the page is bound to give.
 
 Good core-job statements name a decision or an action and its stakes:
 
@@ -78,6 +80,6 @@ If the user supplied a focus ("the pre-commit decision"), narrow `{core_job}` to
 
 ### 6. Persist and proceed
 
-Write `{surface_name}`, `{surface_route}`, `{core_job}`, `{brief_path}`, `{brief_provenance}`, `{screen_review_path}`, `{built_surface_refs}`, `{policy_constraints}`, `{iteration_number}`, and `{prior_candidates}` to the state file.
+Write `{surface_name}`, `{surface_route}`, `{core_job}`, `{brief_path}`, `{brief_provenance}`, `{page_answer}`, `{dominant}`, `{truth_tests}`, `{screen_review_path}`, `{built_surface_refs}`, `{policy_constraints}` (with each rule's class), `{iteration_number}`, and `{prior_candidates}` to the state file.
 
 **NEXT:** Read fully and follow `{project-root}/_bmad/bmm/workflows/design/design-elevation/steps/step-02-generate-candidates.md`.

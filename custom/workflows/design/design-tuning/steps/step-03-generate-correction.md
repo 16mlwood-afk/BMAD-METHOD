@@ -32,8 +32,9 @@ a close-out** — it is a directive to a downstream consumer and keeps its exist
 
 - FULLY AUTONOMOUS. No user interaction. No menus. No halting.
 - The correction message must be PASTE-READY — the user copies it directly into Claude Design with no editing.
-- Write for Claude Design as the audience, not the user. Be direct, specific, and imperative.
-- Organize violations by priority — hard failures first, issues second.
+- Write for Claude Design as the audience, not the user. Be direct and specific.
+- **Two registers, never mixed** (`{project-root}/_bmad/bmm/workflows/design/shared/brief-binding-contract.md`). Truth failures are **required outcomes**, stated imperatively and as the outcome to restore, never as a layout. Advisory notes are **suggestions Claude Design may trade** — say what was noticed and why it may matter, and leave the call to the designer. Claude Design does the heavy lifting.
+- Organize by binding — truth failures (and T0) first, advisory notes second (strong weight before normal).
 - Always include "what to keep" — Claude Design tends to throw everything out and start over if it only receives criticism.
 - YOU MUST ALWAYS SPEAK OUTPUT in your agent communication style with the config `{communication_language}`
 
@@ -47,7 +48,8 @@ From steps 01–02:
 - `{policy_overrides_brief}` — boolean set by step-02 when brief drifted from policy
 - `{current_violations}`, `{fixed_violations}`, `{kept_elements}`
 - `{previous_violations}`
-- `{has_unresolved_issues}` — boolean set by step-02 §7; `true` when ≥1 issue-severity finding is outstanding. Splits a PASS into PASS-CLEAN (clean approval) vs PASS-WITH-ISSUES (approval that carries the issues into implementation).
+- `{truth_results}`, `{page_answer}` — step-02 §2c; T0 and every truth test with pass / fail / not judgeable
+- `{has_unresolved_issues}` — boolean set by step-02 §7; `true` when ≥1 advisory note is outstanding. Splits a PASS into PASS-CLEAN vs PASS-WITH-NOTES (approval that carries the notes forward as advice).
 
 ## SEQUENCE OF INSTRUCTIONS
 
@@ -55,35 +57,45 @@ From steps 01–02:
 
 Based on the overall assessment from step-02 §7:
 
-- **Assessment = PASS** (0 hard failures AND `{coverage_partial} = false` AND `{treatment_unverified} = false`): Generate an APPROVAL message — section 5. Two sub-paths there, chosen by `{has_unresolved_issues}`:
+- **Assessment = PASS** (0 truth failures AND T0 `pass` or `no declared answer` AND `{coverage_partial} = false`): Generate an APPROVAL message — section 5. Two sub-paths there, chosen by `{has_unresolved_issues}`:
   - **PASS-CLEAN** (`{has_unresolved_issues} = false`): an unqualified approval.
-  - **PASS-WITH-ISSUES** (`{has_unresolved_issues} = true`): an APPROVED-WITH-ISSUES message — no hard failure blocks the design, but the issue-severity findings are carried in a mandatory **Issues to resolve** block so they get fixed at implementation rather than silently shipped. A clean approval is NOT permitted while any issue is outstanding; this is the gate that stops a polished render from auto-passing on "0 hard failures."
-- **Assessment = FAIL** (1+ hard failures, regardless of coverage): Generate a correction message. Continue to section 2.
-- **Assessment = PARTIAL** (0 hard failures BUT `{coverage_partial} = true` OR `{treatment_unverified} = true`): Generate a PARTIAL-STATUS message — list everything that's resolved, list the prior keepers that re-verified cleanly, and explicitly name what blocks approval. Two blockers can land here:
-  - **Missing screens** (`{coverage_partial}`) — name the screens that must be rendered.
-  - **Treatment unverified** (`{treatment_unverified}`) — the artifact source was absent, so the treatment lane (ring/opacity, radius, spacing, color, dot) ran blind. Name it: "treatment checks unverified — provide the Claude Design artifact URL so ring/radius/color are read exactly, not eyeballed." This is the iter-4 V18 blocker: never certify a treatment from pixels.
+  - **PASS-WITH-NOTES** (`{has_unresolved_issues} = true`): an APPROVED-WITH-NOTES message — every truth test holds, and the advisory notes travel with the design in an **Advisory notes** block for Claude Design and the implementer to weigh. The notes are not conditions of approval. (Formerly PASS-WITH-ISSUES, which withheld a clean approval on advice.)
+- **Assessment = FAIL** (1+ truth failures, or T0 `fail`): Generate a correction message. Continue to section 2. Advisory notes ride along in the same message, below the truth failures, as suggestions.
+- **Assessment = PARTIAL** (0 truth failures BUT a truth test could not be judged — `{coverage_partial} = true`, or the page's first screen was missing so T0 could not be read): Generate a PARTIAL-STATUS message — list everything that's resolved, list the prior keepers that re-verified cleanly, and name each truth test waiting on a state that was not shown.
 
-  The PARTIAL-STATUS path does NOT emit an APPROVAL and does NOT emit a corrective directive; it emits a "design is on track but cannot be approved until you provide X" status message. The user pastes that status message back to themselves (or to Claude Design as a "please render the missing screens" request) — it is not a correction to send Claude Design. See section 5a for the PARTIAL-STATUS template.
+  `{treatment_unverified}` on its own is **not** a PARTIAL blocker any more — treatment (ring, radius, spacing, colour, dot) is advisory. It is listed among the notes: "treatment not read from source this round — paste the Claude Design artifact URL if you want it checked exactly." Never claim an unread treatment is resolved; equally, never hold an approval for it.
 
-Refusing to emit APPROVAL on PARTIAL is the workflow's defense against approval-by-omission: a clean record on 3 of 5 screens is not evidence that screens 4 and 5 are clean — and a pixel-eyeballed pill is not evidence the treatment matches.
+  The PARTIAL-STATUS path does NOT emit an APPROVAL and does NOT emit a corrective directive; it emits a "design is on track but cannot be approved until you provide X" status message. The user pastes that status message back to themselves (or to Claude Design as a "please render the missing state" request) — it is not a correction to send Claude Design. See section 5a for the PARTIAL-STATUS template.
+
+Refusing to emit APPROVAL on PARTIAL is the workflow's defense against approval-by-omission **on truth**: a truth test that held on 3 screens is not evidence it holds in the state nobody rendered. A suggested frame nobody drew is not that case — it is a note.
 
 ### 2. Build the Correction Message
 
 Use this structure for `{correction_message}`:
 
 ```markdown
-**Iteration {iteration_number} feedback. {X} violations found — {Y} are hard failures.**
+**Iteration {iteration_number} feedback. {Y} truth failure(s){, and the five-second answer failed}. {W} advisory note(s).**
 
 {If iteration > 1:}
-**Progress from V{N-1}:** {count} violations fixed: {list fixed items}. {count} still remain.
+**Progress from V{N-1}:** {count} fixed: {list fixed items}. {count} still remain.
 
-**Violations — fix these before iterating on anything else:**
+**Must be true — fix these first:**
 
-{For each violation, ordered by severity (hard-failure first):}
-**{ID}. {Short title}** ({category})
-{What the brief/guardrail says — quote the constraint.}
-{What the mockup shows instead — be specific about what you see.}
-{If visual reference exists: "Reference: {product} does {X} — match that pattern."}
+{If T0 failed:}
+**T0. The page's answer.** A first-time reader must get *"{page_answer}"* within five seconds. Right now the first thing they read is {what the screen leads with}. How you make the answer dominate is yours to decide.
+
+{For each binding: truth finding:}
+**{ID}. {test id} — {test statement}** ({category})
+{What the screen shows that breaks it — be specific.}
+{The outcome to restore, in one sentence — never a prescribed layout.}
+
+**Advisory — your call:**
+
+{For each binding: advisory note, strong weight first:}
+**{ID}. {Short title}** ({category}{, `[tradeable]` if the rule exists only for consistency})
+{What was noticed and the rule or reference it departs from — quoted.}
+{Why it may matter to the reader, in one line.} Keep your version if you have a better reason; it will not fail the design.
+{If visual reference exists: "Reference: {product} does {X} — worth a look."}
 
 **What to keep — do NOT change these:**
 {For each kept element:}
@@ -99,13 +111,13 @@ Use this structure for `{correction_message}`:
 
 Before finalizing, verify:
 
-- [ ] Every violation cites a specific constraint from the brief (section number or guardrail name)
+- [ ] Every truth failure cites its test id (T0, T1…, or a legacy MUST PRESERVE item) or truth-class policy rule; every advisory note cites the rule or reference it departs from
 - [ ] Every violation describes what the mockup shows (not just "this is wrong")
 - [ ] No design opinions injected — every critique traces to a written constraint
 - [ ] "What to keep" section is non-empty (even if the mockup is poor, something works)
 - [ ] Visual references restated (if applicable) — Claude Design loses context between messages
 - [ ] Message is addressed to Claude Design, not to the user
-- [ ] No ambiguous language ("consider", "maybe", "you might want to") — use imperatives ("fix", "remove", "change to")
+- [ ] Truth failures use imperatives about the **outcome** ("a reader must be able to tell…"), never a mechanism; advisory notes are plainly labelled as suggestions — no advisory note is worded as a requirement, and none sits under "Must be true"
 - [ ] Content-lane (§13a identifier/value-formatting) findings are phrased as **render-boundary display-format normalization** ("render `marketplaceBuy` as the label form 'Amazon ES', matching the sell-side 'Amazon UK'"), naming one consistent target form per identifier class — NOT as a data/schema change (stored enums are untouched). Quote the divergent rendered strings.
 
 ### 4. Persist Iteration State
@@ -126,8 +138,9 @@ status: {iterating | approved}
 ## Current Status
 
 Iteration: {iteration_number}
-Assessment: {PASS | FAIL}
-Violations: {count}
+Assessment: {PASS-CLEAN | PASS-WITH-NOTES | FAIL | PARTIAL}
+Truth failures: {count} · Five-second answer: {pass | fail | no declared answer}
+Advisory notes: {count}
 Fixed this round: {count}
 
 ## Visual References
@@ -138,8 +151,8 @@ Fixed this round: {count}
 
 ### Iteration {N}
 
-| ID | Category | Severity | Description | Status |
-|----|----------|----------|-------------|--------|
+| ID | Category | Binding | Severity | Description | Status |
+|----|----------|---------|----------|-------------|--------|
 {table of all violations with their status}
 
 {Include previous iteration tables too — append-only history}
@@ -151,14 +164,14 @@ Fixed this round: {count}
 
 ### 5. Generate Approval Message (if assessment == PASS)
 
-If `{assessment} == PASS` (0 hard failures AND `{coverage_partial} == false` AND `{treatment_unverified} == false`), branch on `{has_unresolved_issues}`.
+If `{assessment} == PASS` (0 truth failures AND T0 not failed AND `{coverage_partial} == false`), branch on `{has_unresolved_issues}`.
 
 **5 (clean) — PASS-CLEAN (`{has_unresolved_issues} == false`):**
 
 ```markdown
 **Design approved — iteration {iteration_number}.**
 
-All constraints from the design brief are satisfied. No corporate guardrail violations. No craft or legibility issues. Visual direction aligns with references. All required screens were inspected.
+Every truth test holds and the five-second answer lands. No advisory notes outstanding. Every state a truth test needed was inspected.
 
 **Approved elements:**
 {List all kept_elements}
@@ -168,56 +181,54 @@ All constraints from the design brief are satisfied. No corporate guardrail viol
 
 Update the state file with `status: approved`.
 
-**5 (with issues) — PASS-WITH-ISSUES (`{has_unresolved_issues} == true`):** the design has no hard failures, but ≥1 issue-severity finding (a §2 Craft & legibility row, a §4 typography/monospace issue, a §11 dropdown issue, a non-systemic content slip). Do NOT emit the clean approval above. Emit this instead:
+**5 (with notes) — PASS-WITH-NOTES (`{has_unresolved_issues} == true`):** every truth test holds, and ≥1 advisory note is outstanding (a fingerprint row, a treatment divergence, a craft or legibility row, a content slip, a frame not drawn). Emit this instead of the clean approval above:
 
 ```markdown
-**Design approved with issues — iteration {iteration_number}.** {N} issue(s) to resolve at implementation; 0 hard failures.
+**Design approved — iteration {iteration_number}.** Every truth test holds; {N} advisory note(s) below.
 
-No hard failure blocks this design — the composition, treatment, and §13 coherence hold. But the following issue-severity findings must be resolved when the design is implemented (or fed back to Claude Design if you want them fixed in the mock first). They are real policy deviations, just not page-failing ones — shipping them is the "polished but thoughtless" miss this gate exists to catch.
+The design answers *"{page_answer}"* and keeps every guarantee the brief asked for. The notes below are advice from the project's design policy and references — worth weighing, not conditions of approval. Claude Design or the implementer may take them, trade them, or decline them with a reason.
 
-**Issues to resolve (do not ship as-is):**
-{For each issue-severity item in current_violations, ordered most-impactful first:}
-**{ID}. {Short title}** ({category}, {lane})
-{What the policy says — quote the section.} {What the render shows.} {The one-line fix.}
+**Advisory notes:**
+{For each advisory note, strong weight first:}
+**{ID}. {Short title}** ({category}, {lane}{, `[tradeable]`})
+{What the policy/reference says — quote the section.} {What the render shows.} {The one-line suggestion.}
 
 **Approved elements — keep these:**
 {List all kept_elements}
 
-**Next:** these are implementation-time fixes, not a redesign. Hand to design-implement (it folds the issue fixes into the build), or paste the issue list to Claude Design first if you want the mock corrected before implementation.
+**Next:** hand to design-implement; it carries the notes as advice. Paste the notes to Claude Design first only if you want any of them reflected in the mock.
 ```
 
-Update the state file with `status: approved-with-issues` and persist the issue list so a re-run recognizes which issues were carried forward.
+Update the state file with `status: approved-with-notes` and persist the note list so a re-run recognizes which notes were carried forward.
 
 ### 5a. Generate PARTIAL-STATUS Message (if assessment == PARTIAL)
 
-If `{assessment} == PARTIAL` (0 hard failures BUT `{coverage_partial} == true` and/or `{treatment_unverified} == true`):
+If `{assessment} == PARTIAL` (0 truth failures BUT a truth test could not be judged):
 
 ```markdown
-**Iteration {iteration_number}: PARTIAL — on track but cannot approve.**
+**Iteration {iteration_number}: PARTIAL — on track but cannot approve yet.**
 
-No hard failures on what could be verified. The blocker(s):
-{if coverage_partial:}— coverage: {N} screen(s) from the brief's required edge-state list were not rendered or not included.
-{if treatment_unverified:}— treatment unverified: no design artifact source this round, so ring/opacity, radius, spacing, color, and dot-presence could not be read exactly — they were eyeballed-only and are NOT certified.
-
-{if coverage_partial:}**Missing screens (block approval):**
+No truth failures on what could be seen. Waiting on:
 {For each item in missing_screens:}
-- {screen name as listed in the brief}
-
-{if treatment_unverified:}**Treatment checks blocked (block approval):**
-- Provide the Claude Design artifact URL (the share link / canvas). I'll fetch the bundle and compare ring/radius/color exactly against the canonical component, instead of guessing from the PNG. {list the treatment-class surfaces left unverified, e.g. "status pill, filter chip"}
+- {state/screen} — needed to judge {test id}: "{test statement}"
+{if T0 not judgeable:}- the page's first screen — needed for the five-second answer test
 
 **Status of what WAS verified:**
+{For each truth_results line that passed: "✓ {test id} holds ({evidence})"}
 {For each fixed_violations item from §6: "✓ {ID} resolved on {screen} ({lane})"}
 {For each previous keeper that re-verified in §6a: "✓ {keeper} held"}
 
-**Next step:** {if coverage_partial: "drop screenshots of the missing screens"}{if both: " and "}{if treatment_unverified: "paste the Claude Design artifact URL"} here. I will not emit an approval until every required screen is inspected and every treatment is read from source — partial-coverage approval and pixel-eyeballed treatment are the silent-failure modes this workflow exists to prevent (see workflow.md SOURCE-OF-TRUTH PRECEDENCE, step-02 §1a and §0a).
+{if has_unresolved_issues or treatment_unverified:}**Advisory notes so far (not blocking):**
+{list the advisory notes; if treatment_unverified: "- treatment not read from source this round — paste the artifact URL if you want ring/radius/colour checked exactly"}
+
+**Next step:** drop screenshots of the state(s) listed above here. I will not emit an approval until every truth test has been seen — approval on a truth test nobody could see is the silent-failure mode this workflow exists to prevent (step-02 §1a).
 ```
 
-Update the state file with `status: partial-pending-coverage` (or `partial-pending-treatment` if coverage is complete but treatment is unverified; `partial-pending-coverage-and-treatment` if both) and persist `{missing_screens}` + `{treatment_evidence_mode}` so the next iteration recognizes the gap is closed when the screens and/or the artifact URL arrive.
+Update the state file with `status: partial-pending-coverage` and persist `{missing_screens}` (with their test ids) + `{treatment_evidence_mode}` so the next iteration recognizes the gap is closed when the missing states arrive.
 
 ### 5b. Brand Identity Feedback (on PASS-CLEAN approval only)
 
-Run this ONLY on a PASS-CLEAN approval (`{has_unresolved_issues} == false`). A PASS-WITH-ISSUES design has outstanding craft/legibility deviations — do not nominate it as a new reference page or exemplar until those are resolved; recommending a flawed surface as the bar is how drift enters the policy.
+Run this ONLY on a PASS-CLEAN approval (`{has_unresolved_issues} == false`). A PASS-WITH-NOTES design may be excellent, but it is not nominated as a reference page until its notes are either taken or declined with a reason — recommending an undecided surface as the bar is how drift enters the policy. Where a note was declined because the design found a better answer than the policy's style rule, surface that in the brand-identity drift check below — it is a candidate improvement to the policy, not a defect.
 
 When a design is approved AND `{brand_identity_path}` exists, evaluate whether the brand identity should be updated:
 
@@ -226,8 +237,8 @@ If the approved design is notably well-executed, suggest adding it to the brand 
 > "Consider adding {feature_name} at {route} to the brand identity's reference pages — its {specific quality} sets a new bar."
 
 **Check for new anti-patterns discovered:**
-If any violation persisted for 3+ iterations before being fixed, it's a pattern Claude Design is strongly biased toward. Suggest adding it to the brand identity's section 9 (AI Fingerprint Sensitivity):
-> "Claude Design repeatedly produced {pattern} despite explicit prohibition. Consider adding this to the brand identity's AI sensitivity table."
+If any note persisted for 3+ iterations before being taken, it's a pattern Claude Design is strongly biased toward. Suggest adding it to the brand identity's section 9 (AI Fingerprint Sensitivity) — as advice, not as a new failure:
+> "Claude Design repeatedly produced {pattern} despite the advisory note. Consider adding this to the brand identity's AI sensitivity table."
 
 **Check for brand identity drift:**
 If the approved design intentionally deviated from any brand identity value (e.g., used a different badge pattern that looked better), flag it:
@@ -239,10 +250,10 @@ Output these suggestions in a `**Brand Identity Updates**` section after the app
 
 Display to the user:
 
-1. **Summary line:** "Iteration {N}: {PASS-CLEAN | PASS-WITH-ISSUES | FAIL | PARTIAL} — {X} violations ({Y} hard failures, {W} issues), {Z} fixed from last round{, missing N screen(s) if PARTIAL}". Never report a bare "PASS" when issues are outstanding — say "PASS-WITH-ISSUES — N issues to resolve" so the issue count is in the headline, not buried.
-2. **The full correction / approval / approved-with-issues / partial-status message** inside a clearly marked block — ready to copy
+1. **Summary line:** "Iteration {N}: {PASS-CLEAN | PASS-WITH-NOTES | FAIL | PARTIAL} — {Y} truth failure(s), five-second answer {pass | fail | no declared answer}, {W} advisory note(s), {Z} fixed from last round{, waiting on N state(s) if PARTIAL}". Never report a bare "PASS" when notes are outstanding — say "PASS-WITH-NOTES — N notes" so the count is in the headline. Never call a note a failure.
+2. **The full correction / approval / approved-with-notes / partial-status message** inside a clearly marked block — ready to copy
 3. **Brief drift report** (if `{policy_overrides_brief}` = true). For each item in `{brief_drift}`, print:
-   > **Brief drift detected — policy wins.** The brief at `{brief_path}` softens a rule from `{brand_identity_path}`. This run evaluated against the policy, not the brief.
+   > **Brief drift detected — policy wording wins.** The brief at `{brief_path}` softens or drops a rule from `{brand_identity_path}`. This run evaluated against the policy's wording, at the rule's own class ({truth | advisory}).
    > - Rule: `{rule}`
    > - Policy says: `{policy_text}`
    > - Brief says: `{brief_text}` *(drift type: {drift_type})*
@@ -252,15 +263,15 @@ Display to the user:
 5. **Next step instruction:**
    - If FAIL: "Paste the message above into Claude Design. Drop the next screenshot here when ready."
    - If PASS-CLEAN: "Design approved. Run the design-implement workflow to bring the approved design into the codebase. For a single, isolated component change, quick-dev may be sufficient."
-   - If PASS-WITH-ISSUES: "Approved with {N} issue(s). Run design-implement — it folds the listed issue fixes into the build. Or paste the Issues block to Claude Design first if you'd rather correct the mock before implementing. Do not ship the design without resolving the issues."
-   - If PARTIAL: "Drop screenshots of the missing screens listed above and re-invoke design-tuning. The status message is for your records; do not send it to Claude Design as a correction."
+   - If PASS-WITH-NOTES: "Approved, with {N} advisory note(s). Run design-implement — the notes travel as advice. Paste the notes to Claude Design first only if you want any of them in the mock."
+   - If PARTIAL: "Drop screenshots of the missing states listed above and re-invoke design-tuning. The status message is for your records; do not send it to Claude Design as a correction."
 
 ---
 
 ## SUCCESS METRICS
 
 - Correction message is paste-ready (no user editing needed)
-- Every violation traces to a specific brief constraint
+- Every truth failure traces to a truth test or T0; every advisory note traces to a rule or reference and is labelled advisory
 - "What to keep" section prevents Claude Design from starting over
 - State file persisted with full violation history
 - Visual references persisted for subsequent iterations
@@ -270,10 +281,11 @@ Display to the user:
 
 - Generating a correction that requires the user to edit it before pasting
 - Forgetting to restate visual references (Claude Design loses context between messages)
-- Writing "consider doing X" instead of "do X" — Claude Design responds better to direct imperatives
+- Writing a truth failure as "consider doing X" — a truth outcome is required, say so. The reverse is equally a failure: writing an advisory note as a demand, or putting it under "Must be true"
+- **Failing or withholding approval on advice** — a card grid, a pill treatment, a token, an undrawn suggested frame or an unread treatment is a note, never a FAIL or a PARTIAL
 - Not persisting state — losing iteration tracking between invocations
-- Approving a design that still has hard failures
-- **Approving on `{coverage_partial} == true`.** PASS requires both 0 hard failures AND full screen coverage; emit PARTIAL-STATUS when coverage is incomplete and refuse to send Claude Design a correction (the gap is on the user's side, not the design's). See §5a.
+- Approving a design that still has a truth failure or a failed five-second answer
+- **Approving on `{coverage_partial} == true`.** PASS requires 0 truth failures AND every truth test judged; emit PARTIAL-STATUS when a truth test is waiting on an unseen state and refuse to send Claude Design a correction (the gap is on the user's side, not the design's). See §5a.
 - **Sending the PARTIAL-STATUS message to Claude Design as a correction.** That message is a status-for-the-user; Claude Design would treat it as a directive to redesign the screens it has already shown. The next step is the user dropping the missing screens, not Claude Design producing new ones.
 
 ---

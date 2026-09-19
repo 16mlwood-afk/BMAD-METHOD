@@ -42,6 +42,14 @@ Evidence: [`design-brief-notes-evidence-2026-09-19.md`](./design-brief-notes-evi
 | `tools/check-brief-readiness.py` | Probe P6 (warn-only) for outcome-first briefs; 8 golden cases, mostly silence |
 | `shared/operator-artifact-contract.md`, `disclosure-layer-contract.md`, `spawned-surface-completeness.md` | Binding-status banner: their rules are advisory unless carried into Part 2 |
 
+### Follow-on, same day — the three remaining design workflows
+
+| Surface | Change |
+|---|---|
+| `design-review` | New "What may be a hard failure" section; every violation carries `Binding: truth` or `advisory`; `hard failure` and blocking are reserved for truth. §1.6 checks T0 and the truth tests first (blocking); frame coverage, shell chrome and station-vs-dashboard become advisory (the role-boundary and staleness cases stay truth). An Anti-AI checklist failure is an advisory `major`, not a `hard failure`. Artifact frontmatter gains `five_second_answer` and `brief_binding` |
+| `design-tuning` | New BINDING vs ADVISORY section; step-01 §2a captures T0 and the truth tests and classifies policy rules; step-02 §0b tags every finding and §2c judges T0 and the truth tests; fingerprint, treatment, craft, §13 and visual-reference findings are notes. FAIL only on truth; PARTIAL only when a truth test's state was not shown; an unverified treatment no longer blocks; PASS-WITH-ISSUES became PASS-WITH-NOTES; the correction message separates "Must be true" from "Advisory — your call" |
+| `design-elevation` | Only a candidate that breaks a truth test, T0 or a truth-class rule is hard-rejected; a style-rule or look-based anti-default departure survives with an advisory note; `{core_job}` anchors on `page_answer` and `dominant`; changing advisory guidance is an in-surface refinement, not a re-brief |
+
 ## Proof the guarantees survived — the TheFBAPrep brief regenerated in the new shape
 
 The notes list six commitments that survived the second build. Each is expressible as a Part 2 test, with no layout:

@@ -49,7 +49,8 @@ This uses **step-file architecture** for focused execution:
 - `{brief_provenance}` — The 10-field provenance block read from the brief (per brief-revision-policy.md). Carried forward into any routed work so the lineage is unbroken.
 - `{screen_review_path}` — Path to the most recent screen-review for the surface, if one exists.
 - `{built_surface_refs}` — The actual component/route files implementing the surface, read from code. Grounds candidates in what exists, not what a brief imagined.
-- `{policy_constraints}` — Hard constraints and named anti-defaults from `{project-root}/docs/design-policy.md`, loaded directly (not transitively through the brief).
+- `{policy_constraints}` — Rules and named anti-defaults from `{project-root}/docs/design-policy.md`, loaded directly (not transitively through the brief), each classified `truth` or `advisory` by the brief-binding-contract's one-question test.
+- `{page_answer}`, `{dominant}`, `{truth_tests}` — the brief's binding contract (Block B / Part 2; legacy: the MUST PRESERVE list and an empty answer). The only things a candidate is hard-rejected for breaking.
 - `{iteration_number}` — Elevation-pass count for this surface (1-based, incremented each invocation).
 - `{state_file_path}` — Path to the persistent elevation state file.
 - `{prior_candidates}` — Candidates proposed in earlier passes (so a re-run does not re-propose what was already accepted or explicitly declined).
@@ -74,8 +75,20 @@ This uses **step-file architecture** for focused execution:
 - **Disclose what you rejected.** The rejected additive ideas (`{rejected_candidates}`) are part of the output, each with a reason. A list of only the survivors looks like the filter never ran. Surfacing the rejects is the proof of work.
 - **Propose, never expand scope.** You generate, rank, and recommend. The user selects. Never route an enhancement to the build loop that the user did not select — that is intent autonomy, which this workflow does not have (see Autonomy Model).
 - **Ground every candidate in the real surface.** Read the built code and the brief. A candidate must reference something that actually exists on the surface ("the duplicate check only fires on Save", "field→source is one-way"). Do not invent affordances the surface doesn't have to then "improve" them.
-- **Policy is authoritative; the brief is derivative.** If a candidate would violate the project design policy, it is rejected even if it deepens the core job. The policy's named anti-defaults are hard rejects.
+- **Only truth is a hard reject (STD-BRIEF-BINDING-001).** A candidate is rejected on policy grounds only if it would break one of the brief's truth tests, the five-second answer (T0), or a truth-class policy rule (see BINDING vs ADVISORY below). A candidate that departs from a style, layout or composition rule — including one the policy lists as an anti-default — is **kept**, carrying an advisory note that names the rule, so the user and Claude Design can weigh it. Rejecting on anti-chrome grounds (the leverage filter) is a different, unchanged test.
 - **Recommend a focused subset, then stop.** Do not present a flat menu of ten options for the user to wade through. Rank, recommend the 1–3 with the most leverage, name the pairing rationale, and act on the user's reply. (This honors the project's no-multi-select-menus and assess-and-act conventions: the recommendation is the headline, the full ranked list is the appendix.)
+
+---
+
+## BINDING vs ADVISORY (2026-09-19) — CRITICAL
+
+Owner, verbatim: *"the biggest takeaway is claude design should do the heavy lifting everything else is mostly advisory"*. Contract: `{project-root}/_bmad/bmm/workflows/design/shared/brief-binding-contract.md`.
+
+For this workflow that means three things:
+
+1. **The core job comes from the brief's answer.** Where the brief is outcome-first, `{core_job}` is anchored on its `page_answer` and `dominant` (step-01 §5) — what the page must say in five seconds and the one thing that must dominate. Elevation deepens that; it never competes with it.
+2. **Only truth hard-rejects.** A candidate that would break a truth test, T0, or a truth-class policy rule is rejected with the test cited. A candidate that departs from a style, layout or composition rule is kept, with an advisory note naming the rule — the policy is advice to be weighed, not a veto on a better idea.
+3. **Changing the advice is not changing the intent.** An enhancement that alters only the brief's advisory guidance (a suggested frame, a layout, an order, a token) is an in-surface refinement, not a re-brief (step-04 §1). Only a change to the moment, the answer, the dominant, or a truth test re-briefs the surface.
 
 ---
 
@@ -94,7 +107,7 @@ The failure this guards against is a workflow that helpfully "improves" a surfac
 
 When candidates conflict with guidance, authority runs:
 
-1. **Project design policy** — `{project-root}/docs/design-policy.md`. Named anti-defaults are hard rejects regardless of leverage. Loaded directly in step-01.
+1. **Project design policy** — `{project-root}/docs/design-policy.md`. Loaded directly in step-01. Its **truth-class** rules are hard rejects regardless of leverage; its style/layout/composition rules and named anti-defaults are **advice** attached to a candidate, never a reject on their own.
 2. **The built surface (code)** — `{built_surface_refs}`. The ground truth for what exists and what a candidate would change. A candidate that contradicts what the code actually does is mis-grounded; re-read before proposing.
 3. **The surface's brief / screen-review** — `{brief_path}`, `{screen_review_path}`. Define the surface's intended job and constraints. The source of `{core_job}` and of the provenance carried into routed work.
 4. **Prior elevation state** — `{state_file_path}`. Tracks what was already proposed/selected/declined. Cannot reopen something the user explicitly declined unless the user asks.

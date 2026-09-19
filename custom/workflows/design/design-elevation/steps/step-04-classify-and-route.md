@@ -34,6 +34,8 @@ For each item in `{selected_enhancements}`, classify on both axes below. Togethe
 
 When an item straddles the scope line, classify by the higher bar: if it would make any field of the brief's intent read differently, treat it as an intent-change.
 
+**What counts as the brief's intent** (`shared/brief-binding-contract.md`): the moment (Part 1), the `page_answer`, the `dominant`, and the truth tests (Part 2) — legacy: the stated purpose and the MUST PRESERVE list. An enhancement that changes only the brief's **advisory** guidance — a suggested frame, a layout, an order, a column set, a token — does not change intent: it is an in-surface refinement, routed by Axis B, and it never supersedes the brief. Re-briefing for a layout change is the over-binding the contract removed.
+
 **Axis B — shape: design-shaped vs code-shaped.** (Decides the *tool*, not the brief.)
 
 - **Design-shaped** — closing it changes what the surface *looks like or how the user interacts with it*: a new or redesigned region, a new/changed commit footer, a verify-against-source layout, a new band, a restructured cell. The deliverable is a visual + interaction design, so it is authored in the design tool (Claude Design), not a code spec.

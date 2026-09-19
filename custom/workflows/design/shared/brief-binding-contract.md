@@ -109,3 +109,6 @@ listed below stops referencing this file.
 | `design-implement` | Bundle→brief conformance gate halts only on a truth test or T0; frame/shell/composition diffs are notes |
 | `design-synthesize` | Suggested frames are the synthesizer's call; self-critique fails only on a truth test or T0 |
 | `design-artifact-loop` | Parses the five parts; treats advisory sections as advice |
+| `design-review` | Live-page audit: T0 and truth tests are the only `hard failure` / blocking findings; frame coverage, shell chrome, composition shape, the Anti-AI checklist and policy style rules are advisory (`Binding:` on every violation) |
+| `design-tuning` | Iteration critic: FAIL only on a broken truth test or T0; fingerprint, treatment, craft, visual-reference and undrawn-frame findings are advisory notes (PASS-WITH-NOTES); coverage blocks approval only for a state a truth test needs |
+| `design-elevation` | Candidate filter: hard-rejects only a candidate that breaks a truth test, T0 or a truth-class rule; a style-rule departure survives with an advisory note; changing advisory guidance is not an intent change |

@@ -70,9 +70,10 @@ If found, load it as `{brand_identity}`, set `{brand_identity_path}` to the work
 - Read the entire file and store as `{brand_identity}` (variable name retained for backward compatibility with downstream templates)
 - Set `{brand_identity_path}` to the absolute path of whichever file was loaded
 - Extract `{hard_failures}` from the policy's hard-failures section (numbered list in §5 of `docs/design-policy.md` or §8 of legacy `brand-identity.md`)
-- Extract `{policy_constraints}` — the full set of testable rules from the policy (status palette, color count limits, badge shapes, layout principles, page-mode rules, detail-view rules). This is the source-of-truth set against which any brief-derived constraint will be contradiction-scanned in step-02.
+- **Classify every `{hard_failures}` item and every `{policy_constraints}` rule `truth` or `advisory`** by the one-question test in `{project-root}/_bmad/bmm/workflows/design/shared/brief-binding-contract.md` §2: *if a design broke this rule, could a reader come away believing something false about the data, the money, the state of the work, or who may see what?* Yes → `truth` (can fail a design). No → `advisory` (a note). A policy calling a rule a "hard failure" does NOT make it truth-class — most hard-failure lists are about look (emoji icons, card grids, radius, status-colour caps) and those are advisory. Ambiguous → `advisory`. The policy file itself is not edited.
+- Extract `{policy_constraints}` — the full set of testable rules from the policy (status palette, color count limits, badge shapes, layout principles, page-mode rules, detail-view rules), each carrying its class from the line above. This is the set against which any brief-derived constraint will be contradiction-scanned in step-02.
 - Extract `{visual_references}` from the policy's external-influences / reference-products section — these persist across iterations and don't need user re-input
-- Report: "Project design policy loaded from `{brand_identity_path}` — evaluating against project visual language. Brief is derivative; policy wins on conflict."
+- Report: "Project design policy loaded from `{brand_identity_path}` — its truth rules bind, its style rules are advice. Brief is derivative; policy wording wins on conflict."
 
 **If neither is found:**
 - Set `{brand_identity}` = empty, `{brand_identity_path}` = empty, `{policy_constraints}` = empty
@@ -141,11 +142,13 @@ The brief's section 4 (Visual Identity) and section 5 (Hard Constraints) were ge
 - Add feature-specific constraints the policy doesn't cover (responsive targets for this page, data density expectations, navigation position, interaction model).
 
 The brief MAY NOT:
-- Introduce parentheticals or carve-outs that soften policy hard rules.
-- Permit something the policy bans.
-- Drop a hard-failure bullet the policy declares.
+- Introduce parentheticals or carve-outs that soften a policy **truth** rule.
+- Permit something a policy **truth** rule bans.
+- Drop a **truth-class** rule the policy declares (it belongs in Part 2).
 
-When the brief and policy disagree, the policy text is what step-02 evaluates against. Drift is logged, not honored.
+The brief MAY move a policy **style/layout/composition** rule into its Advisory guidance, mark it `[tradeable]`, or leave it out — that is the outcome-first shape working, not drift (contract §2–§3).
+
+When the brief and policy disagree, the policy text is what step-02 evaluates against. Drift is logged, not honored — and an advisory rule stays advisory whichever document states it.
 
 Extract `{brief_constraints}` from:
 - Section 5 (Hard Constraints) — capture the brief's full bullet list; step-02 will diff this against `{hard_failures}` from policy.
@@ -170,7 +173,20 @@ Extract `{corporate_guardrails}` from:
   ls {implementation_artifacts}/../planning-artifacts/corporate-design-system-guidelines.md 2>/dev/null
   ```
 
-Store the anti-patterns as a numbered checklist — each one becomes a violation check in step 2.
+Store the anti-patterns as a numbered checklist — each one becomes a check in step 2, carrying its `truth`/`advisory` class (a brief-less, policy-less run classifies them by the same one-question test; most are advisory).
+
+### 2a. Capture the Binding Contract — the only things that can fail this design
+
+Per `{project-root}/_bmad/bmm/workflows/design/shared/brief-binding-contract.md`, set:
+
+- `{brief_shape}` — `outcome-first` when Block B carries `brief_shape: outcome-first`; otherwise `legacy`. Never halt on its absence.
+- `{page_answer}` — Block B `page_answer` (outcome-first). Legacy: empty — record `five-second test: no declared answer (legacy brief)`; step-02 still asks "what does this page answer?" but cannot fail against a declared answer.
+- `{truth_tests}` — **T0** (the five-second answer test, always first) plus every Part 2 row (`id · statement · check`). Legacy: the Design Contract "MUST PRESERVE" list, one test per item (`L1…`).
+- `{dominant}` — Block B `dominant` (outcome-first); what Part 3 says must dominate. A demoted "available-on-demand" item is legal and never a finding.
+
+Also mark as **advisory** (for step-02's binding classification): the brief's §7 suggested frames / `frames` list, §4 onward, the Advisory guidance appendix, and on a legacy brief §4, §5 and §7. An outcome-first brief missing its moment, answer, dominant or Part 2 is a brief defect for Gate 3 (`brief-gap`), not a reason to fail the design.
+
+If no brief is resolvable (the degraded brief-less path above), `{truth_tests}` = the truth-class policy rules only, `{page_answer}` = empty.
 
 ### 3. Load Visual References
 
@@ -213,6 +229,7 @@ Confirm at least these are populated:
 - `{brand_identity_path}` ✓ (path or explicit empty — must be a deliberate value, not unchecked)
 - `{policy_constraints}` ✓ (populated if policy loaded; empty otherwise — must be a deliberate value)
 - `{brief_constraints}` ✓
+- `{brief_shape}`, `{page_answer}`, `{truth_tests}` ✓ (§2a — `{truth_tests}` always holds at least T0; `{page_answer}` may be deliberately empty on a legacy brief)
 - `{corporate_guardrails}` ✓ (may be empty if not a corporate project — that's OK)
 - `{iteration_number}` ✓
 - `{treatment_evidence_mode}` ✓ (`bundle-exact` or `screenshot-degraded` — must be a deliberate value, set by §1c)
@@ -234,6 +251,7 @@ Load and follow: `{project-root}/_bmad/bmm/workflows/design/design-tuning/steps/
 
 - Design brief located and read
 - Constraints extracted as a checkable list
+- Binding contract captured (§2a) — T0 plus the Part 2 / MUST PRESERVE tests; every policy rule classified truth or advisory
 - Corporate guardrails extracted as a numbered checklist (if applicable)
 - Visual references loaded from the best available source
 - Previous iteration state loaded (if exists)

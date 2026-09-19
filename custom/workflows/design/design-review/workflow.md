@@ -85,6 +85,15 @@ When this workflow audits a page or emits a screen-review artifact, the order of
 2. **Shared BMAD design standards** — `_bmad/bmm/workflows/design/shared/design-standards.md`. Universal anti-AI-slop guardrails.
 3. **The audited page itself.** What the page does is evidence to compare against (1) and (2); the page is never authoritative for what it *should* do.
 
+### What may be a "hard failure" — BINDING vs ADVISORY (2026-09-19) — CRITICAL
+
+Owner, verbatim: *"the biggest takeaway is claude design should do the heavy lifting everything else is mostly advisory"*. Contract: `{project-root}/_bmad/bmm/workflows/design/shared/brief-binding-contract.md` (STD-BRIEF-BINDING-001). Precedence above decides which source's WORDING wins; this decides what can FAIL the page. Every finding carries `Binding: truth | advisory`:
+
+- **`truth`** — it breaks a test in the matching brief's Part 2 (legacy: an item of its Design Contract "MUST PRESERVE" list), fails **T0, the five-second answer** (a first-time reader cannot state the brief's `page_answer` within five seconds), or breaks a policy rule that passes the one-question test: *if a design broke this rule, could a reader come away believing something false about the data, the money, the state of the work, or who may see what?* Only a `truth` finding may carry severity **`hard failure`** or be called **blocking**.
+- **`advisory`** — everything else: hierarchy, density, composition, frames, shell chrome, station-vs-dashboard shape, tokens, type scale, badge/pill treatment, status-colour caps, the policy's style/layout "hard failures", the AI-fingerprint taxonomy, the Anti-AI checklist, peer patterns. Severity **`major`** or **`minor`**, never `hard failure`, never blocking. It is still reported in full — it is advice worth taking, not a verdict on the page.
+
+A policy calling a rule a "hard failure" does not make it truth-class; most such lists are about look. When a rule's class is ambiguous, classify it advisory. The design-review audit is unchanged in what it LOOKS at — measurements, peers, the fingerprint tables, the checklist all still run. What changed is which findings may be called failures.
+
 **Implication for artifact mode:** Every violation block's `Rule violated:` field must cite the policy section directly (e.g., `docs/design-policy.md §5 (Hard Failures): "Emoji as UI icons"`) — not a brief section, and not a peer page. Briefs and peer pages may inform peer-steals or context, but the rule itself originates in the policy. This guarantees downstream consumers (e.g., `design-handoff` in refine-screen mode) can re-resolve each rule against the canonical source.
 
 ### Prerequisites (one of three measurement modes)
@@ -127,6 +136,7 @@ Load and execute `steps/step-01-audit.md`.
 
 A single markdown response with these sections, in order:
 
+0. **What this page answers, and does it hold its truths** — the five-second read (what a first-time reader takes from the page) against the matched brief's `page_answer` (pass / fail / no declared answer), then any `truth` findings, each labelled as such. If there are none, say "no truth failures" in one line — everything after this is advice.
 1. **Top 3 things that feel wrong** — each named, with the specific Tailwind class or token that's wrong, WHY it's wrong (the question the user can't answer at a glance), and a before/after table of concrete class swaps.
 2. **Regional fixes** — broken down by Header, Summary/KPI strip, Context card(s), Table/list shell, Expanded row / detail surface, Color + density tokens. Only include regions with actual fixes.
 3. **What the peer views do that this one should steal** — name the peer file, specific pattern to port.
@@ -155,10 +165,12 @@ measurement_method: <chrome-live | source-derived | screenshot-only>   # see ste
 measurement_caveat: |                                                  # REQUIRED when measurement_method != chrome-live; empty/null otherwise
   <one-paragraph statement of what was NOT measured live and why downstream
    consumers should treat the artifact accordingly.>
+five_second_answer: <pass | fail | no declared answer>   # T0 against the matched brief's page_answer; "no declared answer" for a legacy brief or no brief
+brief_binding: <brief filename + brief_shape (outcome-first | legacy), or "none">
 severity_summary:
-  hard_failure: <N>
-  major: <N>
-  minor: <N>
+  hard_failure: <N>   # binding: truth ONLY — broken truth tests, T0, truth-class policy rules
+  major: <N>          # advisory
+  minor: <N>          # advisory
 ---
 
 # Screen Review: <target>
@@ -168,6 +180,7 @@ severity_summary:
 <One block per issue, ordered by severity (hard failure → major → minor) and within a severity by impact. V1, V2, … are stable IDs the downstream brief references — never re-number across iterations of the same target. Emit every issue you'd act on; do not cap, do not pad.>
 
 ### V1. <short name>
+- **Binding:** truth | advisory   (only `truth` may be `hard failure`; see "What may be a hard failure" above)
 - **Severity:** hard failure | major | minor
 - **Rule violated:** <brief/policy reference — e.g., "Brief §4b Pass 2", "Brand identity §8 (hard failures)", "Design standards — density">
 - **Observed failure:** <what the mockup/page actually does. `<file:line>` and the current Tailwind class are allowed here as concrete evidence.>
@@ -215,7 +228,7 @@ duplicated_data:
 - [ ] **2. Domain-authored hierarchy.** Order, grouping, and visual weight of major regions are driven by domain logic (risk, urgency, lifecycle, workflow state), not template defaults or alphabetical sorting. Rationale: <one line — name the domain logic, e.g., "countries ordered by VAT-at-stake descending; in-row weight pulls eye to overdue action items">.
 - [ ] **3. Recognizably this product.** A user familiar with the rest of this product would recognize the page as belonging here, not as "any AI-generated admin UI". Rationale: <one line — name what makes it specific, e.g., "slate-navy accent + 13px dense rows + monospace IDs match `/avask` and `/queries` exactly">.
 
-**Failure → violation rule:** If a check is `[ ]` (failed), there must be a matching block in `## Violations` above with severity `hard failure`. The checklist alone is not a punishment; it is a final cross-check that the violation list captured the AI-default failure modes the policy bans.
+**Failure → violation rule:** If a check is `[ ]` (failed), there must be a matching block in `## Violations` above with `Binding: advisory` and severity `major`. The checklist alone is not a punishment; it is a final cross-check that the violation list captured the AI-default patterns the policy advises against. It never produces a `hard failure` on its own (brief-binding-contract §4: the AI-fingerprint composite must not fail a design).
 ```
 
 ---
@@ -227,4 +240,5 @@ duplicated_data:
 - Don't flag dark-mode issues.
 - Don't propose new tokens — use what's in the design system.
 - Don't implement. This is a design review, not a PR.
+- **Only truth is a hard failure.** Every violation carries `Binding: truth | advisory`; `hard failure` and "blocking" are reserved for `truth` (see "What may be a hard failure"). Everything else is `major` or `minor` advice.
 - **Artifact-mode rule:** Violations, Edge States, and Peer Steals must all be populated. Emit every violation you'd act on — do not cap, do not pad. Order by severity (hard failure → major → minor) and number V1, V2, … as stable IDs the consumer references. The interactive chat review may still surface the top 3 for the user to skim; the artifact carries the full list and consumers decide how many to act on.

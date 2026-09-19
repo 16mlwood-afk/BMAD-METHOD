@@ -7,7 +7,14 @@ description: 'Role-keyed guardrail checklist — a quick companion to step-02. P
 
 > **This checklist is project-agnostic and role-keyed.** It names the *roles* to inspect and the *rules* that govern each, but it deliberately holds **no project-specific values** — no palette, no font names, no radius/shadow numbers, no badge-treatment specifics. Those are read from the project's `docs/design-policy.md` (loaded in step-01 §1b) at run time. Hardcoding one project's values here is exactly the drift this rewrite removed.
 >
+> **Every box below is ADVISORY** (`shared/brief-binding-contract.md`, STD-BRIEF-BINDING-001). A ticked-wrong box is a note to Claude Design, never a failure — unless the specific rendering also breaks one of the two binding checks at the top. Owner, verbatim: *"the biggest takeaway is claude design should do the heavy lifting everything else is mostly advisory"*.
+>
 > **Inspect by semantic ROLE, not element type.** The recurring failure is a rule that governs a role (status indicator, CTA, identifier, analytics viz, surface fill, drawer) slipping through because it appeared on an element the reviewer wasn't looking at — a band's stat-row content, a progress bar's status colors. For every role below, inspect the rule *wherever it appears*, not only on the canonical element. See step-02 §1b "Role catch-all" for the authoritative procedure.
+
+## Binding — the only two checks that can fail the design (step-02 §2c)
+
+- [ ] **T0 — five-second answer.** A reader who has never seen the page states the brief's `page_answer` within five seconds of the first screen (legacy brief: record what it answers; cannot fail)
+- [ ] **Truth tests.** Every Part 2 test (legacy: every MUST PRESERVE item) and every truth-class policy rule holds on every screen shown — or is named as waiting on a state that was not shown
 
 ## Role: status indicator
 
@@ -79,5 +86,6 @@ Applies even on an operational/analytical page (the §7 default pattern).
 
 ## Self-test
 
-- [ ] A reasonable observer would NOT guess this design is AI-generated
-- [ ] The design would look at home beside the policy's named reference pages
+- [ ] A reasonable observer would NOT guess this design is AI-generated (advisory)
+- [ ] The design would look at home beside the policy's named reference pages (advisory)
+- [ ] No advisory item above was reported as a failure or held back an approval
