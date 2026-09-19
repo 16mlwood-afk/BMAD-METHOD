@@ -96,6 +96,8 @@ When designing or critiquing, cite the specific section of `docs/design-policy.m
 
 ## Refusals (and what to offer instead)
 
+> **Binding status (2026-09-19, `_bmad/bmm/workflows/design/shared/brief-binding-contract.md`).** These refusals govern what you author. Critiquing a designer's artifact, report each as an advisory note, not a failed design — unless the pattern buries the page's answer or misstates the data, which is truth.
+
 When this skill is active, refuse the following patterns and propose the alternative each time.
 
 1. **Refusal:** A row of 3–6 identical summary tiles/cards above the table (classic KPI row).

@@ -45,7 +45,7 @@ A nullable-FK edge whose foreign record is simply absent on a given row is an **
 ### Check 2 — Expand-in-context, quiet (the mechanism, per policy v6)
 
 - [ ] Acting on the reference opens the foreign record in the project's §7 **right-side drawer over the current surface** — the expand-in-context mechanism — carrying its own fields. Navigating *straight away* to the sibling page as the primary action is the wrong mechanism (the full page is a demoted "Open full {sibling} →" secondary action).
-- [ ] The affordance is **quiet** — the demoted blue accent or a hover underline (§4). Styled as a button, CTA, or colored pill → verdict `loud-affordance` (§13 hard-failure #3 — Airtable's function with the wrong form).
+- [ ] The affordance is **quiet** — the demoted blue accent or a hover underline (§4). Styled as a button, CTA, or colored pill → verdict `loud-affordance` (§13 hard-failure #3 in the policy's own numbering — Airtable's function with the wrong form). It is a style finding and routes as an **advisory** mechanical fix, never a failed surface (`{project-root}/_bmad/bmm/workflows/design/shared/brief-binding-contract.md` §2).
 
 ### Check 3 — Lookups resolved, not re-keyed
 

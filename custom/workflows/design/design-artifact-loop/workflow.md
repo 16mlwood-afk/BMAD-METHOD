@@ -232,7 +232,7 @@ This workflow produces ONE of the following per run (plus an optional tuning sta
 ### A. `screen-review-{target_slug}-{date}.md`
 Modes: `review-only`, `refine-screen` (when no recent review exists).
 Template: `templates/screen-review.md`.
-Required sections: header (mode, target, date), context block, verdict (`FAIL` / `PASS WITH ISSUES` / `PASS`), top issues (ranked V1, V2, … with severity + rule-cited evidence), edge states, what to keep, out-of-scope reminder, sources consulted.
+Required sections: header (mode, target, date), context block, verdict (`FAIL` / `PASS WITH NOTES` / `PASS`), top issues (ranked V1, V2, … with severity + rule-cited evidence), edge states, what to keep, out-of-scope reminder, sources consulted.
 Filename convention matches the existing `design-review` artifact contract so downstream `design-handoff` (refine-screen mode) can read it without modification.
 
 ### B. `design-handoff-{target_slug}-{date}.md`
@@ -337,7 +337,7 @@ Confirm:
 - no IA redesign has leaked into refine mode (cross-checked against the Mode Scope matrix)
 
 ### Gate 5 — post-implementation acceptance (next agent in the chain)
-After implementation, the next screenshot review (via `design-artifact-loop` in `review-only` or `refine-screen` mode, or via `design-review`) must end with one of the fixed verdicts: `FAIL` | `PASS WITH ISSUES` | `PASS`. No implementation is considered accepted without a post-implementation screenshot review or equivalent visual verification artifact.
+After implementation, the next screenshot review (via `design-artifact-loop` in `review-only` or `refine-screen` mode, or via `design-review`) must end with one of the fixed verdicts: `FAIL` | `PASS WITH NOTES` | `PASS`. No implementation is considered accepted without a post-implementation screenshot review or equivalent visual verification artifact.
 
 The handoff summary in step 4 names this gate explicitly so the next agent knows it is expected.
 
@@ -349,7 +349,7 @@ The canonical, locked schemas for this workflow's four output artifacts live in 
 
 **Fixed vocabulary (do NOT invent alternative labels):**
 
-- Verdict: `FAIL` | `PASS WITH ISSUES` | `PASS` (and `INDETERMINATE` for `review-only` runs with no visual evidence — used sparingly, never as a default).
+- Verdict: `FAIL` | `PASS WITH NOTES` | `PASS` (and `INDETERMINATE` for `review-only` runs with no visual evidence — used sparingly, never as a default).
 - Severity (per V-numbered issue): `hard failure` | `issue` | `polish`. No `major`/`minor`/`p0`/`p1` or other parallel vocabularies.
 
 ---
@@ -368,7 +368,7 @@ Before finalizing any `screen-review-*`, run one explicit challenge pass. This e
 
 ### Rule
 
-If the challenge pass surfaces a more serious missed issue, re-rank the findings BEFORE issuing the final verdict. The dissent pass may demote a `PASS` to `PASS WITH ISSUES`, or `PASS WITH ISSUES` to `FAIL`. It may not upgrade a verdict — the only direction of travel is toward more skepticism. Record that the dissent pass ran (`dissent_pass: completed` in the output footer, even when the pass changed nothing).
+If the challenge pass surfaces a more serious missed issue, re-rank the findings BEFORE issuing the final verdict. The dissent pass may demote a `PASS` to `PASS WITH NOTES`, or to `FAIL` — but to `FAIL` only for a `Binding: truth` issue (`shared/brief-binding-contract.md` §4); an advisory finding the dissent pass surfaces is added as a note. It may not upgrade a verdict — the only direction of travel is toward more skepticism. Record that the dissent pass ran (`dissent_pass: completed` in the output footer, even when the pass changed nothing).
 
 ---
 

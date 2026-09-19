@@ -211,7 +211,9 @@ The most common ways Claude-generated UI goes wrong:
 
 AI-generated UI has a recognizable "house style" — a set of patterns that signal "this was prompted, not designed." The goal of this section is to make those patterns detectable and fixable so the shipped product is indistinguishable from human-designed software.
 
-**The test:** Show the screen to a designer who doesn't know AI was involved. Would they suspect it? If any element triggers "this looks AI-generated," it fails.
+> **Binding status since 2026-09-19 (`brief-binding-contract.md`, STD-BRIEF-BINDING-001).** Owner, verbatim: *"the biggest takeaway is claude design should do the heavy lifting everything else is mostly advisory"*. Every row in this taxonomy, the Composite Test, the AI Fingerprint Scrub checklist and the P1/P2 fingerprint severities below are **ADVISORY**: a match is reported as a note the designer and implementer weigh, never a failed or blocked design. Where this section says a pattern "fails", a page "is a composite fail", or the scanner "fails the scan", read it as *flagged as an advisory note*; the scanner's exit code is a lint signal for the consumer to report, not a verdict on the design. **One row carries a truth rule and stays binding:** *Placeholder content that reads as AI* — its "if showing demo state, label it explicitly" half. Sample or fixture data presented as live can make a reader believe something false, so undisclosed fixture data is truth-class (contract §2) and may fail a design; how the placeholder data looks is still advice. The P0 items under *Severity Levels* (misleading data, hidden data without indication, broken navigation) are about truth, not fingerprints, and are unaffected.
+
+**The test:** Show the screen to a designer who doesn't know AI was involved. Would they suspect it? If any element triggers "this looks AI-generated," flag it — as an advisory note (binding status above).
 
 **Critical exception — existing project patterns:** If the project's established design language already uses a pattern listed here consistently across multiple pages, do NOT flag it. Only flag fingerprints that appear in newly generated code or that are inconsistent with the project's own established patterns. Check the project's existing components and pages before flagging — ripping out a pattern the project uses everywhere creates worse inconsistency than the fingerprint itself. The goal is to catch AI-generated additions that don't match the project, not to audit the entire design system.
 
@@ -292,7 +294,7 @@ A single fingerprint is forgivable. The compound effect is what makes a page scr
 
 **Counting rules:** Only count P1 (structural) fingerprints toward the composite score. P2 (cosmetic) fingerprints are fixed individually and don't contribute to the composite threshold.
 
-**Threshold:** **Three or more structural fingerprints on one page is a composite fail.**
+**Threshold:** **Three or more structural fingerprints on one page is a composite fail** — an advisory signal that the page wants a holistic pass, reported as a note. It never fails or blocks a design on its own (`brief-binding-contract.md` §4).
 
 - Stat cards + colored icon circles + uppercase headers + gradient accent = unmistakably AI (4 structural = fail)
 - One `rounded-full` badge + one `shadow-lg` card + one divider = 0 structural fingerprints (all cosmetic P2 = not a composite fail)
@@ -383,7 +385,7 @@ When reporting issues, classify by **impact** — not just visual quality. A mis
   - **Broken navigation:** links that 404, dead ends, orphaned pages
   - **Hidden data without indication:** default filters that silently exclude records with no visible indicator
 
-- **P1 — Confusing / Dated / AI-Generated:**
+- **P1 — Confusing / Dated / AI-Generated:** *(the fingerprint items here are advisory — a P1 fingerprint is a strong note, never a failed design; the undefined-concept, decision-support and opaque-logic items become binding only where they break a truth test)*
   - Patterns that make the app look unprofessional (thick borders, wrong palette, emoji icons, missing hover states)
   - **Structural AI fingerprints (P1):** patterns that fundamentally shape the page — stat card rows, dashboard-as-default layout, bento grids, hero sections on tools, feature grids, colored icon circles, rainbow status badges, AI purple accent, gradient backgrounds, undeclared left-border accent callout containers, enthusiastic/marketing copy. These are high-signal indicators that the page was generated, not designed.
   - **3+ fingerprints on one page:** escalate to a holistic redesign pass — individual fixes won't solve the compound "AI look"
@@ -410,7 +412,7 @@ covered because the taxonomy exists. When a lane changes (a scanner rule added, 
 removed), update this table in the same commit.
 
 **Classes:** **deterministic** — `scripts/design-fingerprint-scan.sh` matches a reliable markup/CSS
-signature and a finding fails the scan; **advisory** — a workflow instructs an agent/human judgment
+signature and a finding fails the scan (a lint result the consumer reports as an advisory note on the design — binding status at the top of § AI Fingerprint Detection); **advisory** — a workflow instructs an agent/human judgment
 pass (the scanner names these as advisory items but cannot decide them); **unwired** — no scanner
 rule and no named workflow check currently fires for it.
 

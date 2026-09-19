@@ -109,7 +109,7 @@ shared_components: [{list of shared components affected}]
 
 ## Verification
 
-After applying changes, run design-review for this page. Zero hard-failure violations and zero P1 findings in sections {affected section numbers}.
+After applying changes, run design-review for this page. Zero `Binding: truth` violations in sections {affected section numbers}; advisory findings are reported as notes and do not hold acceptance (`{project-root}/_bmad/bmm/workflows/design/shared/brief-binding-contract.md` §4).
 ```
 
 ### Full Handoff Brief (Level 3)

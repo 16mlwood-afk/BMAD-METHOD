@@ -165,7 +165,7 @@ Products whose visual approach we want to match for specific aspects. Be precise
 
 ## 8. Hard Failures
 
-Things this brand NEVER does. These are non-negotiable — a design that includes any of these fails review regardless of how good the rest is.
+Things this brand NEVER does. The fork's review workflows classify each item with the one-question test in `shared/brief-binding-contract.md` §2: an item that would let a reader believe something false about the data, the money, the state of the work, or who may see what is truth-class and can fail a design; an item about look is a strong advisory rule, reported as a note.
 
 1. {hard failure — e.g., "No stat cards with icons as page openers"}
 2. {hard failure}

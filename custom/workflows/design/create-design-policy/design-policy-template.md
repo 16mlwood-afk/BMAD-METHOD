@@ -129,7 +129,7 @@ Products whose visual approach we draw from. Be specific about WHAT to borrow.
 
 ## 8. Hard Failures
 
-Non-negotiable. A design containing any of these fails review regardless of how good the rest is.
+The product's firmest rules. The fork's review workflows classify each with the one-question test in `shared/brief-binding-contract.md` §2: truth-class items (data, money, state, who may see what) can fail a design; items about look are strong advisory rules, reported as notes.
 
 The policy must cover all six AI-fingerprint categories from `_bmad/bmm/workflows/design/shared/design-standards.md` with at least one concrete, project-specific anti-pattern each. Reusing the seed example is allowed when it genuinely fits the project; rewriting is required when it doesn't. "See shared design-standards.md" is not a substitute for a concrete failure.
 

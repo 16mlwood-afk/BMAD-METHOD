@@ -41,7 +41,7 @@ From step-01:
 
 Check the screenshot against the P1 and P2 fingerprint lists in `{design_standards}`.
 
-**When `{brand_identity}` exists:** Also check against its section 8 (Hard Failures) and section 9 (AI Fingerprint Sensitivity). The brand identity's hard failures are non-negotiable — flag them even if they look intentional.
+**When `{brand_identity}` exists:** Also check against its section 8 (Hard Failures) and section 9 (AI Fingerprint Sensitivity). Flag every brand-identity hard failure you find, even if it looks intentional — and mark each one with its binding: most such lists are about look and are **advisory** (a strong recommendation in the spec); only a rule that would let a reader believe something false about the data, the money, the state of the work, or who may see what is **truth** and must be met (`{project-root}/_bmad/bmm/workflows/design/shared/brief-binding-contract.md` §2).
 
 **First rule:** Check if the pattern is already used consistently across the project. If it's the established design language, skip it — ripping it out would create worse inconsistency.
 

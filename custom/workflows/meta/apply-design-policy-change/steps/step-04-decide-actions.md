@@ -97,7 +97,7 @@ If multiple pages use the same component and it needs updating, consolidate into
 
 ### Priority rules:
 
-- **P1:** Page violates a new hard failure — must be fixed before next deploy
+- **P1:** Page violates a new hard failure that is truth-class (`{project-root}/_bmad/bmm/workflows/design/shared/brief-binding-contract.md` §2) — must be fixed before next deploy. A new style/look hard failure is **P2**: recommended, carried as advice, never a deploy blocker
 - **P2:** Page is visually inconsistent with new policy — fix in current sprint
 - **P3:** Page would benefit from update but isn't broken — schedule for next sprint
 

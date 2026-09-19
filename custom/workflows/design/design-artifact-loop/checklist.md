@@ -12,7 +12,7 @@ Mode-locked sections only apply to their named mode; ignore unrelated sections.
 - [ ] **Context block present and populated.** The `## Context` section has User, Frequency, Stakes, Source of truth / Source artifacts, Out of scope. Missing fields are rendered as `(not specified)` — never invented.
 - [ ] **Source artifact path resolves.** The Source of truth / Source artifacts entry points to a real file at `{project-root}/{artifact_path}`.
 - [ ] **All citations are real.** Every "Evidence", "Required correction" rule reference, or "Changes to make" citation points to a section that exists in `docs/design-policy.md`, the canonical source artifact, or `design-standards.md`. No citations to `{user_summary}`, `{user_instruction}`, or "the screenshot" alone.
-- [ ] **Fixed vocabulary respected.** Verdict ∈ `{FAIL, PASS WITH ISSUES, PASS, INDETERMINATE}`. Severity ∈ `{hard failure, issue, polish}`. No alternative labels.
+- [ ] **Fixed vocabulary respected.** Verdict ∈ `{FAIL, PASS WITH NOTES, PASS, INDETERMINATE}`. Severity ∈ `{hard failure, issue, polish}`. No alternative labels.
 - [ ] **No sister-skill prose inlined.** Skills are named (in Skill routing used / Sources consulted); their bodies are not paraphrased.
 - [ ] **No invented hidden flows.** Where a screenshot suggests a problem but does not prove it, the issue is labeled "possible" rather than promoted to a confirmed failure.
 

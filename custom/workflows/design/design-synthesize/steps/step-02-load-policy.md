@@ -13,7 +13,7 @@ description: 'Resolve the project design policy, compute its version hash, and e
 
 ## RULES
 
-- **The policy is the floor, not a suggestion.** It overrides the brief on hard failures and the positive-allowlist (see workflow.md §SOURCE-OF-TRUTH PRECEDENCE, D0).
+- **The policy is the floor, not a suggestion.** It overrides the brief on hard failures and the positive-allowlist (see workflow.md §SOURCE-OF-TRUTH PRECEDENCE, D0). That decides which WORDING wins; what can FAIL the bundle is only the brief's truth tests and T0 (`shared/brief-binding-contract.md`, step-06 §4t) — the style items drive the refine loop and leftovers become advisory notes.
 - **Allowlist items must be policy-ratified positive assertions** (e.g., "status indicators use status tokens, not raw colors"). They are NOT workflow invariants (those are unconditional, checked in step 7). `design-synthesize` does NOT invent allowlist items — if the policy doesn't ratify it, it doesn't enter the allowlist.
 - **Specific-value positive assertions** (row heights, font sizes, exact spacing values) stay OUT of the allowlist. Those belong to `design-review`, which runs against the rendered DOM with real data. Including them here causes false failures in step 6 because the synthesized HTML may legitimately differ from the prior implementation on a value the brief doesn't specify.
 - **An empty allowlist is acceptable IF the policy declares it explicitly** (`positive_allowlist: []` or equivalent). A missing allowlist is NOT acceptable — silence is ambiguous between "no positive assertions" and "this policy hasn't been ratified yet". Halt on missing; pass on empty-but-declared.
@@ -50,7 +50,7 @@ Store as `{policy_version_hash}`. This is copied into `manifest.synthesis.policy
 
 ### 4. Extract the hard-failure list
 
-The policy's hard-failure section is the floor. Synthesized HTML that commits any of these is a step-6 failure that returns to step 4.
+The policy's hard-failure section is the floor. Synthesized HTML that commits any of these is a step-6 finding that returns to step 4 for another pass; one still present at iteration 3 is an advisory note unless it is truth-class (step-06).
 
 **Discovery rules** (tolerant of section heading style):
 

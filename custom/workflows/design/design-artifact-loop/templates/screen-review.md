@@ -9,7 +9,7 @@ Placeholder → state variable mapping:
 - {{target_slug}}             → state.target_slug
 - {{mode}}                    → "review-only" or "refine-screen"
 - {{date}}                    → YYYY-MM-DD
-- {{verdict}}                 → FAIL | PASS WITH ISSUES | PASS  (or INDETERMINATE for review-only with no visual evidence)
+- {{verdict}}                 → FAIL | PASS WITH NOTES | PASS  (or INDETERMINATE for review-only with no visual evidence)
 - {{user_role}}, {{frequency}}, {{stakes}}, {{out_of_scope}} → context block
 - {{source_of_truth}}         → state.artifact_path
 - {{five_second_answer}}      → pass | fail | "no declared answer" — reader test against the brief's page_answer (T0)
@@ -22,13 +22,13 @@ Placeholder → state variable mapping:
 - {{dissent_pass_outcome}}    → "completed; no re-ranking" | "completed; verdict demoted from X to Y because Z"
 
 Fixed vocabulary:
-- Verdict: FAIL | PASS WITH ISSUES | PASS | INDETERMINATE
+- Verdict: FAIL | PASS WITH NOTES | PASS | INDETERMINATE
 - Severity: hard failure | issue | polish
 - Binding: truth | advisory — `truth` = breaks a brief truth test, the five-second answer test, or a truth-class policy rule; `advisory` = departs from a style/layout/composition rule. Only a `truth` issue may carry severity `hard failure` or drive a FAIL verdict (shared/brief-binding-contract.md §4). A five-second check ("can a reader state the page's answer within five seconds?") is recorded in Context as `Five-second answer: pass | fail | no declared answer`.
 
 Issue cap rule: emit the top issues only (typically 1–3). V1 is the most damaging. Do not pad; do not invent issues to fill a slot. If only one issue warrants action, ship one V-block. If more than three warrant action, raise the additional ones in the design-handoff phase (per the workflow's Gate 3) rather than expanding this list.
 
-Dissent rule: the dissent pass may DEMOTE a verdict (PASS → PASS WITH ISSUES → FAIL) but may not upgrade. Record the outcome in the footer.
+Dissent rule: the dissent pass may DEMOTE a verdict (PASS → PASS WITH NOTES → FAIL; FAIL only for a truth issue) but may not upgrade. `PASS WITH ISSUES` in an artifact written before 2026-09-19 reads as `PASS WITH NOTES`. Record the outcome in the footer.
 -->
 
 # Screen Review — {{target_label}}

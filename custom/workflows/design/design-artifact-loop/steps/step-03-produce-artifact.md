@@ -94,7 +94,7 @@ Before issuing the final verdict, walk the five challenge questions from workflo
 4. Did a decorative asymmetry, weak label, or low-contrast micro-element escape review because it seemed "small"?
 5. Would a skeptical reviewer disagree with this `PASS` verdict based on the screenshot alone?
 
-If the challenge pass surfaces a more serious missed issue, re-rank the V-list (renumbering only NEW additions; existing V-IDs are stable across iterations) and DEMOTE the verdict as needed. The dissent pass may demote `PASS` → `PASS WITH ISSUES` → `FAIL`. It may NOT upgrade a verdict.
+If the challenge pass surfaces a more serious missed issue, re-rank the V-list (renumbering only NEW additions; existing V-IDs are stable across iterations) and DEMOTE the verdict as needed. The dissent pass may demote `PASS` → `PASS WITH NOTES` → `FAIL`, and reaches `FAIL` only for a `Binding: truth` issue (`shared/brief-binding-contract.md` §4). It may NOT upgrade a verdict.
 
 Record the outcome in the output footer as `Dissent pass: completed; no re-ranking` or `Dissent pass: completed; verdict demoted from {X} to {Y} because {one-sentence reason}`.
 
@@ -145,7 +145,7 @@ If any check fails, rewind to step 2 evidence assembly OR to section 2 of this s
 
 The output structure is the locked schema in workflow.md → "Output schemas" and `templates/{kind}.md`. Do NOT add free-form sections; do NOT rename fields; do NOT invent new headings. Fixed vocabulary applies:
 
-- Verdict: `FAIL` | `PASS WITH ISSUES` | `PASS` (or `INDETERMINATE` for review-only with no visual evidence)
+- Verdict: `FAIL` | `PASS WITH NOTES` | `PASS` (or `INDETERMINATE` for review-only with no visual evidence)
 - Severity per V-block: `hard failure` | `issue` | `polish` — no `major`/`minor`/`p0`/`p1`/etc.
 
 Each template carries its own `## Context` block — populate it from the evidence set's `context_block`. Where the template's footer expects "Sources consulted", "Evidence gaps", or "Dissent pass" lines, populate those from `{skill_routing_used}`, `{evidence_set}.evidence_gaps`, and the result of the dissent pass (section 3b above) respectively.
