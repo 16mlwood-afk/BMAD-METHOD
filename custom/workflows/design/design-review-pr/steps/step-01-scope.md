@@ -113,6 +113,14 @@ For each route in `{affected_routes}`, find its active brief and capture the ana
 grep -l "brief_status: active" {implementation_artifacts}/*brief*.md 2>/dev/null
 ```
 
+**Capture the binding contract first — every affected route with an active brief** (`{project-root}/_bmad/bmm/workflows/design/shared/brief-binding-contract.md`). Build `{brief_truth_map}[route]`:
+
+- **Outcome-first brief** (`brief_shape: outcome-first`): `page_answer`, `dominant`, and every Part 2 row (`id · statement · check`). These drive `C-TRUTH-01` and `C-ANSWER-01` in step-04.
+- **Legacy brief** (no `brief_shape`): each item of the Design Contract "MUST PRESERVE" list becomes a test (`id: L1…`, statement = the item); `page_answer` is empty — `C-ANSWER-01` still runs as a reader prompt ("what does this page answer?") but cannot fail against a declared answer; note `legacy brief — no declared answer` in coverage.
+- **No brief:** no map entry; note it in coverage. Truth-class checklist rules still apply (step-04 §0), because a truth rule does not need a brief to be true.
+
+Never score a brief's `frames` list, §7 Surface Inventory, composition or chrome here — those are advice (contract §4).
+
 For each matching active brief, read its Block B frontmatter:
 
 - If `band_provenance` ∈ {`inherited`, `recommended-new`} AND `route` matches an affected route, record `{route → {archetype: analytics_archetype, band_provenance, brief_filename}}` into `{brief_archetype_map}`.
@@ -168,6 +176,7 @@ The workflow now has:
 - `{brief_rigor_map}` — declared rigor spec (read sentence, decision numbers + uncertainty/base-rate, deciding fields, data gaps) per affected route whose active brief carries a §4d Analytic depth section (may be empty)
 - `{brief_decision_map}` — declared decision spec (framed bet, modelled outcome, sizing, breakeven driver, verdict) per affected route whose active brief carries a §4e Decision analysis section (empty on every non-capital-decision route — the norm)
 - `{brief_finance_map}` — declared finance contract (column semantics, exception expectations, must-not-infer, terminology) per affected route whose active brief is `is_finance_surface` / carries a §2b Finance-semantics section (empty on non-finance routes)
+- `{brief_truth_map}` — the binding contract per affected route with an active brief: `page_answer`, `dominant`, and the truth tests (Part 2, or the legacy MUST PRESERVE list). Drives `C-TRUTH-01` / `C-ANSWER-01`
 
 Proceed to step-02.
 

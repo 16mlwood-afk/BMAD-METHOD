@@ -4,9 +4,20 @@
   shell (the digestibility fix from orchestration-tuning-2026-06-10-design-lane).
   Behaviour is unchanged: this is the same template text, verbatim.
 
+  OUTCOME-FIRST SHAPE (2026-09-19, STD-BRIEF-BINDING-001 — shared/brief-binding-contract.md).
+  Governing principle, owner's words verbatim: "the biggest takeaway is claude design should do the
+  heavy lifting everything else is mostly advisory". The brief binds the designer ONLY through its
+  Part 2 "What must be true" tests (T0 five-second answer + T1..Tn truth tests). Everything else is
+  labelled advisory. The pre-2026-09-19 template is recoverable verbatim from git:
+    git -C ~/bmad-method-v6 show 85d5a189:custom/workflows/design/design-handoff/brief-template.md
+  Evidence: docs/design-brief-notes-evidence-2026-09-19.md in the fork.
+
   How to render:
   - Substitute every {variable}; honour the conditional {if …} / {for …} blocks.
-  - Section order is intentional (purpose → data → user → visual → constraints → ask).
+  - Section order is intentional: the five parts (moment → what must be true → what must dominate
+    → data and its defects → open questions), THEN the advisory appendix. Existing section numbers
+    (§1, §2, §2a–§2d, §3, §4–§4h, §5–§5b, §6, §7, §8) are KEPT because consumers cite them; the
+    parts group them.
   - Block A/B provenance fields are decided in step-03 §1/§1a/§1b and
     shared/brief-revision-policy.md §2.
   - Quoted policy/brand-identity text is VERBATIM — no carve-outs, softenings, or
@@ -54,6 +65,10 @@ surface_admission:                       # `pre-existing`, or the five answers b
   record: {admission_record}             # pointer to the register row carrying the argument, and who read it
 
 # Block B — Content (see shared/brief-revision-policy.md §2)
+brief_shape: outcome-first               # outcome-first | (absent ⇒ legacy). Consumers apply shared/brief-binding-contract.md either way.
+page_answer: "{page_answer}"             # the one line a reader must be able to state within five seconds of the page loading (T0)
+dominant: "{dominant}"                   # the ONE thing that must dominate the page; everything else is available-on-demand
+truth_tests: {truth_test_ids}            # ids of the Part 2 binding tests, e.g. [T0, T1, T2, T3]. Never empty — T0 is always present. These are the ONLY things that can fail a design.
 mode: {handoff_mode}                     # fresh-design | policy-delta | elevation | refine-screen — the REAL {handoff_mode}, never fresh-design as a stand-in
 surface_class: {surface_class}           # page | chrome (absent ⇒ page). chrome = app-shell (nav/top-bar/sidebar/shell): page_mode is n/a and the composition/band lines below are OMITTED ENTIRELY — see brief-revision-policy.md Block B surface_class row
 page_mode: {page_mode}                   # operational | analytical | detail — or n/a iff surface_class: chrome
@@ -61,21 +76,21 @@ route: {route}                           # primary route this brief targets (chr
 surface_part: {surface_part}             # sub-surface within route — a tab/section/panel inside the page (kebab, e.g. raw-records); "" when this brief IS the route's whole primary surface. With route (normalised) + mode it forms the surface identity that keys the active-uniqueness invariant (brief-revision-policy.md §2.6). §13 lookup drawers are NOT surfaces — never give them a surface_part.
 {# When surface_class == chrome: OMIT the composition_provenance, composition, and band_provenance lines entirely (absent by design — policy invariant 1a). #}
 composition_provenance: {composition_provenance}   # policy-default | recommended-alt (decided in §5a; recommended-alt names a job-fit composition in §4a and was veto-surfaced)
-composition: {composition}               # machine-readable composition key the design-implement bundle→implement conformance gate (step-01 §SHARED.1b) diffs against. Default = the page_mode default (operational→worklist | analytical→chart-led | detail→record-view). When composition_provenance is recommended-alt, set the named job-fit composition from §4a as a kebab key (e.g. scanner-terminal, single-item-stream, source-co-present). A NON-default composition (e.g. a clerk scan station) is the signal that the gate must verify the bundle expresses the JOB LOOP (scan→feedback→tally→close), not a centered hero card.
+composition: {composition}               # ADVISORY — a suggested starting composition, never a pass/fail contract (brief-binding-contract.md §4). Machine-readable key the design-implement bundle→brief conformance gate (step-01 §SHARED.1b) reports a departure from AS A NOTE. Default = the page_mode default (operational→worklist | analytical→chart-led | detail→record-view). When composition_provenance is recommended-alt, set the named job-fit composition from §4a as a kebab key (e.g. scanner-terminal, single-item-stream, source-co-present). A NON-default composition (e.g. a clerk scan station) is the signal that the gate must verify the bundle expresses the JOB LOOP (scan→feedback→tally→close), not a centered hero card.
 band_provenance: {band_provenance}       # inherited | recommended-new | recommended-drop | none
 disclosure_model: {disclosure_model}     # three-layer | n/a — <why this surface carries no audit contract>. Decided in step-01 §3h (disclosure pass). `three-layer` REQUIRES a rendered §4h assigning every element family to a layer — see shared/disclosure-layer-contract.md D7. The trigger is an AUDIT/PROVENANCE CONTRACT (the design owes evidence, source, freshness, derivation, conflicts, override authorship or audit history for a value the operator commits to), NOT the mere presence of metadata: a timestamp column is not an audit contract. Absent on a surface whose §2 names those obligations is gate class (i) in step-03.
 {# analytics_archetype is REQUIRED iff band_provenance ∈ {inherited, recommended-new}; omit the line entirely otherwise. #}
 {if has_analytics_band}
 analytics_archetype: {analytics_archetype}   # trend | distribution | composition | ranking | coverage | flow | waterfall | single-metric | correlation
 {endif}
-{# shell_role is the page-shell & role contract. REQUIRED whenever the app has more than one role/shell (e.g. clerk vs owner); OMIT the whole block for a single-role app where every surface shares one shell. forbidden_chrome is the load-bearing field — design-implement enforces it (step-01 §SHARED.1b refuses; step-02 §1a / step-03 §2d emit the Tier-1 row). #}
+{# shell_role is the page-shell & role contract. REQUIRED whenever the app has more than one role/shell (e.g. clerk vs owner); OMIT the whole block for a single-role app where every surface shares one shell. The chrome fields are ADVISORY for the DESIGN; the data-protecting half of forbidden_chrome (e.g. "a clerk never sees owner money or approvals") MUST ALSO be written as a Part 2 truth test — that test is what binds. design-implement's IMPLEMENTATION-side check (an ancestor layout injecting forbidden chrome at runtime, step-02 §1a / step-03 §2d) is build fidelity and is unchanged. #}
 {if has_shell_role}
 shell_role:
   required_shell: {required_shell}       # the layout / route-group the surface MUST render under (e.g. clerk | owner | authenticated). Verbatim where the design draws it.
   required_chrome: {required_chrome}     # the chrome this surface MUST carry (e.g. "clerk header — 'Bison Management / Receiving — receive station' + role chip 'Clerk'"). Reproduce verbatim on the rendered frame.
   forbidden_chrome: {forbidden_chrome}   # chrome that MUST NOT appear on this surface (e.g. owner global nav, financial/approvals views). An ancestor layout injecting any of these OVER this surface is a Tier-1 shell violation — the owner-nav-on-a-clerk-station case.
 {endif}
-frames: {frames_list}                    # machine-readable list of the §7 Surface Inventory contract-key ids (e.g. [receive-station, active-session-workspace, resume-rail, close-reconcile-summary, resolved-unit-expand, matched-shipment-lookup]). The bundle→implement conformance gate diffs the bundle's DRAWN frames against THIS list; the §7 table stays the human-readable detail. Keep the two in sync — identical ids. NEVER empty: at minimum the primary frame.
+frames: {frames_list}                    # SUGGESTED frames — ADVISORY (brief-binding-contract.md §4). Machine-readable list of the §7 Surface Inventory ids (e.g. [receive-station, active-session-workspace, matched-shipment-lookup]). Which frames to draw is the designer's call; a suggested frame not drawn is a NOTE downstream, never a failure. Keep ids identical to the §7 table. NEVER empty: at minimum the primary frame.
 {# In refine-screen mode the following four fields are REQUIRED. In every other mode (fresh-design, policy-delta, elevation) they MUST be omitted entirely. #}
 {if handoff_mode == "refine-screen"}
 screen_review_ref: {review_artifact_path_relative_to_repo_root}
@@ -107,50 +122,36 @@ deferred_violations:
 >
 > **Revision provenance** follows `brief-revision-policy.md` in the shared design workflow docs. Consumers (design-artifact-loop, design-synthesize) validate the provenance frontmatter at intake; do not hand-edit this brief into a scope or intent change — re-run `design-handoff` instead.
 >
-> **Repo read protocol (the bias filter — obey exactly):** this brief deliberately omits the current layout; **the repo does NOT** — it contains the current UI's implementation. {If feature_scope == "redesign": Read ONLY the files named in §8. The current view's markup/component files are listed there as **DO-NOT-READ** — opening one to "understand the feature" anchors you to the exact layout this brief withholds, and the failure mode is invisible (a re-skin renders as confidently as a fresh design). Everything the design needs is in this brief; if something is missing, that is a brief defect — say so rather than reading the view.}{If feature_scope == "new": there is no existing screen for this surface, so repo reading cannot anchor you — read the brief and the files it names, then design fresh.} This is distinct from Claude Design **system setup** (`onboard-design-system`), where the live repo / current screens must NEVER be the seed.
-
-This brief was generated from the codebase after implementation. It intentionally omits the current layout — you have full creative freedom to design from the data, purpose, and constraints below.
+> **Repo read protocol (the bias filter — obey exactly):** this brief deliberately omits the current layout; **the repo does NOT** — it contains the current UI's implementation. {If feature_scope == "redesign": Read ONLY the files named in §8. The current view's markup/component files are listed there as **DO-NOT-READ** — opening one to "understand the feature" anchors you to the exact layout this brief withholds, and the failure mode is invisible (a re-skin renders as confidently as a fresh design). Everything the design needs is in this brief; if something is missing, that is a brief defect — say so rather than reading the view.}{If feature_scope == "new": there is no existing screen for this surface, so repo reading cannot anchor you — read the brief and the files it names, then design fresh.} This is distinct from Claude Design **system setup** (`onboard-design-system`), where the live repo / current screens must NEVER be the seed. *(This rule is kept because it is about bias, not over-constraint — it governs what you read, not what you draw.)*
 
 **Scope:** {feature_scope — "new" = design from scratch, "redesign" = rethink existing}
 
 ---
 
-## Design Contract for Claude — compile and obey
+## How this brief binds you — read this first
 
-> This is the machine-readable spine. §§1–8 below are the *why* (rich context); this block is the *what you must produce and preserve*. If a design contradicts any field here it is wrong — revise before you consider it done.
->
-> These constraints are enforced downstream by `design-review-pr` (a hard gate) and the `design-implement` bundle→implement conformance gate — not by good intentions.
+> **"the biggest takeaway is claude design should do the heavy lifting everything else is mostly advisory"** — the product owner, 2026-09-19.
+
+You do the heavy lifting. This brief binds you in exactly one place: **Part 2, "What must be true"** — a short list of tests your finished design either passes or fails. Nothing else in this document can fail your design. Everything from the **Advisory guidance** heading down (suggested frames, layout, composition, visual direction, tokens, style floors, the style parts of the design policy) is advice: take it, trade it, or ignore it for a better idea, and say what you did in your notes. A rule kept only for consistency with the rest of the product is marked **[tradeable]**.
 
 ```
-  page_mode:   {page_mode}                 # operational | analytical | detail — n/a iff surface_class: chrome (then the composition line is omitted)
-  composition: {composition}               # {if composition_provenance == "recommended-alt"}job-fit composition — NOT the page_mode default{else}page_mode default composition{endif}
-  shell:       {if has_shell_role}{required_shell} — render under this shell; the forbidden chrome in §5 MUST NOT appear over this surface{else}single shell — every surface shares one app shell{endif}
-  route:       {route}
-  frames:      {frames_list}               # every id is a REQUIRED rendered frame (§7)
-  mutations:   {mutation_posture}          # none (read-only) | the server actions this surface MUST keep
-  money:       {money_posture}             # none | the money figures this surface carries (basis-complete per policy §15)
-  list_rendering: {list_rendering_verdict} # single-render | paginate | virtualize | load-more (§5g). NOT single-render ⇒ the mechanism is REQUIRED on the primary list frame (design-implement step-03 List-rendering row enforces it)
-  width:       1280px desktop
+  answer:       {page_answer}              # T0 — a reader states this within 5 seconds of the page loading
+  dominant:     {dominant}                 # the ONE thing that leads; everything else is available-on-demand
+  binding:      {truth_test_ids}           # the Part 2 tests — the only pass/fail items in this brief
+  route:        {route}
+  mutations:    {mutation_posture}         # none (read-only) | the jobs the operator must still be able to do (each is a Part 2 test)
+  suggested:    frames {frames_list} · composition {composition} · page_mode {page_mode}   # ADVISORY — yours to change
 ```
 
-**MUST PRESERVE — the object (changing any of these fails review):**
-- Every id in `frames` is a rendered frame. An un-drawn frame is inferred downstream and ships thin.
-{if has_shell_role}- Render under the `{required_shell}` shell; the chrome named in `forbidden_chrome` (§5) MUST NOT appear over this surface.
-{endif}{if linked_records_inventory is non-empty}- §2a expand-in-context (§13): acting on a linked reference opens the foreign record's OWN fields in a drawer *over* this surface — never inert duplicated text, never a navigate-away, never a loud button/CTA/pill/chip. "Open full {sibling} →" is a quiet secondary action only.
-{endif}{if is_live_process_surface}- §2c runtime contract: every lifecycle state has its state-variant frame drawn (`{primary}--{state}` ids in `frames`); the design's liveness claims stay inside the §2c staleness budget; every §2c control verb is reachable in the states where it is legal.
-{endif}- The §5 hard-failure list holds — a design tripping any §5 item is rejected — and status stays inside the §4 colour system (the product accent is interaction-only, never a status).
-{for inv in {contract_must_preserve}}- {inv}
-{endfor}
-
-**FREE TO CHANGE — the design freedom (yours):**
-- Information architecture, layout, grouping, and visual hierarchy.
-- How summaries, roll-ups, durations, and derived figures are computed and presented.
-- Table vs grouped presentation; column order; sort defaults beyond any required default order.
-- Drawer field grouping and the record-header composition.
-{for free in {contract_free_to_change}}- {free}
-{endfor}
+Contract: `shared/brief-binding-contract.md` (STD-BRIEF-BINDING-001). Reviewers downstream (`design-review-pr`, the `design-implement` conformance gate) may fail your design only on a Part 2 test; every other departure is reported as a note.
 
 ---
+
+## Part 1 · The moment
+
+**Who opens this page, after what, to decide what:** {page_moment — one paragraph. The operator, the event that sends them here, the question in their head when the page loads, and the action they take next. Written as a moment, never as a list of outputs. E.g. "The operator opens this page because they suspect the prep is holding less than they paid for. They need to know how many purchases are missing and which ones to chase."}
+
+**The page's answer (T0):** {page_answer} — if a first-time reader cannot say this within five seconds of the page loading, the design has failed, however complete it is.
 
 ## 1. Feature Purpose
 
@@ -162,16 +163,48 @@ This brief was generated from the codebase after implementation. It intentionall
 {user_goals — domain outcomes, NOT UI actions. "Spot invoices near deadline" not "click the overdue tab."}
 
 **Capabilities the design must support:**
-{must_support_capabilities — jobs the operator must be able to accomplish, as outcomes. Each is a requirement the design must satisfy even though this brief deliberately withholds the current layout. If the design cannot express one of these, that is a gap to flag — not to drop silently. Omit this subsection only when the surface genuinely has no capabilities beyond the primary goals above.}
+{must_support_capabilities — jobs the operator must be able to accomplish, as outcomes. Each one is carried into Part 2 as a reachability test ("the operator can …"); WHERE and HOW it is reached is yours. If the design cannot express one of these, that is a gap to flag — not to drop silently. Omit this subsection only when the surface genuinely has no capabilities beyond the primary goals above.}
 
 **Deliberately not carried forward (logged drops):**
 {Render this subsection ONLY when `{dropped_capabilities}` is non-empty (a redesign that consciously sheds or relocates a capability the current surface had). One bullet per entry: the capability (outcome phrasing) · why (`relocated` to which sibling surface / `obsolete` / `out-of-scope-by-design`). This makes every drop an explicit, on-the-record decision the designer and the user can see — the design need NOT build these, but they are documented, not silently absent. Omit the subsection entirely when `{dropped_capabilities}` is empty.}
 
 **Typical data volume:** {counts in domain terms}
 
-**List rendering (§5g):** {if list_rendering_verdict and list_rendering_verdict != "single-render"}**{list_rendering_verdict}** is REQUIRED on the primary list frame — {list_rendering_rationale}. The design MUST include it (page controls + count / windowed rows / load-more); a single un-paginated render of a growing list is a gap, not a simplification.{else}{if list_rendering_verdict == "single-render"}single-render — {list_rendering_rationale} (a hard ceiling justifies rendering all rows).{else}n/a — not a list surface.{endif}{endif}
+**List rendering (§5g — advisory):** {if list_rendering_verdict and list_rendering_verdict != "single-render"}**{list_rendering_verdict}** is suggested for the primary list — {list_rendering_rationale}. How you keep a growing list usable is yours; what is binding is the Part 2 test that no row is silently cut off.{else}{if list_rendering_verdict == "single-render"}single-render — {list_rendering_rationale} (a hard ceiling justifies rendering all rows).{else}n/a — not a list surface.{endif}{endif}
+
+## 3. Who Uses This
+
+{user_context — role, job-to-be-done, frequency, emotional state}
+
+**Design implication:** {one sentence connecting user context to design priority}
 
 ---
+
+## Part 2 · What must be true — the binding tests
+
+These are the ONLY things in this brief that can fail your design. Each is a test a finished design passes or fails. None of them tells you how to pass it — that is yours. A test written as a mechanism ("annotate every figure inline", "a permanent band at the top") is a brief defect; say so.
+
+| Id | A finished design passes if… | How a reviewer checks it | Why (source) |
+|---|---|---|---|
+| T0 | A reader who has not seen the page can state **{page_answer}** within five seconds of it loading. | Show the render to a fresh reader for five seconds; ask what the page is telling them. | Owner, 2026-09-19 — the page must answer something. |
+{for t in {truth_tests}}| {t.id} | {t.statement — an outcome, e.g. "A reader can never mistake a stale or partial figure for a current one, including when they screenshot a single row."} | {t.check — what a reviewer looks at to decide pass/fail} | {t.source — the §2 / §2b / §2c / §4d / §4e / policy rule / capability it protects} |
+{endfor}
+
+**Where these come from (so nothing binding is invented and nothing true is dropped):** the data's own defects (§2: missing ≠ zero, observed vs declared vs assumed, two authorities kept apart), the finance truth constraints (§2b `must_not_infer`), the runtime honesty budget (§2c — the page never claims more liveness than its transport delivers), analytic and decision honesty (§4d/§4e — no fabricated interval or distribution, derived never shown as stored), the audit contract (§4h obligations restated as outcomes — "every figure's source is inspectable"), the capabilities in §1 (reachability), a data-protecting role boundary (from `shell_role`), and the truth-and-data rules of the project design policy (money basis, no invented figures). Style, layout and composition rules from the policy are NOT here — they are in the Advisory guidance.
+
+---
+
+## Part 3 · What must dominate
+
+**The one thing that leads:** {dominant}
+
+**Available on demand — demoting these is legal, and expected:** {on_demand — everything else the page carries, named plainly. E.g. "the 598 matched rows, the full mirror, every document date, VAT basis, lot ids, raw exchanges — all reachable, none competing." Hierarchy is made by demoting things; this list is your permission to demote them.}
+
+---
+
+## Part 4 · The data, and its defects
+
+Facts about the world, not instructions about pixels. What each feed contains, what it cannot tell you, which figures are derived, and where the gaps are.
 
 ## 2. Domain Data
 
@@ -207,17 +240,17 @@ Fields are in domain language. Grouping, derivation, and presentation are design
 
 {Render this section ONLY when `{linked_records_inventory}` is non-empty. Omit entirely — no heading, no placeholder — for a true leaf surface that references no record owned by another surface.}
 
-Project design-policy **§13 (linked records & lookups) is a functional mandate, not a suggestion** — and `design-review-pr` enforces it as a hard failure. Every value below IS a record owned by another surface; on this design it must **resolve and expand that foreign record in context**, not inert duplicated text and **not a link that navigates away**. The §13 function is **expand-in-context, not navigate-away**: acting on the reference opens the foreign record in the §7 right-side drawer *over* this surface — showing that record's own fields and its own linked references (recursive) — with related fields surfaced as lookups read *through* the relation. The operator never loses their place; closing the drawer returns them where they were. "Open full {sibling} page →" is a **secondary** action inside the expanded record, never the click's default. **Form stays ours, not Airtable's:** the affordance is the quiet §4 link + the §7 drawer — never a button, CTA, colored pill, chip, grid, or Airtable modal chrome. "Airtable-style" means the **relation** (expand the foreign record in place; carry its fields as lookups), never Airtable's *form*.
+**What binds here (carried into Part 2):** every value below IS a record owned by another surface. A reader must be able to reach that record's own fields from here without losing their place, and any related field shown on this surface is **read through the relation, never re-keyed** — so it can never disagree with the record it came from. That is a data-truth test.
 
-| Foreign reference | Owns it (surface · route) | Expand-in-context target (§7 drawer, NOT navigate-away) | Inline lookups (read-only, read through the relation) |
+**What is advice (§13 of the project design policy, style half — [tradeable]):** the product's usual way of meeting that test is expand-in-context — acting on the reference opens the foreign record in a right-side drawer *over* this surface, with its own fields and links, and "Open full {sibling} page →" as a quiet secondary action; the affordance is a quiet link, never a button, pill or chip. Use it, or propose something better and say why.
+
+| Foreign reference | Owns it (surface · route) | Suggested way to reach it (advisory) | Inline lookups (read-only, read through the relation) |
 |---|---|---|---|
 | {identifier as shown} | {sibling surface · `/route`} | {acting on it → the {foreign record} expands in the §7 drawer over this surface, its own fields shown; "Open full {sibling} →" secondary inside it} | {related fields pulled through the relation, or "—"} |
 
 {One row per entry in `{linked_records_inventory}`.}
 
-**Richness floor — the lookup drawer is a designed surface, not a stub.** Each reference above opens its foreign record as a **frame in the §7 Surface Inventory** (a `{record}-lookup` drawer). That frame must show the fields the relation actually needs — a `warehouse` opened from an order shows code/type/status/location AND what is routed through it for this order; a `catalog` record opened from an order line shows its image/title AND the market/economics the line depends on. The "Inline lookups" column above is that field set; `—` is permitted **only** when the foreign record genuinely carries nothing past identity. A lookup drawer that renders identity alone (code/type/status) when the record has decision-relevant fields is the silent thinness this floor exists to kill — and `design-implement` §2f will flag the frame if it was never drawn at all.
-
-**Required behavior (review-test, §13):** for each reference above — same identifier / same format as on the owning surface; **it expands the foreign record in context** — acting on it opens that record in the §7 drawer *over this surface* (its own fields and its own links shown, not a re-keyed summary and not a navigation away), with a round-trip back; any inline field shown is a *resolved lookup* read through the relation, **never re-keyed** per surface. Inert duplicated text for a record that exists elsewhere — and a link whose only behavior is to navigate to the sibling page — are the anti-patterns this section exists to kill. Expand-in-context via the §7 drawer is the default; the design may choose a different quiet affordance, but acting on the value must **resolve and surface the foreign record's own fields in place**, with the full sibling page only ever a secondary action.
+**Richness (advisory):** where you give a foreign record its own drawer, show the fields the relation actually needs (a `warehouse` opened from an order shows code/type/status/location AND what is routed through it for this order), not identity alone. The "Inline lookups" column is that field set; `—` means the record genuinely carries nothing past identity. Each suggested lookup drawer appears in §7 as a suggested frame — drawing it is your call.
 
 ---
 
@@ -302,11 +335,12 @@ been imported from another project. See Open Questions.
 
 *This surface's primary job is watching/controlling a **long-running in-flight process**. The temporal
 semantics below MUST survive the blank-canvas redesign — they describe what changes over time and what
-the operator can do about it, never how to lay it out. Each lifecycle state below is a required
-state-variant frame in §7 (the film-strip): a state this brief names but the design never draws ships
-un-designed.*
+the operator can do about it, never how to lay it out. The binding half is carried into Part 2 (the page
+never claims more liveness than its transport delivers; "done with exceptions" is never presentable as
+"done clean"). Each lifecycle state is offered in §7 as a SUGGESTED state-variant frame — drawing the
+states that change what the operator sees is strongly advised; which ones you draw is your call.*
 
-**Run lifecycle (from the implementation's own state machine — design every state):**
+**Run lifecycle (from the implementation's own state machine):**
 
 | State | What is true in it | Operator's question | Legal control verbs |
 |---|---|---|---|
@@ -322,19 +356,137 @@ un-designed.*
 
 **Progress signals available (derive from these — presentation is the design's):** {the raw signals — counts by state, per-item/per-marketplace telemetry, timing data, run-report/history data. No progress-bar, spinner, or log-panel prescription here.}
 
-**Open questions — unresolved runtime semantics (do NOT guess these):**
-{the unresolved entries from `{runtime_behavior_contract}` — e.g. what cancel does to in-flight items, whether a run is resumable. Omit the block when none.}
+**Unresolved runtime semantics:** {the unresolved entries from `{runtime_behavior_contract}` — e.g. what cancel does to in-flight items, whether a run is resumable. Do not resolve them by guessing the data; they are also listed in Part 5, where sketching two options is invited. Omit the block when none.}
 
 ---
 {endif}
 
-## 3. Who Uses This
+## Part 5 · Open questions — unfenced
 
-{user_context — role, job-to-be-done, frequency, emotional state}
+These are undecided. **Do not skip them, and do not hold back from drawing them.** Where the honest answer is a sketch rather than a sentence, sketch it: pick **two** of the questions below and show two options for each, side by side, with a line on what each option costs. A reviewer resolves a question fastest by seeing it answered two ways.
 
-**Design implication:** {one sentence connecting user context to design priority}
+{for q in {open_questions}}- **{q.question}** — {q.why_open: what is unknown, and what would settle it}
+{endfor}
+{Collect every open question the passes produced — finance unresolved assumptions (§2b), runtime semantics (§2c), interaction semantics (§4f), operator/policy collisions (§4f), ledger archetype gaps (§2d), viewport ambition pending (§4g), and any design policy rule whose binding/advisory classification was ambiguous (brief-binding-contract.md §2). Never fence one off with "do not draw anything for this".}
+
+## 6. Design Ask
+
+{Use ONE of the following based on `{handoff_mode}`.}
+
+**--- VARIANT REFINE: `{handoff_mode}` = "refine-screen" ---**
+
+> This is a refinement, not a redesign. The information architecture and task model are stable. Address exactly the three issues below and produce variants for the listed edge states. Do not propose new IA, new components, or alternate layouts unless required to land one of the three fixes. The page should remain recognizable.
+
+**Source diagnostic:** `{review_artifact_path}` — generated by `design-review --artifact` on `{date}`. This is the ground truth; do not invent additional issues.
+
+### Fixes (address all three; in priority order)
+
+{For each item in `{refine_focus}`:}
+
+**{N}. {short-name}** *(severity: {high|medium|low})*
+
+- Location: `{file:line}`
+- Question this fix unblocks: {question_blocked from artifact}
+- Direction: {before_class} → {after_class}
+- {why this is the top fix — one sentence from artifact}
+
+### Suggested edge-state variants
+
+{For each item in `{required_variants}` (the screen-review names these; drawing them is strongly advised, and each is advisory unless it is also a Part 2 test):}
+
+- **{state}** — design implication: {why this needs explicit treatment}
+
+### Peer patterns to port
+
+{For each item in `{peer_steals}`:}
+
+- From `{peer_path}`: {pattern} — port by {action}.
+
+### Do NOT break
+
+The audit found these aspects already work. The refinement must preserve them:
+
+{Bullet list from `{already_fine}`}
+
+### Scope guardrails (refine-screen)
+
+- Do NOT redesign the IA, the task model, or the navigation. Those are out of scope for this round.
+- Do NOT propose new components unless one of the three fixes genuinely requires it.
+- Do NOT add a "get radical" alternative — see step-01 of `design-review` for that conversation; refine-screen is bounded by design.
+- DO produce the edge-state variants where they help — the review asked for them, and a variant that changes what the operator sees is the cheapest way to show a fix works.
+- These guardrails bound the SCOPE of this refinement round; they are not pass/fail criteria for the design. Only Part 2 is.
+
+**--- VARIANT FRESH: `{handoff_mode}` = "fresh-design", "policy-delta" or "elevation" (or unset) ---**
+
+{Write the ask using the mode-specific pattern below, then append 3-5 feature-specific questions.}
+
+**Structure:**
+
+> {Mode-specific framing sentence (see below).}
+> {Scope directive (see below).}
+>
+> Questions your design should answer:
+> {3-5 feature-specific questions derived from user goals + data shape}
+
+**Mode-specific framing:**
+
+If `{page_mode}` = **operational:**
+> Design this page for a user whose main job is to process work accurately and efficiently.
+
+If `{page_mode}` = **analytical:**
+> Design this page for a user whose main job is to understand what changed, why it changed, and where to investigate further.
+
+If `{page_mode}` = **detail:**
+> Design this page for a user whose main job is to read and act on one record — understand its current state, edit its fields, and take the next action on it — having arrived here from a worklist.
+
+**Scope directives (append after the framing sentence):**
+
+- **new + branded:** "Answer the moment in Part 1 and pass the tests in Part 2. The product's visual identity (section 4 points to it) is the natural starting point; everything else is yours."
+- **redesign + branded:** "The current implementation was developer-built without a design process. Start fresh from the moment, the tests and the data. The product's visual identity and reference pages (section 4) are the natural starting point, not a cage."
+- **new + existing:** "Answer the moment and pass the Part 2 tests. The visual direction in section 4 and the style floor in section 5 are advice. Everything else is yours."
+- **redesign + existing:** "Start fresh from the moment, the tests and the data. The visual direction and style floor below are advice."
+- **new + external:** "Apply **{design_system_name}** as your starting system."
+- **redesign + external:** "Apply **{design_system_name}** as your starting system. Ignore existing CSS tokens in the repo."
 
 ---
+
+**Hard rule: questions must be derived from the data model and user goals only — never from current UI sections, labels, or grouping structure.** If a question names the current grouping logic, the current tabs, the current panels, the current summary blocks, or the current page breakdown, it is leaking. If it names the job to be done, it is safe.
+
+**Page-mode rule for questions:**
+- Operational questions should be about processing, review, exception handling, and workflow progress.
+- Analytical questions should be about trend detection, comparison, anomaly diagnosis, and drill-to-evidence.
+- Detail questions should be about single-record legibility, field grouping, inline edit/action affordances, and how state and next-action are surfaced on one record.
+- Questions must not mention current tabs, panels, cards, sections, or grouping structures from the existing implementation.
+
+**Good questions for operational pages:**
+- "How does the user quickly find items needing action among a dense set of records?"
+- "How does the interface make workflow state and exceptions immediately understandable?"
+- "How does the design support both precise row-level review and efficient bulk throughput?"
+- "How does filtering help the user narrow the work queue without clutter or loss of context?"
+- "How does the page remain calm and trustworthy while supporting operational urgency?"
+
+**Good questions for analytical pages:**
+- "How does the page help the user spot trends, changes, or anomalies quickly?"
+- "How does the interface support comparison across time periods, segments, categories, or entities?"
+- "How does the user move from summary insight to underlying evidence without losing context?"
+- "How does filtering define the scope of the analysis without turning the page into a control panel?"
+- "How does the page maintain visual consistency with the rest of the product while still feeling analytical?"
+
+**Bad questions** name the current UI's structure (disguised layout instructions — do NOT use):
+- "How should the per-country view work?" ← names the current grouping
+- "How should the quarter tabs behave?" ← names the current tab structure
+- "Where should the sidebar grouping be arranged?" ← names the current panel layout
+- "How should the bulk action toolbar work?" ← presupposes a toolbar
+
+**Questions and Part 5 are one list to the designer.** The 3–5 questions above and the Part 5 open questions are both invitations: the designer may answer any of them in sketch form, and two options for two of them is the invited default.
+
+---
+
+## Advisory guidance — the designer's call
+
+**Everything from here to §7 is ADVISORY** (`shared/brief-binding-contract.md`). It is here because it is useful: the product's visual system, suggested frames, the page-mode default composition, and the style floors the product usually holds to. None of it can fail your design. Where you depart from it, say so in your notes and say why — a departure is reported downstream as a note, never as a failure. Rules marked **[tradeable]** exist for consistency across the product rather than for correctness: trade them against a better idea when you have one.
+
+**Token, pill and colour detail is not restated in this brief.** It lives in the project's design system — `{design_system_pointer}` — and you read it there.
 
 ## 4. Visual Direction
 
@@ -342,45 +494,16 @@ un-designed.*
 
 **--- VARIANT A: `{design_system}` = "branded" (brand identity document exists) ---**
 
-> This project has an established visual identity. The sections below define its visual language. Your creative freedom is in information architecture, layout, and interaction design. The visual system is fixed.
+> This project has an established visual identity, and it is the natural starting point — advisory, not a cage. **The system itself — type scale, colour and status tokens, badge/pill pattern, component patterns, spacing and radius — lives in `{design_system_pointer}` and is not restated here.** Read it there. Where you depart from it, say so in your notes; a departure is a note downstream, never a failure. Truth rules the policy carries (money basis, no invented figures, and the like) are not here — they are Part 2 tests.
 
 ### Visual Personality
 
-{Copy section 1 from brand identity verbatim — personality statement, register, density, "what it's NOT"}
+{Copy section 1 from brand identity verbatim — personality statement, register, density, "what it's NOT". This is direction, not tokens; it helps the designer more than a token list does.}
 
-### Typography
+### Where the system lives (read these, they are not copied here)
 
-{Copy section 2 from brand identity — font families, type scale, rules}
-
-### Color System
-
-{Copy section 3 from brand identity — core palette, semantic colors, badge pattern, domain colors}
-
-### Feature State → Color Mapping
-
-{After copying the Color System, generate a compact **Feature State → Color Mapping table** that names every meaningful state on THIS feature and maps it to exactly one of the four status tokens. This is the anti-rainbow contract — it makes explicit that no state gets a unique color outside the four-tone system.
-
-Prefix the table with this constraint block:
-> ⚠️ **Strict 4-color cap — every state on this feature maps to exactly one of these four rows.** The categorical tag palette (`--tag-*`) is banned here. Funnel drop-off reason chips do NOT each get a unique color — they map to yellow (expected drop-off) or red (genuine failure).
-
-Then generate the table from the feature's actual states (replace the examples with this feature's real states):
-
-| State | Color | Token |
-|---|---|---|
-| {error/failure states, e.g. "enrichment error", "processing failed", "blocked"} | Red | `--status-danger` / `--status-danger-muted` |
-| {attention/unresolved states, e.g. "unmatched", "needs review", "no buy-box", "unprofitable", "pricing stale"} | Yellow | `--status-warning` / `--status-warning-muted` |
-| {success/complete states, e.g. "matched", "reconciled", "enriched", "ranked winner", "received"} | Green (muted) | `--status-success-muted` |
-| {resting/neutral states, e.g. "pending", "queued", "in-flight", "not started"} | Gray | `--status-neutral` / `--status-neutral-muted` |
-
-Move any feature-specific color-mapping guidance HERE rather than burying it inside the policy copy block above. This table is the primary color-constraint signal Claude Design receives and must be impossible to miss.}
-
-### Component Patterns
-
-{Copy section 4 from brand identity — tables, badges, buttons, status indicators with exact class names or token references as written in the policy}
-
-### Spacing & Layout
-
-{Copy section 5 from brand identity — container, padding, gaps, border radius}
+- **Typography, colour and status tokens, component patterns, spacing:** `{design_system_pointer}` — sections {brand_identity_system_sections, e.g. "§2 Typography · §3 Colour & status · §4 Components · §5 Spacing"}.
+- **Status mapping for THIS feature [tradeable]:** the product usually expresses every state through its small fixed status set (e.g. danger / warning / success / neutral) rather than a unique colour per state. The feature's states are: {feature_states — plain list, e.g. "failed read · missing from the prep · matched · waiting"}. Map them through the system, or — as the owner's review of the TheFBAPrep page found — say most of them in a sentence instead of a pill. Either is legitimate; what is binding is only a Part 2 test such as "a failed read is never mistakable for a successful one".
 
 ### Reference Pages
 
@@ -392,7 +515,7 @@ Move any feature-specific color-mapping guidance HERE rather than burying it ins
 
 **--- VARIANT B: `{design_system}` = "external" ---**
 
-> This page uses the **{design_system_name}** design system. Apply its tokens, typography, spacing, and component patterns. Do NOT use the CSS tokens in the codebase — those are developer placeholders.
+> This page uses the **{design_system_name}** design system as its starting system ({design_system_pointer}). Do NOT use the CSS tokens in the codebase — those are developer placeholders.
 
 **Structural constraints (still apply):**
 - App shell: {fixed shell elements}
@@ -400,15 +523,13 @@ Move any feature-specific color-mapping guidance HERE rather than burying it ins
 
 **--- VARIANT C: `{design_system}` = "existing" (no brand identity, no external system) ---**
 
-> No project design policy was found. Derive the visual system from the tokens below and the patterns observed in other pages of this app. The goal is **visual continuity with the existing product**, not the introduction of a new aesthetic. Where the existing system has gaps, default to restraint: neutral surfaces, sparing color use, status communicated through small consistent badges, type and density appropriate to the data.
+> No project design policy was found. The existing product's tokens live in `{design_system_pointer}` (the token file) and the patterns observed on other pages are listed below — advisory starting points for **visual continuity with the existing product**. Where the existing system has gaps, restraint usually serves: neutral surfaces, sparing colour, type and density appropriate to the data.
 >
 > **Note for the project team:** Creating a `docs/design-policy.md` will replace this generic fallback with the project's actual visual language. Without one, the designer must reverse-engineer intent from raw CSS values.
 
-### Tokens (from `{path}`)
+### Tokens
 
-**Colors:** {CSS variables with values}
-**Typography:** {font families, key sizes}
-**Spacing & Borders:** {spacing scale, border radius, border colors}
+Read them from `{design_system_pointer}` — not restated here.
 
 ### Patterns from Other Pages
 
@@ -420,7 +541,9 @@ Move any feature-specific color-mapping guidance HERE rather than burying it ins
 
 ---
 
-## 4a. Page Mode
+## 4a. Page Mode — a suggested starting composition (advisory)
+
+*Everything in §4a is a suggested starting point from the job analysis. Layer, order, persistence, and whether the page is table-first, chart-led, a station or a stream are the designer's call. The binding half — what the operator must be able to decide and never be asked blind — is in Part 2.*
 
 {First, if `{composition_provenance}` = "recommended-alt", emit the composition-override block below — it leads §4a and supersedes the "Composition:" line of the page-mode block that follows. If `{composition_provenance}` = "policy-default", OMIT the override block entirely and emit only the page-mode block.}
 
@@ -428,11 +551,11 @@ Move any feature-specific color-mapping guidance HERE rather than burying it ins
 
 > **Primary composition for this surface: {named job-fit composition from `{composition_rationale}`} — NOT the `{page_mode}` default.**
 >
-> This surface is `{page_mode}` (it {one-line work description}), but its job is {dispensed / comparison-first / single-item / verification-against-a-source — from the §5a answers}, so the policy's default {table-first worklist / chart-led / record-view} composition is the wrong *primary* shape. Design the primary surface as **{named composition}**. {One or two sentences making it concrete for this feature — e.g. for an operational override: "a full-width single-item decision surface the operator streams through, with the worklist demoted to a deliberate triage/backlog view, not the home screen." For a `detail` verify-against-source override: "a source-co-present verification layout — the extracted record and its source document (receipt / email / PDF) rendered together with the source sticky, so the operator's eye moves value ↔ source; the source must NOT collapse once extraction completes."} The visual system in section 4 still governs all treatment; this overrides only the *composition*, decided from the job per design-handoff §5a (confirmed with the user on {date}). Where the page-mode block below states a default "Composition:", THIS block wins.
+> This surface is `{page_mode}` (it {one-line work description}), but its job is {dispensed / comparison-first / single-item / verification-against-a-source — from the §5a answers}, so the policy's default {table-first worklist / chart-led / record-view} composition is the wrong *primary* shape. Design the primary surface as **{named composition}**. {One or two sentences making it concrete for this feature — e.g. for an operational override: "a full-width single-item decision surface the operator streams through, with the worklist demoted to a deliberate triage/backlog view, not the home screen." For a `detail` verify-against-source override: "a source-co-present verification layout — the extracted record and its source document (receipt / email / PDF) rendered together with the source sticky, so the operator's eye moves value ↔ source; the source must NOT collapse once extraction completes."} This is a suggestion from the job analysis (design-handoff §5a, confirmed with the user on {date}); where the page-mode block below states a default "Composition:", THIS suggestion is the better starting point. Both are yours to replace.
 
 **--- Operational cockpit checklist (include ONLY if `{composition}` = "operational-cockpit") ---**
 
-> **Operational cockpit — apply the `operational-cockpit` skill (canonical doctrine).** This surface is a triage queue feeding a single-item decision workspace (project design-policy §6 "Operational cockpit"). The **`operational-cockpit` skill is the single source of truth** for this archetype — design, synthesize, and review against that skill; do NOT restate a partial checklist here. Its **mandatory floor (M1–M6) MUST all hold**:
+> **Operational cockpit — apply the `operational-cockpit` skill (canonical doctrine).** This surface is a triage queue feeding a single-item decision workspace (project design-policy §6 "Operational cockpit"). The **`operational-cockpit` skill is the single source of truth** for this archetype — design, synthesize, and review against that skill; do NOT restate a partial checklist here. Its floor (M1–M6) is the product's best current thinking for this archetype — **advisory here**, except where a line is also a Part 2 test (M5 "never commit an irreversible write blind" and M6 "never decide without the evidence" usually are):
 > - **M1 — classify first.** Decide-one, not a table-first + drawer-as-workspace composition.
 > - **M2 — queue + workspace co-present.** Queue rail = triage (compact, subordinate, not the home screen); workspace = the full-width star (image / candidates / evidence side-by-side, not a ~400px drawer); tools rail = secondary.
 > - **M3 — per-item momentum.** After a commit, auto-advance to the next actionable item, with an undo/toast safety window — never commit → return to list → re-hunt.
@@ -479,7 +602,9 @@ This is a detail page — a drawer or full-page view of **one record**. The desi
 
 ---
 
-## 4b. Analytics Structure (if present)
+## 4b. Analytics Structure (if present) — advisory
+
+*A suggested analytical shape from the job analysis. The binding half — no fabricated figure, the deciding field not swapped for a proxy — is in Part 2. Form, placement and whether a band exists at all are yours.*
 
 {Include this section ONLY if `{has_analytics_band}` is `true` (band_provenance ∈ inherited | recommended-new). Skip entirely for `none` and `recommended-drop`. This section defines what the analytics layer is FOR and what *shape* it takes, so the designer does not improvise — and does not default every band to the same trend-strip-of-small-multiples. The shape is governed by `{analytics_archetype}`, selected in step-01 §5c by the `analytics-surface-architect` skill (its taxonomy SoT is `shared/analytics-archetypes.md`). The fields below are rendered from that skill's captured decision object — do NOT re-derive them here.}
 
@@ -536,7 +661,7 @@ Render the page-specific bans from `{archetype_prohibited}` (the skill's `prohib
 
 ---
 
-## 4c. Surface Topology
+## 4c. Surface Topology — advisory
 
 {Include this section ONLY when `{surface_topology_verdict}` is NOT `single-page-appropriate`. Omit entirely — no heading, no placeholder — when the verdict is `single-page-appropriate`.}
 
@@ -559,6 +684,8 @@ Render the page-specific bans from `{archetype_prohibited}` (the skill's `prohib
 
 ## 4d. Analytic depth (decision-bearing figures — render like an analyst, not a schoolboy)
 
+*Binding half (carried into Part 2): no fabricated interval or baseline; a derived figure is never presented as stored. Everything else here — the lead read, which uncertainty to show and how — is advisory.*
+
 {Include this section ONLY if `{has_decision_numbers}` is `true` (the surface presents figures the user acts on — verdict, score, ROI / margin / profit, KPI). Omit entirely for pure data-entry / passive-review / list-only surfaces. This is **surface-level, not band-only**: it governs the depth of every decision-bearing figure WHEREVER it sits — the §4b band's values AND the §4a record / hero / verdict numbers (a `detail` buy page's `ROI 42%` / `+£840` hero figures are exactly the case a band-only check misses). A correctly-shaped surface still fails if its figures are naked point estimates with no baseline and no read — *correct and useless*. Rendered from the `analytics-rigor` skill's captured decision (step-01 §5c-2; one block **per surface** on multi-surface pages) — do NOT re-derive.}
 
 - **`rigor_source`: {skill | inline-fallback | not-applicable}** {REQUIRED — never omit. `skill` = the `analytics-rigor` skill was invoked this run (name its version if reported). `inline-fallback` = §5c-2's by-hand path produced this section — **state the reason** (skill absent / older sync / invocation failed); this is sanctioned, not a failure, and must not be hidden. Both paths render an identical-looking §4d, and every consumer treats a populated §4d as evidence the pass ran — so an undeclared fallback manufactures the evidence that enforcement succeeded, and `C-RIGOR-01` (which takes this section as ground truth) cannot catch it. This line is SELF-REPORTED: it makes the fallback visible, it does not make a `skill` claim true. A §4d with no `rigor_source` is malformed and is warned at commit time by `.githooks/check-design-brief-completeness.sh`.}
@@ -571,6 +698,8 @@ Render the page-specific bans from `{archetype_prohibited}` (the skill's `prohib
 ---
 
 ## 4e. Decision analysis (capital-commitment surfaces — render like a quant desk, not a report)
+
+*Binding half (carried into Part 2): no stated probability or expected value without a model behind it; an un-modellable decision is never shown as a confident distribution. How the bet, sizing and breakeven are presented is advisory.*
 
 {Include this section ONLY if `{is_capital_decision}` is `true` (the surface's job is to commit a scarce resource — capital / inventory slots / time — under uncertainty with a real downside: a buy / reorder / sizing / go-no-go-with-stake). Omit entirely for every other surface — a dashboard, coverage strip, status worklist, or report carries decision *numbers* (handled by §4d) but commits nothing, so it stops at §4d. §4d made the figures honest (senior-analyst grade); this models and sizes the *decision* (executive grade). Rendered from the `decision-analysis` skill (step-01 §5c-3; one block **per decision surface**) — do NOT re-derive. The visual system in §4 still governs all treatment: a modelled outcome distribution and a sizing read render flat and dense, never as a chrome-y "risk dashboard."}
 
@@ -586,7 +715,7 @@ Render the page-specific bans from `{archetype_prohibited}` (the skill's `prohib
 ---
 
 {if {is_processing_cockpit}}
-## 4f. Interaction model
+## 4f. Interaction model — advisory (the binding half is in Part 2)
 
 *This surface's job is **repetitive per-item processing at speed** by expert, high-frequency operators
 (a queue/cockpit worked one item at a time). How the operator DRIVES the surface is a load-bearing
@@ -660,11 +789,11 @@ invented, never read from the current UI.*
 ---
 {endif}
 
-## 4g. Viewport & responsive
+## 4g. Viewport & responsive — advisory
 
 {Render on EVERY `page` run (required; `chrome` runs skip — nav breakpoints are in step-01 §0). If `{viewport_present}` — fill the table from policy. If `{viewport_pending_policy}` (an owner class whose §8.3 mobile ambition is still OPEN) — STILL render, but show the ⚠ PENDING POLICY banner below and leave the six fields as `pending`; never render a guessed posture.}
 
-The per-surface viewport contract, sourced from `docs/design-policy.md §8` — not invented. Mobile is a design contract, not an afterthought.
+The per-surface viewport posture, sourced from `docs/design-policy.md §8` — not invented. **Advisory** (a layout rule, brief-binding-contract.md §2): design for the posture the policy names unless you have a better idea, and say so if you depart.
 
 | Field | Value |
 |---|---|
@@ -685,10 +814,10 @@ The per-surface viewport contract, sourced from `docs/design-policy.md §8` — 
 | **Additive** | {additive_viewports} | Verification renders — proof the canonical model survives a different container. A check on the design, not a design. |
 | **Not rendered** | {viewport_device_exclusions} | Excluded by policy. Do not produce a comp at these widths at all. |
 
-Three rules, all of which `design-review-pr` checks:
+Three suggestions for labelling the deliverable (advisory — a departure is a note, not a failure):
 
 1. **Label the canonical viewport in-page** — a visible heading or caption on the artifact itself, not a manifest field, not a code comment. Form: *"Canonical viewport: {canonical_viewport}. Tablet/desktop below are additive verification renders, not co-equal designs."*
-2. **Group additive renders after it, subordinate** — under a single **"Additive verification viewports"** heading, placed after the canonical render, never side-by-side at equal prominence, never larger, never first in reading order. Equal-weight phone/tablet/desktop columns FAIL even when the phone column is leftmost.
+2. **Group additive renders after it, subordinate** — under a single **"Additive verification viewports"** heading, placed after the canonical render, never side-by-side at equal prominence, never larger, never first in reading order. Equal-weight phone/tablet/desktop columns read as three designs rather than one; avoid them unless that is the point.
 3. **Additive renders preserve the interaction model, never re-premise it** — describe what the extra (or reduced) width does with the SAME model: reflow, more rows visible, a persistent rather than overlaid drawer. Do NOT convert a phone-primary scan-first single column into a wide multi-column table premise, add hover-dependent affordances, or introduce controls the canonical render lacks. On a handheld-first surface the desktop render is **a wider phone**, not a desktop app.
 
 > **Why this is spelled out.** An unlabelled three-viewport comp set contradicts no field in the table above, so it passes every viewport check — while a cold reader (a fresh design session, a PR reviewer) resolves the ambiguity with the industry default: *desktop is the design, phone is the shrink*. On a handheld-first surface that silently reinstates the desktop-only premise the policy forbids.
@@ -706,17 +835,17 @@ Three rules, all of which `design-review-pr` checks:
 | 4 | Scan / next-step loop | {the primary operator loop as a LOOP — trigger → feedback → next; never a feature list} |
 | 5 | Offline / degraded state treatment | {which degraded states are first-class, and the statement that each is drawn as a state OF this surface} |
 
-**Composition rules for your deliverable — all seven are checked at review (`operator-artifact-contract.md` B1–B7):**
+**Suggested composition for your deliverable (advisory — `operator-artifact-contract.md` B1–B7 is the product's best current thinking, not a pass/fail list):**
 
 1. **B1 — one canonical operational surface, first and dominant.** The artifact opens with ONE render: this surface at {canonical_viewport} in its resting state — first in reading order, largest, the only thing above the fold. A reader who stops after the first screenful must have seen the surface the operator actually uses.
 2. **B2 — additive renders stay subordinate** (as rule 2 of the block above).
 3. **B3 — state variants are DEGRADED STATES of this surface, never peer designs.** Same frame-name stem (`{primary}--{state}`), same chrome, same skeleton, same primary-action position; ONE legible region differs; presented as a strip beneath the canonical render under a single "States of this surface" heading, in operator-encounter order. A variant with its own nav or hero has become a second product — which means the state was mis-modelled.
 4. **B4 — rationale comes AFTER the operational surface.** IA rationale, component specs, interaction notes and open questions live in a labelled block BELOW the canonical render and its state strip. Prose must not open the artifact, must not sit between the canonical render and its state/additive groups, and must not be interleaved paragraph-by-comp. This is an operator surface with an appendix, not a document with figures.
-5. **B5 — the primary action and the next-step loop outrank explanatory text, measurably.** Largest type, strongest contrast, most reachable position (thumb zone). The squint test: squint at the canonical render — if a heading, paragraph, legend, or caption reads first instead of the action and its loop, this fails.
+5. **B5 — the primary action and the next-step loop outrank explanatory text, measurably.** Largest type, strongest contrast, most reachable position (thumb zone). The squint test: squint at the canonical render — if a heading, paragraph, legend, or caption reads first instead of the action and its loop, the hierarchy is worth another look. (The binding version is T0: can a reader state the page's answer in five seconds?)
 6. **B6 — main-surface copy is operator register.** Short, imperative, scannable at arm's length by someone holding a phone in an aisle. Long-form explanation is RELOCATED to the notes block, not deleted.
 7. **B7 — the canonical surface is a COMPRESSED OPERATIONAL STACK, not a dashboard opener** (table-first surfaces — list/table/queue/worklist). A compact header block that reads as the top of the list, then data immediately: the count and primary action loud but **inline in the worklist header** (no hero band, no billboard CTA row, no large empty half, no separate summary card); secondary counts, caveats, filters and sorts collapsed into the same vertical rhythm at label weight (**no chip wall**); **at least one real data row visible at rest**. Full rules and the §7 composition spec below.
 
-> **B7 is why rules 1–6 are not sufficient.** Rules 1–6 govern the artifact; B7 governs the inside of the canonical render. B5 is satisfied *by construction* by a billboard CTA — the action really is the loudest thing on the page. Loudness was never the question; **shape** is. Review runs this as its own pass (C5) and rejects a dashboard opener even when every required element is present.
+> **B7 is why rules 1–6 are not sufficient.** Rules 1–6 govern the artifact; B7 governs the inside of the canonical render. B5 is satisfied *by construction* by a billboard CTA — the action really is the loudest thing on the page. Loudness was never the question; **shape** is. Review reports a dashboard opener as a note.
 
 > **The failure shape these prevent has a name: REVIEW BOARD** — co-equal comps plus explanatory prose presented AS the deliverable, instead of one operational surface with everything subordinate to it. It is the default shape a generator produces whenever composition is left unspecified, and it contradicts no field in this brief — which is exactly why these rules are written down.
 
@@ -724,12 +853,12 @@ Three rules, all of which `design-review-pr` checks:
 > **⚠ PENDING POLICY — owner mobile ambition not set.** The owner has not chosen the mobile ambition for this surface-class in `docs/design-policy.md §8.3` (tablet-down desktop-primary · mobile-first · desktop-only). This brief is **unverified / pending-policy**; the viewport fields above are `pending` and must NOT be designed against a guessed posture. Set the ambition in §8.3, then re-run to fill them. (Work continues — this is a warn, not a freeze.)
 {endif}
 {if `{viewport_surface_class}` is DECIDED in policy §8.2 — render the banner matching ITS decided posture, never a hardcoded one:}
-> **Decided surface (policy §8.2) — design to the decided posture verbatim.** If **desktop-only** (e.g. a grading/bench class): ≥1280px, landscape, keyboard + hardware scanner, scanner-first; a mobile / faux-mobile card here is a policy VIOLATION (the project's clerk-web-mode hard-failure). If **handheld-first / mobile-primary** (e.g. a roaming receiving clerk): phone viewport, portrait, one-handed, mobile scanner, offline-capable per policy; a desktop-only, mouse-dependent layout is the VIOLATION here. Do NOT invert the class's decided posture.
+> **Decided surface (policy §8.2) — the policy's decided posture (advisory; a departure is a note).** If **desktop-only** (e.g. a grading/bench class): ≥1280px, landscape, keyboard + hardware scanner, scanner-first; a mobile / faux-mobile card here is a policy VIOLATION (the project's clerk-web-mode hard-failure). If **handheld-first / mobile-primary** (e.g. a roaming receiving clerk): phone viewport, portrait, one-handed, mobile scanner, offline-capable per policy; a desktop-only, mouse-dependent layout is the VIOLATION here. Do NOT invert the class's decided posture.
 {endif}
 
 ---
 
-## 4h. Disclosure layers — what is on screen at rest, and what is one action away
+## 4h. Disclosure layers — what is on screen at rest, and what is one action away (layer assignment advisory)
 
 {# RENDERED ONLY when disclosure_model == three-layer. When the surface carries no audit contract,
    OMIT this whole section — Block B already records `disclosure_model: n/a — <why>` and an empty
@@ -740,9 +869,11 @@ Three rules, all of which `design-review-pr` checks:
 
 **The contract, in one line: *"inspectable" is what this surface owes; "permanently displayed" is
 not.*** Complete provenance, freshness, derivation, conflicts and override history are all owed and
-all reachable — see `shared/disclosure-layer-contract.md` (D1–D6, binding). What follows is THIS
-surface's assignment. **Do not render the evidence model as the interface**; a design whose default
-view spends its dominant region on provenance apparatus rather than on the task is rejected.
+all reachable — that obligation is binding and is carried into Part 2 as tests ("every figure's source,
+freshness and derivation is inspectable"; "a reader can never mistake a stale or partial figure for a
+current one"). **The layer assignment below is ADVISORY** — a suggested way to keep the evidence model
+from becoming the interface (`shared/disclosure-layer-contract.md`). The owner's review of the
+TheFBAPrep page found a better one than per-figure annotation: a stale read rewrites the headline.
 
 **Layer 1 — WORK. Always visible, and the dominant visual region.**
 {`{work_layer_elements}` — identity · readiness state · the ONE dominant next action · every field
@@ -771,28 +902,30 @@ auditability actually gets lost (D7).}
   generic audit page.
 - Never a permanently visible third column.
 
-**What does NOT move (D5) — carried here so a generator cannot read this section as a licence:**
+**What the disclosure model does not licence (D5 — where a line is also a Part 2 test, the test binds):**
 - {`{visual_judgement_gates}` — wherever the judgement's material is an IMAGE, the images are on
   screen at the point of judgement, at judgement size. This OUTRANKS the disclosure model; "one
   click away" never satisfies it. Name the frames it applies to, or state `none on this surface`.}
 - Blockers stay in layer 1, named, with their route to resolution. A blocker is not evidence.
-- Type/spacing are not the lever: body ≥14px, field value 15px, field label 12px, group heading 11px
-  tracked uppercase for major groups only, nothing below 11px. Shrinking to fit is the same failure
-  treated cosmetically.
+- Type/spacing are not the lever [tradeable]: body ≥14px, field value 15px, field label 12px, group
+  heading 11px tracked uppercase for major groups only, nothing below 11px. Shrinking to fit is the same
+  failure treated cosmetically.
 
 {endif}
 
 ---
 
-## 5. Hard Constraints
+## 5. Style floor — advisory
+
+*These are the product's style and anti-AI-slop floors. They are ADVISORY (brief-binding-contract.md §2). Any item that is really a truth rule (a reader could come away believing something false) has already been carried into Part 2 and binds there; what remains here is look and feel. Items that exist only for consistency across the product are **[tradeable]**.*
 
 {Use ONE of the following variants based on `{design_system}`:}
 
 **--- If `{design_system}` = "branded" ---**
 
-A design containing ANY of these fails review:
+The project's own list (advisory here; truth-class items moved to Part 2):
 
-{Copy section 8 from brand identity — numbered hard failure list, verbatim}
+{Copy section 8 from brand identity — numbered hard failure list, verbatim, EXCEPT items the step-03 classification moved to Part 2 as truth tests (list those by number: "moved to Part 2 as T{n}"). Mark consistency-only items [tradeable].}
 
 **AI fingerprint sensitivity:**
 
@@ -802,7 +935,7 @@ Additionally, the FULL canonical AI-fingerprint taxonomy applies — it is embed
 below (machine-copied from `shared/design-standards.md`, never hand-excerpted; the brief carries
 the whole taxonomy because the designer receives this brief, not that file).
 
-**Self-test:** If someone would guess AI was involved, the design fails.
+**Self-test (advisory):** if someone would guess AI was involved, it is worth another pass.
 
 **--- If `{design_system}` = "external" ---**
 
@@ -812,7 +945,7 @@ the whole taxonomy because the designer receives this brief, not that file).
 
 > No project design policy exists, so only **universal anti-AI-slop guardrails** apply. Aesthetic-specific rules (status color count, sidebar policy, status fill treatment, accent color, type family, etc.) are project decisions and should be added to `docs/design-policy.md` rather than asserted here.
 
-**Universal anti-AI-slop guardrails (a design failing any of these is rejected):**
+**Universal anti-AI-slop guardrails (advisory — the product's floor, reported as notes):**
 
 1. No bento or asymmetric "magazine" grid layouts
 2. No hero strips, banner panels, or marketing-style intros above working content
@@ -829,16 +962,16 @@ the whole taxonomy because the designer receives this brief, not that file).
 
 {constraints — responsive breakpoints, data density, accessibility, performance, navigation position}
 
-**Self-test:** If someone would guess AI-generated, it fails. Anything beyond the universal guardrails above (color counts, sidebar vs full-width, status treatment, type family, etc.) is the **project's** decision — when those decisions are made, capture them in `docs/design-policy.md` so future briefs include them as branded constraints rather than re-deriving them per feature.
+**Self-test (advisory):** if someone would guess AI-generated, it is worth another pass. Anything beyond the universal guardrails above (color counts, sidebar vs full-width, status treatment, type family, etc.) is the **project's** decision — when those decisions are made, capture them in `docs/design-policy.md` so future briefs include them as branded constraints rather than re-deriving them per feature.
 
 The guardrail list above is the compact floor; the FULL canonical AI-fingerprint taxonomy is
 embedded verbatim in §5b below and applies in every variant.
 
 ---
 
-## 5a. Comfort Floor — the design must PASS these, not merely avoid the bans above
+## 5a. Comfort Floor — advisory
 
-{Emit this section for EVERY `{design_system}` variant. It is a floor, not a preference. The project design policy outranks it (SOURCE-OF-TRUTH PRECEDENCE 1 over 2), so a policy MAY tighten it and MAY override a specific line — but the override has to be written down in `docs/design-policy.md` and named here. Silently dropping a floor is not an override.}
+{Emit this section for EVERY `{design_system}` variant. It is the product's comfort floor — ADVISORY for the designer (brief-binding-contract.md §2). "Colour is never the sole differentiator of meaning" is also a truth concern; where it matters on this surface, step-03 carries it into Part 2 as a test.}
 
 Everything in §5 is a prohibition, and prohibitions have no lower bound. A design can satisfy every rule above, follow this project's density preference exactly, and still be uncomfortable to look at — because nothing above says how tight is too tight. **Density is the house style; cramped is a defect.** They are not the same thing, and this section is where the difference is decided.
 
@@ -868,7 +1001,7 @@ Restated from `shared/design-standards.md` § Quality Checklist — the designer
 
 ---
 
-## 5b. AI-Fingerprint Taxonomy — canonical, machine-embedded
+## 5b. AI-Fingerprint Taxonomy — canonical, machine-embedded (advisory)
 
 {Emit this section for EVERY `{design_system}` variant. It is a MACHINE COPY, not authored prose:
 at generation time, copy the canonical `## AI Fingerprint Detection` section — from that heading
@@ -886,152 +1019,43 @@ substitute a from-memory list.}
 {After the copy, close with:} If this project's brand identity declares an exception to any row
 above (a named identity treatment with construction + scope), that declaration appears in §5's
 brand-identity copy and overrides the row FOR THE DECLARED SCOPE ONLY. No other softening of this
-section is legitimate — the taxonomy is a floor the project policy can tighten but not silently
-relax.
-
----
-
-## 6. Design Ask
-
-{Use ONE of the following based on `{handoff_mode}`.}
-
-**--- VARIANT REFINE: `{handoff_mode}` = "refine-screen" ---**
-
-> This is a refinement, not a redesign. The information architecture and task model are stable. Address exactly the three issues below and produce variants for the listed edge states. Do not propose new IA, new components, or alternate layouts unless required to land one of the three fixes. The page should remain recognizable.
-
-**Source diagnostic:** `{review_artifact_path}` — generated by `design-review --artifact` on `{date}`. This is the ground truth; do not invent additional issues.
-
-### Fixes (address all three; in priority order)
-
-{For each item in `{refine_focus}`:}
-
-**{N}. {short-name}** *(severity: {high|medium|low})*
-
-- Location: `{file:line}`
-- Question this fix unblocks: {question_blocked from artifact}
-- Direction: {before_class} → {after_class}
-- {why this is the top fix — one sentence from artifact}
-
-### Required edge-state variants
-
-{For each item in `{required_variants}`:}
-
-- **{state}** — design implication: {why this needs explicit treatment}
-
-### Peer patterns to port
-
-{For each item in `{peer_steals}`:}
-
-- From `{peer_path}`: {pattern} — port by {action}.
-
-### Do NOT break
-
-The audit found these aspects already work. The refinement must preserve them:
-
-{Bullet list from `{already_fine}`}
-
-### Scope guardrails (refine-screen)
-
-- Do NOT redesign the IA, the task model, or the navigation. Those are out of scope for this round.
-- Do NOT propose new components unless one of the three fixes genuinely requires it.
-- Do NOT add a "get radical" alternative — see step-01 of `design-review` for that conversation; refine-screen is bounded by design.
-- DO produce the edge-state variants — they are required, not optional.
-
-**--- VARIANT FRESH: `{handoff_mode}` = "fresh-design", "policy-delta" or "elevation" (or unset) ---**
-
-{Write the ask using the mode-specific pattern below, then append 3-5 feature-specific questions.}
-
-**Structure:**
-
-> {Mode-specific framing sentence (see below).}
-> {Scope directive (see below).}
->
-> Questions your design should answer:
-> {3-5 feature-specific questions derived from user goals + data shape}
-
-**Mode-specific framing:**
-
-If `{page_mode}` = **operational:**
-> Design this page for a user whose main job is to process work accurately and efficiently.
-
-If `{page_mode}` = **analytical:**
-> Design this page for a user whose main job is to understand what changed, why it changed, and where to investigate further.
-
-If `{page_mode}` = **detail:**
-> Design this page for a user whose main job is to read and act on one record — understand its current state, edit its fields, and take the next action on it — having arrived here from a worklist.
-
-**Scope directives (append after the framing sentence):**
-
-- **new + branded:** "Section 4 defines this app's visual identity — match it exactly. Information architecture and interaction design are yours."
-- **redesign + branded:** "The current implementation was developer-built without a design process. Start fresh from the data model and user context. Your design must be indistinguishable from the reference pages in section 4."
-- **new + existing:** "Match the visual direction in section 4. Respect the hard constraints in section 5. Everything else is yours."
-- **redesign + existing:** "Start fresh from the data model and user context. Match the visual direction and constraints above."
-- **new + external:** "Apply **{design_system_name}**."
-- **redesign + external:** "Apply **{design_system_name}**. Ignore existing CSS tokens in the repo."
-
----
-
-**Hard rule: questions must be derived from the data model and user goals only — never from current UI sections, labels, or grouping structure.** If a question names the current grouping logic, the current tabs, the current panels, the current summary blocks, or the current page breakdown, it is leaking. If it names the job to be done, it is safe.
-
-**Page-mode rule for questions:**
-- Operational questions should be about processing, review, exception handling, and workflow progress.
-- Analytical questions should be about trend detection, comparison, anomaly diagnosis, and drill-to-evidence.
-- Detail questions should be about single-record legibility, field grouping, inline edit/action affordances, and how state and next-action are surfaced on one record.
-- Questions must not mention current tabs, panels, cards, sections, or grouping structures from the existing implementation.
-
-**Good questions for operational pages:**
-- "How does the user quickly find items needing action among a dense set of records?"
-- "How does the interface make workflow state and exceptions immediately understandable?"
-- "How does the design support both precise row-level review and efficient bulk throughput?"
-- "How does filtering help the user narrow the work queue without clutter or loss of context?"
-- "How does the page remain calm and trustworthy while supporting operational urgency?"
-
-**Good questions for analytical pages:**
-- "How does the page help the user spot trends, changes, or anomalies quickly?"
-- "How does the interface support comparison across time periods, segments, categories, or entities?"
-- "How does the user move from summary insight to underlying evidence without losing context?"
-- "How does filtering define the scope of the analysis without turning the page into a control panel?"
-- "How does the page maintain visual consistency with the rest of the product while still feeling analytical?"
-
-**Bad questions** name the current UI's structure (disguised layout instructions — do NOT use):
-- "How should the per-country view work?" ← names the current grouping
-- "How should the quarter tabs behave?" ← names the current tab structure
-- "Where should the sidebar grouping be arranged?" ← names the current panel layout
-- "How should the bulk action toolbar work?" ← presupposes a toolbar
+section is legitimate — the taxonomy is the product's floor the project policy can tighten but not
+silently relax. For the DESIGNER it is advisory: a fingerprint is reported downstream as a note, never
+as a failure (brief-binding-contract.md §4).
 
 ---
 
 ## 7. Deliverable Format
 
-### Surface Inventory — render every frame below (required, not optional)
+### Surface Inventory — suggested frames (advisory)
 
-This page spawns secondary surfaces at runtime — the detail drawer the operator drills into, and the §13 expand-in-context lookup drawers (§2a) that open over it. **Every row below is a REQUIRED rendered frame, not an optional extra.** This pipeline is non-interpretive: `design-implement` pixel-matches only the frames you draw — a drawer you leave un-rendered is *inferred* downstream, which ships it thin and unformalised (bare `€60` money with no GBP/VAT basis — a `docs/design-policy.md` §15 violation; a lookup drawer showing only code/type/status). **If you want it built well, draw it.** The **Frame** name is the contract key — keep it verbatim on the rendered frame so `design-implement` matches by name with zero inference.
+This page spawns secondary surfaces at runtime — the detail drawer the operator drills into, and the lookup drawers (§2a) that open over it. **The rows below are SUGGESTIONS — which frames you draw is your call**, and a suggested frame you do not draw is reported downstream as a note, never as a failure. One practical reason to draw the ones that matter: `design-implement` builds from the frames you draw, and a drawer nobody drew gets built from inference. Where you do draw a suggested frame, keep its **Frame** name on it so the build matches by name. Where a better set of frames answers the moment, draw that set and say why.
 
-| Frame | Opens from / trigger | Render as | Must contain | Figures (§4d) | Lookups (§2a, depth-1) |
+| Frame (suggested) | Opens from / trigger | Suggested render | What it would carry | Figures (§4d) | Lookups (§2a, depth-1) |
 |---|---|---|---|---|---|
 | {frame_name} | {trigger} | {full-bleed \| drawer-over-{parent}} | {must_contain} | {the §4d decision numbers this frame carries, basis-complete per policy §15 — or "—"} | {depth-1 §2a fields — or "—"} |
 
 {One row per entry in `{spawned_surfaces}`. The primary surface is always row 1; the drilled detail drawer is a row when the §5a composition spawns one; each `{linked_records_inventory}` entry is one lookup-drawer row.}
 
-**Rules for the inventory:**
-- **No bare stubs.** A lookup-drawer frame's "Must contain" must name the fields the relation actually needs (a `warehouse-lookup` opened from an order shows code/type/status/location AND what's routed through it for this order), never identity alone. If the record genuinely carries nothing past identity, state that explicitly.
+**Notes on the suggestions (advisory unless a line says it is a Part 2 test):**
+- **No bare stubs.** A suggested lookup-drawer's "What it would carry" must name the fields the relation actually needs (a `warehouse-lookup` opened from an order shows code/type/status/location AND what's routed through it for this order), never identity alone. If the record genuinely carries nothing past identity, state that explicitly.
 - **Depth-1 only.** A lookup drawer lists its own immediate lookups; the foreign record's own §2a owns the next level. Do not inline the recursive order→catalog→supplier graph.
-- **Money is basis-complete.** Every figure in a "Figures" cell follows `docs/design-policy.md` §15 — VAT basis, native currency framed against GBP, no decontextualised fragment; rendered as the detail surface, not a bare-number dump. **A derived figure (computed at render — e.g. a pack-split implied unit cost) is labelled DERIVED, never shown as a persisted value** (per §4d basis, carried from the finance-domain-pass `basis` field).
-- **Entry point — how the operator REACHES this surface (the primary frame's "Opens from / trigger" is a contract, not a note).** The first row's "Opens from / trigger" cell must state how the operator gets to THIS surface from the rest of the app — a global-nav entry, a link from a *named* parent surface, or a row-drill from a *named* worklist — so `design-implement` can VERIFY the ingress was actually wired (its step-04 flags an "unlinked island" when a built surface is reachable only by URL — the §L recovery-cross-check miss). **A sub-surface is NOT a nav peer:** a detail / drawer / record-view / §13 sub-surface is reached by a link or row-drill from its parent, **never** a global-nav entry (that is nav-bloat and misrepresents it as a sibling page). A top-level operational/analytical *page* is the only kind that earns a global-nav entry.
+- **Money is basis-complete — this one is a Part 2 test wherever money appears.** Every figure in a "Figures" cell follows `docs/design-policy.md` §15 — VAT basis, native currency framed against GBP, no decontextualised fragment; rendered as the detail surface, not a bare-number dump. **A derived figure (computed at render — e.g. a pack-split implied unit cost) is labelled DERIVED, never shown as a persisted value** (per §4d basis, carried from the finance-domain-pass `basis` field).
+- **Entry point — how the operator REACHES this surface.** (Reachability of each §1 capability is a Part 2 test; the route to it is advice.) The first row's "Opens from / trigger" cell must state how the operator gets to THIS surface from the rest of the app — a global-nav entry, a link from a *named* parent surface, or a row-drill from a *named* worklist — so `design-implement` can VERIFY the ingress was actually wired (its step-04 flags an "unlinked island" when a built surface is reachable only by URL — the §L recovery-cross-check miss). **A sub-surface is NOT a nav peer:** a detail / drawer / record-view / §13 sub-surface is reached by a link or row-drill from its parent, **never** a global-nav entry (that is nav-bloat and misrepresents it as a sibling page). A top-level operational/analytical *page* is the only kind that earns a global-nav entry.
 
 ### Per-frame outputs
 
-For **every** frame in the Surface Inventory above, deliver:
+For **every frame you draw**, deliver:
 
 1. **Visual designs at the CANONICAL viewport — `{canonical_viewport}` — as the primary render**, with `{additive_viewports}` shown after it, grouped under an "Additive verification viewports" heading and visually subordinate (§4g rules 1–3). Each drawer is rendered **open over its parent frame**, never as a standalone page. Label the canonical viewport in-page so no reader has to infer which render is the design.
    {if `{canonical_viewport}` is unset — an owner class whose §8.3 mobile ambition is still OPEN:} *Viewport posture is `pending-policy`; render at desktop width (1280px) as a working default and mark the deliverable pending the owner's ambition decision — do NOT treat that default as a decided posture.*
-   {— never emit a bare "at desktop width (1280px)" instruction on a DECIDED class: on a handheld-first surface that single line is what reinstates the desktop premise the policy forbids, and it is the exact defect gate class (e) exists to catch.}
+   {— never emit a bare "at desktop width (1280px)" instruction on a DECIDED class: on a handheld-first surface that single line silently reinstates the desktop premise the policy's posture avoids.}
 2. **Component specs** for new UI patterns
 3. **Interaction notes** — hover states, transitions, empty states, loading states; for drawers, the open/close/return-up-the-stack behaviour (§13 round-trip)
 4. **Information architecture rationale** — why you grouped and prioritized information this way
 
 {if `{primary_viewport_class}` is `mobile-first`/handheld-first:}
-**Artifact composition — how these outputs are ARRANGED (handheld-first only; `operator-artifact-contract.md` B1–B7, checked at review).** The list above is what to produce; this is the order and prominence it must be produced in. Deliver the artifact in exactly this sequence:
+**Artifact composition — a suggested arrangement (handheld-first only; `operator-artifact-contract.md` B1–B7, advisory).** The list above is what to produce; this is the order that usually reads best:
 
 1. **The canonical operational surface** — one render at {canonical_viewport}, resting state, first and largest, the only thing above the fold, labelled in-page (B1).
 2. **"States of this surface"** — the state-variant frames as a subordinate strip beneath it: same skeleton, same primary-action position, one changed region each, in operator-encounter order (B3). Not a gallery of headline comps; not separate mini-products.
@@ -1040,17 +1064,17 @@ For **every** frame in the Surface Inventory above, deliver:
 
 Inside the canonical render: the primary action and the next-step loop are the most prominent elements — they must survive the squint test against every heading and caption on the surface (B5) — and on-surface copy is operator register, short and imperative, with long-form explanation relocated to the notes block (B6).
 
-**Do NOT deliver a symmetric row of phone/tablet/desktop comps.** That shape is a **review board**, not an operator surface, and it fails review even when the phone is leftmost and correctly labelled.
+**Avoid a symmetric row of phone/tablet/desktop comps.** That shape reads as a **review board**, not an operator surface; review notes it.
 
 {if this surface is table-first — its primary content is a list, table, queue, or worklist:}
-**In-surface composition — the canonical render is a COMPRESSED OPERATIONAL STACK, not a dashboard opener (B7, checked at review as C5).** The rules above settle how the ARTIFACT is arranged. This settles how the SURFACE itself is composed, and it is a separate requirement: a render can satisfy every rule above — first, dominant, correctly labelled, primary action unmistakably loudest — and still open with a hero band and a wall of chips. Compose it as a compact header block, then data, immediately:
+**In-surface composition — a suggestion: a COMPRESSED OPERATIONAL STACK, not a dashboard opener (B7, advisory; review notes a departure).** The suggestions above are about how the ARTIFACT is arranged. This one is about how the SURFACE itself is composed: a render can satisfy every rule above — first, dominant, correctly labelled, primary action unmistakably loudest — and still open with a hero band and a wall of chips. Compose it as a compact header block, then data, immediately:
 
-1. **Keep the header as ONE compact operational block** — not a banner, hero, opener card, or summary card above the list. It shares the worklist's horizontal grid and vertical rhythm and reads as the **top of the list, not a thing before the list**. If the header could be lifted onto an unrelated page unchanged, it is a banner and it fails.
+1. **Keep the header as ONE compact operational block** — not a banner, hero, opener card, or summary card above the list. It shares the worklist's horizontal grid and vertical rhythm and reads as the **top of the list, not a thing before the list**. If the header could be lifted onto an unrelated page unchanged, it is a banner.
 2. **The loud count and the primary action ({the surface's primary action, e.g. "Go receive"}) may dominate — but only INLINE within the worklist header.** No large empty right half. No billboard CTA row of its own. No separate summary-card feel: no distinct background, border, or elevation separating the header from the list. Exactly ONE element carries display weight — the count and its action read as a single unit.
 3. **Secondary counts, caveats, filters and sort controls collapse into the same vertical rhythm** at label/body weight, and must not visually compete with the primary action. **No chip wall** — no wrapping grid of pills, status chips, or metric tiles as an opener band. If secondary status needs more room than one collapsed line, it belongs in a filter control or in the rows themselves.
 4. **At least one real data row is visible at rest** on {canonical_viewport} without scrolling, with the header block occupying no more than roughly a third of the viewport height. This is the measurable form of 1–3: *count the rows visible in your canonical render — zero rows means the composition is wrong.*
 
-> **"Make the action loud" means loud WITHIN the header — never "give the action its own billboard."** The correction for a dashboard opener is always **compression, never deletion**: the count, the action, and the secondary status all stay, collapsed into the header block. The failure shape has a name — **DASHBOARD OPENER** — and review rejects it even when every required element is present and every other composition rule passes.
+> **"Make the action loud" means loud WITHIN the header — never "give the action its own billboard."** The correction for a dashboard opener is always **compression, never deletion**: the count, the action, and the secondary status all stay, collapsed into the header block. The shape it avoids has a name — **DASHBOARD OPENER** — and review notes it.
 {endif}
 {endif}
 

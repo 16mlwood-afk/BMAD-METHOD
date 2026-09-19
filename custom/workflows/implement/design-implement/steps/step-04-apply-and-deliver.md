@@ -413,8 +413,8 @@ Frame coverage ({brief §7 Surface Inventory | bundle frame inventory (URL) | ma
   - {frame} — FRAME MISSING in impl (Tier-1: designed-but-unbuilt) → carried in "Deltas not applied" above; this is feature work, not a CSS apply
   - {lookup} — LOOKUP UNDER-ENUMERATED (rendered as a Linked-records row, no harvested frame) → re-trace the bundle for this lookup's frame; if absent, needs human confirmation. This is the "often missed" lookup (e.g. Shipping lane); counted in {frame_uncovered_count}
   - {frame} — PRESENT BUT THIN in impl (Tier-1: drawer opens, interior under-built vs the bundle) → its missing interior rows are in "Deltas not applied" above; "the drawer exists" is not "the drawer matches"
-  - {frame} — FRAME NOT DRAWN in bundle (routed, NOT inferred) → /bmad:bmm:workflows:design-handoff (re-render the frame); counted in {frame_uncovered_count}
-Frames in contract: {N} · built & swept: {B} · missing-in-impl (Tier-1): {M} · thin-in-impl (Tier-1): {T} · under-enumerated (routed): {U} · not-drawn (routed): {frame_uncovered_count}
+  - {frame} — SUGGESTED FRAME NOT DRAWN — designer's call (advisory note, NOT inferred, NOT routed back as a defect — shared/brief-binding-contract.md §4); counted in {frame_uncovered_count}. If the build genuinely needs it, ask the designer.
+Frames in contract: {N} · built & swept: {B} · missing-in-impl (Tier-1): {M} · thin-in-impl (Tier-1): {T} · under-enumerated (routed): {U} · suggested-not-drawn (advisory): {frame_uncovered_count}
 Linked-records rows (authoritative §13-lookup denominator): {len(design_linked_record_rows)} · §13-lookup frames accounted: {must be ≥ the row count}
 
 Foundation-token reconciliation owed (token migration):

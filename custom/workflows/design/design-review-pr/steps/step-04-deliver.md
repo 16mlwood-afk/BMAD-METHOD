@@ -24,18 +24,51 @@ thisStepFile: './step-04-deliver.md'
 
 ## EXECUTION SEQUENCE
 
-### 1. Evaluate C-COMPOSITE-01
+### 0. Classify every finding — truth (can fail) or advisory (a note)
+
+Contract: `{project-root}/_bmad/bmm/workflows/design/shared/brief-binding-contract.md`. Owner, verbatim: *"the biggest takeaway is claude design should do the heavy lifting everything else is mostly advisory"*.
+
+Before any severity is reported, give every finding in `{findings}` — and every finding the sections below add — a `binding` class:
+
+- **`truth`** — the finding shows the surface could make a reader believe something false about the data, the money, the state of the work, or who may see what. Keeps its P0/P1 severity and is reported under **Fails**.
+- **`advisory`** — everything else: styling, layout, composition, tokens, pills, colour, density, frame inventory, fingerprints. Reported under **Advisory notes** as `[advisory]`, severity capped at P2, never counted as a fail, never blocking.
+
+**Fixed classes for the intrinsic checks:** `C-TRUTH-01` truth · `C-ANSWER-01` truth · `C-FIXTURE-01` truth (a fabricated surface that looks live) · `C-FINANCE-01` truth for a blended quantity+value cell, unlabelled mixed currency, or a representability/must-not-infer break — advisory for a leading-minus negative (a presentation convention) · `C-DECISION-01` truth for a stated probability/EV with no model behind it — advisory for a missing sizing basis · `C-RIGOR-01` truth only for a FABRICATED interval or baseline — advisory for a bare-but-honest figure · `C-ARCHETYPE-01` advisory · `C-IDENTFMT-01` advisory (truth only if the two forms would make a reader think they are different records) · `C-COMPOSITE-01` advisory · `F-FPSCAN-01` / fingerprint rules advisory.
+
+**Checklist rules** (`docs/review-checklist.md`, not edited by this workflow): apply the one-question test above per rule and record the class next to the rule id in the report. When unsure, classify `advisory` and add one line to Coverage notes naming the rule — over-binding is the failure this step exists to prevent.
+
+### 1. Evaluate C-COMPOSITE-01 (advisory)
 
 Group `{findings}` by `route` (for dom-render lane) or by file (for source-grep lane). For each group:
 
 - Count P1 findings.
-- If ≥3 distinct P1 rule IDs hit the same route/file, fire `C-COMPOSITE-01` with severity P1 and a recommendation:
+- If ≥3 distinct advisory fingerprint rule IDs hit the same route/file, fire `C-COMPOSITE-01` as an `[advisory]` note with a recommendation:
 
-> Composite fail on `{route}` — {N} structural fingerprints detected: {rule_id_list}. Prefer a redesign pass over per-rule fixes; the compound effect won't be resolved by individual swaps. See `docs/design-policy.md` §5 Anti-default compositions.
+> Composite fingerprint on `{route}` — {N} structural fingerprints detected: {rule_id_list}. A redesign pass would likely serve better than per-rule fixes; the compound effect won't be resolved by individual swaps. See `docs/design-policy.md` §5 Anti-default compositions. (Advisory — this does not fail the design.)
 
-Suppress the individual P1 findings on that route (they're rolled into the composite). Keep P0 / P2 / P3 findings on that route as-is.
+Roll the individual advisory fingerprints on that route into the composite note. Truth-class findings on that route are untouched.
 
-### 1b. Evaluate C-ARCHETYPE-01
+### 1d. Evaluate C-TRUTH-01 — the brief's truth tests (truth — can fail)
+
+For each route in `{brief_truth_map}`, for each test: apply its stated check to the changed render/diff (dom-render evidence when `{chrome_available}`, otherwise the source and a manual prompt). Record `pass | fail | not verifiable`.
+
+- **fail** → a Fails entry: `**[fail] C-TRUTH-01 {test id}** — {statement}` · Evidence (what the surface shows) · Fix (the outcome to restore, never a prescribed layout) · Source: brief `{brief_filename}` Part 2.
+- **not verifiable** (dom-render skipped and source is not decisive) → a manual prompt quoting the test and its check, answered pass/fail by the reviewer. Never report it as passing.
+
+### 1e. Evaluate C-ANSWER-01 — the five-second answer (truth — can fail)
+
+Always emitted for each affected route with a brief, as a reviewer prompt with a pass/fail answer:
+
+```
+**[manual → pass/fail] C-ANSWER-01** — Can a reader state this page's answer within five seconds?
+- Route: {route}  ·  Brief: {brief_filename}  ·  Declared answer: "{page_answer}" (or "none — legacy brief")
+- How to check: load the page, look for five seconds, look away, and say what it told you. Pass if that matches the declared answer (or, on a legacy brief, if you can say ANY clear answer). Fail if the answer is absent, below the fold, or crowded out by metadata, chrome or provenance.
+- Frame inventory, column count and component choice are NOT part of this test.
+```
+
+A reviewer's `fail` is a Fails entry. When dom-render ran, the harvest's first-viewport text may be quoted to seed the prompt, but the verdict is a reader's, not a regex's.
+
+### 1b. Evaluate C-ARCHETYPE-01 (advisory — every finding here goes to Advisory notes, per §0)
 
 For each route in `{brief_archetype_map}`:
 
@@ -63,7 +96,7 @@ For each route in `{brief_archetype_map}`:
 
 - **No rationale** (`rationale: none`): do nothing here — step-01 §7 already disclosed in coverage that reasoning was not verifiable for this route. Never emit a reasoning finding when there is no rationale to read.
 
-### 1b-2. Evaluate C-RIGOR-01 (analytic depth, not shape)
+### 1b-2. Evaluate C-RIGOR-01 (analytic depth, not shape — advisory, except a FABRICATED interval or baseline, which is truth; §0)
 
 The *depth* counterpart to §1b. §1b checks the band took the right shape; this checks the surface reads like an analyst, not a schoolboy data-dump — and it fires on **any** decision surface in `{brief_rigor_map}`, band or not (a bandless `detail` buy page is the motivating case). For each route in `{brief_rigor_map}` (the rigor spec captured from the **brief §4d** in step-01 §7):
 
@@ -84,7 +117,7 @@ The *depth* counterpart to §1b. §1b checks the band took the right shape; this
 
 - **No rigor spec** (route not in `{brief_rigor_map}`): do nothing here — step-01 §7 already disclosed in coverage that depth was not verifiable. Never emit a rigor finding when there is no spec to read, and never treat a named data gap as a rendering defect.
 
-### 1b-3. Evaluate C-DECISION-01 (the executive layer — capital-commitment surfaces only)
+### 1b-3. Evaluate C-DECISION-01 (the executive layer — capital-commitment surfaces only; truth for an unmodelled probability/EV, advisory for a missing sizing basis; §0)
 
 The *decision* counterpart, one rung above §1b-2 and the narrowest. §1b-2 checks the figures are an honest read; this checks the surface presents a **modelled, sized bet**. Runs ONLY for routes in `{brief_decision_map}` (those whose brief carries a §4e — a buy/reorder/sizing surface). Most routes have none → skip silently.
 
@@ -108,7 +141,7 @@ The *decision* counterpart, one rung above §1b-2 and the narrowest. §1b-2 chec
 
 - **Not a decision route** (route not in `{brief_decision_map}`): do nothing — decision analysis does not apply (the norm). Never invent a decision finding on a dashboard/coverage/status surface.
 
-### 1b-4. Evaluate C-FINANCE-01 (finance-semantics conformance)
+### 1b-4. Evaluate C-FINANCE-01 (finance-semantics conformance — truth, except the parentheses-negative convention, which is advisory; §0)
 
 The PR-time partner to `design-handoff`'s `finance-domain-pass`. Runs ONLY for routes in `{brief_finance_map}` (whose brief is `is_finance_surface` / carries §2b). Non-finance routes → skip silently. The mechanical sub-checks come from the step-03 §3d harvest; representability + accounting-truth are semantic.
 
@@ -132,7 +165,7 @@ The PR-time partner to `design-handoff`'s `finance-domain-pass`. Runs ONLY for r
 - **Finance-shaped route with no §2b** (noted in coverage at step-01 §7): report "finance semantics not specified — not verifiable" + flag the possible handoff defect (`finance-domain-pass` may not have run). Never report it as passing.
 - **Not a finance route** (not in `{brief_finance_map}`): do nothing — the norm.
 
-### 1b-5. Evaluate C-FIXTURE-01 (fixture-backed production surface disclosure)
+### 1b-5. Evaluate C-FIXTURE-01 (fixture-backed production surface disclosure — truth; §0)
 
 The PR-time guard for "fixture-backed surfaces are a governed state" (project `docs/design-policy.md` fixture-disclosure assertion + an optional `scripts/check-fixture-disclosure` gate). A production route rendering fabricated/mock data with no live read path must disclose it — an always-visible "not live data" affordance in page chrome plus a machine-readable fixture marker. Runs over `{fixture_backed_routes}` (built in step-02 §7). No fixture-backed route in scope → skip silently (the norm).
 
@@ -151,7 +184,7 @@ The PR-time guard for "fixture-backed surfaces are a governed state" (project `d
 
 - **No fixture-backed route** (`{fixture_backed_routes}` empty): do nothing — the norm. Never invent a fixture finding on a live or honest-empty surface.
 
-### 1c. Evaluate C-IDENTFMT-01 (canonical-identifier formatting)
+### 1c. Evaluate C-IDENTFMT-01 (canonical-identifier formatting — advisory unless the forms would read as different records; §0)
 
 For each route in `{affected_routes}`:
 
@@ -181,23 +214,20 @@ For each rule in `{checklist.human_judgment}` whose `affected_routes` intersects
 
 Use the format from `workflow.md` §DELIVERABLE FORMAT. The report has these sections, in order, with empty sections OMITTED entirely:
 
-1. **Summary** (always present) — verdict + counts table.
-2. **Blockers (P0)** — only if `P0` findings exist.
-3. **Changes requested (P1)** — only if `P1` findings or composite fails exist. Composite fails go FIRST.
-4. **Suggestions (P2)** — only if `P2` findings exist.
-5. **Nits (P3)** — only if `P3` findings exist.
-6. **Manual reviewer prompts** — only if `{checklist.human_judgment}` intersects scope.
-7. **Coverage notes** (always present) — list lanes that ran, lanes that were skipped (with reasons), and rules with no diff context.
+1. **Summary** (always present) — verdict + counts table (Fails / five-second / Advisory / Manual).
+2. **Fails — truth tests and the five-second answer** — only `truth`-class findings (step-04 §0), P0 before P1.
+3. **Advisory notes** — every `advisory`-class finding, `[advisory]`, grouped by rule; `C-COMPOSITE-01` first when it fired.
+4. **Manual reviewer prompts** — `C-ANSWER-01` first, then unresolved `C-TRUTH-01` checks, then `{checklist.human_judgment}` rules that intersect scope (each labelled truth or advisory).
+5. **Coverage notes** (always present) — lanes that ran, lanes skipped (with reasons), rules with no diff context, and the checklist rules whose class was `advisory` by default because the one-question test was unsure.
 
 ### 4. Verdict line (in Summary)
 
-Pick one:
+Driven ONLY by truth-class findings and `C-ANSWER-01`. Pick one:
 
-- **No findings:** "✓ Design review clean — no checklist violations detected."
-- **Only P2/P3:** "Design review surfaced suggestions only — no blockers."
-- **P1 present:** "Design review found N change-requested findings."
-- **P0 present:** "Design review found N blocker(s). Merge should not proceed until resolved."
-- **Composite fail:** "Composite design fail — {route_count} route(s) carry ≥3 structural fingerprints. Recommend a redesign pass."
+- **No fails, no advisory notes:** "✓ Design review clean — every truth test holds and the page's answer reads in five seconds."
+- **No fails, advisory notes present:** "Design review passed — every truth test holds. {N} advisory note(s) for the designer to weigh; none blocks."
+- **Five-second answer not yet judged:** append "The five-second answer check is waiting on a reviewer (C-ANSWER-01)."
+- **Fails present:** "Design review found {N} truth failure(s){ and the five-second answer failed}. Merge should not proceed until these are resolved; {M} advisory note(s) do not block."
 
 ### 5. Coverage notes
 
@@ -238,35 +268,37 @@ Otherwise, return the report as the workflow's final output.
 
 ## Summary
 
-Design review found 4 change-requested findings and 2 suggestions.
+Design review passed — every truth test holds. 4 advisory note(s) for the designer to weigh; none blocks. The five-second answer check is waiting on a reviewer (C-ANSWER-01).
 
-| Severity | Count |
+| Class | Count |
 |---|---|
-| P0 | 0 |
-| P1 | 4 |
-| P2 | 2 |
-| P3 | 0 |
+| Fails — broken truth test | 0 |
+| Fails — five-second answer | not yet judged |
+| Advisory notes | 4 |
 | Manual | 3 |
 
-## Changes requested (P1)
+## Advisory notes
 
-**[change-requested] S-STATUS-01** — Status pills are `rounded-md`, not `rounded-full`.
+**[advisory] S-STATUS-01** — Status pills are `rounded-md`, not `rounded-full`. (consistency rule — tradeable)
 - File: `src/routes/(authed)/queries/[id]/+page.svelte:142`
 - Evidence: `<Badge class="... rounded-full ...">`
-- Fix: Replace `rounded-full` with `rounded-md`.
+- Suggestion: Replace `rounded-full` with `rounded-md`, or say why the departure is better.
 - Source: policy §3
 
-**[change-requested] G-TYPO-03** — No `uppercase tracking-wide` labels.
+**[advisory] G-TYPO-03** — No `uppercase tracking-wide` labels.
 - File: `src/lib/components/QueryHeader.svelte:24`
 - Evidence: `class="uppercase tracking-wide ..."`
-- Fix: Remove `uppercase tracking-wide`; use sentence case with `text-sm font-medium text-muted-foreground`.
+- Suggestion: sentence case with `text-sm font-medium text-muted-foreground`.
 - Source: policy §4; standards Cat.2
 
 ...
 
 ## Manual reviewer prompts
 
-**[manual] T-TABLE-01** — Operational pages are table-first and full-width.
+**[manual → pass/fail] C-ANSWER-01** — Can a reader state this page's answer within five seconds?
+- Route: `/queries` · Declared answer: "3 queries are waiting on you, oldest 4 days"
+
+**[manual · advisory] T-TABLE-01** — Operational pages are table-first and full-width.
 - Affected pages: `src/routes/(authed)/queries`
 - What to check: Is the table the largest surface on the page? Do filters/summaries support it rather than competing?
 
@@ -285,6 +317,7 @@ Design review found 4 change-requested findings and 2 suggestions.
 ## FAILURE MODES
 
 - **Reporting one finding per matched line when the same rule fires many times.** Group findings by `rule_id + file`. Show the first 3 occurrences with a "+N more" footer if there are more.
-- **Hiding the composite fail.** If `C-COMPOSITE-01` fires, it MUST appear first in the P1 section. The individual fingerprints are secondary.
+- **Hiding the composite note.** If `C-COMPOSITE-01` fires, it appears first in the Advisory notes. The individual fingerprints are secondary.
+- **Failing a design on advice.** A style, layout, composition, token or frame-inventory finding reported as a fail. Classify first (§0); only `truth` findings and `C-ANSWER-01` can fail.
 - **Reporting "everything's fine" when dom-render was skipped.** If dom-render didn't run, the report can't claim the page is clean — only that source-grep found nothing. The coverage-notes section must make this explicit.
 - **Posting a PR comment without `--comment`.** This workflow defaults to printing the report; it only mutates GitHub state when the user explicitly opts in.

@@ -20,6 +20,13 @@ metadata:
 
 **Key Insight — Mechanical rules don't deserve a senior reviewer's attention.** A senior designer spending PR review time pointing out `rounded-full` on a `<Button>` is a senior designer being wasted. design-review-pr exists because mechanical rules are deterministic, and deterministic checks should run before human review — not after. The structured findings let the human reviewer trust the floor (everything mechanical is caught) and spend their attention on the ceiling (taste, hierarchy, the questions only a person can answer).
 
+**Binding split — what this workflow may FAIL (2026-09-19, CRITICAL).** Owner, verbatim: *"the biggest takeaway is claude design should do the heavy lifting everything else is mostly advisory"*. Contract: `{project-root}/_bmad/bmm/workflows/design/shared/brief-binding-contract.md`. A design may FAIL this review on exactly two grounds:
+
+1. **A broken truth test** — one of the active brief's Part 2 tests (`C-TRUTH-01`), or a checklist/intrinsic rule classified `truth` by the one-question test: *if a design broke this rule, could a reader come away believing something false about the data, the money, the state of the work, or who may see what?*
+2. **A failed five-second answer** — a first-time reader cannot state the page's answer (the brief's `page_answer`) within five seconds (`C-ANSWER-01`).
+
+**Every other finding — styling, layout, composition, tokens, pills, colour, frame inventory, the AI-fingerprint composite — is an `[advisory]` note.** It is still reported, grouped, and cited, because it is useful; it is never P0/P1, never counted as a blocker, and never drives the verdict. This workflow does not score frame inventory at all. The project's `docs/review-checklist.md` and `docs/design-policy.md` are not edited — this is how the workflow TREATS them.
+
 This workflow is **NOT** the same as `design-review`:
 
 | | `design-review` | `design-review-pr` |
@@ -39,7 +46,7 @@ Steps execute in order. Each step's output feeds the next.
 - `steps/step-01-scope.md` — Determine target (PR or local diff). Identify which routes / pages the changeset touches. Load the checklist.
 - `steps/step-02-source-scan.md` — Run all `source-grep` lane rules against the diff. Emit findings.
 - `steps/step-03-dom-render.md` — For each affected page (if Chrome is available), render and run `dom-render` lane rules. Emit findings.
-- `steps/step-04-deliver.md` — Aggregate findings, evaluate `C-COMPOSITE-01`, `C-IDENTFMT-01`, `C-ARCHETYPE-01`, `C-RIGOR-01`, `C-DECISION-01`, `C-FINANCE-01`, and `C-FIXTURE-01`, and produce the structured report.
+- `steps/step-04-deliver.md` — Classify every finding truth vs advisory (§0), evaluate `C-TRUTH-01` and `C-ANSWER-01` (the only checks besides truth-class rules that can fail a design), then aggregate findings, evaluate `C-COMPOSITE-01`, `C-IDENTFMT-01`, `C-ARCHETYPE-01`, `C-RIGOR-01`, `C-DECISION-01`, `C-FINANCE-01`, and `C-FIXTURE-01`, and produce the structured report.
 
 ### State Variables
 
@@ -55,9 +62,14 @@ Steps execute in order. Each step's output feeds the next.
 - `{brief_finance_map}` — Map of `{route → {column_semantics, exception_expectations, must_not_infer, terminology}}` for affected routes whose active brief is `is_finance_surface: true` (its §2b Finance-semantics block; built in step-01 §7; read from the **brief**). Carries the finance contract a finance-shaped surface committed to — quantity/value separation, the exception states that must be representable, the accounting-truth constraints — and lets `C-FINANCE-01` check the build preserved it. Empty when no affected route is finance-shaped. Drives the `C-FINANCE-01` intrinsic check.
 - `{fixture_backed_routes}` — List of `{route, fixture_module, marker, disclosure_present, project_has_contract}` for routes the diff touches that render a fixture/mock data module with no live read path (built in step-02 §7, source-driven — NOT brief-derived). Carries whether the project declares a fixture-disclosure contract and whether the disclosure half is wired, so `C-FIXTURE-01` can fire a deterministic P1 only where a contract exists and fall back to a human-judgment prompt (disclosure-adequacy + realistic-PII) otherwise. Empty when the diff touches no fixture-backed route. Drives the `C-FIXTURE-01` intrinsic check.
 
+- `{brief_truth_map}` — Map of `{route → {brief_filename, brief_shape, page_answer, dominant, truth_tests: [{id, statement, check}]}}` for affected routes with an active brief (built in step-01 §7). Legacy briefs contribute their Design Contract MUST PRESERVE list as `truth_tests` and an empty `page_answer`. Drives `C-TRUTH-01` and `C-ANSWER-01`.
+
 ### Workflow-intrinsic checks
 
-Seven checks are NOT in `docs/review-checklist.md` — the workflow evaluates them itself:
+Nine checks are NOT in `docs/review-checklist.md` — the workflow evaluates them itself. Each carries a fixed binding class (see step-04 §0):
+
+- **`C-TRUTH-01`** *(truth — can fail)* — the rendered surface breaks one of the active brief's Part 2 truth tests. Evaluated in step-04 §1d.
+- **`C-ANSWER-01`** *(truth — can fail)* — the five-second test: a reader who has not seen the page cannot state the brief's `page_answer` within five seconds of it loading. Human-judgment by nature; a reviewer prompt that the reviewer answers pass/fail. Evaluated in step-04 §1e.
 
 - **`C-COMPOSITE-01`** — fires when ≥3 distinct P1 fingerprints hit one route (evaluated in step-04 §1).
 - **`C-IDENTFMT-01`** — fires when a canonical-identifier class (supplier, marketplace, ASIN/SKU, order number) renders in more than one casing/label form across cells or the list↔drawer boundary, or when a raw enum/code (`AMAZON_ES`) is rendered where a human label is expected. This operationalizes policy §13's **"Canonical identifier"** clause (*"reads, formats … the same way everywhere … do not relabel, reformat, or re-key the same record per surface"*) — the text-formatting twin of the status-badge-consistency hard failure. Three-arm: a cheap **source-grep** advisory (step-02 §5, so it isn't silently skipped when Chrome is down), the authoritative **dom-render** check (step-03 §3c, P1 on a clear cross-surface divergence), and a **human-judgment** fallback prompt when dom-render is skipped (step-04 §1c). Evaluated/aggregated in step-04 §1c.
@@ -107,19 +119,18 @@ The report is a single markdown document with these sections, in order:
 
 ### 1. Summary
 
-A one-paragraph verdict, plus a counts table:
+A one-paragraph verdict, plus a counts table. The verdict is driven ONLY by the truth rows:
 
-| Severity | Count |
+| Class | Count |
 |---|---|
-| P0 (blockers) | N |
-| P1 (change-requested) | N |
-| P2 (suggestions) | N |
-| P3 (nits) | N |
+| Fails — broken truth test (P0/P1) | N |
+| Fails — five-second answer (C-ANSWER-01) | pass / fail / not checked |
+| Advisory notes (style, layout, composition, fingerprint) | N |
 | Manual prompts | N |
 
-### 2. Blockers (P0)
+### 2. Fails — truth tests and the five-second answer (P0 / P1)
 
-Each blocker rendered as:
+Only `truth`-class findings appear here (step-04 §0). Each rendered as:
 
 ```
 **[blocker] {rule_id}** — {one-line statement}
@@ -129,13 +140,9 @@ Each blocker rendered as:
 - Source: {policy section}
 ```
 
-### 3. Changes requested (P1)
+### 3. Advisory notes
 
-Same shape as blockers. If `C-COMPOSITE-01` fires, surface it FIRST with a recommendation for a redesign pass rather than per-rule fixes.
-
-### 4. Suggestions (P2) and nits (P3)
-
-Same shape but tagged `[suggestion]` or `[nit]`.
+Every `advisory`-class finding, same shape, tagged `[advisory]`, grouped by rule. If `C-COMPOSITE-01` fires, surface it FIRST here with a recommendation for a redesign pass — as advice. An advisory note never blocks a merge and is never counted as a fail.
 
 ### 5. Manual reviewer prompts (human-judgment lane)
 
@@ -173,7 +180,8 @@ If `--comment` flag is passed and `{pr_number}` is set: emit a `gh pr comment` i
 
 ## FAILURE MODES
 
-- **Treating the checklist as a wishlist.** Rules are pass/fail. If detection finds the pattern, the rule fails — don't argue with it in the report.
+- **Treating the checklist as a wishlist.** Detection is not optional: if a rule's pattern is found, report it — don't argue with it. Its CLASS decides what the finding does: a `truth` rule fails the design; an `advisory` rule is a note (step-04 §0).
+- **Failing a design on advice.** Promoting a style, layout, composition, token or frame-inventory finding to P0/P1 is the over-constraint the binding split exists to stop (owner, 2026-09-19). Report it as `[advisory]`.
 - **Inventing new severity levels or new categories.** Use what's in the checklist.
 - **Producing a long prose audit instead of structured findings.** That's `design-review`. This workflow's output is a triage report keyed to rule IDs.
 - **Running dom-render before source-grep.** Source is faster, deterministic, and finds most issues. Always run grep first.

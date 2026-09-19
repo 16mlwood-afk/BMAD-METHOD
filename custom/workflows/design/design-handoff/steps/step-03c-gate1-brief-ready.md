@@ -119,6 +119,13 @@ Spawn ONE isolated agent (`Agent` tool, fresh context) with:
    generator follows the specification and ignores the thesis.
 7. **End with a precision statement** — probes fired, how many were dismissed on inspection,
    and why. A run that reports every probe as a defect has not been checked.
+8. **Over-binding is a brief defect too (2026-09-19, `shared/brief-binding-contract.md`).** Check
+   the brief's Part 2: any test written as a MECHANISM ("annotate every figure inline", "a
+   permanent band at the top", "a column for X") is a finding — quote it and name the outcome it
+   was protecting. Equally, any advisory-section rule that still says it "fails review", "is
+   rejected" or is "required" of the DESIGN is a finding. And the reverse: a truth-class rule
+   (a reader could be misled about the data, money, state or who may see what) that sits only in
+   the advisory appendix and never reached Part 2 is a finding — a guarantee was dropped.
 
 Record the reviewer's output verbatim in the artifact. **Do not edit its findings into
 agreement with the brief.**

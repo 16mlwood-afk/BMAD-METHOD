@@ -48,13 +48,26 @@ The artifact was already loaded into `{artifact_content}` during step 1. Now par
 
 **If `{artifact_type}` = `design-brief`:**
 
-Extract the brief's structured sections:
+Extract the brief's structured sections. **First, the binding split** (`{project-root}/_bmad/bmm/workflows/design/shared/brief-binding-contract.md`): the designer is bound ONLY by the brief's truth tests and the five-second answer; everything else is advice. Any output this workflow produces (a screen-review, a design-handoff, a design-response) must keep that split — a violation it raises against the brief is a *truth* violation (fails) or an *advisory* departure (a note), and it says which.
+
+**Outcome-first briefs (`{brief_shape}` = `outcome-first`):**
+
+- `{brief_moment}` — Part 1 "The moment" paragraph
+- `{brief_page_answer}` — frontmatter `page_answer` (T0)
+- `{brief_truth_tests}` — the Part 2 table rows (id · statement · check · source) — the ONLY binding items
+- `{brief_dominant}` / `{brief_on_demand}` — Part 3
+- `{brief_open_questions}` — Part 5 list (unfenced; sketching two options is invited)
+- `{brief_advisory}` — everything under "Advisory guidance" (§4–§7), carried as advice
+
+**Legacy briefs (`{brief_shape}` = `legacy`):** `{brief_truth_tests}` = the "MUST PRESERVE" list of the Design Contract block, each read as a test; `{brief_page_answer}` = empty (note `five-second test: no declared answer — legacy brief`); §4, §5, §7 and the `frames` list are advisory.
+
+Then, for both shapes:
 
 - `{brief_purpose}` — Section 1 "Feature Purpose" body
 - `{brief_data_shape}` — Section 2 "Domain Data" body (entity tables)
 - `{brief_user_context}` — Section 3 "User Context" body
 - `{brief_visual_direction}` — Section 4 "Visual Direction" body
-- `{brief_hard_constraints}` — Section 5 "Hard Constraints" body
+- `{brief_hard_constraints}` — Section 5 "Style floor" body (headed "Hard Constraints" on a legacy brief) — ADVISORY either way; its truth-class items are in `{brief_truth_tests}`
 - `{brief_design_ask}` — Section 6 "Design Ask" body (open questions OR refinement bullets)
 - `{brief_open_questions}` — the question-list within Section 6, if any
 - `{brief_explicitly_asks_comparison}` — boolean: `true` if section 6 contains "compare against the current page" or similar

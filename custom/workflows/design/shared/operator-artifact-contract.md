@@ -5,6 +5,8 @@ description: 'Canonical fork doctrine for the SHAPE of a design artifact on a ha
 
 # Operator-Artifact Contract — handheld-first surfaces
 
+> **Binding status since 2026-09-19 (`brief-binding-contract.md`, STD-BRIEF-BINDING-001).** Owner, verbatim: *"the biggest takeaway is claude design should do the heavy lifting everything else is mostly advisory"*. The composition rules here (B1–B7) are the product's best current thinking about an operator artifact's SHAPE — advisory to the designer. Where this file says a design "fails", "is rejected" or is "checked at review", read it as: reported as an advisory note — unless the rule is also written into the brief's Part 2 as a truth test, which is the only thing that can fail a design.
+
 **One line.** A project's design policy declares *which surface class this is*. This file defines
 *what shape the artifact for that class must take*. Claude Design / `design-synthesize` implement it.
 

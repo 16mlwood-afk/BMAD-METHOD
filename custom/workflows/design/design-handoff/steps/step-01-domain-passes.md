@@ -289,3 +289,67 @@ as (e)/(f)/(h). The deterministic companion is the `disclosure-layers` absence p
 so no hook can block one, the identical ceiling to the canonical-viewport and ledger passes. A green gate
 means "the brief declared its layers", never "the surface is calm to work on".
 
+### 3i. Outcome pass — the moment, the binding tests, the one thing that dominates (every run)
+
+**Contract: `shared/brief-binding-contract.md` (STD-BRIEF-BINDING-001). Read it.** Governing principle,
+owner's words verbatim: *"the biggest takeaway is claude design should do the heavy lifting everything
+else is mostly advisory"*. This pass captures the material for the brief's Parts 1, 2, 3 and 5. It
+invents nothing: every value is lifted from the purpose, capabilities, data and policy already captured,
+and anything it cannot lift is an open question, never a guess.
+
+**1. `{page_moment}` — who opens the page, after what, to decide what.** One paragraph: the operator,
+the event that sends them here, the question in their head as it loads, the action they take next.
+Lift it from §4 (`{feature_purpose}`, user goals) and §2 user context. A list of outputs ("shows X, Y
+and Z") is not a moment — rewrite it as the decision. If the decision genuinely cannot be named from
+the evidence, ask the user ONE question (in autonomous mode: record it as the first open question and
+write the moment you can support, marked `unverified`).
+
+**2. `{page_answer}` — the one line a reader must be able to state within five seconds.** The answer
+to the moment's question, in the operator's words, e.g. *"the prep's records are missing 14 of your
+purchases"*. It becomes T0. It may carry a figure the data will supply at render time; it may not
+carry a figure the data cannot supply.
+
+**3. `{dominant}` and `{on_demand}`.** Exactly ONE thing that must lead the page (usually the rows or
+figure that ARE the answer). `{on_demand}` names everything else the page carries — the rest of the
+rows, the full source mirror, provenance, dates, identifiers — so the designer is permitted to demote
+it. Two dominants is a defect; choose.
+
+**4. `{truth_tests}` — first draft (step-03 §2 completes the list with the §4d/§4e/§4h/shell tests).**
+Each entry `{id, statement, check, source}`. Draw them from:
+- §2 data defects: missing ≠ zero; observed / declared / assumed kept apart; two authorities never
+  merged, netted or subtracted into one figure; an unread source never shown as an empty one;
+- §2b `{finance_must_not_infer}` (when the finance pass fired);
+- §2c staleness budget (when the live-process pass fired): the page never claims more liveness than its
+  transport delivers;
+- each `{must_support_capabilities}` job: *"the operator can {job} from this page"* — placement is the
+  designer's;
+- `{linked_records_inventory}`: *"a linked value is the resolved foreign record, read through the
+  relation, never re-keyed text"*.
+
+**Write each as an outcome with a check, never a mechanism.** The test for the test: could two quite
+different layouts both pass it? If only one layout can pass, it is a mechanism in disguise — rewrite it
+as the outcome the mechanism was protecting (*"a reader can never mistake a stale or partial figure for
+a current one, including when they screenshot a single row"*, not *"annotate every figure inline"*).
+
+**5. `{policy_rule_classification}` — which design-policy rules bind.** For each rule in the resolved
+`docs/design-policy.md` (and its named overlay) that touches this surface, apply the one-question test
+from the contract §2: *if a design broke this rule, could a reader come away believing something false
+about the data, the money, the state of the work, or who may see what?* Yes → `binding` (it becomes a
+Part 2 test, e.g. money basis per policy §15, no invented figures, two authorities distinct). No →
+`advisory` (style, layout, composition, tokens, pills, colour caps, density — mark consistency-only
+rules `[tradeable]`). Unsure → `ambiguous` (stays advisory AND becomes an open question). **Never edit
+the policy file** — this classifies how the brief treats it.
+
+**6. `{open_questions}` — unfenced.** Collect every unresolved item the other passes produced (§2b
+unresolved assumptions, §2c runtime semantics, §2d archetype gaps, §3e collisions, §3f pending viewport
+ambition, `ambiguous` policy rules), each with what is unknown and what would settle it. None carries a
+"do not draw" fence — the brief invites two sketched options for two of them.
+
+**7. `{design_system_pointer}`** — the repo-relative path(s) where the project's tokens, type scale,
+status system and component patterns live (e.g. `docs/design-policy.md §2–§5` and the token file). The
+brief points here instead of copying them.
+
+**§ Enforcement tier (honest).** PROBABILISTIC — workflow prose. The deterministic slice is probe **P6**
+in `tools/check-brief-readiness.py` (warn-only, Gate 1): it asks whether an outcome-first brief carries a
+moment, ≥1 truth test beyond T0, a single `dominant`, and a Part 5. Whether a test is truly an outcome
+rather than a mechanism, and whether the classification is right, are judgements no probe can make.

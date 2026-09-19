@@ -1,5 +1,7 @@
 # Spawned-Surface Completeness Gate — STD-SURFACECOMPLETE-001
 
+> **Binding status since 2026-09-19 (`brief-binding-contract.md`, STD-BRIEF-BINDING-001).** Owner, verbatim: *"the biggest takeaway is claude design should do the heavy lifting everything else is mostly advisory"*. Spawned surfaces are still enumerated in full, but a brief now lists them as SUGGESTED frames; which ones get drawn is the designer's call. Where this file says a design "fails", "is rejected" or is "checked at review", read it as: reported as an advisory note — unless the rule is also written into the brief's Part 2 as a truth test, which is the only thing that can fail a design.
+
 Producer-side completeness gate for `design-handoff`. Referenced by `design-handoff` step-01c-topology §5h (which runs it) and named by step-04 as the upstream twin of its internal-consistency assertion. Read on demand; the load-bearing rule is re-stated at point-of-use in §5h.
 
 ## Why this file exists

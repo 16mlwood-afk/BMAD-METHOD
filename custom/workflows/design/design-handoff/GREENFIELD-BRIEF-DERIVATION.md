@@ -123,9 +123,13 @@ band exists). Decide these from §5–§5f exactly as brownfield does.
 
 ## §7 Surface Inventory — the load-bearing section
 
-`design-synthesize` step-01 §7a now populates `{screens}` **from the brief
-body's §7 Surface Inventory table**, and **Gate 1f halts if any §7 frame would
-go undrawn.** So §7 is not optional prose — it is the render contract.
+`design-synthesize` step-01 §7a populates `{screens}` **from the brief body's
+§7 Surface Inventory table**, and Gate 1f halts if the PARSE loses a row. Since
+2026-09-19 the rows are SUGGESTED frames (`shared/brief-binding-contract.md`):
+the designer may decline one with a reason. §7 still has to be complete — a
+suggestion never offered cannot be weighed. Also write the outcome-first
+Parts 1–3 and 5 (`brief-template.md`) from the specs: the moment, the page's
+answer, the truth tests, the one dominant thing, the open questions.
 
 Derive it via the §5f spawned-surface inventory:
 

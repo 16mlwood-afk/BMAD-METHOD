@@ -56,6 +56,8 @@ When this workflow encounters conflicting guidance, the order of authority is:
 - **Prior conversation context / chat history** between the user and the agent. Only the committed artifact on `main` survives across runs.
 - **The PR description of any in-flight PR.** PR descriptions are convenience metadata; the artifact on `main` (or the diff itself once merged) is the durable record.
 
+**Authority is not the same as binding (2026-09-19).** Precedence above decides which SOURCE wins a conflict of wording. What a DESIGN is bound by is narrower, and is set by `{project-root}/_bmad/bmm/workflows/design/shared/brief-binding-contract.md`: only the brief's truth tests and the five-second answer test (owner, verbatim: *"the biggest takeaway is claude design should do the heavy lifting everything else is mostly advisory"*). A screen-review violation therefore carries a `Binding:` label — `truth` (it breaks a truth test or a truth-class policy rule: a real failure) or `advisory` (it departs from a style, layout or composition rule: a note, never presented as a failure).
+
 **Implication:** A screen-review violation's `Rule violated:` field must cite (1) or (2), never (5) or (6). A design-handoff's exact-change list must come from the brief or from a violation tied back to (2); never from the agent's own preferences. Briefs may narrow the policy for a feature but may not loosen or carve out exceptions.
 
 ---

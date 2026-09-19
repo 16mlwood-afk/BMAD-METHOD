@@ -12,6 +12,7 @@ Placeholder → state variable mapping:
 - {{verdict}}                 → FAIL | PASS WITH ISSUES | PASS  (or INDETERMINATE for review-only with no visual evidence)
 - {{user_role}}, {{frequency}}, {{stakes}}, {{out_of_scope}} → context block
 - {{source_of_truth}}         → state.artifact_path
+- {{five_second_answer}}      → pass | fail | "no declared answer" — reader test against the brief's page_answer (T0)
 - {{top_issues_block}}        → V1, V2, V3 entries (template form below)
 - {{edge_states_block}}       → bullet list
 - {{what_to_keep_block}}      → bullet list
@@ -23,6 +24,7 @@ Placeholder → state variable mapping:
 Fixed vocabulary:
 - Verdict: FAIL | PASS WITH ISSUES | PASS | INDETERMINATE
 - Severity: hard failure | issue | polish
+- Binding: truth | advisory — `truth` = breaks a brief truth test, the five-second answer test, or a truth-class policy rule; `advisory` = departs from a style/layout/composition rule. Only a `truth` issue may carry severity `hard failure` or drive a FAIL verdict (shared/brief-binding-contract.md §4). A five-second check ("can a reader state the page's answer within five seconds?") is recorded in Context as `Five-second answer: pass | fail | no declared answer`.
 
 Issue cap rule: emit the top issues only (typically 1–3). V1 is the most damaging. Do not pad; do not invent issues to fill a slot. If only one issue warrants action, ship one V-block. If more than three warrant action, raise the additional ones in the design-handoff phase (per the workflow's Gate 3) rather than expanding this list.
 
@@ -44,6 +46,7 @@ Dissent rule: the dissent pass may DEMOTE a verdict (PASS → PASS WITH ISSUES �
 - Stakes: {{stakes}}
 - Source of truth: `{{source_of_truth}}`
 - Out of scope: {{out_of_scope}}
+- Five-second answer: {{five_second_answer}}   ← pass | fail | no declared answer (legacy brief)
 
 ## Top issues
 
@@ -51,6 +54,7 @@ Dissent rule: the dissent pass may DEMOTE a verdict (PASS → PASS WITH ISSUES �
 Ordered V1 → V3 (V1 = most damaging). V-IDs are stable across iterations of the same target — never re-number. Severity in parentheses: hard failure | issue | polish.
 
 Required fields per block:
+- Binding: truth | advisory (see vocabulary above — an advisory issue is never a hard failure)
 - Evidence: visible thing or cited brief/policy section. No "feels off" without a pointer.
 - Why it matters: one sentence connecting the issue to trust, comprehension, or next-action clarity.
 - Required correction: concrete enough that the refinement pass can act on it without reinterpreting.

@@ -358,6 +358,12 @@ surface with neither.
 
 **Full capture procedure moved to `{project-root}/_bmad/bmm/workflows/design/design-handoff/steps/step-01-domain-passes.md` §3g — read it and follow it exactly once this pass fires.** Do not paraphrase from memory or skip opening it — the routing table there is what prevents downstream steps from silently missing a field.
 
+### 3i. Outcome pass — the moment, the binding tests, the one thing that dominates (every run)
+
+Fires on **every run** (page and chrome). It captures what the brief's Parts 1–3 and 5 are made of: `{page_moment}`, `{page_answer}`, `{dominant}`, `{on_demand}`, the first draft of `{truth_tests}`, `{policy_rule_classification}`, `{open_questions}`, and `{design_system_pointer}`. Run it AFTER §4 below has captured the purpose and capabilities (it reads them), and before step-01b. **Why:** a brief that names outputs but never the decision the page serves gives the designer nothing to rank against, and a brief that states its honesty commitments as mechanisms mandates a form (owner review, 2026-09-19 — `shared/brief-binding-contract.md`).
+
+**Full capture procedure: `{project-root}/_bmad/bmm/workflows/design/design-handoff/steps/step-01-domain-passes.md` §3i — read it and follow it exactly.** Do not paraphrase from memory.
+
 ### 4. Capture Feature Purpose
 
 Write `{feature_purpose}`:

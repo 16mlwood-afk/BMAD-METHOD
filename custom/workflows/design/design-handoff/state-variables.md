@@ -140,3 +140,16 @@ Set in step-01 §3f, on EVERY `{surface_class} == page` run (skipped for `chrome
   - **HARD FAIL, cont.:** (f) **handheld-first declaration incomplete** — on a `mobile-first`/handheld-first DECIDED class, any of the five `{handheld_declaration}` fields missing/blank/hand-waved, or §7 missing the B1–B4 composition instruction. (e) asks *will it be drawn at the canonical viewport?*; (f) asks *what SHAPE is it at that viewport?* — a brief passes (e) with a perfect canonical label and still commissions a **review board** (co-equal comps · rationale competing with the surface · state variants as peer mini-products). Never fires on a desktop-only class or an OPEN owner ambition.
   - **WARN-ONLY** (brief `unverified` + `pending-policy`, but the handoff CONTINUES — `{viewport_pending_policy}` = true): (d) an owner surface whose §8.3 mobile ambition is still OPEN — emit the loud diagnostic, render the owner fields as `pending`, never a guessed posture. A follow-up flips (d) to HARD FAIL once the owner sets the ambition.
 - **Enforcement tier: PROBABILISTIC** (workflow prose, ships via sync); the DETERMINISTIC companion is a per-project brief-artifact CI validator on the separate hooks/CI track (does not ship via the workflow sync).
+
+### Outcome pass (step-01 §3i) — the five-part brief (2026-09-19)
+
+Set on EVERY run by `steps/step-01-domain-passes.md` §3i; completed in step-03 §2. Contract: `shared/brief-binding-contract.md`. Governing principle, owner's words verbatim: *"the biggest takeaway is claude design should do the heavy lifting everything else is mostly advisory"*.
+
+- `{page_moment}` — one paragraph: who opens the page, after what, to decide what. Rendered as brief Part 1.
+- `{page_answer}` — the one line a reader must state within five seconds of the page loading. Becomes T0 and Block B `page_answer`.
+- `{dominant}` — the ONE thing that must lead. Block B `dominant`, brief Part 3.
+- `{on_demand}` — everything else the page carries, named, so demoting it is legal. Brief Part 3.
+- `{truth_tests}` — list of `{id, statement, check, source}`; T0 is added by step-03, the pass drafts T1…Tn, step-03 §2 adds the §4d/§4e/§4h/shell-derived tests. The ONLY binding list in the brief. Block B `truth_tests` carries the ids (`{truth_test_ids}`).
+- `{policy_rule_classification}` — each design-policy rule touching the surface → `binding` (a Part 2 test) | `advisory` (§4/§5, `[tradeable]` when consistency-only) | `ambiguous` (advisory + a Part 5 question). Never edits the policy.
+- `{open_questions}` — every unresolved item from all passes, each with what would settle it. Brief Part 5, unfenced.
+- `{design_system_pointer}` — repo-relative path(s) where tokens / type / status / components live; §4 points here instead of copying them.

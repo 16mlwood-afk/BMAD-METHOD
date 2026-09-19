@@ -98,6 +98,8 @@ See: {project-root}/_bmad/bmm/workflows/design/shared/brief-revision-policy.md
 
 **Check 1b — field values in-enum.** BEFORE Check 2, halt if any closed-enum field is outside its allowed set (§2 field-semantics) — Check 2's invariants are conditionals keyed on valid enum values, so an out-of-enum value slips through unvalidated otherwise. Enforce: `brief_status ∈ {active, superseded}`; `revision_mode ∈ {workflow_generated, manual_minor_revision, spec_derived}`; `change_class ∈ {original, clarification, material_revision}`; `last_modified_by ∈ {workflow, human}`; `mode ∈ {fresh-design, policy-delta, elevation, refine-screen}` (`policy-delta` / `elevation` follow the `fresh-design` path everywhere in this workflow — policy §2 `mode` row); `surface_class ∈ {page, chrome}` (absent ⇒ `page`); `page_mode ∈ {operational, analytical, detail}` — **except when `surface_class: chrome`, where the allowed value is exactly `n/a`** and `composition`/`composition_provenance`/`band_provenance` are absent by design (their absence is NOT a Check-1a failure — policy invariant 1a); `composition_provenance ∈ {policy-default, recommended-alt}`; `band_provenance ∈ {inherited, recommended-new, recommended-drop, none}`; `analytics_archetype` (when present) ∈ the nine archetypes. `composition` is OPEN vocab — validate only non-empty kebab, never a closed set. Halt naming the field, its value, and the allowed set (see `brief-revision-policy.md` §5 Check 1b diagnostic).
 
+**Check 1c — outcome-first completeness (only when `brief_shape: outcome-first`).** Per `brief-revision-policy.md` §5 Check 1c: halt (Gate 1) if `page_answer`, `dominant` or `truth_tests` (non-empty, `T0` first) is missing, or the body lacks `Part 1` / `Part 2` / `Part 5`. No `brief_shape` ⇒ legacy brief: skip, set `{brief_shape} = legacy`, never halt. Binding split: `{project-root}/_bmad/bmm/workflows/design/shared/brief-binding-contract.md`.
+
 **Check 2 — invariants.** Run the invariants from `brief-revision-policy.md` §2 (items 2–8). Specifically:
 
 - `revision_mode ∈ {"workflow_generated", "spec_derived"}` ⇒ `change_class ∈ {"original", "material_revision"}`
@@ -246,7 +248,9 @@ screens: [list, detail, drawer]
 
 If `screens` is omitted, derive: `[list, detail, drawer]` from `[/.../avask, /.../avask/[id], /.../avask/[id]/drawer]`. Halt if the derived names collide (e.g., two routes both reduce to `list`).
 
-#### 7a. §7 Surface Inventory frames — the spawned drawers are screens (REQUIRED)
+#### 7a. §7 Surface Inventory frames — suggested screens (the synthesizer decides which to draw)
+
+**Advisory since 2026-09-19 (`shared/brief-binding-contract.md` §4).** The §7 rows are SUGGESTED frames. Load every one into `{screens}` as below, so each is weighed rather than lost — then step 4 may draw it, merge it, or decline it with a one-line reason recorded in `{declined_frames}`. A declined suggestion is an advisory note, not a gap. Only a frame a Part 2 truth test depends on must be drawn (checked in step-06 §4t).
 
 The routes/frontmatter above only ever name the **primary** surface(s). But `design-handoff` enumerates every secondary surface the page spawns — the drilled **detail drawer** and the §13 expand-in-context **lookup drawers** — as **frame-name-keyed rows in the brief body's §7 Surface Inventory** (the Deliverable-Completeness Principle; brief-template §7). Those frames live in the body, not the frontmatter, so the route-based derivation above **never sees them** — and a frame that never enters `{screens}` is never composed in step 4, never rendered in step 5, never recorded in the manifest, and is then *inferred* by `design-implement` (the thin, policy-violating drawer this whole contract exists to prevent: bare `€60` with no GBP/VAT basis, a lookup drawer showing only code/type/status). **The pipeline is non-interpretive — it draws only the frames `{screens}` carries, so every §7 frame MUST become a screen here.**
 
@@ -270,14 +274,13 @@ Rules:
 - **A frame whose §7 "Must contain" is `= the {X} drawer in {other-brief}.md — consume, do not redesign`** is owned by that other brief and is NOT re-synthesized here — record it in `{consumed_frames}` (name + the owning brief) so the load summary states it was deferred, not dropped, and skip its screen. Every other frame becomes a screen.
 - The primary surface is frame #1 (already in `{screens}` from the route derivation) — do not duplicate it. For `page_mode: detail` the primary surface IS the drilled drawer; §7 row 1 and the route screen are the same frame.
 
-**Coverage gate (Gate 1f — the silent-partial guard, mirrors `design-implement` §2f at the render step).** After merging: the number of screens to synthesize **plus** `{consumed_frames}` MUST equal the number of §7 Surface Inventory rows. If §7 lists N frames and you resolved fewer, a spawned drawer would silently fail to render — **halt**:
+**Accounting check (Gate 1f — the silent-LOSS guard, now a parse check only).** After merging: the number of screens loaded **plus** `{consumed_frames}` MUST equal the number of §7 Surface Inventory rows. This no longer asks whether every frame will be DRAWN (that is the designer's call); it asks whether the PARSE lost a suggestion before anyone could weigh it. If §7 lists N frames and the parse resolved fewer, halt — this is a parse defect, not a design decision:
 
 ```
-Gate 1f — §7 frame undrawn. Brief §7 Surface Inventory lists {N} frames
-({names}); only {M} resolved into {screens} (+{K} consumed-from-sibling-brief).
-{N-M-K} frame(s) would never be drawn and would ship inferred/thin. Fix the
-brief's §7 (or the parse) so every frame becomes a screen or a recorded
-consumed-frame, then re-run.
+Gate 1f — §7 suggestion lost in parsing. Brief §7 lists {N} suggested frames
+({names}); only {M} were loaded into {screens} (+{K} consumed-from-sibling-brief).
+Fix the parse so every suggestion is loaded and weighed, then re-run. Declining a
+suggestion is allowed later, in step 4 — losing one silently here is not.
 ```
 
 If the brief has **no §7 Surface Inventory** at all (an older brief generated before the Surface Inventory contract), record a `pre-surface-inventory-brief` note, proceed with the primary screen(s) only, and state loudly in the load summary that spawned drawers were **not** drawn — route "re-run `design-handoff` to regenerate the brief with §7." An FK-of-the-render-pipeline blind spot announced beats one shipped silently.
@@ -329,17 +332,21 @@ The brief body is structured prose. Extract the following sections into state fo
 
 | Section | State variable | Source-of-truth role |
 |---|---|---|
+| Part 1 — The moment (outcome-first briefs) | `{page_moment}`, `{page_answer}` | Who opens the page, after what, to decide what; the answer a reader must get in five seconds (T0). Drives hierarchy above everything else in step 4 |
+| Part 2 — What must be true | `{truth_tests}` | The ONLY binding items (T0…Tn). Checked in step-06 §4t. Legacy brief: the Design Contract "MUST PRESERVE" list, each read as a test |
+| Part 3 — What must dominate | `{dominant}`, `{on_demand}` | The one thing that leads; everything else may be demoted |
+| Part 5 — Open questions | `{open_questions}` | Unfenced; step 4 sketches two options for two of them where a sketch answers better than a sentence |
 | Feature purpose / overview | `{feature_purpose}` | What the screen is for; informs information hierarchy in step 4 |
 | Data shape / data model | `{data_shape}` | What fields exist; populates realistic content (no lorem ipsum) |
 | User context / who needs it | `{user_context}` | Decides density and surfacing — analyst vs operator vs auditor |
-| Visual direction | `{visual_direction}` | Palette/density/tone cues — feeds palette decisions in step 4 |
-| Hard constraints | `{hard_constraints}` | Project-specific musts (e.g., "fits in 1440px viewport without horizontal scroll") |
+| Visual direction | `{visual_direction}` | ADVISORY. Palette/density/tone cues and a pointer to the design system — feeds palette decisions in step 4 |
+| Style floor (§5; "Hard constraints" on a legacy brief) | `{hard_constraints}` | ADVISORY. The product's style floor; truth-class items are already in `{truth_tests}` |
 | Design ask | `{design_ask}` | The deliverable scope — what regions/components the brief requires |
 | Analytics structure (§4b if present) | `{analytics_structure}` | Subordinate analytics-row spec, if the brief includes one |
 
 If a section is missing AND it is required for the mode:
 
-- `fresh-design`, `policy-delta`, `elevation`: all sections except `analytics_structure` are required.
+- `fresh-design`, `policy-delta`, `elevation`: all sections except `analytics_structure` are required (on a legacy brief the four Part rows are absent by design — not a halt; `{page_answer}` is empty and T0 is recorded `no declared answer`).
 - `refine-screen`: `feature_purpose`, `data_shape`, `design_ask` are required; the rest are inherited from the screen-review baseline.
 
 Halt with the missing-section list. Do not invent content.

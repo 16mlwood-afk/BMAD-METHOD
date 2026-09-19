@@ -177,42 +177,44 @@ Prior manifest for {target_slug}: {prior_ingest_manifest}
   this run's ledger:         appends to the above manifest (multi-writer contract)
 ```
 
-### SHARED.1b. Bundle → brief conformance gate (the design proposal is not yet a contract)
+### SHARED.1b. Bundle → brief conformance gate — halts ONLY on a truth test or the five-second answer
 
-**The bundle is a PROPOSAL; the brief is the contract. This gate refuses to implement a proposal that silently under-delivers the contract** — the receive-station failure (a strong "station, not dashboard" brief produced a centered hero card with minimal frame coverage, which `design-implement` then faithfully shipped because nothing compared the two). It runs on EVERY path, AFTER SHARED.1a has resolved the brief via `{target_slug}`, and BEFORE step-02/03/04 — a non-conformant proposal is bounced before any mapping or grid work is spent on it.
+**Binding split (2026-09-19, `{project-root}/_bmad/bmm/workflows/design/shared/brief-binding-contract.md`).** Owner, verbatim: *"the biggest takeaway is claude design should do the heavy lifting everything else is mostly advisory"*. The bundle is the designer's answer to the brief. This gate may stop the run for exactly two reasons: the bundle breaks one of the brief's **Part 2 truth tests**, or it fails **T0, the five-second answer test**. Every structural difference from the brief's suggestions — a suggested frame not drawn, different chrome, a different composition — is reported as an **advisory note** and the run proceeds. It runs on EVERY path, AFTER SHARED.1a has resolved the brief via `{target_slug}`, and BEFORE step-02/03/04.
 
 **Precondition — a brief must exist to gate against.** Use the `{handoff_supersede_status}` resolved in SHARED.1a:
 
-- **`no_brief`** (no brief matched `{target_slug}`) → there is no captured contract, so conformance **cannot be verified** — the SP-API lesson (a surface whose brief was never saved). Do NOT silently treat absence as a pass: record `{bundle_conformance} = UNVERIFIED (no brief)` and surface it in SHARED.2 ("implementing the proposal as-is; no brief to gate against — capture one via `design-handoff` to enable this gate"). Proceed.
-- **`active` / `superseded` / `ambiguous`** (a brief matched) → read its machine-readable contract fields — `frames` (the §7 contract-key ids), `shell_role` (`required_shell` / `required_chrome` / `forbidden_chrome`), and `composition` (`brief-revision-policy.md` §2 Block B) — and run the three structural checks below. A brief that PRE-DATES these fields (older brief, field absent) is the same degraded case **per dimension**: mark that dimension `UNVERIFIED (brief lacks <field>)`, disclose it, and gate only the dimensions the brief actually carries.
+- **`no_brief`** → there is nothing to test against. Record `{bundle_conformance} = UNVERIFIED (no brief)` and surface it in SHARED.2 ("implementing the design as-is; no brief to test against — capture one via `design-handoff` to enable this gate"). Proceed. Absence is never read as a pass.
+- **`active` / `superseded` / `ambiguous`** → read the brief's `truth_tests` + Part 2 table and `page_answer` (outcome-first), or its Design Contract `MUST PRESERVE` list (legacy — each item read as a test; no `page_answer`, so T0 is `no declared answer`). Also read `frames`, `shell_role`, `composition` for the advisory comparison.
 
-**The three structural checks (structure, not style):**
+**The binding checks (can HALT):**
 
-1. **Frame coverage** — every id in the brief's `frames` list must appear as a DRAWN frame in `{design_frame_inventory}` (a present module / standalone HTML / manifest scaffold row — `drawn: true`). A brief frame the bundle never drew is a proposal that under-delivered the surface inventory, not a thin-but-acceptable build. (This is the brief-side denominator that complements step-03 §2f's impl-side coverage; here it gates the BUNDLE, there it gates the IMPL.)
-2. **Shell / role** — when `shell_role` is present: the bundle's own rendered frame must carry `required_chrome` (verbatim where it draws it) and must NOT render `forbidden_chrome`. A clerk-station bundle that draws the owner global nav — or omits the clerk header — fails here. (The impl-side twin, an ANCESTOR layout injecting `forbidden_chrome` over the surface at runtime, is caught later by step-02 §1a / step-03 §2d against this same `forbidden_chrome`.)
-3. **Composition / job-loop** — when `composition` is a NON-default key (a `recommended-alt` such as `scanner-terminal` / `single-item-stream`, i.e. the brief said "this is NOT the page-mode default — it's a station/stream/verify surface"): the bundle must express the JOB LOOP the composition names (e.g. scan → feedback → tally → close), not a single centered hero card in dead space. This check is a **judgment** read (PROBABILISTIC — there is no exact test for "expresses the loop"); checks 1–2 are structural id/string matches (still model-executed, so structured-probabilistic — the fully-deterministic tier is a per-project CI/manifest validator, which does NOT ship via the fork sync).
+1. **T0 — five-second answer.** Look at the bundle's primary frame as a first-time reader would for five seconds. Write the line it tells you and compare with `page_answer`. Fail when the answer is absent or crowded out. (Judgement — PROBABILISTIC; state what you read.) Legacy brief: skip, record `no declared answer`.
+2. **Truth tests T1…Tn.** Apply each test's stated check to what the bundle draws. Fail when the bundle shows something the test forbids (a subtracted variance between two authorities, an invented figure, a stale read presented as current, owner money visible on a clerk surface…). A test the bundle cannot evidence at all (it never draws the state the test is about) is `not-evidenced`: a HALT when the test is about something the page must SAY on its primary frame, otherwise a note carried to §9.
 
-**On a miss in check 1 or 2 → HALT. Do NOT proceed to step-02.** Print:
+**The advisory comparison (never halts — notes in SHARED.2 and the §9 report):**
+
+- **Suggested frames** — each id in `frames` the bundle did not draw: `note: suggested frame not drawn — designer's call`.
+- **Shell / chrome** — `required_chrome` absent or `forbidden_chrome` drawn in the bundle: a note, UNLESS the brief also carries a Part 2 test for that boundary (then it was already decided in check 2). The IMPLEMENTATION-side twin — an ancestor layout injecting `forbidden_chrome` over the built surface — is still caught by step-02 §1a / step-03 §2d; that is build fidelity, unchanged.
+- **Composition** — a bundle that departs from a suggested `composition`: a note for design-review to weigh.
+
+**On a binding failure → HALT. Do NOT proceed to step-02.** Print:
 
 ```
 ══════════════════════════════════════════════════════════════════
-✗ design-implement halted — the bundle does not conform to its brief.
-
-This is a PROPOSAL that under-delivers the CONTRACT, not a build target.
-Implementing it would ship the design's misread (the receive-station failure).
+✗ design-implement halted — the design breaks a test its brief says must hold.
 
 Brief:   {matched brief filename} (target_slug: {target_slug})
-{for each frame-coverage miss:}  ✗ frame "{id}" — in brief.frames, NOT drawn in the bundle
-{if shell miss:}                 ✗ shell — bundle renders forbidden chrome "{forbidden_chrome}" / omits required "{required_chrome}"
-{if composition concern:}        ⚠ composition — brief says "{composition}" (job loop), bundle reads as a hero/dashboard
+{if T0 fail:}      ✗ T0 five-second answer — the brief's answer is "{page_answer}";
+                     a first-time reader of the primary frame takes away "{what it says}"
+{for each fail:}   ✗ {test id} — {test statement} — the bundle shows {evidence}
 
-Next: revise the design so it covers the brief, then re-run. The bundle is
-"proposal only; needs revision" — re-run design-synthesize (fork path) or
-regenerate in Claude Design against the brief, then re-invoke design-implement.
+Everything else in the brief is advice; these are the only reasons this run stopped.
+Next: revise the design so these tests pass (Claude Design, or re-run design-synthesize),
+then re-invoke design-implement.
 ══════════════════════════════════════════════════════════════════
 ```
 
-A check-3 composition concern with checks 1–2 passing is a **warn**, not a hard halt (it is a judgment call): surface it loudly in SHARED.2 and carry it to step-03 / the §9 report so design-review can adjudicate the station-vs-dashboard verdict on the live surface — but do not silently bless it. Record the outcome as `{bundle_conformance} = pass | UNVERIFIED(reason) | halted(reasons) | warn(composition)` for the SHARED.2 line.
+Record the outcome as `{bundle_conformance} = pass | UNVERIFIED(reason) | halted(truth: <ids>) | pass-with-notes(<n> advisory)` for the SHARED.2 line, and carry the advisory notes to step-03 / the §9 report.
 
 ### SHARED.2. Report ingestion summary
 
@@ -222,7 +224,7 @@ Output a brief summary:
 Design ingested ({input_kind}):
   source:                 {design_url or design_dir}
   primary file:           {design_file}
-  bundle conformance:     {bundle_conformance}   ← SHARED.1b: pass | UNVERIFIED(reason) | warn(composition). A hard HALT (frame/shell miss) exits BEFORE this summary.
+  bundle conformance:     {bundle_conformance}   ← SHARED.1b: pass | UNVERIFIED(reason) | pass-with-notes(n). A HALT (truth test or five-second answer) exits BEFORE this summary; frame/shell/composition differences are notes.
 {if input_kind == "ingest_manifest":}
   manifest grain:         {manifest_grain}   ← MANIFEST.1a: value-exact | partial | summary (absent field ⇒ summary). Says which half of this path actually ran.
   source re-read:         {none (value-exact) | "REQUIRED + done — N section(s): <list>"}   ← on partial/summary the value read is a required step, not a fallback; a run reporting `summary` with NO re-read has not verified treatment

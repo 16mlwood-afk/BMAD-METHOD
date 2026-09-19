@@ -1,5 +1,7 @@
 # Disclosure layer contract — "inspectable" is the contract, "permanently displayed" is not
 
+> **Binding status since 2026-09-19 (`brief-binding-contract.md`, STD-BRIEF-BINDING-001).** Owner, verbatim: *"the biggest takeaway is claude design should do the heavy lifting everything else is mostly advisory"*. The OBLIGATION this file protects — complete provenance, freshness, derivation and override history, inspectable — stays binding and is carried into each brief's Part 2 as tests. The LAYER ASSIGNMENT (which layer, where, how persistent) is advisory. Where this file says a design "fails", "is rejected" or is "checked at review", read it as: reported as an advisory note — unless the rule is also written into the brief's Part 2 as a truth test, which is the only thing that can fail a design.
+
 **Status:** shared design contract. Consumed by `design-handoff` (step-01 domain pass §3h, brief
 template §4h, step-03 gate class **(i)**), `design-synthesize`, `design-artifact-loop`,
 `design-review-pr`. Sibling of `operator-artifact-contract.md` — that one governs artifact SHAPE at

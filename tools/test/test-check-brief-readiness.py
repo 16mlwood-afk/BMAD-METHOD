@@ -223,6 +223,45 @@ what will be destroyed.
 
     check("P5f the clean control is unaffected by P5", "disclosure-layers" not in fired_ids(control)[0])
 
+    # ── P6 outcome-first shape (CONDITIONAL on brief_shape: outcome-first) ──────
+    # Mostly SILENCE cases: a legacy brief must never be asked, and a complete outcome-first
+    # brief must pass clean. Contract: custom/workflows/design/shared/brief-binding-contract.md.
+    OF_FM = ("frames: [queue, queue--detail]\nbrief_shape: outcome-first\n"
+             "page_answer: \"14 purchases are missing at the prep\"\n"
+             "dominant: \"the purchases the prep is missing\"\n"
+             "truth_tests: [T0, T1, T2]")
+    OF_BODY = ("## Part 1 · The moment\nThe operator suspects a shortfall.\n"
+               "## Part 2 · What must be true\n| T0 | ... |\n"
+               "## Part 3 · What must dominate\nThe missing purchases.\n"
+               "## Part 5 · Open questions — unfenced\n- one\n") + COMPLETE_BODY
+    p6ok = write(tmp, "fx-p6-complete.md", OF_BODY, frames=OF_FM)
+    check("P6  a complete outcome-first brief stays SILENT",
+          "outcome-first-shape" not in fired_ids(p6ok)[0], f"fired: {sorted(fired_ids(p6ok)[0])}")
+    check("P6b a LEGACY brief (no brief_shape) is never asked",
+          "outcome-first-shape" not in fired_ids(control)[0])
+    p6c = write(tmp, "fx-p6-legacy-no-parts.md", "Nothing about parts here.\n")
+    check("P6c a legacy brief with no Part headings still stays SILENT",
+          "outcome-first-shape" not in fired_ids(p6c)[0])
+    p6d = write(tmp, "fx-p6-only-t0.md", OF_BODY,
+                frames=OF_FM.replace("truth_tests: [T0, T1, T2]", "truth_tests: [T0]"))
+    check("P6d truth_tests carrying ONLY T0 FIRES (the brief protects nothing)",
+          "outcome-first-shape" in fired_ids(p6d)[0])
+    p6e = write(tmp, "fx-p6-no-answer.md", OF_BODY,
+                frames=OF_FM.replace("page_answer: \"14 purchases are missing at the prep\"",
+                                     "page_answer: \"\""))
+    check("P6e an empty page_answer FIRES (T0 has nothing to test)",
+          "outcome-first-shape" in fired_ids(p6e)[0])
+    p6f = write(tmp, "fx-p6-no-part2.md", OF_BODY.replace("## Part 2 · What must be true\n", ""),
+                frames=OF_FM)
+    check("P6f an outcome-first body with no Part 2 heading FIRES",
+          "outcome-first-shape" in fired_ids(p6f)[0])
+    p6g = write(tmp, "fx-p6-two-dominants.md", OF_BODY,
+                frames=OF_FM.replace("the purchases the prep is missing",
+                                     "the missing purchases and the freshness band"))
+    check("P6g a dominant naming two things FIRES a question",
+          "outcome-first-shape" in fired_ids(p6g)[0])
+    check("P6h a fired P6 still exits 0 (warn-only)", run(p6d).returncode == 0)
+
     # ── body SHA lifecycle ──────────────────────────────────────────────────────
     a = write(tmp, "sha-a.md", COMPLETE_BODY)
     b = write(tmp, "sha-b.md", COMPLETE_BODY, frames="frames: [queue, queue--detail]\nauthor: someone-else")

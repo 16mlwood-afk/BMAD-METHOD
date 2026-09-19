@@ -19,6 +19,7 @@ On failure of any sub-check, return to step 4 with a precise correction note. Ma
 
 ## RULES
 
+- **Only the truth half can FAIL the bundle (2026-09-19, `shared/brief-binding-contract.md`).** Owner, verbatim: *"the biggest takeaway is claude design should do the heavy lifting everything else is mostly advisory"*. Sub-check **(t)** — the brief's Part 2 truth tests plus T0, the five-second answer test — is the ONLY sub-check whose failure marks the bundle failed (`compliance_state: hard_failed`, `failure_basis: truth`). Every other sub-check (a/b/c/d/e/f/g/h/i) is this synthesizer improving its own work: its findings still drive the refine loop (up to the iteration cap), but whatever remains at iteration 3 is recorded as `advisory_notes` and does NOT fail the bundle or block `design-implement`. Exception, kept because it is honesty rather than style: an `under_grounded` bundle (the synthesizer did not actually consult what it claims to have consulted) is still labelled `under_grounded`.
 - **Policy half is policy-derived only.** Sub-checks (a) and (b) verify the bundle against `{hard_failures}` and `{positive_allowlist}` loaded in step 2 — NOT against workflow invariants. Workflow invariants (e.g., "every `var(--*)` resolves in tokens.css", "no config-dependent Tailwind classes", "manifest never disagrees with HTML on a visual fact", "bundle is self-contained") are checked unconditionally in step 7's manifest-validation pass. Conflating these two categories was an earlier draft error — keep them separate.
 - **Visual half is taste-derived, not policy-derived.** Sub-checks (d), (e), (f) evaluate the bundle against principles policy can't easily enumerate: hierarchy quality, density calibration, lift over a baseline operational screen, alignment with the project's own gold-standard work. A bundle can satisfy every hard-failure rule in (a) and still fail (d/e/f) — that is the failure mode this half exists to catch.
 - **`design-synthesize` does NOT invent allowlist items.** Sub-check (b) iterates `{positive_allowlist}` only. New positive assertions enter the system via `modify-design-policy`, not this workflow.
@@ -32,7 +33,7 @@ On failure of any sub-check, return to step 4 with a precise correction note. Ma
 - **Exemplars must be consulted, not just listed.** Every entry in `{exemplars}` MUST have `consulted: true` in `{exemplar_comparisons}` by the end of this step, with per-dimension diff strings (aligned or not — both are valid) for every screen. A `consulted: false` entry is a routing failure (not iteration-counted, same precedent as the skill-routing check) — return to step 4 to Read the unconsulted exemplars before re-emitting.
 - **Anti-spreadsheet hard floor.** Per §6 Axis 5 T4: a screen whose only differences from a plain styled `<table>` are pills and a summary line CANNOT earn `generic_look: strong`, and the bundle CANNOT earn `visual_quality: excellent`. T4 is now four-part (second operating surface + collapse test + four-tier hierarchy + one-second test); see §6 Axis 5. This floor is the failure mode the rubric exists to catch — "policy-compliant spreadsheet" is the named failure, and it caps at `acceptable`.
 - **Brief-faithfulness pre-visual cap.** The (g/h/i) half runs BEFORE visual rating. Any failure in (g) internal consistency, (h) deliverable coverage, or (i) question coverage caps `{visual_quality}` at `acceptable` regardless of how the (d/e/f) rubric scores. This exists because the previous rubric let bundles ship as "excellent / pass" while contradicting their own active filter, skipping deliverables the brief asked for, or hand-waving the brief's numbered questions. The visual rubric measures taste; (g/h/i) measure faithfulness to the contract — the second condition is a precondition for claiming the first.
-- **Structural-contract conformance is part of deliverable-coverage (h).** Sub-check (h) explicitly includes the brief's machine-readable structural contract (`brief-revision-policy.md` §2 Block B): (1) every `frames` id has a drawn screen/region in the bundle; (2) when `shell_role` is present, the bundle draws `required_chrome` and never `forbidden_chrome`; (3) when `composition` is a non-default key (a `recommended-alt` station/stream/verify), the bundle expresses that job loop, NOT a centered hero card. Any miss is an (h) failure — record it in the (h) deliverable-coverage output, cap `{visual_quality}` at `acceptable`, and on iteration-3 set `{needs_human_review} = true`. This is the generation-time twin of `design-implement` step-01 §SHARED.1b: catch the proposal under-delivering the contract HERE, before it reaches the implementer (the receive-station failure — a "station, not dashboard" brief synthesized as a hero card — is exactly what this sub-check stops at the source).
+- **Suggested structure is ADVICE, recorded in (h) as notes.** The brief's `frames`, `shell_role` chrome and `composition` are suggestions (`brief-binding-contract.md` §4). Sub-check (h) records, for each: drawn / declined-with-reason / not drawn. A suggested frame the synthesizer judged unnecessary is `declined` with a one-line reason — not a violation. A composition departure is a note. The data-protecting half of `shell_role` (e.g. a clerk never sees owner money) is a Part 2 truth test and is checked in (t), where it CAN fail. This is the generation-time twin of `design-implement` step-01 §SHARED.1b, which applies the same split.
 - YOU MUST ALWAYS SPEAK OUTPUT in your agent communication style with the config `{communication_language}`.
 
 ---
@@ -230,6 +231,15 @@ Preserve the `source: deterministic_gate_GX` field on each appended entry. The m
 
 ---
 
+### 4t. Sub-check (t) — Truth tests and the five-second answer (the ONLY failing sub-check)
+
+Contract: `{project-root}/_bmad/bmm/workflows/design/shared/brief-binding-contract.md`. Read the brief's **Part 2** table (outcome-first brief) or its Design Contract **MUST PRESERVE** list (legacy brief — read each item as a test).
+
+1. **T0 — five-second answer.** Look at the rendered primary screen as a first-time reader would for five seconds (the step-05 screenshot). Write the one line it tells you. Compare with the brief's `page_answer`. Pass if a reader would state the same answer; fail if the answer is absent, buried below the fold, or crowded out by metadata. Legacy brief with no `page_answer`: record `t0: no declared answer` — neither pass nor fail.
+2. **T1…Tn.** For each test, apply its stated CHECK to the bundle and record `pass | fail | not-evidenced` with a one-line pointer (file + region). `not-evidenced` (the bundle has nothing the check could read, e.g. a state never drawn that the test needs) counts as a fail for a test about something the page must SAY, and as a note for a test about a state the brief only suggested drawing.
+
+Populate `{truth_test_results}` (always, even when all pass) and `{truth_violations}` (the fails). A truth violation drives the refine loop like any other finding, and — unlike every other sub-check — one still present at iteration 3 sets `{compliance_state} = "hard_failed"` with `failure_basis: truth` and `{needs_human_review} = true`.
+
 ### 5a. PRE-VISUAL GATES — brief-faithfulness half (g/h/i)
 
 These three sub-checks run BEFORE the visual rubric (§6 d/e/f). Their purpose is to catch the failure mode the visual rubric structurally misses: a bundle that is self-rated `excellent` but is **internally inconsistent**, **fails to produce deliverables the brief asked for**, or **only abstractly answers the brief's questions**. The visual rubric can rate a single coherent table as `excellent`; these gates ask whether the bundle answers the contract the brief signed.
@@ -276,7 +286,7 @@ This is structural — a contradictory bundle cannot be `excellent` regardless o
 
 #### Sub-check (h) — Brief deliverables coverage
 
-Open `{brief_content}` and locate the deliverables list — typically a `## 7. Deliverable Format` / `## Deliverables` / `### Deliverables` section. Extract every numbered or bulleted deliverable.
+Open `{brief_content}` and locate the deliverables list — typically a `## 7. Deliverable Format` / `## Deliverables` / `### Deliverables` section. Extract every numbered or bulleted deliverable. **On an outcome-first brief the §7 frames are SUGGESTIONS:** classify each suggested frame as `produced` or `declined` (with a one-line reason — the synthesizer's design call); only a deliverable the brief's Part 2 depends on can be `missing`. A `declined` suggestion is an advisory note, never a violation.
 
 For each deliverable, classify:
 
@@ -305,13 +315,7 @@ Populate `{deliverable_coverage}`:
 - Brief §7 says "Visual designs at desktop width — page in its normal active state, plus the empty/no-results state for the primary worklist". Bundle has only `main.html` (active state). `empty_state` → `missing`.
 - Brief §7 says "Interaction notes — hover states, transitions, empty states, loading states, expanded-row or drawer detail behaviour, bulk-selection state, the unmapped-card block state, and the auto-match running state". Bundle's manifest describes some in the `interaction:` block but no rendered state files. Per-state classification: most → `prose_only`, some → `missing`.
 
-**Cap policy.** If ANY deliverable is classified `missing`, OR if MORE THAN HALF are classified `prose_only`:
-
-- `{visual_quality}` MAX cap: `acceptable`
-- `{compliance_state}` (when otherwise pass) → `under_grounded`
-- `{needs_human_review} = true`
-
-The bundle ships (so the user can inspect what WAS produced), but it cannot auto-handoff to `design-implement` — undelivered work would silently propagate as "design done" otherwise.
+**Cap policy (advisory since 2026-09-19).** If ANY deliverable is classified `missing`, OR if MORE THAN HALF are classified `prose_only`: cap `{visual_quality}` at `acceptable` and drive a refine pass. What remains at iteration 3 is written to `{advisory_notes}` and disclosed in the step-07 hand-off ("these suggested deliverables were not produced: …") — it does NOT set `under_grounded` and does not block `design-implement`. Only a deliverable a Part 2 truth test depends on is checked as a truth violation, in §4t.
 
 Append to `{deliverable_violations}` for the manifest:
 
@@ -779,7 +783,10 @@ Do not modify regions not listed above. Re-emit only the affected files.
 
 ### 10. Aggregate failures and decide
 
+**Binding split (2026-09-19).** `truth_violations` (§4t) are the only findings that can leave the bundle failed. Every other count below still drives the refine loop — this is the synthesizer improving its own work — but at iteration 3 whatever remains is written to `{advisory_notes}` and does not set a failed `compliance_state`. The code below reflects that: the iteration-3 branch assigns a failed state only for truth violations.
+
 ```python
+truth_violations_count = len({truth_violations})                             # §4t — the ONLY failing class
 policy_violations = (
     len(hard_failure_violations) +
     len(positive_assertion_violations) +
@@ -795,17 +802,17 @@ visual_violations = (
     (1 if not {visual_lift_passed} else 0) +
     (1 if {exemplar_alignment} == "deviated_unauthorized" else 0)
 )
-total_violations = policy_violations + brief_faithfulness_violations + visual_violations
+total_violations = truth_violations_count + policy_violations + brief_faithfulness_violations + visual_violations
 
 under_grounded = (
     len({skills_unloaded}) > 0 or                                              # workflow.md Critical Rules → "Synthesis honesty"
     any(mode == "path_only" for mode in {exemplars_consulted_mode}.values()) or # workflow.md Critical Rules → "Exemplar alignment requires actual visual consultation"
     {visual_quality} == "unverified-strong" or                                 # evidence-gated ceiling in §6 above
     {visual_lift_over_baseline} is None or                                     # positive-half lift not actually compared
-    {exemplar_alignment} == "unverified" or                                    # propagated from §8 above
-    len({internal_consistency_violations}) > 0 or                              # NEW: §5a (g)
-    any(d.classification == "missing" for d in {deliverable_coverage}.values()) or  # NEW: §5a (h)
-    any(q.classification in ("unaddressed", "answered_abstractly") for q in {question_coverage}.values())  # NEW: §5a (i)
+    {exemplar_alignment} == "unverified"                                       # propagated from §8 above
+    # (g/h/i) findings were removed from under_grounded on 2026-09-19: they are advisory notes
+    # (brief-binding-contract.md §4). under_grounded now means only "the synthesizer could not
+    # honestly verify its own claims" — an honesty label, not a style verdict.
 )
 
 if total_violations == 0 and not under_grounded:
@@ -843,21 +850,16 @@ else:  # iteration_count == 3
     # additionally set needs_human_review. Brief-faithfulness failures alone (no hard policy
     # break, no visual break) route to under_grounded — the bundle is policy-clean but
     # doesn't satisfy the brief's contract, so design-implement refuses.
-    if hard_failure_violations:           {compliance_state} = "hard_failed"
-    elif positive_assertion_violations:   {compliance_state} = "positive_failed"
-    elif drift_violations:                {compliance_state} = "drift_failed"
-    elif not {visual_lift_passed}:        {compliance_state} = "lift_failed"
-    elif {exemplar_alignment} == "deviated_unauthorized":
-                                          {compliance_state} = "exemplar_failed"
-    else:                                 {compliance_state} = "pass"   # only visual_quality=="weak" or brief-faithfulness remained; no policy compliance_state change, but needs_human_review is set
-    # needs_human_review is set whenever any visual or brief-faithfulness sub-check signals it
-    if ({visual_quality} in ("weak", "unverified-strong") or
-        not {visual_lift_passed} or {visual_lift_over_baseline} is None or
-        {exemplar_alignment} in ("deviated_unauthorized", "unverified") or
-        len({internal_consistency_violations}) > 0 or           # NEW
-        len({deliverable_violations}) > 0 or                    # NEW
-        len({question_violations}) > 0 or                       # NEW
-        under_grounded):
+    # BINDING SPLIT (2026-09-19): only a truth violation fails the bundle. Everything else that
+    # survived three passes is recorded as an advisory note (brief-binding-contract.md §4).
+    {advisory_notes} = collect(hard_failure_violations, positive_assertion_violations, drift_violations,
+                               internal_consistency_violations, deliverable_violations, question_violations,
+                               negative_lift_violations, positive_lift_violations, exemplar_violations,
+                               visual_quality_if_below_excellent)
+    if {truth_violations}:                {compliance_state} = "hard_failed"; {failure_basis} = "truth"
+    else:                                 {compliance_state} = "pass"   # advisory notes may be non-empty; they are reported, not failed
+    # needs_human_review: a truth failure, or the synthesizer could not verify its own work honestly
+    if {truth_violations} or under_grounded:
         {needs_human_review} = true
     # If only under_grounded conditions remain (no hard policy failures), compliance_state is under_grounded.
     # Brief-faithfulness failures roll into under_grounded via the under_grounded calculation above.

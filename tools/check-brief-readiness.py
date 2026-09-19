@@ -23,6 +23,8 @@ same discipline check-ingest-manifest.js applies to `sections_total`.
    P2  a declared state set carries an explicit partition claim
    P3  absence probes: does ANY synonym of a required concept appear, on a word boundary
    P4  money fields of differing semantics enumerated on one line
+   P6  (outcome-first briefs only) page_answer · a single dominant · truth_tests starting T0 with
+       at least one more · Part 1 / 2 / 3 / 5 headings present (shared/brief-binding-contract.md)
 
  NOT CHECKED, on purpose — and this is the important half:
    Whether a fired probe is a REAL gap, whether a silent probe means the brief got it
@@ -309,6 +311,52 @@ def find_state_tables(lines):
     return states
 
 
+OUTCOME_FIRST_PARTS = [
+    ("Part 1", "Part 1 · The moment — who opens the page, after what, to decide what"),
+    ("Part 2", "Part 2 · What must be true — the ONLY binding tests"),
+    ("Part 3", "Part 3 · What must dominate — ONE thing, the rest on demand"),
+    ("Part 5", "Part 5 · Open questions — unfenced"),
+]
+
+
+def fm_scalar(fm, key):
+    m = re.search(rf"^{re.escape(key)}:\s*(.*?)\s*(#.*)?$", fm, re.M)
+    if not m:
+        return None
+    return m.group(1).strip().strip("\"'")
+
+
+def fm_list(fm, key):
+    m = re.search(rf"^{re.escape(key)}:\s*\[(.*?)\]", fm, re.M)
+    if not m:
+        return None
+    return [x.strip().strip("\"'") for x in m.group(1).split(",") if x.strip()]
+
+
+def outcome_first_gaps(fm, body):
+    """What an outcome-first brief lacks. Each entry is a QUESTION for Gate 1, never a verdict."""
+    gaps = []
+    if not fm_scalar(fm, "page_answer"):
+        gaps.append("`page_answer` is empty — T0, the five-second answer test, has nothing to test against")
+    dom = fm_scalar(fm, "dominant")
+    if not dom:
+        gaps.append("`dominant` is empty — nothing is named as the one thing that leads")
+    elif re.search(r"\s(and|&|\+)\s|;", dom):
+        gaps.append(f"`dominant` may name more than one thing (\"{dom}\") — the contract asks for ONE")
+    tests = fm_list(fm, "truth_tests")
+    if not tests:
+        gaps.append("`truth_tests` is missing or empty — the brief binds nothing")
+    else:
+        if tests[0] != "T0":
+            gaps.append("`truth_tests` does not start with T0 (the five-second answer test)")
+        if len(tests) < 2:
+            gaps.append("`truth_tests` carries only T0 — no truth test protects the data, money or state")
+    for marker, label in OUTCOME_FIRST_PARTS:
+        if not re.search(rf"^#+\s*{re.escape(marker)}\b", body, re.M):
+            gaps.append(f"no `{label}` heading in the body")
+    return gaps
+
+
 def analyse(path, text):
     lines = text.split("\n")
     fm, body = split_frontmatter(text)
@@ -376,6 +424,14 @@ def analyse(path, text):
                  "`disclosure_model: n/a — <why>` if this surface carries no audit contract. "
                  "An unassigned layer is filled by the generator's default, which is to render "
                  "the evidence model AS the interface.")
+
+    # --- P6 outcome-first shape (shared/brief-binding-contract.md, 2026-09-19).
+    # CONDITIONAL on `brief_shape: outcome-first` — a legacy brief is never asked, because absence of
+    # the new shape on an old brief is expected, not a question. Pure presence: it cannot tell whether
+    # a test is phrased as an outcome rather than a mechanism, or whether the moment is the right one.
+    if re.search(r"^brief_shape:\s*outcome-first\s*$", fm, re.M):
+        for p in outcome_first_gaps(fm, body):
+            fire("outcome-first-shape", "outcome-first brief is missing a binding or orienting part", p)
 
     fired = [f for f in findings if not f["informational"]]
     return {

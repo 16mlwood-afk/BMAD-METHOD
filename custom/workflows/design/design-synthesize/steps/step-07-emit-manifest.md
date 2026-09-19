@@ -163,6 +163,9 @@ synthesis:
     last_modified_date: {brief_last_modified_date}
   iterations: {iteration_count}
   compliance_state: {compliance_state}
+  failure_basis: {failure_basis or null}            # "truth" when compliance_state is hard_failed on a Part 2 test (brief-binding-contract.md); null otherwise
+  truth_test_results: {truth_test_results}          # per test id: pass | fail | not-evidenced, with a pointer. Always present; T0 = the five-second answer
+  advisory_notes: {advisory_notes or []}            # everything the refine loop did not clear that is ADVICE, not failure — reported, never blocking
   dev_no_render: {dev_no_render}
   playwright_version: {playwright_version or null}
   skills_invoked:
@@ -428,6 +431,9 @@ This is the workflow's output. The user should be able to read this and immediat
   lift over baseline:  {"passed" if visual_lift_over_baseline else "failed"}
   exemplar alignment:  {exemplar_alignment}
   needs human review:  {needs_human_review}
+  five-second answer:  {truth_test_results.T0}      ← what a first-time reader takes from the primary screen, vs the brief's page_answer
+  truth tests:         {count passed}/{count} pass{if any fail: " — FAILED: " + ids}
+  advisory notes:      {len(advisory_notes)} (suggestions not taken or style departures — reported, not failed)
 {if compliance_state != pass:}
   ⚠ failure mode:     {compliance_state} — {N} violations recorded in manifest.violations
 {end if}
