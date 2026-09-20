@@ -210,12 +210,21 @@ route around all of it.
 
 ## 6. What would change the recommendation
 
-**One fact:** if Claude Design turns out not to accept `inbound-flow`'s repo link and design-system
-seed — so the designed page cannot see the real tokens and has to be re-typed by hand — then the
-brief-to-page step is broken at its most important joint, and Subframe's $20/editor/month becomes
-the cheapest way to design against the real token file. That is checkable in one sitting at the
-claude.ai/design "Set up your design system" form, and `onboard-design-system` already produces the
-exact paste-ready intake it asks for.
+**SETTLED THE SAME DAY — the condition is answered and the call is now unconditional.** The one
+reversing fact was whether Claude Design can actually reach the repo and its tokens. It can, and
+the evidence is primary: the design bundle delivered on 2026-09-20 carries its own provenance note
+— `repo: 16mlwood-afk/inbound-flow, branch: main, path: inventory-manager/src/styles,
+inventory-manager/src/app`, with "Token values (colour, radius, density, status tones) lifted from
+`tokens.css` and `globals.css`" and "No current-view files were read — the brief's DO-NOT-READ
+boundary was respected." The brief-to-page joint works, Subframe is not warranted, and no seeding
+session is owed. Recorded by the coordinating session, which held that file while the survey ran
+and did not check it: the failure was relaying an open question past evidence already in hand.
+
+*Superseded text, kept because a corrected snapshot is not evidence:* "if Claude Design turns out
+not to accept `inbound-flow`'s repo link and design-system seed — so the designed page cannot see
+the real tokens and has to be re-typed by hand — then the brief-to-page step is broken at its most
+important joint, and Subframe's $20/editor/month becomes the cheapest way to design against the
+real token file."
 
 A weaker second: if Polymet's demo wall opens and it genuinely reads a private npm design system
 and a Storybook, it moves from UNVERIFIED into the same row as Subframe and should be re-judged.
