@@ -1,5 +1,10 @@
 # Getting a bespoke UI page built for an existing app — what exists today
 
+**This tracked file is the record.** A reading copy also sits at
+`~/Downloads/ui-generation-tools-2026-09-20.md` because that is what the owner opens; Downloads is
+a scratch surface that gets wiped, so quote this one. Read-only survey — nothing was signed up
+for, installed, configured or paid for, and no vendor was run.
+
 **Read date for every source below: 2026-09-20.** Prices are as shown on the vendor's own page
 on that date unless the row says otherwise.
 
