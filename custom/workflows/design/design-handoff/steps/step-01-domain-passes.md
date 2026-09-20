@@ -353,3 +353,59 @@ brief points here instead of copying them.
 in `tools/check-brief-readiness.py` (warn-only, Gate 1): it asks whether an outcome-first brief carries a
 moment, ≥1 truth test beyond T0, a single `dominant`, and a Part 5. Whether a test is truly an outcome
 rather than a mechanism, and whether the classification is right, are judgements no probe can make.
+
+### 3j. Controls pass — what earns a control, what earns attention, what is a defect (every run)
+
+**Contract: `shared/controls-and-attention.md` (STD-CONTROLS-ATTENTION-001). Read it.** Owner, 2026-09-20,
+on the listings queue: *"drift between us thinking there's a live offer versus Amazon not receiving the
+offer is just a back end bug. Why is it classified as a common operational problem?"* and *"it's
+unbelievably text heavy."* This pass extends §3i. It invents nothing: every control it names comes from
+`{must_support_capabilities}` and the §3 mutation audit, and every fault it names comes from the data's
+own defects.
+
+**1. `{expected_controls}` — the controls this surface is expected to need.** One row per control, and
+each row must answer the earning question or it does not belong on the list.
+
+| Control (the operator's verb) | What the press tells the system that the system does not already know | Class | Consequence |
+|---|---|---|---|
+| … from `{must_support_capabilities}` | decides / supplies / authorises / the operator knows the world just changed | reversible \| irreversible | what it costs if pressed wrongly or missed |
+
+Anything a capability implies that the **system could do on its own** is NOT a control: record it under
+`{background_work}` with what the page should say instead — what it is doing and when it last ran.
+Navigation, filtering, sorting, expanding and opening a record are view controls and are out of scope
+here; do not list them.
+
+**2. `{fault_categories}` — what looks like work and is a defect.** For every category the surface will
+count as work, ask: *who must act for this category to stop recurring?* If the answer is an engineer, a
+rule, or a producing system, it is a **fault**, not a workload. Record each as `{name, owner (never the
+operator), why it recurs, what fixes it}`. Two worked instances from the design that produced this
+standard: a drift between our record and a marketplace's (a back-end bug rendered as the operator's
+largest category of work) and a recommended price below our own price floor (two of our numbers
+disagreeing — the pricing rule is what needs fixing, and the record should never reach a queue).
+
+**3. The five tests join `{truth_tests}` — phrased for THIS surface, never as boilerplate.** Take TC1,
+TC2, TA1, TA2 and TF1 from `shared/controls-and-attention.md` §4 and write each one naming this
+surface's own controls, its own instructions, its own loudest facts and its own fault categories. A test
+that reads identically on two different surfaces has not been phrased; it has been copied, and a
+reviewer cannot check it.
+
+- **TC1** — name the action controls from `{expected_controls}` and the `{background_work}` the design
+  must NOT turn into a control.
+- **TC2** — name the instructions this surface's data forces it to write (a blocked state, a threshold
+  breach, a missing input) and the control each one implies.
+- **TA1** — name the single most consequential control on this surface (usually an irreversible one from
+  the table above) and the thing that most wants to be loud but is not consequential.
+- **TA2** — name the two or three facts this surface will be most tempted to repeat (a group's blocking
+  reason, a two-authority disagreement, a per-figure caveat).
+- **TF1** — name each `{fault_categories}` entry and its non-operator owner.
+
+**4. Open questions this pass produces.** A capability whose control class cannot be decided from the
+evidence (is it reversible?), a category whose owner is genuinely contested (is this a bug or a policy
+gap?), and any control the business wants but this pass cannot justify — each goes to `{open_questions}`
+verbatim, never resolved here. **Never delete a capability** because it failed the earning question:
+that is a finding for the brief, not a silent drop.
+
+**§ Enforcement tier (honest).** PROBABILISTIC — workflow prose. Nothing checks that a control was
+justified honestly, or that a category's owner was named correctly. The deterministic slice is the same
+one §3i has: the five tests reach the designer and the reviewer because the template renders them, not
+because anyone remembered.

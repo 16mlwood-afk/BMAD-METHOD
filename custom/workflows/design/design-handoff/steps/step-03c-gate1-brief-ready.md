@@ -126,6 +126,17 @@ Spawn ONE isolated agent (`Agent` tool, fresh context) with:
    rejected" or is "required" of the DESIGN is a finding. And the reverse: a truth-class rule
    (a reader could be misled about the data, money, state or who may see what) that sits only in
    the advisory appendix and never reached Part 2 is a finding — a guarantee was dropped.
+9. **Controls, attention and faults (2026-09-20, `shared/controls-and-attention.md`).** Four
+   probes, each a finding when it fires. **(a)** A brief that renders TC1/TC2/TA1/TA2/TF1 as
+   generic boilerplate — no control, instruction, fact or fault category of this surface named in
+   them — has shipped five tests nobody can check. **(b)** A §4f-c control row whose "what the
+   press tells the system" column says something the system already has (a re-run, a refresh, a
+   re-check) is a control that should have been `{background_work}`; quote it. **(c)** A
+   `{fault_categories}` entry whose owner is the operator, or a fault counted inside a figure the
+   brief calls the operator's work, is the exact defect the standard exists to stop. **(d)** A
+   capability that disappeared between §1 and Part 2 with no Part 5 question is a silent drop.
+   **And the reverse, which is the over-binding half:** §4f-c prescribing where a control goes,
+   what it looks like or what it says is a finding — that section is evidence, not instruction.
 
 Record the reviewer's output verbatim in the artifact. **Do not edit its findings into
 agreement with the brief.**

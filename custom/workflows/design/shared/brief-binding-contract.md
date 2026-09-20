@@ -58,6 +58,21 @@ Yes → truth rule, binding. No → advisory.
 When a rule is genuinely ambiguous, classify it advisory and say so in the brief's Part 5 open
 questions. Over-binding is the failure this contract exists to fix.
 
+### 2a. The second classification question — `controls-and-attention.md` (STD-CONTROLS-ATTENTION-001)
+
+The one-question test above is about **data**. A second standard, ratified 2026-09-20, adds five
+further truth tests and one further question, because a page can tell the truth about every figure
+while still asking a person to do work its own design made unnecessary:
+
+> *Does the page ask a person to spend attention or effort that its own design has made unnecessary?*
+
+`controls-and-attention.md` owns that half — whether a control exists, how loud anything is, and what
+the page treats as work. Its five tests (**TC1** a control earns its press · **TC2** an instruction
+implies a control · **TA1** emphasis follows consequence · **TA2** one fact, one place · **TF1** a
+defect is not a workload) are **binding**, carried into every brief's Part 2 phrased for that surface.
+Everything else it touches — colour, shape, placement, spacing, wording — is advisory and deliberately
+outside it. Read that file; this section does not restate it.
+
 ## 3. The brief shape this implies (outcome-first, five parts)
 
 1. **The moment** — who opens the page, after what, to decide what. One paragraph, plus the
@@ -114,3 +129,4 @@ listed below stops referencing this file.
 | `shared/design-standards.md` | AI-fingerprint taxonomy, composite test and scrub checklist are advisory notes; only the undisclosed-fixture-data half of the placeholder row is truth |
 | `shared/claude-design-prompt.md` | Paste prompt splits policy constraints into TRUTH (can fail) and ADVISORY (designer's call); artifact shape and in-surface composition are advisory |
 | `design-elevation` | Candidate filter: hard-rejects only a candidate that breaks a truth test, T0 or a truth-class rule; a style-rule departure survives with an advisory note; changing advisory guidance is not an intent change |
+| `shared/controls-and-attention.md` | Supplies five further truth tests and the second classification question (§2a); its own advisory half stays advisory |

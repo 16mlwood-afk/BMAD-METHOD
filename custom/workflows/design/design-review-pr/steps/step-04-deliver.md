@@ -33,7 +33,7 @@ Before any severity is reported, give every finding in `{findings}` — and ever
 - **`truth`** — the finding shows the surface could make a reader believe something false about the data, the money, the state of the work, or who may see what. Keeps its P0/P1 severity and is reported under **Fails**.
 - **`advisory`** — everything else: styling, layout, composition, tokens, pills, colour, density, frame inventory, fingerprints. Reported under **Advisory notes** as `[advisory]`, severity capped at P2, never counted as a fail, never blocking.
 
-**Fixed classes for the intrinsic checks:** `C-TRUTH-01` truth · `C-ANSWER-01` truth · `C-FIXTURE-01` truth (a fabricated surface that looks live) · `C-FINANCE-01` truth for a blended quantity+value cell, unlabelled mixed currency, or a representability/must-not-infer break — advisory for a leading-minus negative (a presentation convention) · `C-DECISION-01` truth for a stated probability/EV with no model behind it — advisory for a missing sizing basis · `C-RIGOR-01` truth only for a FABRICATED interval or baseline — advisory for a bare-but-honest figure · `C-ARCHETYPE-01` advisory · `C-IDENTFMT-01` advisory (truth only if the two forms would make a reader think they are different records) · `C-COMPOSITE-01` advisory · `F-FPSCAN-01` / fingerprint rules advisory.
+**Fixed classes for the intrinsic checks:** `C-TRUTH-01` truth · `C-ANSWER-01` truth · `C-CONTROL-01` truth · `C-CONTROL-02` truth · `C-ATTENTION-01` truth · `C-ATTENTION-02` truth · `C-FAULT-01` truth (the five controls-and-attention checks, §1f) · `C-FIXTURE-01` truth (a fabricated surface that looks live) · `C-FINANCE-01` truth for a blended quantity+value cell, unlabelled mixed currency, or a representability/must-not-infer break — advisory for a leading-minus negative (a presentation convention) · `C-DECISION-01` truth for a stated probability/EV with no model behind it — advisory for a missing sizing basis · `C-RIGOR-01` truth only for a FABRICATED interval or baseline — advisory for a bare-but-honest figure · `C-ARCHETYPE-01` advisory · `C-IDENTFMT-01` advisory (truth only if the two forms would make a reader think they are different records) · `C-COMPOSITE-01` advisory · `F-FPSCAN-01` / fingerprint rules advisory.
 
 **Checklist rules** (`docs/review-checklist.md`, not edited by this workflow): apply the one-question test above per rule and record the class next to the rule id in the report. When unsure, classify `advisory` and add one line to Coverage notes naming the rule — over-binding is the failure this step exists to prevent.
 
@@ -67,6 +67,26 @@ Always emitted for each affected route with a brief, as a reviewer prompt with a
 ```
 
 A reviewer's `fail` is a Fails entry. When dom-render ran, the harvest's first-viewport text may be quoted to seed the prompt, but the verdict is a reader's, not a regex's.
+
+### 1f. Evaluate the five controls-and-attention checks (truth — each can fail)
+
+Standard: `{project-root}/_bmad/bmm/workflows/design/shared/controls-and-attention.md` (STD-CONTROLS-ATTENTION-001). Owner, 2026-09-20, verbatim: *"drift between us thinking there's a live offer versus Amazon not receiving the offer is just a back end bug. Why is it classified as a common operational problem?"*
+
+These five are the brief's Part 2 tests **TC1, TC2, TA1, TA2, TF1** evaluated in their own right, because they are on every brief and a reviewer needs the check written out rather than having to re-derive it. Where the route has a brief, judge against **that brief's phrasing** (it names this surface's own controls and fault categories); where it does not, judge against the generic statement below and say in Coverage notes that no brief supplied the surface's own subjects. Report each exactly like `C-TRUTH-01`: a `fail` is a Fails entry with Evidence, a Fix stated as the outcome to restore (never a prescribed layout), and the source.
+
+Each is answered from the rendered surface when `{chrome_available}`, otherwise from the source plus a manual prompt. **`not verifiable` is never reported as a pass.**
+
+| Check | Test | How to answer it |
+|---|---|---|
+| `C-CONTROL-01` | Every action control can name what its press tells the system that the system does not already know — a decision only a person can make, a fact only a person holds, an authorisation for something irreversible, or the operator's knowledge that the world has just changed. | Enumerate every action control on the changed render (skip navigation, filter, sort, expand and open — those are view controls and out of scope). For each, state what the press supplies. A control whose honest answer is *"nothing — the system could run this itself"* **fails**, and the fix is that the work moves to the background with the page saying what it is doing and when it last ran. |
+| `C-CONTROL-02` | No sentence on the surface instructs an action the surface gives no way to perform. | Collect every instruction in the rendered prose (the imperative verbs: raise, take live, correct, re-enter, contact). For each, find the control that performs it on the same surface. No control and the sentence still instructs → **fail**. Either the control appears, or the sentence states the fact and stops instructing. |
+| `C-ATTENTION-01` | The most emphasised thing on the surface is the most consequential thing on it, and no consequential control is dressed as an inconsequential one. | Two rankings. First: what the eye reaches first at the canonical viewport (size, weight, fill, colour, position). Second: what costs most if pressed wrongly or missed. If the top of the first is not the top of the second, **fail**. Then find the single most consequential control and check it does not read as chrome — a switch that decides whether records go live with nobody looking, styled and placed like a view filter, **fails** this half even when nothing else on the page is too loud. |
+| `C-ATTENTION-02` | No fact is stated twice on the surface at rest. | Take the page's three loudest facts and count where each is said before anything is opened. Twice is a **fail** — the common shapes are a group header restated in every row inside it, two columns carrying one fact in two voices, and per-row provenance that belongs to the page. A decomposition that carries a *genuinely different* fact (a headline answer plus counts that break it down by a different cut) is a pass; the same numbers twice is not. |
+| `C-FAULT-01` | No system fault is presented as a category of the operator's work, and no control exists only to compensate for one. | For each category the surface counts as work, ask who must act for it to stop recurring. An engineer, a rule or a producing system → it is a fault, and it **fails** unless it is named as a fault, owned by someone who is not the operator, and counted separately from real work. Then check for a control whose only job is to compensate for that fault: its presence is an independent **fail**. |
+
+**Fix wording, for all five:** state the outcome to restore, never a layout. *"The re-check control tells the system nothing it does not have — move it to background work and say when it last ran"* is a fix; *"use a text link instead of a filled button"* is a style note and belongs in Advisory notes.
+
+**Over-firing guard.** Classify a finding here only when it answers one of the standard's two questions — *could a reader believe something false about whose work this is or what a control does*, or *does the page ask for attention its own design made unnecessary*. A finding about colour, shape, spacing, placement or wording answers neither: it is advisory, it goes to Advisory notes, and `controls-and-attention.md` §4 says so explicitly.
 
 ### 1b. Evaluate C-ARCHETYPE-01 (advisory — every finding here goes to Advisory notes, per §0)
 
@@ -217,7 +237,7 @@ Use the format from `workflow.md` §DELIVERABLE FORMAT. The report has these sec
 1. **Summary** (always present) — verdict + counts table (Fails / five-second / Advisory / Manual).
 2. **Fails — truth tests and the five-second answer** — only `truth`-class findings (step-04 §0), P0 before P1.
 3. **Advisory notes** — every `advisory`-class finding, `[advisory]`, grouped by rule; `C-COMPOSITE-01` first when it fired.
-4. **Manual reviewer prompts** — `C-ANSWER-01` first, then unresolved `C-TRUTH-01` checks, then `{checklist.human_judgment}` rules that intersect scope (each labelled truth or advisory).
+4. **Manual reviewer prompts** — `C-ANSWER-01` first, then any of the five controls-and-attention checks (§1f) that dom-render could not settle, then unresolved `C-TRUTH-01` checks, then `{checklist.human_judgment}` rules that intersect scope (each labelled truth or advisory).
 5. **Coverage notes** (always present) — lanes that ran, lanes skipped (with reasons), rules with no diff context, and the checklist rules whose class was `advisory` by default because the one-question test was unsure.
 
 ### 4. Verdict line (in Summary)
@@ -318,6 +338,7 @@ Design review passed — every truth test holds. 4 advisory note(s) for the desi
 
 - **Reporting one finding per matched line when the same rule fires many times.** Group findings by `rule_id + file`. Show the first 3 occurrences with a "+N more" footer if there are more.
 - **Hiding the composite note.** If `C-COMPOSITE-01` fires, it appears first in the Advisory notes. The individual fingerprints are secondary.
-- **Failing a design on advice.** A style, layout, composition, token or frame-inventory finding reported as a fail. Classify first (§0); only `truth` findings and `C-ANSWER-01` can fail.
+- **Failing a design on advice.** A style, layout, composition, token or frame-inventory finding reported as a fail. Classify first (§0); only `truth` findings, `C-ANSWER-01` and the five controls-and-attention checks (§1f) can fail.
+- **Turning §1f into a style gate.** A `C-ATTENTION-01` finding about a colour, a radius or a font weight, or a `C-CONTROL-01` finding about where a button sits, has answered neither of the standard's two questions. It is advisory. `controls-and-attention.md` §4 excludes colour, shape, placement, spacing and wording on purpose — a check that starts reporting them is the over-constraint STD-BRIEF-BINDING-001 was written against, reappearing under a new id.
 - **Reporting "everything's fine" when dom-render was skipped.** If dom-render didn't run, the report can't claim the page is clean — only that source-grep found nothing. The coverage-notes section must make this explicit.
 - **Posting a PR comment without `--comment`.** This workflow defaults to printing the report; it only mutates GitHub state when the user explicitly opts in.

@@ -145,6 +145,8 @@ You do the heavy lifting. This brief binds you in exactly one place: **Part 2, "
 
 Contract: `shared/brief-binding-contract.md` (STD-BRIEF-BINDING-001). Reviewers downstream (`design-review-pr`, the `design-implement` conformance gate) may fail your design only on a Part 2 test; every other departure is reported as a note.
 
+**Five of the Part 2 tests are on every brief and are worth reading first — TC1, TC2, TA1, TA2, TF1.** They govern whether a control exists, how loud anything is, and what the page treats as work: every action control can say what its press tells the system that the system does not already know · no sentence instructs an action the page gives no way to perform · the most emphasised thing is the most consequential thing and no consequential control is dressed as chrome · no fact is said twice at rest · no system fault is rendered as a category of the operator's work. Source: `shared/controls-and-attention.md` (STD-CONTROLS-ATTENTION-001), which holds **no** colour, shape, placement, spacing or wording rule — those are yours, as always. §4f-c carries the evidence they are judged against.
+
 ---
 
 ## Part 1 · The moment
@@ -187,10 +189,15 @@ These are the ONLY things in this brief that can fail your design. Each is a tes
 | Id | A finished design passes if… | How a reviewer checks it | Why (source) |
 |---|---|---|---|
 | T0 | A reader who has not seen the page can state **{page_answer}** within five seconds of it loading. | Show the render to a fresh reader for five seconds; ask what the page is telling them. | Owner, 2026-09-19 — the page must answer something. |
+| TC1 | {tc1_statement — every action control on THIS surface can name what its press tells the system that the system does not already know. Name this surface's controls from §4f-c, and name the `{background_work}` the design must not turn into a control, e.g. "no control on this page re-runs the marketplace check — that runs on its own and the page says when it last ran".} | List every action control on the render. For each, say what the press tells the system. A control whose answer is "nothing — the system could run this itself" fails. | Owner, 2026-09-20 — `controls-and-attention.md` §1. |
+| TC2 | {tc2_statement — no sentence on THIS surface instructs an action the surface gives no way to perform. Name the instructions this surface's data forces it to write, e.g. "where a row says the price is below the floor, the row carries the control that changes it — or the sentence states the fact and stops".} | Read every instruction in the prose. For each, find the control that performs it on the same surface. No control and the sentence still instructs → fail. | Owner, 2026-09-20 — `controls-and-attention.md` §1. |
+| TA1 | {ta1_statement — the most emphasised thing on THIS surface is the most consequential thing on it, and no consequential control is dressed as an inconsequential one. Name the surface's single most consequential control (usually an irreversible one from §4f-c).} | Rank what the eye reaches first; rank what costs most if pressed or missed; compare the two orders. Then find the most consequential control and check it does not read as chrome. | Owner, 2026-09-20 — `controls-and-attention.md` §2. |
+| TA2 | {ta2_statement — no fact is stated twice on THIS surface at rest. Name the two or three facts this surface will be most tempted to repeat — a group's blocking reason restated per row, a two-authority disagreement said in two voices, a per-figure caveat that belongs to the page.} | Pick the page's three loudest facts. Count where each is said before anything is opened. Twice is a fail; a decomposition carrying a *different* fact is a pass. | Owner, 2026-09-20 — `controls-and-attention.md` §2. |
+| TF1 | {tf1_statement — no system fault is presented as a category of the operator's work on THIS surface, and no control exists only to compensate for one. Name each `{fault_categories}` entry and its non-operator owner.} | For each category the page counts as work, ask who must act for it to stop recurring. An engineer, a rule or a producing system → it is a fault: named as one, owned elsewhere, counted separately. | Owner, 2026-09-20 — `controls-and-attention.md` §3. |
 {for t in {truth_tests}}| {t.id} | {t.statement — an outcome, e.g. "A reader can never mistake a stale or partial figure for a current one, including when they screenshot a single row."} | {t.check — what a reviewer looks at to decide pass/fail} | {t.source — the §2 / §2b / §2c / §4d / §4e / policy rule / capability it protects} |
 {endfor}
 
-**Where these come from (so nothing binding is invented and nothing true is dropped):** the data's own defects (§2: missing ≠ zero, observed vs declared vs assumed, two authorities kept apart), the finance truth constraints (§2b `must_not_infer`), the runtime honesty budget (§2c — the page never claims more liveness than its transport delivers), analytic and decision honesty (§4d/§4e — no fabricated interval or distribution, derived never shown as stored), the audit contract (§4h obligations restated as outcomes — "every figure's source is inspectable"), the capabilities in §1 (reachability), a data-protecting role boundary (from `shell_role`), and the truth-and-data rules of the project design policy (money basis, no invented figures). Style, layout and composition rules from the policy are NOT here — they are in the Advisory guidance.
+**Where these come from (so nothing binding is invented and nothing true is dropped):** the data's own defects (§2: missing ≠ zero, observed vs declared vs assumed, two authorities kept apart), the finance truth constraints (§2b `must_not_infer`), the runtime honesty budget (§2c — the page never claims more liveness than its transport delivers), analytic and decision honesty (§4d/§4e — no fabricated interval or distribution, derived never shown as stored), the audit contract (§4h obligations restated as outcomes — "every figure's source is inspectable"), the capabilities in §1 (reachability), a data-protecting role boundary (from `shell_role`), and the truth-and-data rules of the project design policy (money basis, no invented figures). **TC1 · TC2 · TA1 · TA2 · TF1 are present on every brief** and come from `shared/controls-and-attention.md` (STD-CONTROLS-ATTENTION-001) — they govern whether a control exists, how loud anything is, and what the page treats as work. Style, layout and composition rules from the policy are NOT here — they are in the Advisory guidance, and `controls-and-attention.md` deliberately holds no colour, shape, placement, spacing or wording rule.
 
 ---
 
@@ -788,6 +795,31 @@ invented, never read from the current UI.*
 
 ---
 {endif}
+
+## 4f-c. Controls, attention and faults — the evidence for TC1/TC2/TA1/TA2/TF1 (this table is advisory; the five tests are not)
+
+*Rendered on every run from step-01 §3j. Contract: `shared/controls-and-attention.md` (STD-CONTROLS-ATTENTION-001). This section is **evidence, not instruction** — it tells you which controls this surface is expected to need and why each one earns its press, so the five Part 2 tests can be checked against something concrete. **Whether to draw a control here, where to put it, what it looks like and what it says are all yours.** If a control below turns out not to earn its press in your design, say so in your notes — removing it is a legitimate design decision, not a dropped requirement.*
+
+**Controls this surface is expected to need**
+
+| Control (the operator's verb) | What the press tells the system that the system does not already know | Class | Consequence |
+|---|---|---|---|
+{for c in {expected_controls}}| {c.verb} | {c.earns — decides / supplies / authorises / the operator knows the world just changed} | {c.class — reversible \| irreversible} | {c.consequence} |
+{endfor}
+
+**Work the system does on its own — do NOT turn these into controls (TC1)**
+
+{for b in {background_work}}- **{b.name}** — the page says {b.says: what it is doing, and when it last ran}. A press here would tell the system nothing it does not have. Where the operator genuinely knows the world just changed, a quiet *do it now*, once per group, is legitimate — never a filled button repeated per row. `[tradeable]`
+{endfor}
+
+**Categories that look like work and are faults — name them, own them elsewhere, count them apart (TF1)**
+
+| Category | Owner (never the operator) | Why it recurs | What actually fixes it |
+|---|---|---|---|
+{for f in {fault_categories}}| {f.name} | {f.owner} | {f.why} | {f.fix} |
+{endfor}
+
+**Text weight — advisory repair for TA2.** The repair for a text-heavy surface is not shorter sentences; it is depth. Carry on the row the shortest phrase that distinguishes it from its neighbours, and put the reasoning, the dates and the other side's exact words one layer down. `[tradeable]`
 
 ## 4g. Viewport & responsive — advisory
 

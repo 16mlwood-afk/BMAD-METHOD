@@ -54,7 +54,8 @@ Extract the brief's structured sections. **First, the binding split** (`{project
 
 - `{brief_moment}` — Part 1 "The moment" paragraph
 - `{brief_page_answer}` — frontmatter `page_answer` (T0)
-- `{brief_truth_tests}` — the Part 2 table rows (id · statement · check · source) — the ONLY binding items
+- `{brief_truth_tests}` — the Part 2 table rows (id · statement · check · source) — the ONLY binding items. **TC1, TC2, TA1, TA2 and TF1 are among them on every outcome-first brief** (`{project-root}/_bmad/bmm/workflows/design/shared/controls-and-attention.md`, STD-CONTROLS-ATTENTION-001): a control earns its press · an instruction implies a control · emphasis follows consequence · one fact, one place · a defect is not a workload. A violation that breaks one of them carries `Binding: truth` and is a hard failure — an action control that tells the system nothing it does not already have, a sentence instructing an action the screen cannot perform, the loudest thing not being the most consequential (or a go-live control dressed as a filter), one fact said twice at rest, or a back-end fault rendered as a category of the operator's work. A finding about colour, shape, placement, spacing or wording answers neither of the standard's questions and is `Binding: advisory`.
+- `{brief_expected_controls}` — the §4f-c table, its background-work list and its fault-categories table. **Advisory evidence**, not instruction: it is what the five tests above are judged against, and a screen may legitimately omit a control listed there if the review says why.
 - `{brief_dominant}` / `{brief_on_demand}` — Part 3
 - `{brief_open_questions}` — Part 5 list (unfenced; sketching two options is invited)
 - `{brief_advisory}` — everything under "Advisory guidance" (§4–§7), carried as advice

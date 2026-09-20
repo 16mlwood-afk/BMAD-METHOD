@@ -153,3 +153,12 @@ Set on EVERY run by `steps/step-01-domain-passes.md` §3i; completed in step-03 
 - `{policy_rule_classification}` — each design-policy rule touching the surface → `binding` (a Part 2 test) | `advisory` (§4/§5, `[tradeable]` when consistency-only) | `ambiguous` (advisory + a Part 5 question). Never edits the policy.
 - `{open_questions}` — every unresolved item from all passes, each with what would settle it. Brief Part 5, unfenced.
 - `{design_system_pointer}` — repo-relative path(s) where tokens / type / status / components live; §4 points here instead of copying them.
+
+### Controls pass (step-01 §3j) — controls, attention, faults (2026-09-20)
+
+Set on EVERY run by `steps/step-01-domain-passes.md` §3j, immediately after §3i. Contract: `shared/controls-and-attention.md` (STD-CONTROLS-ATTENTION-001). Owner, verbatim: *"drift between us thinking there's a live offer versus Amazon not receiving the offer is just a back end bug. Why is it classified as a common operational problem?"*
+
+- `{expected_controls}` — one row per control the surface is expected to need: the operator's verb · what the press tells the system that the system does not already know · `reversible | irreversible` · the consequence. A capability that cannot answer the middle column is not a control. Rendered as brief §4f-c (advisory); it is the evidence TC1 is judged against.
+- `{background_work}` — what the system can run on its own, with what the page should say instead (what it is doing, when it last ran). The design must NOT turn these into per-row controls.
+- `{fault_categories}` — each category that looks like work and is a defect: `{name, owner (never the operator), why it recurs, what fixes it}`. Rendered as brief §4f-c and as TF1's subject.
+- **TC1, TC2, TA1, TA2, TF1** join `{truth_tests}` on every run, phrased for THIS surface — never as generic boilerplate. They are binding like every other Part 2 test.

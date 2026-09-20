@@ -364,6 +364,12 @@ Fires on **every run** (page and chrome). It captures what the brief's Parts 1�
 
 **Full capture procedure: `{project-root}/_bmad/bmm/workflows/design/design-handoff/steps/step-01-domain-passes.md` §3i — read it and follow it exactly.** Do not paraphrase from memory.
 
+### 3j. Controls pass — what earns a control, what earns attention, what is a defect (every run)
+
+Fires on **every run** (page and chrome). It captures `{expected_controls}`, `{fault_categories}` and the five controls-and-attention tests that join `{truth_tests}`. Run it IMMEDIATELY AFTER §3i, which it extends. **Why:** a brief can be honest about every figure and still ship a page that borrows the operator's attention to do the system's own job, instructs an action it offers no control for, emphasises the least consequential thing, says one fact four times, and renders a back-end bug as a standing category of the operator's work — all five seen on one design (owner review, 2026-09-20 — `shared/controls-and-attention.md`, STD-CONTROLS-ATTENTION-001).
+
+**Full capture procedure: `{project-root}/_bmad/bmm/workflows/design/design-handoff/steps/step-01-domain-passes.md` §3j — read it and follow it exactly.** Do not paraphrase from memory.
+
 ### 4. Capture Feature Purpose
 
 Write `{feature_purpose}`:
