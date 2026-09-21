@@ -258,6 +258,47 @@ bmad_target_blocked_dirty() {
   return 0
 }
 
+# ===========================================================================
+# WHERE THE FORK WIRES ITS HOOKS — see docs/hooks-registry.md
+#
+# HOOKS go into the project TRACKED .claude/settings.json (JQ_MERGE, below).
+# PERMISSIONS and the MCP auto-enable flag stay in the gitignored
+# .claude/settings.local.json (JQ_LOCAL, below), which also DEMOTES any
+# fork-owned hook it still carries from the days when both lived there.
+#
+# WHY THE SPLIT, 2026-09-21. Until now every hook this fork ships was written
+# as inline shell into settings.local.json, which is gitignored in every
+# target. Three costs, all measured:
+#   - a guard existed only on the machine that synced it: a fresh clone, a new
+#     device or another contributor got a repo that LOOKED guarded and was not;
+#   - nothing was reviewable. A 3,164-character inline blob does not appear in
+#     any diff, cannot be unit-tested, and a hook could claim in its own header
+#     to be wired while the settings said otherwise;
+#   - the project could not see its own guards, so 32 hooks were authored
+#     locally in one repo with no channel back into the fork.
+# A script reference in a tracked file is diffable, survives a clone, and the
+# .py behind it has golden cases. settings.local.json keeps its proper job.
+#
+# WHY PERMISSIONS MUST NOT FOLLOW. The template ships
+# permissions.defaultMode = bypassPermissions and enableAllProjectMcpServers =
+# true. Those are per-machine TRUST decisions. Committing them into fourteen
+# tracked repositories would be a security-posture change wearing the clothes
+# of a refactor, so the split is a boundary and not a tidy-up.
+#
+# HOOK ARRAYS CONCATENATE ACROSS THE TWO FILES. Claude Code merges list keys
+# rather than overriding them (docs: settings, "Lists merge instead of
+# overriding"), so a hook left in BOTH files fires TWICE. That is why writing
+# the tracked file without demoting the local one is not an option, and why
+# JQ_LOCAL is applied in the same act as JQ_MERGE, never on its own.
+#
+# NOTE: both blocks are single-quoted bash strings — NO APOSTROPHES anywhere
+# inside them. One in a comment terminates the quote and the rest becomes
+# shell code (broke this script at HEAD on 2026-08-16; caught by `bash -n`,
+# not by the jq suite, which extracts the text and cannot see a quoting
+# error). tools/verify-settings-merge.sh extracts both verbatim and pins that
+# their shared `def bmad_owned` is identical in each.
+# ===========================================================================
+
 JQ_MERGE='
   input as $base | input as $template |
   # IDENTITY IS statusMessage OR command, never statusMessage alone (FG-2026-08-31-03).
@@ -270,35 +311,217 @@ JQ_MERGE='
   # command is the structural key here because it is what the harness actually executes
   # and it is unique per hook; statusMessage is KEPT beside it so that a template hook
   # whose command was edited still strips its older installed copy by the stable label.
+  #
+  # AND A THIRD KEY, added 2026-09-21: the SCRIPT BASENAME, declared by the template in
+  # bmadTrackedHookScripts. A project that wired one of these guards BY HAND matches
+  # neither of the two keys above — its command is a different resolver and it carries no
+  # bmad- name — so the template copy would land beside it and the guard would fire twice.
+  # Measured: amazon-removal-assistant had wired all nine that way, unnamed.
+  # It is an explicit LIST rather than a regex over the template commands, because a
+  # regex would also claim bash_edit_guard.py, and cash-recovery wires that one its own
+  # way. A wider key would have silently deleted a working guard.
   ($template.hooks | [.. | .statusMessage? // empty]) as $bmad_msgs |
   ($template.hooks | [.. | objects | select(has("command")) | .command]) as $bmad_cmds |
   ($bmad_msgs + $bmad_cmds) as $bmad_keys |
+  (($template.bmadTrackedHookScripts // [])) as $bmad_scripts |
+  # OWNERSHIP IS TESTED AT TWO LEVELS, AND THAT IS NOT TIDINESS — IT IS DATA LOSS.
+  # A whole GROUP belongs to the fork when it is bmad- named or its command matches
+  # one the template ships. But a project may put one of OUR scripts in a group
+  # beside four of its OWN, which amazon-removal-assistant does: one PreToolUse
+  # group there holds stash-untracked-guard.py and branch-switch-removal-guard.py
+  # alongside attachment-preview-gate.py, humanizer-gate.py, bash_edit_guard.py and
+  # guard-health-check.sh. Dropping that group to reclaim our two deletes four of
+  # theirs. Measured against a throwaway copy of that project before this comment
+  # was written: group-level stripping destroyed 26 project-authored guards.
+  # So the SCRIPT key prunes individual HOOKS, and a group is dropped only when it
+  # is fork-owned outright or when pruning has emptied it.
+  def owned_hook:
+    (.command // "") as $c
+    | ($bmad_scripts | any(. as $s | $c | contains($s)));
+  def owned_group:
+    ((.name // "") | startswith("bmad-"))
+    or ([.hooks[]? | (.statusMessage // ""), (.command // "")]
+         | map(select(. != ""))
+         | map(. as $k | $bmad_keys | index($k)) | any);
+  def prune:
+    [ .[]
+      | select(owned_group | not)
+      | .hooks = [.hooks[]? | select(owned_hook | not)]
+      | select((.hooks | length) > 0) ];
   reduce ($template.hooks | keys[]) as $event (
     $base;
-    .hooks[$event] = (
-      [(.hooks[$event] // [])[] | select(
-        ((.name // "") | startswith("bmad-") | not) and
-        ([.hooks[]? | (.statusMessage // ""), (.command // "")]
-          | map(select(. != ""))
-          | map(. as $k | $bmad_keys | index($k)) | any | not)
-      )]
-      + $template.hooks[$event]
-    )
+    .hooks[$event] = (((.hooks[$event] // []) | prune) + $template.hooks[$event])
   )
+  # The template is a DISTRIBUTION manifest, not a settings file: its ownership
+  # declaration is machinery and must never land in a project settings file.
+  | del(.bmadTrackedHookScripts)
+  | .["$schema"] = "https://json.schemastore.org/claude-code-settings.json"
+'
+
+JQ_LOCAL='
+  input as $base | input as $template |
+  # The same ownership test as JQ_MERGE, and it must stay identical — the suite pins that.
+  ($template.hooks | [.. | .statusMessage? // empty]) as $bmad_msgs |
+  ($template.hooks | [.. | objects | select(has("command")) | .command]) as $bmad_cmds |
+  ($bmad_msgs + $bmad_cmds) as $bmad_keys |
+  (($template.bmadTrackedHookScripts // [])) as $bmad_scripts |
+  # Identical to JQ_MERGE — the suite pins that these three definitions match, because
+  # two copies of one rule in two places is how a demotion and a merge drift apart and
+  # leave a hook in both files, firing twice.
+  def owned_hook:
+    (.command // "") as $c
+    | ($bmad_scripts | any(. as $s | $c | contains($s)));
+  def owned_group:
+    ((.name // "") | startswith("bmad-"))
+    or ([.hooks[]? | (.statusMessage // ""), (.command // "")]
+         | map(select(. != ""))
+         | map(. as $k | $bmad_keys | index($k)) | any);
+  def prune:
+    [ .[]
+      | select(owned_group | not)
+      | .hooks = [.hooks[]? | select(owned_hook | not)]
+      | select((.hooks | length) > 0) ];
+  # DEMOTION. Every fork-owned hook leaves this file; a hook the PROJECT wrote here is
+  # left exactly where it is, because settings.local.json is still a legitimate place
+  # for a per-machine hook and this sync does not own that choice.
+  reduce (($base.hooks // {}) | keys[]) as $event (
+    $base;
+    .hooks[$event] = ((.hooks[$event] // []) | prune)
+  )
+  | .hooks = ((.hooks // {}) | with_entries(select((.value | length) > 0)))
   | .permissions = (($template.permissions // {}) * (.permissions // {}))
   # Project WINS when the key is present — including an explicit `false`, which `//`
   # could never preserve: false is falsy in jq, so a truthy template value always won and
   # silently auto-enabled project-scoped MCP servers against the stated project choice.
   # `has()` distinguishes "explicitly false" from "absent"; only absent takes the default.
-  # NOTE: JQ_MERGE is a single-quoted bash string — NO APOSTROPHES anywhere inside it.
-  # One in a comment terminates the quote and the rest of the block becomes shell code
-  # (broke this script at HEAD on 2026-08-16; caught by `bash -n`, not by the jq suite,
-  # which extracts the text and therefore cannot see a quoting error).
   | .enableAllProjectMcpServers = (
       if has("enableAllProjectMcpServers") then .enableAllProjectMcpServers
       else ($template.enableAllProjectMcpServers // false) end)
+  | del(.bmadTrackedHookScripts)
   | .["$schema"] = "https://json.schemastore.org/claude-code-settings.json"
 '
+
+# --- Can this project hold the fork guards as TRACKED files? ----------------
+#
+# THE DEFECT THIS EXISTS TO PREVENT, and it is the exact one the split is for.
+# Most targets ignore `.claude/*` wholesale. Writing a tracked settings.json or
+# a hooks/*.py into such a repo produces a file git will not stage: the repo
+# then LOOKS guarded, the sync reports OK, and nothing is ever committed. A
+# guard nobody can commit is the defect, not the fix. Measured 2026-09-21
+# across the registered targets: 3 ignore .claude/settings.json and 4 ignore
+# .claude/hooks/ — and those 4 already hold 6 untracked fork hooks each.
+#
+# `git check-ignore -q` exits 0 when the path IS ignored.
+_claude_path_ignored() {
+  git -C "$1" check-ignore -q "$2" 2>/dev/null
+}
+
+GITIGNORE_MARK="# BMAD hook wiring — fork guards are tracked config, not local state."
+
+# Report which of the two paths this repo would swallow. Empty output = fine.
+claude_tracking_blocked() {
+  local root="$1"
+  git -C "$root" rev-parse --is-inside-work-tree >/dev/null 2>&1 || return 0
+  _claude_path_ignored "$root" ".claude/settings.json" && echo ".claude/settings.json"
+  _claude_path_ignored "$root" ".claude/hooks/bmad-probe.py" && echo ".claude/hooks/"
+  return 0
+}
+
+# Append the narrowest negations that unblock the two paths, then RE-VERIFY with
+# check-ignore — an append is not a result. Returns 1 (and changes nothing more)
+# whenever it cannot prove the paths are now trackable, so the caller falls back
+# to the old local-file behaviour and says so out loud rather than writing into
+# a hole. Refuses to touch a .gitignore somebody is mid-edit on.
+ensure_claude_paths_trackable() {
+  local root="$1" mode="$2"
+  local blocked; blocked="$(claude_tracking_blocked "$root")"
+  [[ -z "$blocked" ]] && return 0
+  [[ "$mode" != "sync" ]] && return 1
+  local gi="$root/.gitignore"
+  [[ -f "$gi" ]] || return 1
+  git -C "$root" diff --quiet -- .gitignore 2>/dev/null || return 1
+  git -C "$root" diff --cached --quiet -- .gitignore 2>/dev/null || return 1
+  {
+    echo ""
+    echo "$GITIGNORE_MARK"
+    # `.claude/` itself may be excluded, and git will not descend into an
+    # excluded directory however many children are re-included — so the parent
+    # is re-included first, and the re-verify below is what proves it worked.
+    echo "!.claude/"
+    while IFS= read -r p; do [[ -n "$p" ]] && echo "!$p"; done <<< "$blocked"
+  } >> "$gi"
+  [[ -z "$(claude_tracking_blocked "$root")" ]]
+}
+
+# --- The one place the fork decides where a hook is wired -------------------
+# Called from every sync path, so the three can never drift apart.
+# Args: $1 = project root, $2 = mode (check|sync). Prints its own lines.
+# check: exits 1 when a real sync would change something. sync: exits 0.
+write_claude_settings() {
+  local root="$1" mode="$2"
+  [[ -f "$HOOKS_SRC" ]] || return 0
+  local dir="$root/.claude"
+  local tracked="$dir/settings.json"
+  local localf="$dir/settings.local.json"
+
+  if ! ensure_claude_paths_trackable "$root" "$mode"; then
+    # FALL BACK, LOUDLY. The old behaviour is kept so nothing regresses, but the
+    # repo is named along with the exact lines that would fix it.
+    if [[ "$mode" == "sync" ]]; then
+      mkdir -p "$dir"
+      if [[ -f "$localf" ]]; then
+        jq -n "$JQ_MERGE" "$localf" "$HOOKS_SRC" > "$localf.tmp" && mv "$localf.tmp" "$localf"
+      else
+        jq -n "$JQ_MERGE" <(echo "{}") "$HOOKS_SRC" > "$localf"
+      fi
+      echo "  WARN  hooks written to settings.local.json (UNTRACKED) — this repo ignores"
+      echo "        $(claude_tracking_blocked "$root" | tr "\n" " ")"
+      echo "        so a tracked guard would never stage. Add to .gitignore, then re-sync:"
+      echo "          $GITIGNORE_MARK"
+      echo "          !.claude/"
+      claude_tracking_blocked "$root" | sed "s|^|          !|"
+    else
+      echo "  ↳  hooks (BLOCKED — .gitignore swallows the tracked guard)"
+    fi
+    return 1
+  fi
+
+  local base_tracked="$tracked"
+  [[ -f "$tracked" ]] || base_tracked="/dev/null"
+  local new_tracked new_local changed=0
+  if [[ "$base_tracked" == "/dev/null" ]]; then
+    new_tracked="$(jq -n "$JQ_MERGE" <(echo "{}") "$HOOKS_SRC")" || return 1
+  else
+    new_tracked="$(jq -n "$JQ_MERGE" "$tracked" "$HOOKS_SRC")" || return 1
+  fi
+  if [[ -f "$localf" ]]; then
+    new_local="$(jq -n "$JQ_LOCAL" "$localf" "$HOOKS_SRC")" || return 1
+  else
+    new_local="$(jq -n "$JQ_LOCAL" <(echo "{}") "$HOOKS_SRC")" || return 1
+  fi
+
+  if [[ ! -f "$tracked" ]] || ! diff -q <(echo "$new_tracked" | jq -S .) <(jq -S . "$tracked") >/dev/null 2>&1; then
+    changed=1
+  fi
+  if [[ ! -f "$localf" ]] || ! diff -q <(echo "$new_local" | jq -S .) <(jq -S . "$localf") >/dev/null 2>&1; then
+    changed=1
+  fi
+
+  if [[ "$mode" != "sync" ]]; then
+    [[ "$changed" -eq 1 ]] && { echo "  ↳  hooks (outdated)"; return 1; }
+    return 0
+  fi
+
+  mkdir -p "$dir"
+  local demoted
+  demoted=$(jq -rn 'input as $b | input as $n | (($b.hooks // {}) | [..|objects|select(has("command"))|.command] | length) - (($n.hooks // {}) | [..|objects|select(has("command"))|.command] | length)' \
+    <(if [[ -f "$localf" ]]; then cat "$localf"; else echo "{}"; fi) <(echo "$new_local") 2>/dev/null || echo 0)
+  echo "$new_tracked" > "$tracked"
+  echo "$new_local" > "$localf"
+  echo "  OK    hooks (wired by script reference in TRACKED .claude/settings.json)"
+  [[ "${demoted:-0}" -gt 0 ]] && echo "  OK    hooks ($demoted fork hook(s) demoted out of settings.local.json — they would otherwise fire twice)"
+  return 0
+}
 
 # Auto-generate a .claude/commands/ file from a workflow.md's YAML frontmatter.
 # Args: $1 = workflow.md path, $2 = relative path from _bmad/bmm/workflows/ (e.g. verify/trace-flow),
@@ -1327,18 +1550,9 @@ deliver_skills_layout_project() {
   activate_hooks_for_project "$proot" "sync" >/dev/null 2>&1 || true
   # 3b. Colon-command aliases (/bmad:bmm:workflows:<name>) for every delivered skill.
   local ca; ca=$(sync_skill_command_aliases_for_project "$proot"); [[ "$ca" -gt 0 ]] && echo "  OK    colon-command aliases ($ca change(s): written/reaped)"
-  # 4. Hooks
-  local sdir="$proot/.claude" sfile="$proot/.claude/settings.local.json"
-  if [[ -f "$HOOKS_SRC" ]]; then
-    mkdir -p "$sdir"
-    if [[ -f "$sfile" ]]; then
-      local dropped; dropped=$(jq -rn 'input as $b | input as $t | ([$t.hooks[]?[]?.name]) as $tn | [$b.hooks[]?[]? | (.name // "") | select(startswith("bmad-")) | select(($tn|index(.))|not)] | unique | join(", ")' "$sfile" "$HOOKS_SRC" 2>/dev/null)
-      jq -n "$JQ_MERGE" "$sfile" "$HOOKS_SRC" > "$sfile.tmp" && mv "$sfile.tmp" "$sfile" && echo "  OK    hooks (upserted)"
-      [[ -n "$dropped" ]] && echo "  WARN  dropped non-template bmad- hook(s): $dropped — add them to $HOOKS_SRC (the template owns the bmad- hook namespace; hand-added project hooks do not survive sync)"
-    else
-      cp "$HOOKS_SRC" "$sfile" && echo "  OK    hooks (created)"
-    fi
-  fi
+  # 4. Hooks — one writer, shared with the main sync path (docs/hooks-registry.md), so the
+  #    skills-layout lane can never drift into a different wiring target.
+  write_claude_settings "$proot" "sync" || true
   # 5. .worktreeinclude + config backfill + CLAUDE.md sections
   [[ -f "$WORKTREE_INCLUDE_SRC" && ! -f "$proot/.worktreeinclude" ]] && cp "$WORKTREE_INCLUDE_SRC" "$proot/.worktreeinclude"
   [[ -f "$proot/_bmad/bmm/config.yaml" ]] && sync_config_defaults "$proot/_bmad/bmm/config.yaml" "sync" >/dev/null 2>&1 || true
@@ -1757,26 +1971,16 @@ while IFS= read -r target || [[ -n "$target" ]]; do
       echo "$check_dirty_managed" | sed 's/^/     /'
     fi
 
-    settings_file="$project_root/.claude/settings.local.json"
-    if [[ -f "$HOOKS_SRC" ]]; then
-      if [[ ! -f "$settings_file" ]]; then
-        if ! $dirty; then
-          echo "STALE $project"
-          dirty=true
-        fi
-        echo "  ↳  hooks (missing)"
-      else
-        merged=$(jq -n "$JQ_MERGE" "$settings_file" "$HOOKS_SRC")
-        current=$(cat "$settings_file")
-        if [[ "$(echo "$merged" | jq -S .)" != "$(echo "$current" | jq -S .)" ]]; then
-          if ! $dirty; then
-            echo "STALE $project"
-            dirty=true
-          fi
-          echo "  ↳  hooks (outdated)"
-        fi
+    # Hook wiring — the SAME writer the sync path uses, in check mode, so --check can
+    # never disagree with what a real sync would do. Its output is
+    # captured rather than streamed so the STALE header still comes first.
+    hooks_check_out="$(write_claude_settings "$project_root" "check")" || {
+      if ! $dirty; then
+        echo "STALE $project"
+        dirty=true
       fi
-    fi
+      [[ -n "$hooks_check_out" ]] && echo "$hooks_check_out"
+    }
 
     # Check auto-generated command files (custom + upstream workflow dirs)
     commands_target="$project_root/.claude/commands/bmad/bmm/workflows"
@@ -1981,20 +2185,15 @@ while IFS= read -r target || [[ -n "$target" ]]; do
       echo "  OK    guard hooks ($claude_hooks_synced hook(s) synced)"
     fi
 
-    settings_dir="$project_root/.claude"
-    settings_file="$settings_dir/settings.local.json"
-
+    # Hook wiring — docs/hooks-registry.md. One writer, shared with --check and the
+    # skills-layout lane, so no two paths can wire to different files.
     if [[ -f "$HOOKS_SRC" ]]; then
-      mkdir -p "$settings_dir"
-      if [[ -f "$settings_file" ]]; then
-        dropped_hooks=$(jq -rn 'input as $b | input as $t | ([$t.hooks[]?[]?.name]) as $tn | [$b.hooks[]?[]? | (.name // "") | select(startswith("bmad-")) | select(($tn|index(.))|not)] | unique | join(", ")' "$settings_file" "$HOOKS_SRC" 2>/dev/null)
-        jq -n "$JQ_MERGE" "$settings_file" "$HOOKS_SRC" > "$settings_file.tmp"
-        mv "$settings_file.tmp" "$settings_file"
-        echo "  OK    hooks (upserted)"
-        [[ -n "$dropped_hooks" ]] && echo "  WARN  dropped non-template bmad- hook(s): $dropped_hooks — add them to $HOOKS_SRC (the template owns the bmad- hook namespace; hand-added project hooks do not survive sync)"
-      else
-        cp "$HOOKS_SRC" "$settings_file"
-        echo "  OK    hooks (created)"
+      write_claude_settings "$project_root" "sync" || true
+      dropped_hooks=$(jq -rn 'input as $b | input as $t | ([$t.hooks[]?[]?.name]) as $tn | [$b.hooks[]?[]? | (.name // "") | select(startswith("bmad-")) | select(($tn|index(.))|not)] | unique | join(", ")' "$project_root/.claude/settings.local.json" "$HOOKS_SRC" 2>/dev/null || true)
+      # `if`, not `&& echo`: an AND-list that ends false is the last command of this
+      # branch, and under `set -e` that ends the whole run after printing green lines.
+      if [[ -n "$dropped_hooks" ]]; then
+        echo "  WARN  dropped non-template bmad- hook(s): $dropped_hooks — add them to $HOOKS_SRC (the template owns the bmad- hook namespace; hand-added project hooks do not survive sync)"
       fi
     fi
 

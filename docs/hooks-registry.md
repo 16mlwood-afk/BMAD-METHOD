@@ -11,7 +11,56 @@ The single place hooks are catalogued and governed — the hook-layer equivalent
 
 **Hooks live in exactly two homes:** `~/.claude/hooks/` + `~/.claude/settings.json` (machine-local, global) and the synced hook templates / scripts in `~/bmad-method-v6/` (distributed by `sync-bmad-workflows.sh`). **Do not introduce ad-hoc hooks elsewhere** — a per-project `_bmad/`-local hook or an inline one-off not listed here is drift. Add the hook here first, then wire it.
 
-Hooks are machine-local (they live in `settings.json`, which does NOT sync through the fork) — authoring a hook script in the fork does not ship the wiring; the `settings.json` entry does.
+## Where the fork wires a PROJECT hook — changed 2026-09-21
+
+**The fork's project hooks are wired by SCRIPT REFERENCE into each project's tracked
+`.claude/settings.json`.** The script itself is delivered from `custom/hooks/` into
+`<project>/.claude/hooks/`, and the settings entry only locates and runs it.
+
+Until this change every hook the fork shipped was written as **inline shell into
+`.claude/settings.local.json`**, which is gitignored in every target. Three costs, all
+measured on 2026-09-21 across the registered projects:
+
+- **A guard existed only on the machine that synced it.** A fresh clone, a new device or
+  another contributor got a repository that looked guarded and was not. Four targets
+  (`comms_dashboard`, `bison-ops`, `bison-website`, `inbound-flow`) were each holding six
+  fork hook FILES with none of them tracked, because those repositories also ignore
+  `.claude/hooks/`.
+- **Nothing was reviewable.** A 3,164-character inline blob appears in no diff, has no
+  unit test, and a hook could claim in its own header to be wired while the settings said
+  otherwise.
+- **The channel ran one way.** A project could not see the fork's guards as files, so 32
+  hooks were authored locally in one repository with no route back into the fork.
+
+**Permissions do NOT follow the hooks.** `permissions.defaultMode: bypassPermissions` and
+`enableAllProjectMcpServers: true` are per-machine TRUST decisions; committing them into
+fourteen tracked repositories would be a security-posture change wearing the clothes of a
+refactor. They stay in `settings.local.json`, which keeps its proper job.
+
+**A hook left in BOTH files fires TWICE.** Claude Code merges list keys across settings
+files rather than overriding them, so the sync demotes every fork-owned hook out of
+`settings.local.json` in the same act as it writes the tracked file. The two jq programs
+that do it (`JQ_MERGE`, `JQ_LOCAL` in `sync-bmad-workflows.sh`) share one ownership
+definition, and `tools/verify-settings-merge.sh` pins that they stay identical.
+
+**A repository whose `.gitignore` would swallow the tracked file is repaired or refused,
+never written into silently.** The sync appends the narrowest negations under a marked
+block, then RE-VERIFIES with `git check-ignore` — an append is not a result. If it cannot
+prove the paths are now trackable, or the `.gitignore` is mid-edit, it falls back to the
+old local-file behaviour and prints the exact lines to add. A guard nobody can commit is
+the defect, not the fix.
+
+**Ownership is declared, not inferred.** `bmadTrackedHookScripts` in the template lists the
+script basenames the fork claims; the merge reclaims a hand-wired copy of one of those so
+it ends up wired exactly once. It is an explicit list rather than a regex over the template
+because `bash_edit_guard.py` must stay OUT of it — `cash-recovery` wires that one its own
+way, and a wider key would silently delete a working guard.
+
+Adding a hook script to `custom/hooks/` still does not ship the wiring; the entry in
+`src/modules/bmm/_module-installer/assets/hooks.json` does. Two of the golden suites
+(`test_stash_untracked_guard.py`, `test_main_thread_open_pointer.py`) now read that
+template when they run inside the fork, so a script added without a wiring entry fails a
+test rather than shipping dormant.
 
 ## Registry
 
@@ -37,7 +86,35 @@ Hooks are machine-local (they live in `settings.json`, which does NOT sync throu
 | manifest-contract-gate | PreToolUse(Edit\|Write\|Bash) | Multi-writer contract for the shared `design-ingest-*` / `design-implement-grid-*` write-back ledgers: un-ID'd pass record, in-place renumbering, concurrent/stale/malformed current-editor marker, and sweep-shaped commands that would scoop another session's dirty manifest. Also a CLI (`--acquire`/`--release`/`--status`/`--check`) — `--release` refuses to clear another session's marker. Deterministic detection, WARN-only action; override `MANIFEST_CONTRACT_OFF=1` (logged to `~/.claude/logs/manifest-contract-gate.jsonl`) | `~/.claude/hooks/manifest-contract-gate.py` | warn (promotion criteria in the contract) | `docs/manifest-contract.md` |
 | friction-reflect | Stop | Fire-once end-of-session prompt to log structural friction | `~/bmad-method-v6/check-friction-reflect.sh` | warn (nudge) | `workflow-friction-and-process-issues` |
 
-**Project-level enforcement hooks** (in each project's `.claude/settings.local.json`, not global): the worktree Edit/Write hard-block and the `bmad-single-track-guard` (blocks `git merge` into local main). These are per-project by design; they follow the same "no ad-hoc additions" rule.
+**Project-level enforcement hooks** (in each project's tracked `.claude/settings.json` since
+2026-09-21 — see *Where the fork wires a PROJECT hook* above; previously
+`settings.local.json`): the worktree Edit/Write hard-block and the `bmad-single-track-guard`
+(blocks `git merge` into local main). These are per-project by design; they follow the same
+"no ad-hoc additions" rule.
+
+### The nine generic agent-discipline guards — moved into the fork 2026-09-21
+
+Authored in `amazon-removal-assistant`, where they were tracked and wired but reachable by
+exactly one project. Each carries its `test_*.py` golden suite; all nine suites run green
+from `custom/hooks/`. Source of truth for every row: `~/bmad-method-v6/custom/hooks/<name>.py`.
+
+| Hook | Event | Purpose | Level |
+|---|---|---|---|
+| agent-isolation-gate | PreToolUse(Agent\|Task\|EnterWorktree) | Deny an implementation-authority spawn with no worktree isolation | enforce (gate) |
+| branch-switch-removal-guard | PreToolUse(Bash) | Ask before a branch switch or hard reset takes recognisable files off the disk | ask |
+| claude-md-admission-gate | PreToolUse(Edit\|Write\|MultiEdit\|Bash) | A new section in an always-loaded CLAUDE.md must earn its slot | enforce (gate) |
+| claude-md-drift | UserPromptSubmit | Say when CLAUDE.md moved under the session | warn |
+| main-thread-open-pointer | UserPromptSubmit | Hand long work to a background agent; keep the main thread open | warn (nudge) |
+| orphaned-chrome-sweep | SessionStart | Surface leaked browser processes from past sessions | warn |
+| owned-decision-guard | Stop | Never hand back a decision already settled in writing | enforce (gate) |
+| owner-step-handback-warn | Stop | A step handed to the owner must name why it needs him | warn |
+| stash-untracked-guard | PreToolUse(Bash) | The stash stack is shared across worktrees — refuse `stash -u` | enforce (gate) |
+
+**Two were deliberately NOT moved** and stay project-local until their partner names and
+persona come from configuration rather than being hard-coded: `working-week-pointer.py` and
+`transcript-attribution-pointer.py`. Nineteen others in that project name pallets, Leipzig,
+TheFBAPrep, claims against Amazon, the Wren persona or its own MCP server, and are correctly
+project-local.
 
 ## Adding a hook
 

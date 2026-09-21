@@ -60,6 +60,28 @@
             "statusMessage": "Checking for Claude Design handoff..."
           }
         ]
+      },
+      {
+        "matcher": "",
+        "name": "bmad-claude-md-drift",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "N=claude-md-drift.py; S=\"\"; D=\"$PWD\"; while [ -n \"$D\" ] && [ \"$D\" != \"/\" ]; do if [ -f \"$D/.claude/hooks/$N\" ]; then S=\"$D/.claude/hooks/$N\"; break; fi; D=\"${D%/*}\"; done; [ -n \"$S\" ] || { [ -f \"${CLAUDE_PROJECT_DIR:-}/.claude/hooks/$N\" ] && S=\"$CLAUDE_PROJECT_DIR/.claude/hooks/$N\"; }; _in=$(cat 2>/dev/null); [ -f \"$S\" ] || exit 0; printf '%s' \"$_in\" | python3 \"$S\" 2>/dev/null || true; exit 0",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "",
+        "name": "bmad-main-thread-open-pointer",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "N=main-thread-open-pointer.py; S=\"\"; D=\"$PWD\"; while [ -n \"$D\" ] && [ \"$D\" != \"/\" ]; do if [ -f \"$D/.claude/hooks/$N\" ]; then S=\"$D/.claude/hooks/$N\"; break; fi; D=\"${D%/*}\"; done; [ -n \"$S\" ] || { [ -f \"${CLAUDE_PROJECT_DIR:-}/.claude/hooks/$N\" ] && S=\"$CLAUDE_PROJECT_DIR/.claude/hooks/$N\"; }; _in=$(cat 2>/dev/null); [ -f \"$S\" ] || exit 0; printf '%s' \"$_in\" | python3 \"$S\" 2>/dev/null || true; exit 0",
+            "timeout": 5
+          }
+        ]
       }
     ],
     "PreToolUse": [
@@ -158,6 +180,50 @@
             "statusMessage": "Board contention note..."
           }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "name": "bmad-stash-untracked-guard",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "N=stash-untracked-guard.py; S=\"\"; D=\"$PWD\"; while [ -n \"$D\" ] && [ \"$D\" != \"/\" ]; do if [ -f \"$D/.claude/hooks/$N\" ]; then S=\"$D/.claude/hooks/$N\"; break; fi; D=\"${D%/*}\"; done; [ -n \"$S\" ] || { [ -f \"${CLAUDE_PROJECT_DIR:-}/.claude/hooks/$N\" ] && S=\"$CLAUDE_PROJECT_DIR/.claude/hooks/$N\"; }; [ -f \"$S\" ] || exit 0; python3 \"$S\"; exit $?",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "name": "bmad-branch-switch-removal-guard",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "N=branch-switch-removal-guard.py; S=\"\"; D=\"$PWD\"; while [ -n \"$D\" ] && [ \"$D\" != \"/\" ]; do if [ -f \"$D/.claude/hooks/$N\" ]; then S=\"$D/.claude/hooks/$N\"; break; fi; D=\"${D%/*}\"; done; [ -n \"$S\" ] || { [ -f \"${CLAUDE_PROJECT_DIR:-}/.claude/hooks/$N\" ] && S=\"$CLAUDE_PROJECT_DIR/.claude/hooks/$N\"; }; [ -f \"$S\" ] || exit 0; python3 \"$S\"; exit $?",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "Agent|Task|EnterWorktree",
+        "name": "bmad-agent-isolation-gate",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "N=agent-isolation-gate.py; S=\"\"; D=\"$PWD\"; while [ -n \"$D\" ] && [ \"$D\" != \"/\" ]; do if [ -f \"$D/.claude/hooks/$N\" ]; then S=\"$D/.claude/hooks/$N\"; break; fi; D=\"${D%/*}\"; done; [ -n \"$S\" ] || { [ -f \"${CLAUDE_PROJECT_DIR:-}/.claude/hooks/$N\" ] && S=\"$CLAUDE_PROJECT_DIR/.claude/hooks/$N\"; }; [ -f \"$S\" ] || exit 0; python3 \"$S\"; exit $?",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|MultiEdit|Bash",
+        "name": "bmad-claude-md-admission-gate",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "N=claude-md-admission-gate.py; S=\"\"; D=\"$PWD\"; while [ -n \"$D\" ] && [ \"$D\" != \"/\" ]; do if [ -f \"$D/.claude/hooks/$N\" ]; then S=\"$D/.claude/hooks/$N\"; break; fi; D=\"${D%/*}\"; done; [ -n \"$S\" ] || { [ -f \"${CLAUDE_PROJECT_DIR:-}/.claude/hooks/$N\" ] && S=\"$CLAUDE_PROJECT_DIR/.claude/hooks/$N\"; }; [ -f \"$S\" ] || exit 0; python3 \"$S\"; exit $?",
+            "timeout": 5
+          }
+        ]
       }
     ],
     "SessionStart": [
@@ -248,6 +314,16 @@
             "statusMessage": "Checking design policy drift..."
           }
         ]
+      },
+      {
+        "name": "bmad-orphaned-chrome-sweep",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "N=orphaned-chrome-sweep.py; S=\"\"; D=\"$PWD\"; while [ -n \"$D\" ] && [ \"$D\" != \"/\" ]; do if [ -f \"$D/.claude/hooks/$N\" ]; then S=\"$D/.claude/hooks/$N\"; break; fi; D=\"${D%/*}\"; done; [ -n \"$S\" ] || { [ -f \"${CLAUDE_PROJECT_DIR:-}/.claude/hooks/$N\" ] && S=\"$CLAUDE_PROJECT_DIR/.claude/hooks/$N\"; }; [ -f \"$S\" ] || exit 0; CLAUDE_PROJECT_DIR=\"${S%/.claude/hooks/*}\" python3 \"$S\" 2>/dev/null || true; exit 0",
+            "timeout": 15
+          }
+        ]
       }
     ],
     "PostToolUse": [
@@ -308,11 +384,46 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "matcher": "*",
+        "name": "bmad-owned-decision-guard",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "N=owned-decision-guard.py; S=\"\"; D=\"$PWD\"; while [ -n \"$D\" ] && [ \"$D\" != \"/\" ]; do if [ -f \"$D/.claude/hooks/$N\" ]; then S=\"$D/.claude/hooks/$N\"; break; fi; D=\"${D%/*}\"; done; [ -n \"$S\" ] || { [ -f \"${CLAUDE_PROJECT_DIR:-}/.claude/hooks/$N\" ] && S=\"$CLAUDE_PROJECT_DIR/.claude/hooks/$N\"; }; [ -f \"$S\" ] || exit 0; python3 \"$S\"; exit $?",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "*",
+        "name": "bmad-owner-step-handback-warn",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "N=owner-step-handback-warn.py; S=\"\"; D=\"$PWD\"; while [ -n \"$D\" ] && [ \"$D\" != \"/\" ]; do if [ -f \"$D/.claude/hooks/$N\" ]; then S=\"$D/.claude/hooks/$N\"; break; fi; D=\"${D%/*}\"; done; [ -n \"$S\" ] || { [ -f \"${CLAUDE_PROJECT_DIR:-}/.claude/hooks/$N\" ] && S=\"$CLAUDE_PROJECT_DIR/.claude/hooks/$N\"; }; [ -f \"$S\" ] || exit 0; python3 \"$S\" || true; exit 0",
+            "timeout": 10
+          }
+        ]
+      }
     ]
   },
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "permissions": {
     "defaultMode": "bypassPermissions"
   },
-  "enableAllProjectMcpServers": true
+  "enableAllProjectMcpServers": true,
+  "bmadTrackedHookScripts": [
+    "agent-isolation-gate.py",
+    "branch-switch-removal-guard.py",
+    "claude-md-admission-gate.py",
+    "claude-md-drift.py",
+    "main-thread-open-pointer.py",
+    "orphaned-chrome-sweep.py",
+    "owned-decision-guard.py",
+    "owner-step-handback-warn.py",
+    "stash-untracked-guard.py"
+  ]
 }

@@ -41,7 +41,7 @@ Full cross-project policy → the `workflow-routing` global memory; this is its 
 ## "sync bmad" — Push custom workflows + hooks to projects
 
 1. If this project's `_bmad/bmm/workflows` path isn't in `~/.bmad-targets`, append it first
-2. Run `~/bmad-method-v6/sync-bmad-workflows.sh` — syncs workflows and merges worktree enforcement hooks into `.claude/settings.local.json` (preserves existing permissions)
+2. Run `~/bmad-method-v6/sync-bmad-workflows.sh` — syncs workflows, delivers the guard scripts from `custom/hooks/` into `<project>/.claude/hooks/`, and wires them **by script reference into the project's TRACKED `.claude/settings.json`** (2026-09-21; previously inline shell into the gitignored `settings.local.json`). Permissions and the MCP auto-enable flag stay in `settings.local.json`, which is where per-machine trust belongs. Fork-owned hooks are demoted out of the local file in the same act, because Claude Code concatenates hook lists across the two files and a hook left in both fires twice. A project whose `.gitignore` would swallow the tracked file has the narrowest negations appended and re-verified, or the sync falls back and says exactly what to add. Full reasoning → `docs/hooks-registry.md` § *Where the fork wires a PROJECT hook*
 3. If the sync **blocks** a project (local-only content detected), pull changes first: `sync-bmad-workflows.sh --pull <path>`, review, commit to the fork, then re-sync
 4. Diff this project's `CLAUDE.md` against `~/bmad-method-v6/src/modules/bmm/_module-installer/assets/CLAUDE.md.template`
 5. Propose updates for any missing sections — preserve project-specific values (structure, deploy command, conventions)
@@ -239,7 +239,9 @@ What survives from the original incident, narrowed to what is actually right: **
 
 - `_bmad/` (entire tree)
 - `.claude/commands/bmad/`
-- `.claude/settings.local.json` (BMAD-injected hooks/permissions only — preserve other entries)
+- `.claude/settings.json` (BMAD-injected **hooks** only — a project's own hooks and its `permissions` block are preserved; since 2026-09-21 this is where the fork's guards are wired, and it is TRACKED so the wiring survives a clone)
+- `.claude/hooks/` (the guard scripts the fork ships; a project's own scripts in the same directory are never touched — the sync is per-file and never uses `--delete`)
+- `.claude/settings.local.json` (BMAD-injected **permissions** and the MCP auto-enable flag only — preserve other entries)
 
 **`git pull` blocked by untracked files in BMAD-managed paths.** This is the standard "stale local sync vs newly-committed sync" race. Resolution:
 

@@ -62,6 +62,52 @@ The compact, always-current state. The skill reads THIS block + the top of `## C
 > **Older wave one-liners moved to [`STATUS-archive.md`](./STATUS-archive.md)** (2026-07-20): `## Now` carried 21 `Latest wave`/`Prior wave` bullets against the budget gate's ceiling of 6, so the 15 oldest were moved VERBATIM to the archive's "moved out of `## Now`" section. Nothing was deleted, and the gate itself was NOT relaxed - `MAX_NOW_WAVE_BULLETS` stays 6.
 ## Changelog
 
+### 2026-09-21 — the fork's guards become tracked config: nine hooks in, and the wiring target moves
+
+**What.** Nine generic agent-discipline hooks moved into `custom/hooks/` with their golden
+suites — `agent-isolation-gate`, `branch-switch-removal-guard`, `claude-md-admission-gate`,
+`claude-md-drift`, `main-thread-open-pointer`, `orphaned-chrome-sweep`,
+`owned-decision-guard`, `owner-step-handback-warn`, `stash-untracked-guard` — all nine
+suites green from the fork. And the distribution template now wires hooks **by script
+reference into each project's TRACKED `.claude/settings.json`** instead of as inline shell
+into the gitignored `settings.local.json`. `JQ_MERGE` writes the tracked file; a new
+`JQ_LOCAL` keeps permissions and the MCP flag in the local one and DEMOTES fork hooks out
+of it. One writer, `write_claude_settings()`, serves `--check`, the main sync and the
+skills-layout lane, so the three cannot drift.
+
+**Why.** Measured across the registered targets: **not one** of the 25 inline blobs in
+either inspected project had been edited locally — the fork is already the proven channel,
+it was simply carrying six files when it should carry seventeen, and wiring them into a
+file git never sees. Four targets (`comms_dashboard`, `bison-ops`, `bison-website`,
+`inbound-flow`) each hold six fork hook FILES with **zero tracked**, because they also
+ignore `.claude/hooks/` — a repository that looks guarded and is not.
+
+**The two defects this nearly shipped, both caught by running the merge against a
+throwaway copy of a real project rather than a toy fixture.** `$c | contains(.)` re-binds
+`.` to the filter's own input, so the ownership test read `$c | contains($c)` and was true
+for every hook in the fleet. Then, once fixed, GROUP-level stripping destroyed project
+hooks that merely shared a group with a fork one — **26 project-authored guards lost** in
+`amazon-removal-assistant`, whose PreToolUse group holds two fork guards beside four of its
+own. Ownership is now tested at hook level for the script key and group level for the
+name/command keys. `tools/verify-settings-merge.sh` grew L1–L5 for exactly these.
+
+**Scope.** Fork only — **the sync was deliberately NOT run**; distribution to the targets is
+a separate act and batches into the pending fleet-wide re-sync gate. Reaches 14 distinct
+projects across 15 target lines on the next sync. `permissions.defaultMode:
+bypassPermissions` and `enableAllProjectMcpServers` stay in `settings.local.json` — a
+boundary, not a tidy-up: committing them into fourteen tracked repositories would be a
+security-posture change wearing the clothes of a refactor. No new STD id was minted; the
+rule's home is `docs/hooks-registry.md` § *Where the fork wires a PROJECT hook*, which the
+standards canon already names as the fork-local registry for hooks.
+
+**Self-review.** `bash -n` clean; `tools/verify-settings-merge.sh` 26/26; all nine hook
+suites green; `test:sync-execution` 9/9, `test:sync-scope` 4/4; every `npm test` suite green
+except `test:forkgap-legacy`, red **only** on another session's uncommitted `fork-gaps.md`
+edit (55 appended lines missing their yaml header, present before this work started and not
+touched by it). Four template entries that cannot fire in a target, and one SessionStart
+hook taking 25s of a 30s budget, are reported as separate pre-existing defects, not fixed
+here.
+
 ### 2026-09-19 — the design brief binds only through its tests (STD-BRIEF-BINDING-001)
 
 **What:** `design-handoff`'s brief is now outcome-first in five parts — the moment · what must be true · what must dominate · the data and its defects · open questions (unfenced) — followed by an advisory appendix. Only the Part 2 tests (T0 the five-second answer + T1…Tn truth tests) can fail a design; frames, layout, composition, tokens and the style rules of the project design policy are advice. **Why:** owner review of the TheFBAPrep brief after building it twice; his words, *"the biggest takeaway is claude design should do the heavy lifting everything else is mostly advisory"*. **Scope:** new `shared/brief-binding-contract.md`; brief template, handoff steps 01 (§3i) / 03 / 03c, revision policy Check 1c; consumers `design-review-pr` (C-TRUTH-01, C-ANSWER-01, truth-vs-advisory classification), `design-implement` (§SHARED.1b halts only on truth/T0), `design-synthesize` (sub-check t), `design-artifact-loop`; checker probe P6. No project `docs/design-policy.md` touched. Legacy briefs keep working. Record: `docs/decision-design-brief-outcome-first-2026-09-19.md`; evidence `docs/design-brief-notes-evidence-2026-09-19.md`. **Self-review:** all fork suites green except `test:forkgap-legacy`, red only on another session's uncommitted `fork-gaps.md` edit (not part of this change).
