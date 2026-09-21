@@ -46,7 +46,10 @@ usage() {
   echo "                  because the sync reads the working tree, not a commit."
   echo "                  (_bmad/, .claude/skills/, .claude/commands/bmad/, CLAUDE.md) so the"
   echo "                  sync has a real done-state instead of leaving a dirty tree"
-  echo "  --only PATH     Sync just ONE project (its root or _bmad/bmm/workflows path); skip all others"
+  echo "  --only PATH     Sync just ONE project; skip all others. Accepts its basename, its"
+  echo "                  root, or its _bmad/bmm/workflows path. REFUSES (non-zero) when the"
+  echo "                  selector matches no registered target, or when a basename is"
+  echo "                  ambiguous -- selecting nothing is never reported as success."
   echo "  --pull PATH     Pull changes from a project back to the source of truth"
   echo "  --worktree PATH Sync custom workflow dirs + skills into a single worktree path"
   echo "                  (minimal — no hooks/commands/CLAUDE.md; git-tracked files propagate via checkout)"
@@ -1377,6 +1380,98 @@ if [[ ! -f "$TARGETS_FILE" ]]; then
   echo "Create it with one workflow path per line, e.g.:"
   echo "  /Users/you/project/_bmad/bmm/workflows"
   exit 1
+fi
+
+# ===========================================================================
+# --only MUST RESOLVE TO EXACTLY ONE TARGET.
+#
+# SELECTING NOTHING IS NOT SUCCESS. Until 2026-09-21 `--only` compared the
+# selector against each target line by exact string, and a selector matching
+# no line simply meant the loop body never ran. The run then printed its
+# ordinary closing summary -- "All projects up to date." under --check,
+# "Done: 0 synced, 0 skipped, 0 blocked" on the write path -- and exited 0.
+# Measured that day with `--only proj` against a disposable targets file:
+# zero matches, zero work, exit 0, green sentence.
+#
+# So the most natural way to ask for one project -- by its name -- was also
+# the one way to get a confident report over an empty selection. That is the
+# same family as a guard the VCS never carries, a hook wired to a file that
+# is absent, and a CI run with zero steps: each looks exactly like success.
+# This distributor already refuses a dirty source and an unknown flag; a
+# selector that chose nothing belongs in the same class, and it now exits
+# non-zero naming what was asked for and listing what it could have matched.
+#
+# ACCEPTING A BASENAME is the second half, and it costs nothing to safety: a
+# basename matched NOTHING before this block existed, so no caller can have
+# depended on the old behaviour. Both in-repo callers (onboard-project.sh,
+# tools/bmad-release.py) pass a full path and already treat a non-zero exit
+# as failure -- the refusal strictly improves them.
+#
+# AN AMBIGUOUS BASENAME REFUSES rather than picking one. Two registered
+# checkouts sharing a basename is not hypothetical: ~/inbound-flow and
+# ~/code/inbound-flow were both registered until 2026-09-21. Syncing whichever
+# the file happened to list first is a silent wrong answer -- the defect this
+# block exists to stop, not a convenience to preserve. An EXACT path is never
+# ambiguous, even when its basename is.
+# ===========================================================================
+if [[ -n "$ONLY_TARGET" ]]; then
+  only_matched=()        # resolved project roots this selector picks out
+  only_candidates=()     # every registered project root, for the error message
+  only_exact=false
+  while IFS= read -r _only_line || [[ -n "$_only_line" ]]; do
+    # Trim and skip exactly as the target loop below does, so selection and
+    # iteration can never disagree about what the targets file contains.
+    _only_line="${_only_line%%[[:space:]]}"
+    _only_line="${_only_line##[[:space:]]}"
+    [[ -z "$_only_line" || "$_only_line" == \#* ]] && continue
+    _only_proot="${_only_line%/_bmad/bmm/workflows}"
+
+    # A duplicate line in the targets file must not read as an ambiguous match.
+    _only_dup=false
+    for _seen in "${only_candidates[@]+"${only_candidates[@]}"}"; do
+      [[ "$_seen" == "$_only_proot" ]] && { _only_dup=true; break; }
+    done
+    $_only_dup && continue
+    only_candidates+=("$_only_proot")
+
+    if [[ "$_only_line" == "$ONLY_TARGET" || "$_only_proot" == "$ONLY_TARGET" ]]; then
+      only_matched=("$_only_proot")   # an exact path wins outright
+      only_exact=true
+      break
+    fi
+    [[ "$(basename "$_only_proot")" == "$ONLY_TARGET" ]] && only_matched+=("$_only_proot")
+  done < "$TARGETS_FILE"
+
+  _only_count=${#only_matched[@]}
+  if [[ "$_only_count" -eq 0 ]]; then
+    echo "ERROR: --only '$ONLY_TARGET' matched NO registered target -- nothing was synced." >&2
+    echo "       Selecting nothing is not success, so this is a refusal rather than a" >&2
+    echo "       silent no-op closing with the ordinary green summary." >&2
+    echo "" >&2
+    echo "       Registered targets in $TARGETS_FILE:" >&2
+    if [[ ${#only_candidates[@]} -eq 0 ]]; then
+      echo "         (none -- the targets file has no uncommented entries)" >&2
+    else
+      for _c in "${only_candidates[@]}"; do
+        printf '         %-28s %s\n' "$(basename "$_c")" "$_c" >&2
+      done
+    fi
+    echo "" >&2
+    echo "       Pass a project basename, its root, or its _bmad/bmm/workflows path." >&2
+    exit 1
+  fi
+  if ! $only_exact && [[ "$_only_count" -gt 1 ]]; then
+    echo "ERROR: --only '$ONLY_TARGET' is AMBIGUOUS -- $_only_count registered targets share that name:" >&2
+    for _m in "${only_matched[@]}"; do
+      echo "         $_m" >&2
+    done
+    echo "       Syncing whichever came first would be a silent wrong answer." >&2
+    echo "       Pass the full project path instead." >&2
+    exit 1
+  fi
+  # Exactly one. Pin the selector to its resolved root so the target loop's
+  # existing exact comparison matches it unchanged.
+  ONLY_TARGET="${only_matched[0]}"
 fi
 
 # Resolve reference project for upstream sync

@@ -84,6 +84,7 @@ test rather than shipping dormant.
 | sprint-apply-gate | PreToolUse(Edit\|Write\|Bash) | Risk-classifier over a pending correct-course proposal's `files_to_change`. OWNER-GATE lane freezes until an APPROVE token (`~/.claude/sprint-apply-gate.mode` dry-run→enforce). AUTOPILOT lane (`~/.claude/sprint-apply-autopilot.mode` off→classify-log→on) auto-applies deterministically-classified low-risk single-repo sprint-execution edits (`_bmad-output/implementation-artifacts/` + `epics.md` only; planning-artifacts PRD/architecture/specs → owner-gate; ≤`AUTOPILOT_MAX_FILES`, no governance/doctrine path) after a pre-edit snapshot to `_bmad/.sprint-apply-backups/`. Gate DERIVES the class (never the planner's label); fail-closed; kill-switch `_bmad/.sprint-apply-autopilot.disable` | `~/.claude/hooks/sprint-apply-gate.sh` | warn→gate (+autopilot opt-in) | `bmad-correct-course` |
 | sprint-apply-approve | UserPromptSubmit | Clear the sprint-apply gate on an exact `APPROVE: APPLY_SPRINT_PROPOSAL::<id>` token | `~/.claude/hooks/sprint-apply-approve.sh` | enforce (clears gate) | `bmad-correct-course` |
 | manifest-contract-gate | PreToolUse(Edit\|Write\|Bash) | Multi-writer contract for the shared `design-ingest-*` / `design-implement-grid-*` write-back ledgers: un-ID'd pass record, in-place renumbering, concurrent/stale/malformed current-editor marker, and sweep-shaped commands that would scoop another session's dirty manifest. Also a CLI (`--acquire`/`--release`/`--status`/`--check`) — `--release` refuses to clear another session's marker. Deterministic detection, WARN-only action; override `MANIFEST_CONTRACT_OFF=1` (logged to `~/.claude/logs/manifest-contract-gate.jsonl`) | `~/.claude/hooks/manifest-contract-gate.py` | warn (promotion criteria in the contract) | `docs/manifest-contract.md` |
+| hook-resolve-check | SessionStart | Two findings, one family — a guard that is configured and cannot run. (1) a hook the settings WIRE whose script is absent; (2) a hook script that is PRESENT and that the repository is set to ignore, so a fresh clone, a second machine or CI gets a project that looks guarded and is not. Keys on IGNORED, never on merely untracked — a guard you just wrote is ordinary work and is never reported. Silent when clean; never blocks | `~/bmad-method-v6/custom/hooks/hook-resolve-check.py` | warn | fork maintainer |
 | friction-reflect | Stop | Fire-once end-of-session prompt to log structural friction | `~/bmad-method-v6/check-friction-reflect.sh` | warn (nudge) | `workflow-friction-and-process-issues` |
 
 **Project-level enforcement hooks** (in each project's tracked `.claude/settings.json` since
@@ -115,6 +116,33 @@ persona come from configuration rather than being hard-coded: `working-week-poin
 `transcript-attribution-pointer.py`. Nineteen others in that project name pallets, Leipzig,
 TheFBAPrep, claims against Amazon, the Wren persona or its own MCP server, and are correctly
 project-local.
+
+### A guard the VCS does not carry is not a guard — measured 2026-09-21
+
+`hook-resolve-check` gained its second finding on 2026-09-21, and the fork template gained a
+`bmad-hook-resolve-check` SessionStart entry so it fires in every project rather than in the
+two that happened to wire it by hand.
+
+Running it against all fourteen registered targets that day, it fires on **five**. Four —
+`comms_dashboard`, `bison-ops`, `bison-website`, `inbound-flow` — ignore `.claude/hooks/`
+wholesale and each already held six or more fork-delivered hook files with **zero tracked**;
+three of those four also ignore `.claude/settings.json`, the registration itself. A fifth,
+`amazon-lead-generator`, carries its guards and ignores only the wiring. Seven are clean and
+the check says nothing about them.
+
+The sync already narrows a swallowing `.gitignore` when it runs in such a project (see *Where
+the fork wires a PROJECT hook* above), so the gap was never the repair. It was that **nothing
+said a repository was in that state until somebody happened to run a sync.**
+
+**Still open, named rather than fixed (2026-09-21).** `guard-wiring-check.sh` opens with
+*"WIRED HERE on SessionStart via the tracked `.claude/settings.json`"*. That is true in two of
+the fourteen projects it is distributed to and false in the other twelve, where the fork
+template wires it nowhere — a file asserting its own enforcement status in twelve repositories
+where the assertion does not hold. It is the same family as the two findings above and is a
+separate decision, because unlike `hook-resolve-check` it also runs live probes. Counted with
+it: of the 15 guard scripts the fork ships, the template wires 11; `audit-override-log.py` is
+wired nowhere at all, `deploy_lane_guard.py` in one project, and `guard-health-check.sh` is
+honestly declared manual in its own header and is therefore NOT an instance.
 
 ## Adding a hook
 

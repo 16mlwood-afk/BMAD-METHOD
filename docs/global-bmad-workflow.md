@@ -68,6 +68,15 @@ Both conditions were live on 2026-08-31: the fork sat on a feature branch 20 com
 comment. If the gate refuses, the fix is to commit the work and merge the branch into
 `custom` — not to reach for the override.
 
+**`--only` refuses an empty selection (2026-09-21).** It accepts a project basename as well as
+its root or its `_bmad/bmm/workflows` path, and a selector matching NO registered target is a
+non-zero exit that names what was asked for and lists what it could have matched. Before this,
+a basename matched nothing, the loop body never ran, and the run closed with
+`All projects up to date.` and exit 0 — a confident report over an empty selection. An
+ambiguous basename (two registered checkouts sharing a name, as `~/inbound-flow` and
+`~/code/inbound-flow` did until 2026-09-21) also refuses rather than picking one; an exact path
+is never ambiguous.
+
 **Never modify workflows directly in `_bmad/bmm/workflows/`.** Changes made in projects will be overwritten on next sync. Instead, modify `~/bmad-method-v6/custom/workflows/` and re-sync, or use `--pull` to bring project changes back to the source first.
 
 ### The core lane (`_bmad/core/workflows/`) is UNMANAGED — shadow, don't patch
