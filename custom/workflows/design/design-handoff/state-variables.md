@@ -27,6 +27,60 @@ The jobs the operator must accomplish on this surface beyond the primary goals, 
 
 Capabilities the current surface exposes that are **deliberately NOT carried into this brief**, each `{ capability (outcome phrasing) · backing_action · reason }`, reason ∈ `relocated` (to a named sibling) | `obsolete` | `out-of-scope-by-design`. The *log* half of the anti-silent-drop contract: `{must_support_capabilities}` records what the redesign must keep; this records what it deliberately sheds and WHY — so a drop is a visible, vetoable decision (surfaced at end-of-run by step-03 §5 and in the brief), never a silent omission. Never empty by omission — empty list only when every action the current surface invokes is carried forward. Blind spot it closes: a mutation on an existing record (resolve / remap / override / re-run) that is neither a primary goal nor an ingest endpoint, which recall-based capture misses (the EOS batch-detail remap loss).
 
+## `{preserved_claims}` — the anti-silent-STRIP list (the inverse of a prohibition)
+
+Claims the current surface (or the data's own declarations) **makes in words beside a figure**, which a
+redesign may move, reword and re-size but may not lose. Each `{ id (TP1, TP2, …) · claim · today · cost }`
+— `claim` is the fact in words ("a margin figure says the floor it is measured against"), `today` is
+where it lives now (orientation only), `cost` is the **false belief** the omission produces, never
+"information is lost". Derived in step-01 §3k, rendered as the brief's Part 2 preserved-claims
+subsection, and **each id is added to `{truth_tests}`** — the binding machinery is the Part 2 table, not
+a second one. Why it is a list and not a sentence: the rest of the brief is prohibitions, and a
+prohibition is visible when violated — the banned thing is on the render. A stripped claim is invisible
+afterwards, because nothing on the page is wrong and the shorter version looks *better*; a page that
+quietly totals what cannot be totalled reads cleaner than one that refuses to. Asserted over RENDERED
+OUTPUT, never over a component, a wording or a position — a redesign may move a refusal anywhere on the
+page and change everything around it; it may not lose it. Origin: a margin cell rendered
+`24.1% · floor is 30.0%`, redesigned to `24.1%` — still true, and no longer saying the line was six
+points under the owner's own floor. Empty only when the surface makes no qualified claim at all.
+
+## `{blank_semantics}` / `{far_end_figures}` — a blank is three facts, and a far-end figure is two
+
+`{blank_semantics}`: one entry per nullable field, `{ field · kind · reason }`, `kind` ∈
+`asked-and-empty` | `nobody-looked` | `not-applicable`. Derived in step-01 §3 step 6 from the same
+nullable scan that already feeds "fields needing empty-state treatment" — the scan is not new, the
+classification is. `{far_end_figures}`: one entry per figure this surface owes to a system outside it,
+`{ figure · ours_source · theirs_source · unread_meaning }`. Both render brief **§2e** and both are
+carried into Part 2 (the binding contract already carries "a missing value is never shown as zero";
+these give the brief somewhere to say WHICH blank is which, and to demand both counts). Why: a designer's
+instinct is to collapse three facts into one tidy empty state, and a zero says *we checked* when only one
+of the three has been. The far-end half comes from a run that reported "box list ready — 32 boxes" and,
+separately, "packing information not submitted": Amazon held zero, the work had gone nowhere, and nothing
+in the output let a reader weigh the two. Empty → §2e is omitted entirely.
+
+## `{instance_populations}` — which one a figure is about
+
+One entry per figure family on a surface whose subject belongs to a population, `{ figure_family ·
+population · distinguisher }` — `distinguisher` is what tells one member from another **in words**, not a
+code. Renders brief **§2f**, advisory. Origin: a designed page headed *"On the pallet now: 46 machines"*
+where every figure was right, none could be looked up, and 46 read as a shipment that was 97 across two
+pallets; its standfirst named a place and a date, which is a scope and not an instance. Carries its own
+counter-rule, and it is load-bearing: this is not a licence to lead with identifiers — a bare `PD-003-P2`
+as the subject of a sentence fails the same reader just as badly. Advisory because it is craft in the
+general case; where a mis-scoped figure would make a reader believe something false it meets
+`shared/brief-binding-contract.md` §2's own one-question test and is promoted to a Part 2 test by the
+brief author instead. Empty → §2f is omitted.
+
+## `{age_field_clocks}` — working days or calendar days, declared per figure
+
+One line per elapsed-time figure the surface shows or derives, each declared `working` or `calendar`.
+Renders as a line in brief §2, beside the nullable-fields line. **Working** answers *how long has a person
+or a partner had to act* (a weekend is not delay); **calendar** answers *how old is this fact* (the world
+moved on regardless). The test is one question: did a human have to act for the clock to matter? Declared
+rather than left to the design because the error runs one way — counting a weekend as delay manufactures
+urgency, and the action it invites is chasing a partner on a Monday morning for work ordered on Saturday.
+`— none` is the honest value on a surface with no elapsed-time figure, and is a pass.
+
 ## `{composition_provenance}` / `{composition_rationale}` — verify the composition, don't inherit it
 
 `policy-default` | `recommended-alt`. WHETHER the page-mode's default composition (operational→table-first; analytical→chart-led; detail→record-view) fits the job — decided in §5a by the job, NOT inherited from the policy default or the legacy render. `recommended-alt` (veto-surfaced) means §4a names a different *primary* composition; it does NOT change `{page_mode}` (work type and composition are orthogonal). Guards the policy-default bias (Anti-Bias Principle II): stamping the mode's default composition unquestioned is a bias as real as inheriting the legacy layout, and harder to catch because it feels like correctly following the system. `{composition_rationale}` keeps the deviation auditable (the three §5a answers + named alt + veto outcome); empty when `policy-default`.

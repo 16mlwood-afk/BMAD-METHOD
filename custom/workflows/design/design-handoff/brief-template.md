@@ -16,8 +16,9 @@
   - Substitute every {variable}; honour the conditional {if …} / {for …} blocks.
   - Section order is intentional: the five parts (moment → what must be true → what must dominate
     → data and its defects → open questions), THEN the advisory appendix. Existing section numbers
-    (§1, §2, §2a–§2d, §3, §4–§4h, §5–§5b, §6, §7, §8) are KEPT because consumers cite them; the
-    parts group them.
+    (§1, §2, §2a–§2f, §3, §4–§4h, §5–§5b, §6, §7, §8) are KEPT because consumers cite them; the
+    parts group them. §2e (blanks, refusals, both sides of a far-end figure) and §2f (which instance
+    a figure is about) were added 2026-09-24 and are conditional, like §2a–§2d.
   - Block A/B provenance fields are decided in step-03 §1/§1a/§1b and
     shared/brief-revision-policy.md §2.
   - Quoted policy/brand-identity text is VERBATIM — no carve-outs, softenings, or
@@ -197,7 +198,37 @@ These are the ONLY things in this brief that can fail your design. Each is a tes
 {for t in {truth_tests}}| {t.id} | {t.statement — an outcome, e.g. "A reader can never mistake a stale or partial figure for a current one, including when they screenshot a single row."} | {t.check — what a reviewer looks at to decide pass/fail} | {t.source — the §2 / §2b / §2c / §4d / §4e / policy rule / capability it protects} |
 {endfor}
 
-**Where these come from (so nothing binding is invented and nothing true is dropped):** the data's own defects (§2: missing ≠ zero, observed vs declared vs assumed, two authorities kept apart), the finance truth constraints (§2b `must_not_infer`), the runtime honesty budget (§2c — the page never claims more liveness than its transport delivers), analytic and decision honesty (§4d/§4e — no fabricated interval or distribution, derived never shown as stored), the audit contract (§4h obligations restated as outcomes — "every figure's source is inspectable"), the capabilities in §1 (reachability), a data-protecting role boundary (from `shell_role`), and the truth-and-data rules of the project design policy (money basis, no invented figures). **TC1 · TC2 · TA1 · TA2 · TF1 are present on every brief** and come from `shared/controls-and-attention.md` (STD-CONTROLS-ATTENTION-001) — they govern whether a control exists, how loud anything is, and what the page treats as work. Style, layout and composition rules from the policy are NOT here — they are in the Advisory guidance, and `controls-and-attention.md` deliberately holds no colour, shape, placement, spacing or wording rule.
+{if {preserved_claims}}
+### Preserved claims — what a redesign may move, but may not lose
+
+*Each row below IS one of the Part 2 tests in the table above — same ids (`TP…`), carried in
+`truth_tests`. They are set out separately because they are the only tests that guard against something
+being **taken away** rather than something being **put in**.*
+
+**Why this list exists, and why nothing else in the brief catches it.** Every other rule here tells you
+what not to do, and a prohibition is visible the moment it is broken: the banned thing is on the render
+and a reviewer sees it. A **stripped** claim is invisible afterwards. Nothing on the page is wrong —
+there is simply less of it, and the shorter version looks *better*. A page that quietly totals what
+cannot be totalled reads as cleaner than the one that refuses to. That asymmetry is why this is a list
+with tests against it rather than a sentence of encouragement.
+
+**The worked case, from this business in September 2026.** A margin cell read `24.1% · floor is 30.0%`.
+A redesign kept the number and dropped the qualifier. The cell was still true. It had stopped saying the
+line was six points under the owner's own floor — which was the only reason anyone opened the page.
+
+**Asserted over your RENDERED OUTPUT, never over a component, a wording or a position.** Move a claim
+into a drawer, fold it into a sentence, change its type size, say it once for a group instead of once
+per row, give it a shape nobody here thought of — all legal, all expected, and the point of a redesign.
+What is not legal is a render in which the claim can no longer be read. A reviewer checks the claim; how
+you said it is yours.
+
+| Id | The claim that must survive, in words | Where it lives today — orientation only, NOT where it must live | What a reader wrongly concludes without it |
+|---|---|---|---|
+{for c in {preserved_claims}}| {c.id} | {c.claim — e.g. "a margin figure says the floor it is measured against"} | {c.today — the current surface's treatment, or the §2 / §2b / §4d field that supplies it} | {c.cost — the false belief the omission produces, not "information is lost"} |
+{endfor}
+{endif}
+
+**Where these come from (so nothing binding is invented and nothing true is dropped):** the data's own defects (§2: missing ≠ zero, observed vs declared vs assumed, two authorities kept apart, §2e's three kinds of blank and both sides of a figure owed to a far end), the claims a redesign must not strip (the preserved-claims list above), the finance truth constraints (§2b `must_not_infer`), the runtime honesty budget (§2c — the page never claims more liveness than its transport delivers), analytic and decision honesty (§4d/§4e — no fabricated interval or distribution, derived never shown as stored), the audit contract (§4h obligations restated as outcomes — "every figure's source is inspectable"), the capabilities in §1 (reachability), a data-protecting role boundary (from `shell_role`), and the truth-and-data rules of the project design policy (money basis, no invented figures). **TC1 · TC2 · TA1 · TA2 · TF1 are present on every brief** and come from `shared/controls-and-attention.md` (STD-CONTROLS-ATTENTION-001) — they govern whether a control exists, how loud anything is, and what the page treats as work. Style, layout and composition rules from the policy are NOT here — they are in the Advisory guidance, and `controls-and-attention.md` deliberately holds no colour, shape, placement, spacing or wording rule.
 
 ---
 
@@ -235,7 +266,9 @@ Fields are in domain language. Grouping, derivation, and presentation are design
 - {e.g., "row-level status enum — the design can derive progress rollups however it sees fit"}
 - {e.g., "row-level net + vat amounts in a currency — the design can derive totals however it sees fit"}
 
-**Nullable fields needing empty-state treatment:** {list}
+**Nullable fields needing empty-state treatment:** {list} — and §2e says which of the three different facts each blank is, because they are not one empty state.
+
+**Age, dwell and "N days ago" figures — which clock each one counts on:** {age_field_clocks — one line per elapsed-time figure this surface can show or derive, each declared **working** or **calendar**. **Working days** answer *how long has a person or a partner had to act* — a box stalled at the warehouse, a service ordered and not started, a message with no reply. Nobody works the weekend, so a weekend is not delay. **Calendar days** answer *how old is this fact* — a stale export, a claim deadline, a charge accruing per day: the world moved on whether or not anyone was working. **The test is one question: did a human have to act for the clock to matter?** The two are not interchangeable, and the error runs one way — counting a weekend as delay manufactures urgency, and the action it invites is chasing a partner on a Monday morning for work ordered on Saturday, which costs a relationship rather than a number (this business, 2026-09-14: seventy-three fittings ordered on a Saturday, reported on the Monday as "two days, not alarming yet"; it was none). Where the design derives an age itself rather than rendering one the data supplies, that derivation is carried into Part 2 as a test. / OR "— none: this surface shows no elapsed-time figure."}
 
 ### API Surface
 
@@ -364,6 +397,111 @@ states that change what the operator sees is strongly advised; which ones you dr
 **Progress signals available (derive from these — presentation is the design's):** {the raw signals — counts by state, per-item/per-marketplace telemetry, timing data, run-report/history data. No progress-bar, spinner, or log-panel prescription here.}
 
 **Unresolved runtime semantics:** {the unresolved entries from `{runtime_behavior_contract}` — e.g. what cancel does to in-flight items, whether a run is resumable. Do not resolve them by guessing the data; they are also listed in Part 5, where sketching two options is invited. Omit the block when none.}
+
+---
+{endif}
+
+{if {blank_semantics} or {far_end_figures}}
+## 2e. When there is no number — blanks, refusals, and figures owed to a far end
+
+**What binds here (carried into Part 2):** the three facts a blank can carry never render as one empty
+state, and a figure owed to a far end shows both sides as figures. **What is advice:** how a blank, an
+unknown or a refusal is *treated* — wording, weight, placement, type — is yours; the last part of this
+section is what the product has found works, offered as advice.
+
+### A blank is three different facts, and only one of them has been checked
+
+| It means | Render it as | Never |
+|---|---|---|
+| **We asked and the answer is nothing** | a true zero, or an explicit "none" | — |
+| **Nobody looked** | UNKNOWN, with the reason beside it — e.g. *"the marketplace has not been read since Tuesday"* | a zero. An unread far end is not an empty one. |
+| **It does not apply** | a not-applicable token, distinguishable from both of the above | a bare blank, which could be any of the three |
+
+A designer's instinct is to collapse all three into one tidy empty state. That is a data-integrity
+failure rather than a style choice: **a zero says we checked**, and only one of the three has been.
+
+{for b in {blank_semantics}}- `{b.field}` — a blank here means **{b.kind — asked-and-empty | nobody-looked | not-applicable}** ({b.reason})
+{endfor}
+
+### A figure owed to a far end shows both sides
+
+```
+Boxes — ours 32 · Amazon holds 0 · NOT SENT — Amazon has none of it
+```
+
+**Not "ready". Not "pending". Not "nothing has been sent"** — all three are equally true of a file
+nobody will ever receive. A count here and a count there cannot be read as one fact, and a reader
+cannot weigh the two unless both are on the page as figures.
+
+**The far end's unknown is not its zero.** A zero means we asked them and they hold none. A null means
+nobody asked, and it renders as UNKNOWN with *"that is not zero"* beside it.
+
+**Incident this came from (this business, September 2026).** A run reported *"box list ready — 32 boxes,
+97 machines"* and, separately, *"packing information not submitted"*. The reader took them for the same
+fact. Amazon held **zero**: the work was done and had gone nowhere, and nothing in the output let anyone
+weigh it.
+
+{for f in {far_end_figures}}- **{f.figure}** — ours from {f.ours_source} · theirs from {f.theirs_source} · an unread far end here means {f.unread_meaning}
+{endfor}
+
+### A refusal is content to be designed, not an empty state to minimise — advisory
+
+Where the producer **will not** give a figure, that refusal is usually one of the most important facts on
+the page, and *"no total is given — the two authorities are not reconcilable"* occupies a cell as readily
+as a number does. Design it. Give it the room the figure would have had.
+
+**The objection, and its answer.** *"The summary band needs a single hero figure the producer will not
+supply."* That holds only against a **one-figure** band. A band carrying two or three reads is not broken
+by one of them refusing — it is carrying a real finding. Redesign the band before you design the refusal
+away.
+
+This half is advisory because it is a judgement about weight, and weight is yours. What is **not**
+advisory is that the refusal survives at all: if it matters, it is a preserved claim in Part 2.
+
+---
+{endif}
+
+{if {instance_populations}}
+## 2f. Which one is this figure about — advisory
+
+**A figure about one instance of something there can be more than one of carries that instance beside
+it** — in the same sentence or the same row, in **words**, with any code riding along at the end.
+
+**The designed page that produced this rule (this business, 2026-09-14).** A page was headed *"On the
+pallet now: 46 machines, 151 cm of a 165 cm cap"*. Every figure was correct. None of them could be
+looked up. The shipment held **97** machines across two pallets, and 46 read as the shipment. The page
+was not scopeless either — its standfirst said *"DE Leipzig, as of 14 September"*, so it named a place
+and a moment and felt scoped. **Place and date are not an instance.** At one pallet they read as a
+scope; at six they read as nothing, and the population only grows.
+
+**A footer is not good enough.** Nobody reads a footer before a headline, and the headline is what gets
+forwarded — a screenshot of one row travels without the page around it.
+
+**Carry the counter-rule or this one does damage: it is NOT a licence to lead with identifiers.** A bare
+`PD-003-P2` as the subject of a sentence fails the same reader just as badly — a lookup key is not a
+fact about the business. Identity is the thing said in **words**, carrying whatever distinguishes it
+from its siblings, with the code last for whoever needs to look it up.
+
+```
+Never  — "On the pallet now: 46 machines."     nothing says which pallet
+Never  — "PD-003-P2 carries 46 machines."      the reference has become the subject
+Right  — "Pallet 2 of 2 on this draft carries 46 machines; the shipment is 97."
+```
+
+**The test, and it takes one deletion.** Strike the instance and read the sentence again. If it still
+says what it is about, the instance was a qualifier and it stays. If it collapses into nothing, it was
+the subject — say the thing in words instead, and let the reference qualify it.
+
+| Figure family | How many there can be | What distinguishes one, in words |
+|---|---|---|
+{for p in {instance_populations}}| {p.figure_family} | {p.population} | {p.distinguisher} |
+{endfor}
+
+**Why this is advisory and not binding.** Where a mis-scoped figure would make a reader believe
+something false — the 46-for-97 case exactly — it meets the binding contract's own one-question test
+(`shared/brief-binding-contract.md` §2) and the brief author writes it as a Part 2 test instead; the
+table above then says which rows were promoted. Everywhere else it is craft, and a gate keyed on it
+would fire on every legitimate sentence in a lane and be switched off within a week.
 
 ---
 {endif}

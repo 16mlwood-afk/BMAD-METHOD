@@ -268,7 +268,7 @@ Follow these steps in order. The goal is to capture domain entities from the sou
    - Rendering hints (`flag`, `badgeColor`, emoji fields) — keep only the underlying data (`countryCode`, status enum)
    - UI-control enums (`'all' | 'not_filed' | 'ready'`) — "all" is a filter affordance, not data. Keep only the row-level status enum.
    - Precomputed rollups (`domesticCount`, `countryTotal`, `validCount`) — the designer decides which aggregations matter.
-6. **Note which primitive fields are nullable** — these need empty-state treatment.
+6. **Note which primitive fields are nullable** — these need empty-state treatment. **Then classify each one, because a blank is three different facts and only one of them has been checked** → `{blank_semantics}`, one entry per nullable field, `kind` ∈ `asked-and-empty` (we asked and the answer is nothing — renders as a true zero or an explicit "none") | `nobody-looked` (nothing has read this source yet, or not recently — renders UNKNOWN **with the reason beside it**, never as a zero) | `not-applicable` (the field cannot apply to this row — its own token, distinguishable from both). Decide it from the schema and the producer, never from the shape of the value: a column that is null because a fetch failed and a column that is null because the row has no supplier are the same `NULL` to the database and opposite facts to a reader. **The classification is the new work; the scan is not** — you are already walking these fields. Where you genuinely cannot tell which kind a blank is, that is an open question (§3i item 6), not a guess: guessing `asked-and-empty` is the dangerous direction, because a zero asserts that somebody checked.
 
 Capture `{data_shape}` in **domain-entity table form** (see step-03 template). If you find yourself copy-pasting `interface PageData { ... }`, you've gone off track.
 
@@ -369,6 +369,20 @@ Fires on **every run** (page and chrome). It captures what the brief's Parts 1�
 Fires on **every run** (page and chrome). It captures `{expected_controls}`, `{fault_categories}` and the five controls-and-attention tests that join `{truth_tests}`. Run it IMMEDIATELY AFTER §3i, which it extends. **Why:** a brief can be honest about every figure and still ship a page that borrows the operator's attention to do the system's own job, instructs an action it offers no control for, emphasises the least consequential thing, says one fact four times, and renders a back-end bug as a standing category of the operator's work — all five seen on one design (owner review, 2026-09-20 — `shared/controls-and-attention.md`, STD-CONTROLS-ATTENTION-001).
 
 **Full capture procedure: `{project-root}/_bmad/bmm/workflows/design/design-handoff/steps/step-01-domain-passes.md` §3j — read it and follow it exactly.** Do not paraphrase from memory.
+
+### 3k. Subtraction pass — what a redesign must not lose, and what a figure must say about itself (every run)
+
+Fires on **every run**. It captures `{preserved_claims}`, `{far_end_figures}`, `{instance_populations}`
+and `{age_field_clocks}` (`{blank_semantics}` is captured in §3 step 6, above, where the nullable scan
+already runs). Run it IMMEDIATELY AFTER §3j. **Why:** §3i and §3j both catch things a design PUTS IN —
+a mechanism mandated, a control that earns no press, an emphasis in the wrong place. Nothing in this
+workflow catches what a design TAKES OUT. A prohibition is visible when violated; a stripped qualifier
+is invisible afterwards, because nothing on the page is wrong and the shorter version looks better. The
+three neighbours it carries are the same shape — a blank that collapses three facts into one, a figure
+owed to a far end shown from one side only, and a figure about one of six pallets rendered as though
+there were one — each a subtraction that leaves a page looking cleaner and reading falsely.
+
+**Full capture procedure: `{project-root}/_bmad/bmm/workflows/design/design-handoff/steps/step-01-domain-passes.md` §3k — read it and follow it exactly.** Do not paraphrase from memory.
 
 ### 4. Capture Feature Purpose
 

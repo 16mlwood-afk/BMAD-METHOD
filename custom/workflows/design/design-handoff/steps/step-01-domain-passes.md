@@ -409,3 +409,87 @@ that is a finding for the brief, not a silent drop.
 justified honestly, or that a category's owner was named correctly. The deterministic slice is the same
 one §3i has: the five tests reach the designer and the reviewer because the template renders them, not
 because anyone remembered.
+
+### 3k. Subtraction pass — what a redesign must not lose, and what a figure must say about itself (every run)
+
+**Why this pass exists, and it is not a fourth flavour of §3i.** §3i and §3j both catch what a design
+**puts in** — a mechanism mandated where an outcome was meant, a control that earns no press, emphasis
+in the wrong place, a fact said four times. Nothing in this workflow catches what a design **takes
+out**. The asymmetry is the whole argument: **a prohibition is visible the moment it is violated** — the
+banned pattern is on the render and a reviewer sees it — while **a stripped claim is invisible
+afterwards**, because nothing on the page is wrong, there is simply less of it, and the shorter version
+looks *better*. A page that quietly totals what cannot be totalled reads as cleaner than the one that
+refuses to. The four captures below are all subtractions of the same family: a claim dropped, a blank
+that collapses three facts into one, a figure owed to a far end shown from one side, and a figure about
+one of six pallets rendered as though there were one.
+
+**1. `{preserved_claims}` — the claims a redesign may move but may not lose.** Derive, do not recall,
+the same mechanical way as the mutation audit in §3 (and for the same reason — recall is where these
+leak):
+
+- **Redesign scope:** grep the current surface's implementing files for the **qualifiers rendered beside
+  a figure** — a floor, a threshold, a basis, an as-at date, a source name, a count of what was NOT
+  included, a "not reconcilable" refusal, a currency or VAT basis, a staleness note. You are cataloguing
+  what the screen *says*, never how it is arranged, so this stays inside the anti-bias rule exactly as
+  the mutation audit does. **A qualifier that exists only in a DO-NOT-READ file is still captured here**
+  — that is what this pass is for, and it is why capturing it now is the only chance: after step-01 the
+  designer may not open the file.
+- **New scope:** there is no current surface, so derive from the declarations already captured — §2b
+  `{finance_must_not_infer}`, §4d's basis and data-gap lines, §2c's staleness budget, §2d's ledger rules.
+  Each one that must appear **in words beside a figure** is a preserved claim.
+
+  Each entry `{ id · claim · today · cost }`. **`id` is `TP1`, `TP2`… and every id is appended to
+  `{truth_tests}`** — the binding machinery is the Part 2 table and there is not a second one. **`claim`
+  is the fact in words**, never a component ("a margin figure says the floor it is measured against", not
+  "the floor pill"). **`cost` is the false belief the omission produces**, never "information is lost":
+  if you cannot name a false belief, it is not a preserved claim — drop it, because a list that grows
+  without discipline is a list nobody reads. **Asserted over RENDERED OUTPUT.** Say so in the `today`
+  column's own wording: a redesign may move a claim into a drawer, fold it into a sentence, re-size it,
+  or say it once per group instead of once per row, and all of that passes; only a render in which the
+  claim cannot be read at all fails. **Origin:** a margin cell rendering `24.1% · floor is 30.0%` was
+  redesigned to `24.1%` — still true, and no longer saying the line was six points under the owner's own
+  floor, which was the only reason anyone opened the page.
+
+**2. `{far_end_figures}` — figures owed to a system outside this one.** One entry per figure whose
+meaning depends on what a far end holds: `{ figure · ours_source · theirs_source · unread_meaning }`.
+Both sides are figures in the brief, and the far end's **unknown is not its zero** — a zero means we
+asked and they hold none; a null means nobody asked. Where `theirs_source` is a read this surface does
+not perform, say so in `unread_meaning` rather than leaving it to render as a zero. **Origin:** a run
+reported "box list ready — 32 boxes, 97 machines" and separately "packing information not submitted";
+the reader took them for one fact, Amazon held zero, and the work had gone nowhere. Empty is legitimate
+and common — a surface that owes nothing to a far end has none.
+
+**3. `{instance_populations}` — which one a figure is about.** One entry per figure family whose subject
+belongs to a population: `{ figure_family · population · distinguisher }`. `distinguisher` is what tells
+one member from another **in words** ("pallet 2 of 2 on this draft"), never a bare code. **Carry the
+counter-rule into the entry** — a bare identifier as the subject of a sentence fails the same reader just
+as badly, so `distinguisher` is words with the code riding along at the end, not the code. **Advisory by
+default**, and say why in the brief: it is craft in the general case. **Promote an entry to a Part 2 test
+when a mis-scoped figure would make a reader believe something false** — the `brief-binding-contract.md`
+§2 one-question test decides it, the same way every other rule in this workflow is classified, and the
+§2f table then records which rows were promoted. **Origin:** a page headed *"On the pallet now: 46
+machines"* where every figure was right, none could be looked up, and 46 read as a shipment that was 97
+across two pallets. Its standfirst named a place and a date — which is a scope, not an instance.
+
+**4. `{age_field_clocks}` — working days or calendar days, per figure.** One line per elapsed-time
+figure the surface shows or derives, declared `working` or `calendar`. **The test is one question: did a
+human have to act for the clock to matter?** Yes → working (a partner's dwell, a stalled item, an
+unanswered message: nobody works the weekend, so a weekend is not delay). No → calendar (a stale export,
+a claim deadline, a charge accruing daily: the world moved on regardless). Declared here rather than left
+to the design because **the error runs one way** — counting a weekend as delay manufactures urgency, and
+the action it invites is chasing a partner on a Monday morning for work ordered on Saturday, which costs
+a relationship rather than a number. `— none` is the honest value on a surface with no elapsed-time
+figure and is a pass, not a gap.
+
+**5. Open questions this pass produces.** A blank whose kind cannot be told from the schema and the
+producer; a far end nobody has established we can read; a qualifier that appears on the current surface
+and cannot be traced to a source. Each goes to `{open_questions}` verbatim. **Never resolve one by
+guessing, and never drop a claim because it was hard to trace** — an untraceable qualifier on a live
+screen is a finding, not a licence to remove it.
+
+**§ Enforcement tier (honest).** PROBABILISTIC — workflow prose. Nothing checks that the grep found
+every qualifier, that a `cost` names a real false belief, or that a blank was classified correctly; a
+detector keyed on an empty cell or a definite article would fire on ordinary work and be switched off.
+The deterministic slice is the same narrow one the rest of this step has: `{preserved_claims}` ids land
+in `{truth_tests}`, so a preserved claim is judged by exactly the machinery that already fails a design
+— it is not a second gate, and it cannot claim an enforcement the Part 2 table does not have.
