@@ -506,6 +506,52 @@ would fire on every legitimate sentence in a lane and be switched off within a w
 ---
 {endif}
 
+## 2g. The states, and what this surface renders in each — material, not a list of names
+
+**What binds here: nothing new.** This section is MATERIAL handed to you, not a test you can fail. §7
+already offers the state frames as suggestions, and any claim that lives in a state is already a Part 2
+test. What this adds is the one thing a frame NAME cannot carry — what the surface actually looks like
+when it is in that state, and where you can go and see it for yourself.
+
+**Why it is here, and the reason matters more than the table.** A designer redesigns the page they can
+SEE. Everything honest about an operational surface lives in the states that only appear when something
+has gone wrong: nothing found, a far end unreachable, a figure nobody could ask for. Those are exactly
+the states nobody screenshots, because to screenshot one you have to break something on purpose. So a
+handover assembled from whatever happened to be on screen is a handover of the populated page — every
+time, however carefully the rest of it is written.
+
+**The round trip this cost (this business, 2026-09-25).** A board's brief named its state frames
+correctly, and the conformance gate later failed the returned design by those names. The material that
+travelled with the brief was one snapshot captioned *"the page as it renders today"* — full of rows,
+with the far end answered — plus a UI review of the same populated morning. The design came back good
+and dropped five preserved claims, **every one of them living in a state that had never been on
+screen**. The designer's own departures list is the evidence this was invisible rather than declined:
+four departures were flagged for the owner, and a missing state was not among them.
+
+| State | What is true in it that is not true elsewhere | How to see it | The material |
+|---|---|---|---|
+{for s in {state_material}}| {s.state} | {s.what_is_true} | {s.how_to_see — the route, dev flag, fixture, seeded record or query that renders it; or "no route — {why}"} | {s.material — a path to a capture that travels with this brief, or **NOT CAPTURED — {reason}**} |
+{endfor}
+
+**Three rows are on every brief, whatever else the surface does** — with nothing in it, with a far end
+unreachable, and mid-load. Those three are not a property of a live-process surface; they are a property
+of any surface that reads anything. Where one genuinely cannot arise here, the row says so and why — it
+is never dropped, because a dropped row and an unconsidered one read identically.
+
+**`NOT CAPTURED` is a legitimate answer and is often the right one.** Breaking a far end on purpose to
+photograph it can cost more than the picture is worth. What is not legitimate is the row being absent.
+**Read one as an invitation rather than as permission to skip:** the state is still contracted wherever
+§7 frames it or Part 2 claims it — all the row tells you is that you will be drawing it from the
+description instead of from a picture, so the description is worth reading twice.
+
+**The honest limit, said plainly rather than implied away.** No field can make a handover *contain* a
+state the sender never captured. This one requires that every state be **named** and its absence
+**declared**: it converts a silent omission into a visible one, and that is the whole of the available
+mechanism. Nothing here checks that a capture is current, that it shows what it claims to, or that the
+state it shows is the one that mattered.
+
+---
+
 ## Part 5 · Open questions — unfenced
 
 These are undecided. **Do not skip them, and do not hold back from drawing them.** Where the honest answer is a sketch rather than a sentence, sketch it: pick **two** of the questions below and show two options for each, side by side, with a line on what each option costs. A reviewer resolves a question fastest by seeing it answered two ways.
@@ -1208,6 +1254,7 @@ This page spawns secondary surfaces at runtime — the detail drawer the operato
 {One row per entry in `{spawned_surfaces}`. The primary surface is always row 1; the drilled detail drawer is a row when the §5a composition spawns one; each `{linked_records_inventory}` entry is one lookup-drawer row.}
 
 **Notes on the suggestions (advisory unless a line says it is a Part 2 test):**
+- **A state frame is a NAME here; what it looks like is in §2g.** Every `{primary}--{state}` row below has a row in §2g carrying what is true in that state, how to see it, and either a capture or a declared absence. Read them together: the name says a state exists, and only §2g says what you are drawing. A `NOT CAPTURED` there is not permission to skip the frame — it means you are drawing that one from a description.
 - **No bare stubs.** A suggested lookup-drawer's "What it would carry" must name the fields the relation actually needs (a `warehouse-lookup` opened from an order shows code/type/status/location AND what's routed through it for this order), never identity alone. If the record genuinely carries nothing past identity, state that explicitly.
 - **Depth-1 only.** A lookup drawer lists its own immediate lookups; the foreign record's own §2a owns the next level. Do not inline the recursive order→catalog→supplier graph.
 - **Money is basis-complete — this one is a Part 2 test wherever money appears.** Every figure in a "Figures" cell follows `docs/design-policy.md` §15 — VAT basis, native currency framed against GBP, no decontextualised fragment; rendered as the detail surface, not a bare-number dump. **A derived figure (computed at render — e.g. a pack-split implied unit cost) is labelled DERIVED, never shown as a persisted value** (per §4d basis, carried from the finance-domain-pass `basis` field).

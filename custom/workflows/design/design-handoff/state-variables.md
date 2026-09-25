@@ -58,6 +58,36 @@ of the three has been. The far-end half comes from a run that reported "box list
 separately, "packing information not submitted": Amazon held zero, the work had gone nowhere, and nothing
 in the output let a reader weigh the two. Empty → §2e is omitted entirely.
 
+## `{state_material}` — a state NAME is not a state; this is what is behind it
+
+One entry per state this surface can be in: `{ state · what_is_true · how_to_see · material }`. Derived
+in step-01c **§5f-a** as a union — three **unconditional** rows (`empty`, `far-end-unreachable`,
+`loading`), one row per `{primary}--{state}` frame from §5f rules 4 and 5, and one per state a
+`{blank_semantics}` `nobody-looked` field or a `{far_end_figures}` entry can produce. **Never empty**,
+and brief **§2g** is unconditional for the same reason: the three universal rows are a property of any
+surface that reads anything, not of a live-process surface, so an ordinary worklist — which rules 4 and
+5 give no state frame at all — still hands over what it looks like with nothing in it.
+
+Why: `{spawned_surfaces}` already carries the state frames as NAMES, and a name is enough for a
+conformance gate and not enough for a designer. On 2026-09-25 a board's brief named its state frames
+correctly and the gate later failed the returned design by those same names; the material that travelled
+was one snapshot of the populated page and a UI review of the same populated morning. The design came
+back good and dropped five preserved claims, **every one of them living in a state that had never been
+on screen** — and the designer's own departures list named four departures and no missing state, which
+is what invisible looks like rather than declined. A designer redesigns the page they can see, and
+everything honest about an operational surface lives in the states that only appear when something has
+gone wrong — precisely the states nobody screenshots, because to screenshot one you must break something
+on purpose.
+
+`material` is a path to a capture **or** `NOT CAPTURED — {reason}`. **The honest ceiling: no field can
+make a handover CONTAIN a state the sender never captured.** This one requires the state be named and
+its absence declared — it turns a silent omission into a visible one, and that is the whole of the
+mechanism. It is advisory to the designer (it cannot fail a design; §7 frames and Part 2 claims already
+carry whatever binds), and a producer-side completeness item checked as a **WARN** in step-03's
+self-review: a declared absence is a pass, a missing row is not. It adds **nothing** to
+`{expected_required_frames}` and no halt condition to §5h — a missing capture is material to weigh, not
+a frame to fail a build on.
+
 ## `{instance_populations}` — which one a figure is about
 
 One entry per figure family on a surface whose subject belongs to a population, `{ figure_family ·
