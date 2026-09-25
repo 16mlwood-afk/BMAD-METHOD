@@ -44,6 +44,12 @@ _rs = _ilu_top.spec_from_file_location(
 _rep_mod = _ilu_top.module_from_spec(_rs)
 _rs.loader.exec_module(_rep_mod)
 _rep_digest = _rep_mod.digest
+# The fork's .gitignore block owner (WF-20260925-092). Loaded so the classifier and the
+# replica commit read the SAME definition of "the fork's own block" the sync writes.
+_gs = _ilu_top.spec_from_file_location(
+    "gitignore_claude_block", Path(__file__).resolve().parent / "gitignore_claude_block.py")
+_gi_mod = _ilu_top.module_from_spec(_gs)
+_gs.loader.exec_module(_gi_mod)
 REGISTRY = Path.home() / ".bmad-targets.json"
 LEGACY_TARGETS = Path.home() / ".bmad-targets"
 LEDGER = FORK / "docs" / "release-ledger.jsonl"
@@ -61,8 +67,15 @@ STATES = ("CURRENT", "STALE", "LOCAL_DRIFT", "MISSING", "UNREACHABLE",
           "MISREGISTERED", "UNSAFE_PATH", "PARTIAL_RELEASE")
 
 
+# Every git call names its repository by cwd. An inherited GIT_DIR / GIT_INDEX_FILE (a git
+# hook exports them) would silently redirect a TARGET's `git add` into whatever repository
+# invoked us — the fork's own index, when the suite runs under its pre-commit hook.
+_GIT_KEEP = ("GIT_ASKPASS", "GIT_SSH", "GIT_SSH_COMMAND", "GIT_TERMINAL_PROMPT")
+_ENV = {k: v for k, v in os.environ.items() if not k.startswith("GIT_") or k in _GIT_KEEP}
+
+
 def sh(args, cwd=None, check=False):
-    r = subprocess.run(args, cwd=cwd or FORK, capture_output=True, text=True)
+    r = subprocess.run(args, cwd=cwd or FORK, capture_output=True, text=True, env=_ENV)
     if check and r.returncode != 0:
         raise RuntimeError(f"{' '.join(args)} failed: {r.stderr.strip()}")
     return r
@@ -241,6 +254,154 @@ def write_receipt(real, t, release_sha, release_tree):
     return body
 
 
+# --------------------------------------------------- what a release owns in a target
+#
+# WF-20260925-091. The replica commit used to stage `_bmad/` only, while the distributor
+# also writes skills, command wrappers, the fork's guard scripts, the tracked hook wiring
+# in .claude/settings.json, delivered scripts and the .gitignore block. Everything outside
+# `_bmad/` was left uncommitted, so the tool manufactured the very LOCAL_DRIFT that made
+# the next release refuse the target. The commit set is now the release's OWN MANIFEST:
+# every dirty, non-ignored path the release owns, decided per path by what the release
+# puts there — never "whatever changed in the repo while the sync ran", which would sweep
+# up a concurrent session's work.
+#
+# Ownership classes:
+#   replica    whole trees the release lays down and the LOCAL_DRIFT gate protects
+#              (managed root, .claude/skills, .claude/commands/bmad) — committed as is
+#   copied     single files copied verbatim from the release worktree — committed only
+#              when the installed bytes EQUAL the release's source, so a project edit the
+#              distributor chose not to overwrite (a marker-gated githook, say) is never
+#              swept in
+#   generated  files the distributor writes whole (.claude/bmad-synced-scripts.txt)
+#   merged     files the distributor MERGES into project content (.claude/settings.json,
+#              CLAUDE.md) — committed unless the file already carried uncommitted
+#              tracked edits before the release, in which case it is HELD and reported
+#   gitignore  committed only when its sole difference from HEAD is the fork's own block
+#   never      .claude/settings.local.json — per-machine trust; never committed, ever
+NEVER_COMMIT = (".claude/settings.local.json",)
+GENERATED_FILES = (".claude/bmad-synced-scripts.txt",)
+MERGED_FILES = (".claude/settings.json", "CLAUDE.md")
+COPIED_DIRS = ((".claude/hooks/", "custom/hooks/"),
+               ("scripts/", "custom/scripts/"),
+               (".githooks/", "custom/githooks/"))
+COPIED_FILES = ((".worktreeinclude",
+                 "src/modules/bmm/_module-installer/assets/worktreeinclude.template"),)
+
+
+def porcelain(real, *pathspec):
+    """-> {path: XY status} for every non-ignored dirty path, untracked files listed
+    individually. Renames are reported under their new path."""
+    r = sh(["git", "status", "--porcelain=v1", "-z", "--untracked-files=all", "--",
+            *(pathspec or (".",))], cwd=real)
+    res, parts, i = {}, r.stdout.split("\0"), 0
+    while i < len(parts):
+        e = parts[i]
+        i += 1
+        if len(e) < 4:
+            continue
+        xy, path = e[:2], e[3:]
+        if xy[0] in "RC":
+            i += 1  # the source path follows as its own field
+        res[path] = xy
+    return res
+
+
+def discount_ignore_block_exposure(real, observable, dirty):
+    """Untracked paths that are visible ONLY because the fork's own .gitignore block is
+    broad (WF-20260925-092) are not project work: they are generated trees the block
+    should never have re-included, and the release repairs the block. Count them out of
+    drift — but only them, and only when the repair is one the release will actually make.
+    -> (remaining porcelain text, number discounted)."""
+    try:
+        p = _gi_mod.plan(real)
+    except Exception:
+        return dirty, 0
+    if p["action"] != "write":
+        return dirty, 0
+    entries = porcelain(real, *observable)
+    untracked = [path for path, xy in entries.items() if xy == "??"]
+    if not untracked:
+        return dirty, 0
+    hidden = _gi_mod.evaluate(real, p["text"], untracked)
+    if not hidden:
+        return dirty, 0
+    keep = [f"{xy} {path}" for path, xy in sorted(entries.items())
+            if not (xy == "??" and path in hidden)]
+    return "\n".join(keep), len(hidden)
+
+
+def release_commit_set(real, wt, mroot, pre):
+    """-> (commit, held). `pre` is porcelain() taken BEFORE the sync.
+    commit: paths this release owns and may commit. held: [(path, why)] the release owns
+    but must not commit because they carry someone else's edits."""
+    post = porcelain(real)
+    commit, held = [], []
+    replica = (mroot.rstrip("/") + "/",) + tuple(s + "/" for s in MANAGED_EXTRA)
+    head_gi = sh(["git", "show", "HEAD:.gitignore"], cwd=real)
+    for path, xy in sorted(post.items()):
+        if path in NEVER_COMMIT:
+            continue
+        if path.startswith(replica) or path in GENERATED_FILES:
+            commit.append(path)
+            continue
+        if path in MERGED_FILES:
+            before = pre.get(path, "")
+            if before and before != "??":
+                held.append((path, "held uncommitted tracked edits before the release"))
+            else:
+                commit.append(path)
+            continue
+        if path == ".gitignore":
+            f = real / ".gitignore"
+            work = f.read_text() if f.is_file() else ""
+            head = head_gi.stdout if head_gi.returncode == 0 else ""
+            if _gi_mod.strip_block(work)[0] == _gi_mod.strip_block(head)[0]:
+                commit.append(path)
+            else:
+                held.append((path, "carries edits other than the fork's block"))
+            continue
+        src = None
+        for dst_prefix, src_prefix in COPIED_DIRS:
+            if path.startswith(dst_prefix):
+                src = wt / (src_prefix + path[len(dst_prefix):])
+                break
+        for dst, s in COPIED_FILES:
+            if path == dst:
+                src = wt / s
+        if src is None or not src.is_file():
+            continue  # not something the release puts there: not ours to commit
+        f = real / path
+        if f.is_file() and f.read_bytes() == src.read_bytes():
+            commit.append(path)
+        elif xy[1] == "D" or xy[0] == "D":
+            held.append((path, "deleted locally; the release ships it"))
+        else:
+            held.append((path, "differs from what the release ships"))
+    return commit, held
+
+
+def commit_release_paths(real, paths, message):
+    """Stage and commit exactly `paths` (additions, edits and deletions), leaving anything
+    else already staged in the target's index untouched. -> (ok, n_committed)."""
+    if not paths:
+        return True, 0
+    spec = "\0".join(paths) + "\0"
+    a = subprocess.run(["git", "add", "-A", "--pathspec-from-file=-", "--pathspec-file-nul"],
+                       cwd=real, input=spec, capture_output=True, text=True, env=_ENV)
+    if a.returncode != 0:
+        return False, 0
+    staged = subprocess.run(["git", "diff", "--cached", "--name-only", "-z", "--no-renames"],
+                            cwd=real, capture_output=True, text=True, env=_ENV)
+    want = set(paths)
+    n = len([p for p in staged.stdout.split("\0") if p in want])
+    if n == 0:
+        return True, 0
+    c = subprocess.run(["git", "commit", "--no-verify", "-q", "-m", message,
+                        "--pathspec-from-file=-", "--pathspec-file-nul"],
+                       cwd=real, input=spec, capture_output=True, text=True, env=_ENV)
+    return c.returncode == 0, n
+
+
 # ------------------------------------------------------------- classification
 def classify(t, release_sha):
     """-> (state, detail). Read-only."""
@@ -280,6 +441,12 @@ def classify(t, release_sha):
         (blind if ignored else observable).append(sc)
 
     dirty = out(["git", "status", "--porcelain", "--", *observable], cwd=real) if observable else ""
+    exposed_note = ""
+    if dirty:
+        dirty, exposed = discount_ignore_block_exposure(real, observable, dirty)
+        if exposed:
+            exposed_note = (f"; {exposed} untracked path(s) visible only through the fork's "
+                            "own .gitignore block — the release repairs it")
     if dirty:
         n = len(dirty.splitlines())
         # Name every scope the count covers. The message used to say "under the managed
@@ -296,6 +463,7 @@ def classify(t, release_sha):
         blind_note = f" (drift unobservable under [{', '.join(blind)}] — gitignored)"
     else:
         blind_note = ""
+    blind_note += exposed_note
 
     receipt = read_receipt(real, t)
     if receipt is None:
@@ -435,8 +603,16 @@ def cmd_publish(args):
     print(f"release commit {release_sha[:12]}  tree {release_tree[:12]}")
 
     reg = load_registry()
+    skip = set(args.skip_target or ())
+    unknown = skip - {t["id"] for t in reg["targets"]}
+    if unknown:
+        print(f"--skip-target names no registered target: {', '.join(sorted(unknown))}")
+        return 1
     chosen = [t for t in reg["targets"] if t.get("enabled", True)
-              and (not args.target or t["id"] == args.target)]
+              and (not args.target or t["id"] == args.target)
+              and t["id"] not in skip]
+    for s in sorted(skip):
+        print(f"  SKIP {s} — excluded by --skip-target (not published, not touched)")
     if args.target and not chosen:
         print(f"no enabled target with id {args.target!r}")
         return 1
@@ -505,6 +681,9 @@ def cmd_publish(args):
                 continue
 
             print(f"  publishing {t['id']}")
+            # What was already dirty BEFORE the release touched anything — the only way to
+            # tell a merged file the release wrote from one somebody was editing.
+            pre = porcelain(real)
             # --allow-unclean-source is CORRECT here and only here: the release worktree is
             # a detached checkout of the verified release commit, so the syncer's own
             # "must be on custom" gate would refuse the one source that is canonical by
@@ -570,20 +749,33 @@ def cmd_publish(args):
             # exact condition it exists to detect, and the next release would refuse the
             # target it had just written. A replica is distributed state, so committing it
             # is part of distributing it, not a separate decision.
+            # WHAT is committed is the release's own manifest (release_commit_set), not
+            # just the managed root — see WF-20260925-091 above release_commit_set.
             mroot = t.get("managed_root", "_bmad")
-            sh(["git", "add", "--", mroot], cwd=real)
-            staged = out(["git", "diff", "--cached", "--name-only", "--", mroot], cwd=real)
-            if staged:
-                msg = (f"chore(bmad): distribute release {release_sha[:12]}\n\n"
-                       f"Generated replica, synced from {REMOTE}/{CHANNEL}@{release_sha[:12]}.\n"
-                       f"Receipt: {mroot}/{RECEIPT}. Do not edit this tree by hand — it is\n"
-                       f"overwritten by the next release.\n")
-                c = sh(["git", "commit", "--no-verify", "-m", msg, "--", mroot], cwd=real)
-                if c.returncode != 0:
-                    exceptions.append((t["id"], "replica synced but could not be committed"))
-                    print("    FAILED to commit the replica")
-                    continue
-                print(f"    committed {len(staged.splitlines())} replica file(s)")
+            to_commit, held = release_commit_set(real, wt, mroot, pre)
+            msg = (f"chore(bmad): distribute release {release_sha[:12]}\n\n"
+                   f"Generated replica, synced from {REMOTE}/{CHANNEL}@{release_sha[:12]}.\n"
+                   f"Receipt: {mroot}/{RECEIPT}. Do not edit these paths by hand — they are\n"
+                   f"overwritten by the next release.\n")
+            ok_c, n_c = commit_release_paths(real, to_commit, msg)
+            if not ok_c:
+                exceptions.append((t["id"], "replica synced but could not be committed"))
+                print("    FAILED to commit the replica")
+                continue
+            if n_c:
+                print(f"    committed {n_c} release-owned file(s)")
+            if held:
+                exceptions.append((t["id"], "release-owned path(s) left uncommitted: "
+                                   + "; ".join(f"{p} ({why})" for p, why in held[:3])
+                                   + (f" and {len(held) - 3} more" if len(held) > 3 else "")))
+                for p, why in held:
+                    print(f"    HELD {p} — {why}")
+            leftover = [p for p in porcelain(real) if p in to_commit]
+            if leftover:
+                exceptions.append((t["id"], f"{len(leftover)} release-owned path(s) still "
+                                   f"dirty after the commit, e.g. {leftover[0]}"))
+                print(f"    FAILED — {len(leftover)} release-owned path(s) still dirty")
+                continue
 
             digest = managed_tree_hash(real, t)
             back = read_receipt(real, t)
@@ -623,6 +815,9 @@ def main():
         p.set_defaults(fn=fn)
         if name == "publish":
             p.add_argument("--target", help="publish one registry id only")
+            p.add_argument("--skip-target", action="append", metavar="ID",
+                           help="leave this registry id untouched (repeatable) — e.g. a "
+                                "checkout another session is working in")
             p.add_argument("--no-test", action="store_true", help="skip the release suite")
             p.add_argument("--force-drift", action="store_true",
                            help="publish over LOCAL_DRIFT, DELETING those edits")

@@ -430,30 +430,28 @@ claude_tracking_blocked() {
   return 0
 }
 
-# Append the narrowest negations that unblock the two paths, then RE-VERIFY with
-# check-ignore — an append is not a result. Returns 1 (and changes nothing more)
-# whenever it cannot prove the paths are now trackable, so the caller falls back
-# to the old local-file behaviour and says so out loud rather than writing into
-# a hole. Refuses to touch a .gitignore somebody is mid-edit on.
+# Make the two managed paths trackable with the NARROWEST block that works, proven
+# rather than assumed. Delegated to tools/gitignore_claude_block.py, which owns the
+# fork's block under $GITIGNORE_MARK: it strips and re-renders it every run, so the
+# broad `!.claude/` form an earlier sync appended (WF-20260925-092 — it un-ignored the
+# whole .claude folder, settings.local.json included) is repaired in place. It proves
+# each candidate in a scratch repo, re-verifies in the real one, restores the original
+# on failure, and refuses a .gitignore carrying anyone's edits but its own block.
+# Returns 0 trackable · 1 cannot/refused (caller falls back, loudly) · 3 check mode,
+# a rewrite is due. Its report lines land in GITIGNORE_REPORT for the caller to print.
+GITIGNORE_HELPER="$SCRIPT_DIR/tools/gitignore_claude_block.py"
+GITIGNORE_REPORT=""
 ensure_claude_paths_trackable() {
-  local root="$1" mode="$2"
-  local blocked; blocked="$(claude_tracking_blocked "$root")"
-  [[ -z "$blocked" ]] && return 0
-  [[ "$mode" != "sync" ]] && return 1
-  local gi="$root/.gitignore"
-  [[ -f "$gi" ]] || return 1
-  git -C "$root" diff --quiet -- .gitignore 2>/dev/null || return 1
-  git -C "$root" diff --cached --quiet -- .gitignore 2>/dev/null || return 1
-  {
-    echo ""
-    echo "$GITIGNORE_MARK"
-    # `.claude/` itself may be excluded, and git will not descend into an
-    # excluded directory however many children are re-included — so the parent
-    # is re-included first, and the re-verify below is what proves it worked.
-    echo "!.claude/"
-    while IFS= read -r p; do [[ -n "$p" ]] && echo "!$p"; done <<< "$blocked"
-  } >> "$gi"
-  [[ -z "$(claude_tracking_blocked "$root")" ]]
+  local root="$1" mode="$2" rc=0
+  GITIGNORE_REPORT=""
+  if [[ ! -f "$GITIGNORE_HELPER" ]]; then
+    # No helper, no edit. Report whether it is blocked, never guess a block.
+    [[ -z "$(claude_tracking_blocked "$root")" ]] && return 0
+    GITIGNORE_REPORT="gitignore: helper missing at $GITIGNORE_HELPER"
+    return 1
+  fi
+  GITIGNORE_REPORT="$(python3 "$GITIGNORE_HELPER" --root "$root" --mode "$mode" 2>&1)" || rc=$?
+  return "$rc"
 }
 
 # --- The one place the fork decides where a hook is wired -------------------
@@ -467,7 +465,14 @@ write_claude_settings() {
   local tracked="$dir/settings.json"
   local localf="$dir/settings.local.json"
 
-  if ! ensure_claude_paths_trackable "$root" "$mode"; then
+  local gi_rc=0
+  ensure_claude_paths_trackable "$root" "$mode" || gi_rc=$?
+  if [[ "$gi_rc" -eq 3 ]]; then
+    echo "  ↳  hooks (.gitignore block outdated — $(echo "$GITIGNORE_REPORT" | head -1 | sed 's/^gitignore: //'))"
+    return 1
+  fi
+  [[ "$gi_rc" -eq 0 && -n "$GITIGNORE_REPORT" ]] && echo "  OK    ${GITIGNORE_REPORT#gitignore: } (.gitignore)"
+  if [[ "$gi_rc" -ne 0 ]]; then
     # FALL BACK, LOUDLY. The old behaviour is kept so nothing regresses, but the
     # repo is named along with the exact lines that would fix it.
     if [[ "$mode" == "sync" ]]; then
@@ -479,10 +484,8 @@ write_claude_settings() {
       fi
       echo "  WARN  hooks written to settings.local.json (UNTRACKED) — this repo ignores"
       echo "        $(claude_tracking_blocked "$root" | tr "\n" " ")"
-      echo "        so a tracked guard would never stage. Add to .gitignore, then re-sync:"
-      echo "          $GITIGNORE_MARK"
-      echo "          !.claude/"
-      claude_tracking_blocked "$root" | sed "s|^|          !|"
+      echo "        so a tracked guard would never stage. The .gitignore was not changed:"
+      echo "$GITIGNORE_REPORT" | sed "s|^|          |"
     else
       echo "  ↳  hooks (BLOCKED — .gitignore swallows the tracked guard)"
     fi
