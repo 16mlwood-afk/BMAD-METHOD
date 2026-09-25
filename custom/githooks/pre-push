@@ -46,6 +46,32 @@
 # The fail-CLOSED guarantee is the CI tier (deferred) — NOT this hook.
 set -eu
 
+# --- 0. a push that only deletes refs sends no code (WF-20260925-066) --------
+# Git feeds "<local ref> <local sha> <remote ref> <remote sha>" lines on stdin.
+# Read it once. When every line's local sha is all zeros the push deletes refs
+# and nothing else, so there is no code for any gate to check — say so and let
+# it through. Empty stdin (a manual run) and any push that updates a ref run
+# every gate as before, and the lines are passed on to each gate.
+PUSH_REFS=""
+[ -t 0 ] || PUSH_REFS="$(cat)"
+if [ -n "$PUSH_REFS" ]; then
+  DELETE_ONLY=1
+  SEEN=0
+  while read -r _lref _lsha _rref _rsha; do
+    [ -n "${_lref}${_lsha}" ] || continue
+    SEEN=1
+    if ! printf '%s' "$_lsha" | grep -Eq '^0+$'; then
+      DELETE_ONLY=0
+    fi
+  done <<EOF
+$PUSH_REFS
+EOF
+  if [ "$SEEN" -eq 1 ] && [ "$DELETE_ONLY" -eq 1 ]; then
+    printf 'pre-push: every ref in this push is a deletion, no code is sent, so no gate ran.\n' >&2
+    exit 0
+  fi
+fi
+
 ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 COMMON="$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
 HOOK_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" 2>/dev/null && pwd -P || true)"
@@ -126,7 +152,14 @@ run_gates_from() {
     printf 'pre-push gate: %s\n' "$cmd" >&2
     GATES_RAN=$((GATES_RAN + 1))
     GATE_NAMES="$GATE_NAMES $cmd"
-    if ! sh "$script" </dev/null; then
+    if [ -n "$PUSH_REFS" ]; then
+      gate_ok=1
+      printf '%s\n' "$PUSH_REFS" | sh "$script" || gate_ok=0
+    else
+      gate_ok=1
+      sh "$script" </dev/null || gate_ok=0
+    fi
+    if [ "$gate_ok" -eq 0 ]; then
       printf 'pre-push BLOCKED by %s. Override (logged): git push --no-verify\n' "$cmd" >&2
       status=1
     fi

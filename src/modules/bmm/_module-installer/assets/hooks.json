@@ -379,7 +379,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "_in=$(cat 2>/dev/null); FILE=$(printf '%s' \"$_in\" | jq -r '.tool_input.file_path // empty' 2>/dev/null); [ -z \"$FILE\" ] && FILE=\"${CLAUDE_TOOL_INPUT_FILE_PATH:-}\"; CMD=$(printf '%s' \"$_in\" | jq -r '.tool_input.command // empty' 2>/dev/null); [ -z \"$CMD\" ] && CMD=\"${CLAUDE_TOOL_INPUT_COMMAND:-}\"; SKILL=$(printf '%s' \"$_in\" | jq -r '.tool_input.skill // empty' 2>/dev/null); [ -z \"$SKILL\" ] && SKILL=\"${CLAUDE_TOOL_INPUT_SKILL:-}\"; FILE=\"$FILE\"; case \"$FILE\" in *.py) ruff format --quiet \"$FILE\" 2>/dev/null || .venv/bin/ruff format --quiet \"$FILE\" 2>/dev/null;; *.ts|*.tsx|*.js|*.jsx|*.json|*.css|*.svelte) npx --no-install prettier --write --log-level silent \"$FILE\" 2>/dev/null;; esac; exit 0",
+            "command": "N=format-on-edit.sh; S=\"\"; D=\"$PWD\"; while [ -n \"$D\" ] && [ \"$D\" != \"/\" ]; do if [ -f \"$D/.claude/hooks/$N\" ]; then S=\"$D/.claude/hooks/$N\"; break; fi; D=\"${D%/*}\"; done; [ -n \"$S\" ] || { [ -f \"${CLAUDE_PROJECT_DIR:-}/.claude/hooks/$N\" ] && S=\"$CLAUDE_PROJECT_DIR/.claude/hooks/$N\"; }; _in=$(cat 2>/dev/null); [ -f \"$S\" ] || exit 0; printf '%s' \"$_in\" | bash \"$S\"; exit 0",
             "timeout": 10,
             "statusMessage": "Auto-formatting..."
           }
