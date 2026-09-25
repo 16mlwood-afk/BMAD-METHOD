@@ -260,7 +260,14 @@ with tempfile.TemporaryDirectory() as td:
     (repo / ".claude" / "hooks" / "project-own.py").write_text("mine\n")
     (repo / "src" / "app.ts").write_text("a concurrent edit\n")
 
+    (repo / ".githooks").mkdir()
+    (repo / ".githooks" / "gates.conf").write_text("project gate list\n")
+    (wt / "custom" / "githooks").mkdir(parents=True)
+    (wt / "custom" / "githooks" / "gates.conf").write_text("fork default\n")
+    pre = mod.porcelain(repo)
     commit_set, held = mod.release_commit_set(repo, wt, "_bmad", pre)
+    check("G13i a create-only gate list the project already had is neither committed nor held",
+          ".githooks/gates.conf" in commit_set + [p for p, _ in held], False)
     held_paths = [p for p, _ in held]
     check("G13 the replica, skills and bmad commands are committed",
           all(p in commit_set for p in ("_bmad/wf.md", ".claude/skills/s/SKILL.md",

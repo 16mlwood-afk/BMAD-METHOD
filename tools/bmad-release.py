@@ -279,6 +279,11 @@ def write_receipt(real, t, release_sha, release_tree):
 #   gitignore  committed only when its sole difference from HEAD is the fork's own block
 #   never      .claude/settings.local.json — per-machine trust; never committed, ever
 NEVER_COMMIT = (".claude/settings.local.json",)
+# Delivered once, then the PROJECT's: the distributor copies it only when absent and never
+# again, so a later difference is the project's own gate list, not release output. Neither
+# committed nor reported as held — on the first run of this commit set it was flagged in
+# seven targets, every copy months old and untouched by the release.
+PROJECT_OWNED_AFTER_CREATE = (".githooks/gates.conf",)
 GENERATED_FILES = (".claude/bmad-synced-scripts.txt",)
 MERGED_FILES = (".claude/settings.json", "CLAUDE.md")
 COPIED_DIRS = ((".claude/hooks/", "custom/hooks/"),
@@ -341,6 +346,8 @@ def release_commit_set(real, wt, mroot, pre):
     for path, xy in sorted(post.items()):
         if path in NEVER_COMMIT:
             continue
+        if path in PROJECT_OWNED_AFTER_CREATE and pre.get(path):
+            continue  # existed (dirty) before this release: the project's file
         if path.startswith(replica) or path in GENERATED_FILES:
             commit.append(path)
             continue
