@@ -99,6 +99,8 @@ const KNOWN_ACRONYMS = new Set([
 ]);
 
 const TEMPLATE_VAR = /\$\{[^}]*\}|\{[^}]*\}/g;
+/** A variable that stands for a count, so `Check · {n}` still reads as the `label · number` shorthand. */
+const COUNT_VAR = /^\$?\{\s*(?:[a-z]|n\w*|count\w*|num\w*|total\w*)\s*\}$/i;
 
 /* ─────────────────────────────── screening ─────────────────────────────── */
 
@@ -107,7 +109,7 @@ function clean(text) {
     .replaceAll(/<[^>]+>/g, ' ')
     .replaceAll('`', '')
     .replaceAll(/^\s*["“']|["”']\s*$/g, '')
-    .replaceAll(TEMPLATE_VAR, '7')
+    .replaceAll(TEMPLATE_VAR, (v) => (COUNT_VAR.test(v) ? '7' : 'x'))
     .trim();
 }
 
@@ -154,25 +156,28 @@ function parseDeck(markdown) {
   const start = lines.findIndex((l) => /^#{1,6}\s.*\bcopy deck\b/i.test(l));
   if (start === -1) return null;
   const level = (lines[start].match(/^#+/) ?? ['#'])[0].length;
-  let header = null;
-  const rows = [];
+  // Every table in the section, kept apart: a summary table above the deck is not the deck.
+  const tables = [];
+  let current = null;
   for (let i = start + 1; i < lines.length; i++) {
     const l = lines[i];
     const h = /^(#{1,6})\s/.exec(l);
     if (h && h[1].length <= level) break;
     if (!/^\s*\|/.test(l)) {
-      if (header && rows.length > 0 && l.trim() === '') continue;
+      current = null;
       continue;
     }
     const cells = splitRow(l);
-    if (!header) {
-      header = cells.map((c) => c.toLowerCase());
+    if (!current) {
+      current = { header: cells.map((c) => c.toLowerCase()), rows: [] };
+      tables.push(current);
       continue;
     }
     if (cells.every((c) => /^:?-{2,}:?$/.test(c))) continue;
-    rows.push({ line: i + 1, cells });
+    current.rows.push({ line: i + 1, cells });
   }
-  return { header, rows };
+  const deck = tables.find((t) => columnIndex(t.header, ['ships as', 'replacement']) !== -1);
+  return deck ?? tables[0] ?? { header: null, rows: [] };
 }
 
 function columnIndex(header, names) {

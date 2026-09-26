@@ -148,6 +148,18 @@ it('a banned word in the Current column alone is silent (it is being replaced)',
   const r = checkDeck(deck([`| 1 | head | ${golden[0].current} | x | ${golden[0].ships} | a✓ b✓ c✓ d✓ |`]));
   assert.deepStrictEqual(r.findings, []);
 });
+it('a summary table above the deck is skipped; the table with Ships as is the deck', () => {
+  const md = `# B\n\n## Copy deck\n\n| Source | Strings |\n|---|---|\n| page | 1 |\n\n| # | Where | Current | What it means | Ships as | Screen |\n|---|---|---|---|---|---|\n| 1 | h | — | x | 3 lines worth buying | a✓ b✓ c✓ d✓ |\n`;
+  const r = checkDeck(md);
+  assert.strictEqual(r.rows, 1);
+  assert.deepStrictEqual(r.findings, []);
+});
+it('a named template part is not read as a count', () => {
+  assert.deepStrictEqual(all('UK · {title} · {asin}'), []);
+});
+it('a count template part still reads as the shorthand', () => {
+  assert.ok(all('Buy · {n} lines').includes('P2'));
+});
 it('the section ends at the next heading of the same level', () => {
   const md = deck(['| 1 | h | — | x | 3 lines worth buying | a✓ b✓ c✓ d✓ |']) + '| stray | table | settle |\n';
   assert.strictEqual(checkDeck(md).rows, 1);
