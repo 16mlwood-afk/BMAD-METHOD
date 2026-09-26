@@ -355,6 +355,93 @@ I'll build that unless you'd rather change it.
 
 **Enforcement honesty.** The pass itself is **PROBABILISTIC** — workflow prose the model executes, and there is no artifact for a hook to block. The **DETERMINISTIC** companion is `tools/check-commit-boundary.js`, and it is deliberately narrow: `--scan` decides whether the trigger fired, `--check` decides whether the nine fields are present and non-placeholder in the emitted record. **Neither can tell whether the state model is CORRECT** — whether the states are the right states, the snapshot the one the operator saw, or the named control genuinely the only writer. Presence is checkable; soundness is the human's job at the halt. Both directions are pinned in `../commit-boundary-golden-matrix.md`.
 
+### 4f. The VISIBLE-DELTA declaration — say what the owner will SEE, before you build it
+
+**Owner instruction, 2026-09-26, verbatim:**
+
+> *"i gave you a design bundle and you claimed to have implemented it — when i checked it i didn't even notice any difference from the previous design - it was not even somewhat similar to the claude design bundle AND DURING ALL OF THIS you have no 'in the loop' feedback to the user so he could have prevented this poor decision making"*
+
+**This runs on EVERY run. It is not conditional, it has no trigger, and there is no `n/a`.**
+
+**The gap it closes is not accuracy — every report was accurate.** The two mapping-queue passes
+reported a forked token layer removed, eight tinted chips retired, and the centre workspace rebuilt.
+All true, all verifiable, all code-level — and all of it reads as progress towards the bundle the
+owner supplied. **Nothing said *you will not notice this*.** He found out by opening the page, and
+had to ask twice. A report about what changed in the CODE never answers the only question he was
+asking: *will this look like the thing I sent you?*
+
+**Emit `{visible_delta}` here, before the grid is built and before any code moves, and SURFACE IT TO
+THE USER** — this is the in-the-loop moment the ruling names, and it is worth nothing inside an apply
+ledger the owner does not read.
+
+#### What it must contain
+
+1. **What a person looking at the page will notice**, in the words they would notice it in. Regions,
+   not components: *"the left queue rail regroups"*, *"the middle column gains a numbered decision
+   list"*, *"the labels lose their capitals"*. Name the region.
+2. **"Nothing you will notice" IS A LEGITIMATE AND IMPORTANT ANSWER** — and where it is true it is
+   the single most valuable sentence the run can produce. Pass 1's honest declaration was one
+   sentence: *"this removes a stylesheet fork; the page will look the same; the restructure is a
+   later pass and needs your answers."* That would have prevented the whole episode.
+3. **What will still look like the OLD page** after this lands. The complement is the half that
+   misleads by omission.
+4. **The COMPOSITION GAP, in those terms, whenever it applies** — see below.
+
+#### The composition gap — a different thing, not a partial version of the same thing
+
+**When a run implements the bundle's CONTENT into an UNCHANGED COMPOSITION, that is a material
+difference from the bundle the owner supplied, and it is stated as one, up front, in those words.**
+
+Both mapping-queue passes did exactly this. **Do not report it as "pass 1 of N" or as progress
+towards the design** — the owner supplied a whole-page design, and receiving its content in the old
+layout is not a partial implementation of that design, it is a **different thing**. A reader told
+"pass 1 of 2" infers convergence; a reader told "the content of your design, in the existing layout —
+the layout itself is unchanged and is not scheduled in this pass" can stop the run. The first
+framing is why he could not.
+
+Say which composition the surface will have when this lands: **the design's**, **the existing one**,
+or **a named mixture** — and if it is not the design's, say plainly that the result will not look
+like the bundle.
+
+#### The shape
+
+```
+────────────────────────────────────────────────────────────────
+◇ What you will SEE when this lands  ({target_slug})
+
+  Visible change:   {region-by-region, in a person's words — or "NOTHING you will notice"}
+  Unchanged:        {what will still look like the old page}
+  Composition:      {the design's | the EXISTING one (a material difference from the bundle
+                     you sent) | a mixture: <named>}
+  Mode:             {implementation_strategy} (confirmed by {strategy_confirmed_by})
+
+  {if composition != the design's:}
+  ⚠ This will NOT look like the bundle you supplied. What lands is {what}, inside the existing
+    layout. Changing the composition is {not in this run's scope | blocked on <what>} — say so
+    now if that is not what you wanted.
+────────────────────────────────────────────────────────────────
+```
+
+**Then continue.** This is a declaration, not a gate — it does not halt and it does not wait for
+input. Its whole job is that the owner *can* stop it, in time, from one sentence. A run that emits
+it and then waits for permission it was never owed has failed the rule from the other side.
+
+**Autonomous mode does not suppress it.** It suppresses asking, not saying — the same posture as the
+mode statement in §5.
+
+#### Enforcement honesty
+
+**PROBABILISTIC, and irreducibly so.** No check can judge whether a sentence about visible change is
+true or useful, and a gate demanding one on every run would be satisfied with boilerplate inside a
+week — the switched-off-in-a-week failure this workflow already names about its own guards.
+
+**What IS mechanisable is named here and deliberately NOT built, because it is cheap and worth
+having if this is ever seen to fail:** the run already knows which regions it touched (`{impl_components}`,
+`{frame_composition_deltas}`, the grid's own rows), so a required field that must be non-empty and
+must name a region would cost a correct run nothing. **An empty visible change, declared as such, is
+a legitimate value of that field and must never fail it** — that is the whole point of the rule, and
+a check that treated "nothing you will notice" as a missing answer would invert it.
+
 ### 5. Record the approved plan
 
 - `{implementation_strategy}` ∈ `restyle-only | additive | partial | replacement` — resolved from BOTH axes: `restyle-only` ONLY when DROPPED **and** `{uplift_capabilities}` are empty; `additive` whenever the uplift is non-empty (new structure built, dropped capabilities retained); `partial` / `replacement` as the §4 drop-disposition resolved. A non-empty uplift can never resolve below `additive`.
@@ -386,10 +473,13 @@ Read fully and follow: `{project-root}/_bmad/bmm/workflows/implement/design-impl
 - Kept capabilities are marked protected for step-03/04; dropped capabilities are routed to the step-04 §9 orphaned-action confirmation; uplift capabilities are routed to step-03 §2h / step-04 as `capability-build`.
 - **Any halting exit (§4 or §4c) PERSISTED its verdict to `{implementation_artifacts}/design-implement-preflight-{target_slug}-{date}.md` BEFORE halting (§4d)** — full report in the body, and frontmatter carrying `design_source`, `baseline_commit`, `outcome`, `blocked_on` and `blocking_paths` so Input Resolution's Prior-halt recall can match it and compute whether the blocker has moved. A halt presented only in chat is a **failed** exit: the next identical paste re-derives it from zero after a full ingest.
 - The **commit-boundary pass (§4e)** ran its trigger test and said so either way: `Commit boundary: n/a — …` on a read-only/reversible surface, or a `commit_boundary:` record carrying all nine determinations on a consequential one. Where the lifecycle could not be completed, the run classified it as an **interaction-model gap**, proposed the **smallest** stateful flow mapped onto named frames/sections, routed each element into `{added_capabilities}` so step-03/04 build it, and did NOT auto-proceed — including in autonomous mode. A surface with two controls reaching the same irreversible write was reported as a finding, not a footnote.
+- **The VISIBLE-DELTA declaration (§4f) was emitted and SURFACED TO THE USER before the grid — unconditionally, on every run, with no `n/a` and no trigger.** It named what a person will notice region by region in their own words, what will still look like the old page, and which composition the surface will have. **"NOTHING you will notice" was stated plainly where that was the truth** — the answer the rule most exists to obtain — rather than omitted or dressed as progress. Where the run implements the bundle's CONTENT into an UNCHANGED COMPOSITION, that was stated as a **material difference from the supplied bundle**, in those terms, and never as "pass 1 of N". It did not halt and did not wait for input: a run that emitted it and then asked permission has failed the rule from the other side. Autonomous mode suppresses asking, not saying.
 - The **fixture-to-prod permission checkpoint (§4c)** ran: when the surface would ship to a production route backed by a mock module (`DATA_STATE = "fixture"` / the project's mock marker) with no live read path, the run **halted** for explicit owner authorization and did NOT auto-proceed (autonomous mode included) — disclosure (the fixture banner + the project's CI gate) is not treated as permission; otherwise it recorded `Fixture-to-prod: n/a`.
 
 ## FAILURE MODES
 
+- **Building without ever telling the owner what he will SEE (§4f).** Every check in this step is about capabilities and code; none of them answers *will this look like the bundle I sent you?* A run that inventories the delta correctly, picks the right mode, and never says "you will not notice this" leaves the owner to discover it by opening the page — which is exactly what happened on 2026-09-26, twice, on a surface whose reports were all accurate. **The declaration is the in-the-loop moment**, and it is worthless inside an apply ledger he does not read.
+- **Framing a composition gap as partial progress.** Implementing the bundle's CONTENT into an UNCHANGED COMPOSITION and calling it "pass 1 of 2" invites the reader to expect convergence towards the design. It is a **different thing**, not a partial version of the same thing, and saying so is what lets him stop the run before the spend rather than after it.
 - **Running blind — concluding scope from treatment evidence.** Emitting "just token alignment / production is a structural superset / no net-new capability" from a clean token mapping (raw-hex → canonical-token debt) — *especially before the map finished resolving production*. The scope verdict is an OUTPUT of the §3 bidirectional delta, never a prior. This is the exact failure that read the inbound-flow supply-orders uplift (lane segmentation + analytics/disposition band + action column + co-views — all net-new) as a reskin.
 - **Treating an empty DROP set as "nothing to build."** An uplift redesign drops nothing yet is mostly net-new construction. "Nothing to remove" is not "nothing to add" — §4 must hand off to §4b, never short-circuit to `restyle-only`/`additive-means-equivalent`.
 - **Letting a DEEPENED capability flow through the grid as a treatment delta.** A country-filter that became handler-lane segmentation, or a flat status column that became a disposition band, is a build task — the grid (CSS-only) will green the shared shell and at most flag the new sub-components `MISSING`, while the agent reads the parent as "restyle." Score it DEEPENED and route it to `capability-build`.

@@ -95,6 +95,8 @@ Re-read each modified file, then walk the Step-3 grid **row by row** and give EV
 | `✓ applied` | The delta is fixed in the implementation, **and the row cites both halves of the evidence below**. | **Two citations, both required — see "What `applied` costs" beneath this table.** |
 | `⊘ deferred` | Intentionally not applied this pass. | **Reason, one of:** `needs-data` (the page load / server doesn't provide the value — name the field), `out-of-scope` (explicitly outside this run's target), `judgment` (a product decision the implementer made — state it), `content-lane` (a formatter/enum-driven identifier cell from step-03 §2c — its rendered value cannot be verified against a mock-data bundle; routed to design-review / design-tuning on the LIVE page), `foundation-token-drift` (a step-03 §2i Foundation-token row — the app's canonical token VALUE diverges from the design system AND/OR `docs/design-policy.md`'s declared scale; routed to `apply-design-policy-change` for a single-source token migration, NEVER patched in-component and NEVER encoded as a dead `var(--token, <literal>)` fallback), `capability-protected` (the row would remove a production capability the user chose to KEEP at step-02b — `{capability_dispositions}` marks it `keep`; the handoff's treatment is applied around it, the capability is not deleted). |
 | `✗ dropped` | Cannot or will not apply at all. | **Reason** — why it's not implementable as specified. |
+| `⊘ departure` | **The run put something of its OWN in the design's place** — a different value, label, column count, composition or treatment. §5c. | **A sendback reference — `sendback:<file>#ask-N`. A reason alone is NOT a legal disposition here**, however well written. Plus the pair: what the design says, what we render instead. |
+| `⊘ interim(policy-conflict)` | The design contradicts `docs/design-policy.md`; the run complies with the policy **for now** so it does not ship a known hard failure, and the conflict is a question for the designer. §5c. | **A sendback reference AND the words `interim`** — `interim(policy-conflict: <policy §> vs design) → sendback:<file>#ask-N`. **`policy wins` is not a verdict this workflow may issue** (workflow.md Critical Rule "Claude Design is the source of truth for design"). |
 
 ### What `✓ applied` costs — two citations, or it is not applied (owner ruling 2026-08-21)
 
@@ -241,6 +243,115 @@ The apply ledger above dispositions every *grid* row — but the grid has no row
 
 Declaring "done" off the grid alone — no render-compare, no bundle-render fallback, no owed-disclosure — is non-conformant. It is the precise false-green this section exists to stop: the supply-order cost drawer shipped with a generic header, a relabeled footer, and paraphrased copy while every CSS cell matched.
 
+### 5c. Departures and the formal SENDBACK — the design is the authority, so the loop goes back
+
+**Owner ruling, 2026-09-26, verbatim:**
+
+> *"u cherry picked from the design... this is very bad practice... claude design is the source of truth for design never do this again... if you wish to perform a SENDBACK/debate/ask any design Q's make this kind of SENDBACK formal okay?? so the iterative loop is between u two."*
+
+**What this section is NOT for, stated first because it is the reason the rule can be cheap.** It is
+not a disclosure requirement. The two runs that produced the ruling disclosed everything — one
+headed a section *"Section labels — v15 wins over the design, and it is logged"*, another wrote
+*"the implementation beats the design … Keeping ours"*, a third named the exact missing field behind
+a dropped table column. **A fix that only demanded disclosure would have changed nothing about those
+runs.** What was wrong is that a well-documented unilateral decision closed as a legitimate outcome.
+This section adds the return leg and nothing else.
+
+#### The classification — run it per row, as the apply walks, not at the end
+
+**Did this run put something of OUR OWN in the design's place — a different value, label, column
+count, composition, or treatment?**
+
+- **YES → DEPARTURE.** Disposition `⊘ departure(…)` or `⊘ interim(policy-conflict: …)`, and it
+  carries a `sendback:` reference. Accumulate it into `{departures}` **now**, with the design's
+  version and ours side by side; a departure is obvious at the moment it is taken and expensive to
+  reconstruct an hour later.
+- **NO — the design's item is simply not there yet, and nothing of ours stands in for it → NOT YET
+  BUILT.** `⊘ deferred(<reason>)` exactly as before, into the §9 "Deltas not applied" list. **No
+  sendback, no new artefact, no extra step.** A deferral asserts nothing, so there is nothing for
+  the designer to answer. Keeping this cheap is load-bearing: a rule that pushed every honest
+  deferral through a sendback would be abandoned inside a week, and then the departures would go
+  unreported too.
+
+**Three carve-outs — not departures, and do not manufacture asks for them:**
+
+1. **A capability disposition already ruled at step-02b §4.** An `additive` strategy retaining a
+   production capability the design drops is an owner decision already taken. Record it where it is
+   already recorded; do not re-ask it.
+2. **A §5b FORCED copy/chrome deviation** — the design links to a route that does not exist, so a
+   real path was substituted and logged. Forced-and-logged is already the contract. A sendback is
+   owed only when the force is a *design* question (the design assumes a surface we will never
+   build) rather than a missing path.
+3. **A row applied faithfully.** Obviously — but state it, because the count in §9 reconciles.
+
+#### The policy conflict — the specific move this section exists to stop
+
+**Where the design contradicts `docs/design-policy.md`, that is a genuine conflict between two
+authorities the owner set, and the implementer does not get to resolve it — not even by choosing the
+policy.** Choosing the policy *feels* like deference and is still an implementer taking a design
+decision, in the direction that looks safe.
+
+What to do, in order:
+
+1. **Do not ship a known policy hard failure to make a point.** Comply with the policy as the
+   **interim** behaviour.
+2. **Label it interim, in both records.** Ledger: `⊘ interim(policy-conflict: <policy §> vs design)
+   → sendback:<file>#ask-N`. Sendback §2: what the design specifies, what we render in the interim,
+   and that the design's version is still the thing to converge on.
+3. **Ask the designer**, naming the policy clause verbatim and at least two shapes that satisfy both
+   authorities.
+4. **Never write `policy wins`, `v15 wins`, `the implementation beats the design`, or `keeping
+   ours`** as a disposition or a section heading. Each of those is a verdict, and the verdict is the
+   designer's to give.
+
+#### Emitting the artefact
+
+When `{departures}` is non-empty, write
+`{implementation_artifacts}/SENDBACK-<target_slug>-v<next>.md` per **`sendback-template.md`** —
+frontmatter, an opening orientation line, and all seven sections in order:
+
+1. What the design got right, and the next version keeps
+2. Why it did not fully ship
+3. Why it happened, and where the gap was OURS
+4. The asks — numbered, **each naming at least two acceptable shapes**
+5. Questions that are the OWNER's, not the designer's
+6. Already settled — do not spend this round on these
+7. Not for this round — for the next brief
+
+Set `{sendback_artifact}` to its path. Force-add and commit it in §6 alongside the grid artifact
+(same recipe, same reason — it lives under gitignored `_bmad-output/` and is a referenced
+deliverable), and link it in the PR body and in §9.
+
+**An ask that names exactly ONE acceptable shape is this artefact failing in the other direction** —
+a specification wearing a question mark. The implementer's authority is over what must be **true**;
+how it is drawn is the designer's. Where the truth genuinely admits one shape, say why in the ask
+rather than presenting a single option as a choice.
+
+#### The refusal (hard — this is not advisory)
+
+- **A departure-class row with no `sendback:` reference does not close the pass.** Go back and either
+  reclassify it (it was a faithful apply, or a NOT-YET-BUILT deferral) or write the ask. "The reason
+  is in the ledger" is the exact standard the ruling rejected.
+- **`{departures}` non-empty and `{sendback_artifact}` == `none` is non-conformant.** Re-emit.
+- **The counts reconcile or the pass is incomplete:** the sendback's frontmatter `departures:` equals
+  the number of ledger rows citing it, and every `⊘ departure` / `⊘ interim` row's `#ask-N` resolves
+  to a numbered ask that exists in that file.
+- **Verify it with the checker, not by eye** — `node ~/bmad-method-v6/tools/check-design-sendback.js
+  --check {artifact_path}` and `--sendback {sendback_artifact}` must both report `consistent` before
+  §6 commits.
+- **A sendback does not gate the merge.** The slice that WAS applied is real code and ships per §6/§7
+  as normal. What is forbidden is closing the pass with the departure recorded as settled. The
+  design's next version is the thing that settles it, and §9 says so out loud.
+
+**Golden cases: `sendback-golden-matrix.md`** — the three real departures that produced the ruling walked through this section (a policy hard failure recorded as a win · a table column dropped for a missing field · a treatment kept because ours was judged better), plus the four honest deferrals from the same pass that must stay SILENT, plus the three calibration carve-outs. Asserted by `npm run test:design-sendback`, so the matrix cannot drift from what the checker does.
+
+**Enforcement honesty for this section.** The classification is a judgement and stays PROBABILISTIC —
+nothing can detect that a run has just substituted its own taste for the design's. The refusals
+above are stronger than prose but still run inside the model's own execution, so do not describe
+them as enforced. The checker's **verdict** is deterministic; whether a run **invokes** it is not.
+The tier that would close that gap is a per-project CI check over the emitted ledger, **named and
+deliberately not built** — it does not ship with the workflow sync.
+
 ### 6. Commit and Push
 
 Follow the project's CLAUDE.md commit procedures:
@@ -254,6 +365,13 @@ git add {list of modified files}
 git add -f {artifact_path}
 # Assert it actually staged — a gitignored path can no-op silently:
 git ls-files --error-unmatch {artifact_path} >/dev/null || { echo "grid artifact not tracked — force-add failed"; exit 1; }
+# Same treatment for the SENDBACK when this pass raised departures (§5c). It is the artefact the
+# designer is handed and the §9 report links, so a plain `git add` that silently drops it leaves the
+# report pointing at a path that never reached main — and the departure then rests on nobody.
+if [ "{sendback_artifact}" != "none" ]; then
+  git add -f {sendback_artifact}
+  git ls-files --error-unmatch {sendback_artifact} >/dev/null || { echo "sendback not tracked — force-add failed"; exit 1; }
+fi
 git commit -m "$(cat <<'EOF'
 fix: align data-quality page with Meridian design spec
 
@@ -318,14 +436,52 @@ Output these as a `**Brand Identity Updates**` section in the completion report.
 
 Output — the **"Deltas not applied" section is mandatory and never omitted.** If everything was applied, say so explicitly; if anything was deferred or dropped, every such delta is listed here with its reason (pulled from the §5 apply ledger). The user must be able to see, from the completion report alone and without opening the artifact, exactly what did NOT make it in.
 
+**THE REPORT OPENS ON THE VISIBLE DELTA, AND NOTHING PRECEDES IT.** Not the mode, not the row count, not what was retired or rebuilt, not the merge. Those are code-level facts and they come after. Owner instruction 2026-09-26 (workflow.md Critical Rule *"Say what the owner will see"*): two passes reported a forked token layer removed, eight tinted chips retired and the centre workspace rebuilt — every word accurate, and the owner still had to open the page to discover that nothing he would notice had changed. **A wholly accurate code-delta report that reads as progress towards a design the page does not resemble is the failure this ordering exists to stop.** The `{visible_delta}` block already went to the user before the apply (step-02b §4f); this is the same fact stated as OUTCOME — what actually landed, which may differ from what was predicted, and where it does, say so.
+
 ```
+◇ WHAT YOU WILL SEE  — first, before anything else
+
+  {if the surface is visibly different:}
+  {region by region, in the words a person would notice it in — "the left queue rail now groups
+   by who has to act"; "the middle column gained a numbered decision list"; "the section labels
+   lost their capitals". Name the region, never the component.}
+  {else:}
+  NOTHING YOU WILL NOTICE. {what changed and why it was worth doing — a stylesheet fork removed,
+   a token layer unified, a gate added. State it as the honest outcome it is, not as an apology,
+   and not dressed up as visible progress.}
+
+  Still looks like the old page: {the complement — the half that misleads by omission}
+
+  {if composition != the design's:}
+  ⚠ THIS DOES NOT LOOK LIKE THE BUNDLE YOU SUPPLIED. What landed is {what}, inside the
+    EXISTING layout. That is a material difference from the design you sent, not a partial
+    version of it — the composition is unchanged and {was not in this run's scope | is blocked
+    on <what>}. Do NOT read this as "pass 1 of N" progress towards the design.
+
+  {if the outcome differs from the §4f prediction:}
+  Differs from what I told you before building: {what changed and why}.
+
+{THE ORDER OF THE THREE "SAY THIS FIRST" RULES, settled here so they cannot be read as competing —
+ two of them predate the visible-delta rule and each says "FIRST" of itself:
+   1. WHAT YOU WILL SEE          (above — the visible delta, always the opening content)
+   2. ALREADY APPLIED            (attribution — this run did not author the work)
+   3. NOT FINISHED / CHECKPOINTED (disposition — nothing resumes this on its own)
+ …then everything else. All three still precede any "applied N rows" line, which is what rules 2
+ and 3 were actually protecting: 2 guards against a false claim of authorship, 3 against unfinished
+ work reading as done. Neither is weakened by sitting one block lower, and both become sharper
+ beside a visible-delta line — "already applied" plus "nothing you will notice" is a far clearer
+ report than either alone. A contradiction between three FIRSTs does not stay unresolved; it gets
+ resolved by whichever line the reader hits first (workflow.md Step Processing Rule 3).}
+
 {if prior_applied.verdict in ("already-shipped", "prior-pass-residual-deltas"):}
 ◇ THIS DESIGN WAS ALREADY APPLIED — this run is a VERIFICATION / RESIDUAL-DELTA pass, not a build.
 
   applied by: {prior_applied.commit} {prior_applied.subject}
   state:      {deployed — ancestor of live {sha} | merged, NOT deployed | unknown}
 
-Say this FIRST, before any "applied N rows" line. A report that leads with the row count over an
+Say this SECOND — immediately after "What you will see", and still before any "applied N rows" line
+(see the ordering note above; this rule's own "FIRST" predates the visible-delta rule and its point
+is preserved). A report that leads with the row count over an
 already-shipped surface reads as *this run did the work* — a false claim of authorship, and the
 more misleading of the two failure modes here (there is no wrong output, only a wrong attribution).
 Attribute the build to the prior pass; claim only what THIS pass changed.
@@ -340,8 +496,10 @@ NOTHING WILL RESUME THEM ON ITS OWN.
 Stopped because: {checkpoint_reason}.
 
 This is owner-visible residue, not silent background work (FG-2026-07-26-02). A clean exit is
-not a completed one — say the unfinished status FIRST, and never let "PR merged" be the last
-thing reported about a pass that did not finish.
+not a completed one — say the unfinished status in the report's OPENING BLOCK (third, after "What
+you will see" and any already-applied attribution, per the ordering note above; never buried after
+the merge line), and never let "PR merged" be the last thing reported about a pass that did not
+finish.
 
 Design implementation CHECKPOINTED — slice delivered, more frames remain.
 
@@ -459,12 +617,35 @@ Token provenance (non-canonical — resolved but not from the canonical token su
 
 Policy-conformance & behavior (ceded — NOT certifiable from a generated bundle-diff):
   Treatment + structure + page-shell were verified against the bundle/policy. These were NOT,
-  because the bundle is a Claude-Design-generated proposal that can itself violate the policy:
+  because a bundle-diff cannot measure them — the bundle is generated from the policy and can
+  diverge from it, so faithfully matching it scores ✓ either way. (A measurement limit, NOT a
+  ranking over the designer — a specific design-vs-policy conflict goes to the "Departures sent
+  back to the designer" section above as an interim, never resolved here.)
   - Prohibitions / tone / motion / iconography (docs/design-policy.md "never" list) →
     /bmad:bmm:workflows:design-review   (live audit)  ·  enforced at PR-time by design-review-pr
   - Behavior / interaction wiring (drawer stack, Esc, mutation flow, live-feed, sort/filter) →
     the `verify` skill (drive the live app and exercise it)  ·  or design-review (live Chrome)
   Do not let "implementation complete" imply these were checked here.
+
+Departures sent back to the designer (§5c — the design is the authority):
+{Mandatory ALWAYS — both directions. The empty case is the one that must not be omitted: "no
+ departures" and "I did not look" render identically and mean opposite things, and a run with
+ nothing to send back is the normal, good outcome that should be visible as one.}
+{if departures is empty:}
+  None — every design item was either applied faithfully or left explicitly NOT YET BUILT
+  (see "Deltas not applied"). Nothing in this pass substituted our own judgement for the design's.
+{else:}
+  {n} departure(s) — this pass rendered something of its OWN where the design specifies otherwise.
+  Each is a QUESTION for the designer, not a settled decision:
+  - {row} — design: {what the design specifies} · we render: {what shipped} · {interim | standing}
+    → {sendback_artifact}#ask-{N}
+  Sendback: {sendback_artifact}  ({asks} ask(s), {owner_questions} owner question(s))
+  → paste it to Claude Design and run the next revision. Until that revision lands, these are
+    OPEN — do NOT read "PR merged" as "the design is met."
+  {if any row is interim(policy-conflict):}
+  Policy conflicts held as INTERIM (not resolved here, and not ours to resolve):
+  - {policy §} vs the design's {what} — shipped {our interim behaviour} so this pass does not
+    introduce a known policy hard failure. The design's version remains the thing to converge on.
 
 Capabilities built (uplift — net-new / deepened structure the handoff added):
 {Mandatory whenever step-02b's `{uplift_capabilities}` was non-empty. Enumerate EVERY added/deepened
@@ -575,6 +756,8 @@ A completion report that prints a fixed-count but omits the "Deltas not applied"
 - **The completion report's "Capabilities removed (orphaned actions)" section is present whenever the apply deleted/replaced components** — derived by grepping for now-zero-caller actions among those the removed files invoked, or stating "None — no capability lost". A surface-swapping redesign never ships without this disclosure.
 - **Copy & frame chrome are transcribed verbatim or logged as a forced deviation (§5b)** — every literal string and wrapper element (header / breadcrumb / footer) matches the design, or its deviation is in the ledger with a reason; and the **render-compare done-gate was run** (built surface beside the design render), or explicitly marked owed-and-routed. "Done" is never declared off the green grid alone.
 - **The completion report's "State-render coverage (prod-smoke owed)" section is present whenever the §5b done-check was a live/local render (§5b.3)** — every non-default state row (domain state-variants + `hover`/`failed`/`empty`) marked `painted` / `no-data-to-paint`, each `no-data-to-paint` state named and ceded `visually-unverified (static/unit-covered only)` with a prod-smoke checklist entry, or stating "all declared states painted". A default-state render that "matches" never reads as state-axis coverage — the seed data can only exercise the states it contains, exactly as a mock-data bundle can only certify mock content (§2c content-lane).
+- **The report OPENS on "What you will see" — the visible delta, in a person's words, before any code-level fact.** Region by region, plus what still looks like the old page; **"NOTHING YOU WILL NOTICE" stated plainly where that is the truth**, never dressed as visible progress; and a `⚠ THIS DOES NOT LOOK LIKE THE BUNDLE YOU SUPPLIED` line whenever the composition is not the design's, framed as a material difference rather than as "pass 1 of N". Where the outcome differs from the §4f pre-build declaration, the difference is named. The three "say this first" rules resolve in the declared order — visible delta, then already-applied attribution, then checkpointed disposition, all still ahead of any row count. **A report that leads with a token layer removed, chips retired or a workspace rebuilt is non-conformant however accurate it is** — that is the exact shape that let a surface the owner could not distinguish from its predecessor read as progress towards his design.
+- **The completion report's "Departures sent back to the designer" section is present — ALWAYS, including the empty case** (§5c). Every place this pass put something of its OWN where the design specifies otherwise carries a `⊘ departure(…)` / `⊘ interim(policy-conflict: …)` disposition citing `sendback:<file>#ask-N`, the sendback exists at that path with all seven sections, and the counts reconcile (frontmatter `departures:` == the rows citing it; every `#ask-N` resolves). **A departure disposed with a reason and no sendback reference is non-conformant however well the reason is written** — that is the precise standard the 2026-09-26 owner ruling rejected. **`policy wins` / `v15 wins` / `the implementation beats the design` / `keeping ours` is never a verdict this workflow issues:** a design-vs-`docs/design-policy.md` conflict ships the policy-compliant behaviour as **interim**, labelled as such, and asks. The empty case is stated, not omitted — "no departures" and "I did not look" are opposite facts. Verify with `node ~/bmad-method-v6/tools/check-design-sendback.js`, not by eye.
 - Build passes; PR created and merged; grid artifact updated with dispositions; no regressions introduced
 - **Every drilled frame (detail/create/§13-lookup) has a Frame-composition row (§2d-bis), and every `{frame_composition_deltas}` entry from step-02b became one** — section order + group naming + header/footer chrome compared against the design; a renamed/regrouped/reordered drawer or a black-vs-blue footer button is surfaced Tier-1, never passed because each inner component matched
 - **On an `ingest_manifest` run: dispositions were persisted into the manifest frame-by-frame (not only at the end), prior-pass `✓ applied` rows were skipped, and if the pass stopped early it set `{run_completion_mode} = checkpointed` and printed the exact resume command** — a large manifest is never attempted as one undifferentiated single-window pass
@@ -586,7 +769,7 @@ A completion report that prints a fixed-count but omits the "Deltas not applied"
 - **Declaring "0 deltas / green" off a sweep of only the frames that already exist in the impl.** The component grid is structurally blind to a whole frame the impl never built — it produces zero rows for an absent frame, so "all matched" reads as "all present." Without the §7 Frame-coverage enumeration (step-03 §2f → the §9 Frame-coverage section), a run greens out having silently skipped every designed-but-unbuilt drawer. This is the inbound-flow `/orders` miss: 9 §7 frames promised, 5 swept and matched, 4 (inbound-batch / import / shipping-lane / comms-case) never built and never surfaced — "green" meant "we only looked at what was already there." The §7 list, not the found-frame set, is the denominator for a green claim. The **no-brief URL variant** is the same leak without a brief to consult: the bundle's own declared frame inventory (`{design_frame_inventory}`, step-01 URL.3a — the §13 lookup drawers Orders.html consumes) is the denominator, and skipping coverage because "there was no brief" lets those lookups vanish exactly as the 4 `/orders` drawers did.
 - **A bare `deferred` with no reason** — the silent drop wearing a label. Every deferral names `needs-data` / `out-of-scope` / `judgment` / `content-lane` + detail.
 - **Letting "implementation complete" imply the identifier *values* were checked.** design-implement aligns a marketplace/supplier/ASIN cell's CSS against the bundle; it does NOT verify the formatter renders the right value on real data (the bundle is mock data). Omitting the "Content-lane verification owed" section ships that false implication — it is the design-implement counterpart of the inbound-flow `/orders` raw-enum leak that the grid's mock-data comparison could never catch.
-- **Collapsing a per-screen-only token into "tokens map ~1:1."** A shared-semantic token (status / colour / type) that resolves only from a per-screen stylesheet is design debt per `docs/design-policy.md` §8, not a clean canonical mapping — and "the bundle was generated from that same CSS" does not launder it (the bundle is a generated proposal, §2e). Declaring 1:1 because the token is "defined somewhere" buries the §3/§13 cross-surface-drift risk. Disclose it (§2g / §9) and cede promotion to design-review; do NOT gate the render on it either — the token works, placement is an architecture call this workflow does not own.
+- **Collapsing a per-screen-only token into "tokens map ~1:1."** A shared-semantic token (status / colour / type) that resolves only from a per-screen stylesheet is design debt per `docs/design-policy.md` §8, not a clean canonical mapping — and "the bundle was generated from that same CSS" does not launder it — a bundle-diff cannot certify token architecture (§2e, a measurement limit rather than a ranking). Declaring 1:1 because the token is "defined somewhere" buries the §3/§13 cross-surface-drift risk. Disclose it (§2g / §9) and cede promotion to design-review; do NOT gate the render on it either — the token works, placement is an architecture call this workflow does not own.
 - **Shipping an uplift redesign as a reskin — the net-new capability never built.** The mirror of the orphaned-action miss: step-02b inventoried `{uplift_capabilities}` (a new analytics/disposition band, lane-by-handler segmentation, an action column, a co-view, a drawer), step-03 tagged them `capability-build`, and the apply restyled the existing shell while never constructing them — then declared done off a green-ish grid. The "Capabilities built" §9 disclosure is the backstop: every added/deepened capability must be confirmed built, or flagged Tier-1 incomplete. This is the inbound-flow supply-orders failure that read lanes + the disposition band + the action column as "treatment/token alignment, production is a superset."
 - **Shipping a component nobody can reach — the APPLIED-BUT-UNREACHABLE miss.** The third member of this family, and the quietest: the grid certifies values, so a transcribed-but-unimported component is `✓ applied` under every available reading — the row is not wrong, the state was inexpressible until `◐` existed. The old route-scoped entry-point trigger could not see it, because its condition was a route while the failure is a component. cash-recovery `/receive` shipped 1,241 LOC across two frames this way: transcribed, tested, reviewed, merged, reachable by nobody for six days, file headers asserting an importer that did not exist — and the pass's own honest warning sat 60 lines below nine green ticks, where three later resume reads did not look. The mechanical importer check + `◐` above the grid is the backstop.
 - **Deleting/replacing components without the orphaned-action check.** A surface-swapping redesign removes files that called server actions; if the new surface doesn't re-wire one, that capability is silently gone — and because it was never a grid row, the apply ledger can't catch it. The grid-driven apply makes this *more* likely, not less, by focusing attention on enumerated deltas. The orphaned-action grep + the "Capabilities removed" disclosure is the backstop; skipping it is how the EOS batch-detail EAN→ASIN remap shipped as a silent loss.
@@ -594,6 +777,11 @@ A completion report that prints a fixed-count but omits the "Deltas not applied"
 - **A recomposed drawer passing on an all-green component grid (the §2d-bis miss).** Each section's inner pixels match and §2f-bis confirms each section exists, so the grid greens out — while the drawer's *arrangement* is wrong: renamed groups (`Cost & sourcing`→`Economics`), a standalone group folded away (`Lifecycle`→header), a split/merged group (`Related records` + Lifecycle → `Routing & source`), reordered sections, or a footer the design draws black and the impl ships blue. No single component owns the arrangement, so without the Frame-composition row (§2d-bis) "the drawer looks completely different" never becomes a delta. This is the page-shell blind spot (PR #2017) inside a drawer — the inbound-flow supply-order miss. The frame's footer is the sharpest edge: not being a cataloged section, it has no other grid row.
 - **Forcing a whole large manifest through one pass (`context-budget-overflow`).** Attempting all frames × all sections in a single window hits the harness auto-summarization boundary, which drops the exact CSS values and per-row dispositions first — so rows get marked `✓ applied` that were never really verified, and the run reads "green." The fix is structural, not vigilance: apply frame-by-frame, persist into the manifest at each frame boundary, and checkpoint (§5a). Not checkpointing a large manifest "because the step says fully autonomous" is the misread — the checkpoint is a clean terminal exit that delivers a slice, not a wait-for-input halt.
 - **Re-applying prior-pass rows on resume.** A fresh resume session that re-reads and re-applies rows already `✓ applied` in the manifest wastes the budget it was trying to save and risks re-forking consolidated components. Honor `{resume_prior_dispositions}` — skip them.
+- **An ACCURATE code-delta report that never answers "will this look like what I sent you?"** The quietest failure in this file, because every sentence in it is true and verifiable. Two mapping-queue passes reported a forked token layer removed, eight tinted status chips retired and the centre workspace rebuilt; the owner opened the page, could not distinguish it from its predecessor, and had to ask twice — *"i didn't even notice any difference from the previous design … AND DURING ALL OF THIS you have no 'in the loop' feedback to the user so he could have prevented this poor decision making"* (2026-09-26). Code-level achievements read as progress towards the bundle, so a report made entirely of them misleads by composition rather than by any false claim. The backstops are the pre-build `{visible_delta}` declaration (step-02b §4f — the in-the-loop moment) and this report opening on it. **"Nothing you will notice" is the answer the rule most exists to obtain**, and a run that buries it under what it retired has failed.
+- **Reporting a composition gap as "pass 1 of N".** Implementing the bundle's CONTENT into an UNCHANGED COMPOSITION is a material difference from the design the owner supplied, not a partial version of it — and "pass 1 of 2" tells a reader to expect convergence, which is precisely why he did not stop the run. Say which composition the surface has, and where it is not the design's, say the result will not look like the bundle. Both mapping-queue passes did this and neither said it.
+- **Cherry-picking from the design and closing the pass on it — a WELL-DOCUMENTED unilateral decision read as a legitimate outcome (§5c).** This is the subtlest member of the family and the one that looks most like good practice while it happens, because the run *does* write down what it did and why. The mapping-queue passes that produced the 2026-09-26 owner ruling headed whole sections *"Section labels — v15 wins over the design, and it is logged"* and *"v15 beats the design again, in the same place"*, listed *"Where v15 beat the design"* as a numbered achievement, recorded a detector table shipped two-columns-for-three with the absent field correctly named, and kept a candidate-score treatment on the grounds that *"the implementation beats the design … Keeping ours"*. Every word of that was true and every one of those was a design decision taken by the implementer. **Disclosure is not the defence** — a ledger that argues its own case still never reaches the designer. The backstop is the departure classification + a sendback reference on the row + the mandatory §9 section; the leak is a reason-without-a-sendback, and its tell is a verdict verb (*wins*, *beats*, *keeping ours*) where a question belongs.
+- **Resolving a design-vs-policy conflict by picking the policy, and calling that deference.** `docs/design-policy.md` and the returned design are both authorities the owner set; an implementer that chooses between them has decided, whichever way it went. The safe-looking direction is still a decision. Ship the policy-compliant behaviour as **interim**, label it, and ask — the observed case is twelve section labels the design set `uppercase` against a §4 prohibition and a §5 hard failure, where dropping the transform was the right interim act and *"v15 wins, and this is where"* was the wrong verdict.
+- **Pushing a NOT-YET-BUILT item through a sendback, which is the over-firing failure.** A design item left untouched with nothing of ours in its place asserts nothing and owes the designer nothing — it is a `⊘ deferred` row in the §9 list, as it always was. Four such items in one real pass (a multi-operator header, an undo panel needing a server-computed field, a `Proposal reasoning` row resting on an unratified requirement, a column no field records) were held back **correctly** and must stay cheap. A rule that taxed them would be switched off, and then the real departures would go unreported too.
 - Fixing some deltas but not all ("the rest are minor" — fix them all, or defer-with-reason)
 - Editing without re-reading to verify (edits can silently fail or land in the wrong location)
 - Changing `tailwind.config.js` when an arbitrary value would work
