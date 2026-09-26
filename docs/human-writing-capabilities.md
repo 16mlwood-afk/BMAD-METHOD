@@ -2,7 +2,7 @@
 
 **Scope:** humanizer / human-writing / plain-English / voice / tone / cold-email capabilities — which are already covered by installed skills, which are redundant to add, and where a genuine gap remains.
 
-**Last updated:** 2026-07-25 · Sessions: claude-session-20260725-174238 (freshness rule added — `Evidence basis` + `Last verified` per row, PROVISIONAL condition for stale/non-measured `Do not install` verdicts, symmetric conflict diagnostic; actions the 2026-07-24 fork-gap) + 2026-07-24 Sessions: claude-session-20260724-195406 (humanizer row re-decided on evidence after a bake-off; provenance register added — see Provenance § and `humanizer-bakeoff-2026-07-24.md`) + claude-session-20260724-195919 (Selection gate § added — the `humanizer-selection` meta-skill now governs every future change to these rows, with the objective explicitly framed as signs-of-LLM-writing removal, not detector evasion)
+**Last updated:** 2026-09-26 · on-screen UI copy added as a new SURFACE for the installed humanizer (house decision, § Boundary clarification — 2026-09-26; nothing installed) + 2026-07-25 · Sessions: claude-session-20260725-174238 (freshness rule added — `Evidence basis` + `Last verified` per row, PROVISIONAL condition for stale/non-measured `Do not install` verdicts, symmetric conflict diagnostic; actions the 2026-07-24 fork-gap) + 2026-07-24 Sessions: claude-session-20260724-195406 (humanizer row re-decided on evidence after a bake-off; provenance register added — see Provenance § and `humanizer-bakeoff-2026-07-24.md`) + claude-session-20260724-195919 (Selection gate § added — the `humanizer-selection` meta-skill now governs every future change to these rows, with the objective explicitly framed as signs-of-LLM-writing removal, not detector evasion)
 
 **Status:** CANONICAL. Treat this as the single source of truth for these 7 capabilities. In any future thread evaluating humanizer/human-writing/voice/tone/email skills, consult this ledger FIRST, reuse its verdicts and default actions **subject to the freshness rule below**, and UPDATE this file if a new decision is made (e.g. a house-owned outreach skill is added).
 
@@ -68,6 +68,7 @@ Per `skill-provenance-and-external-discovery` (STD-SKILLPROV-001 DRAFT), a skill
 | Tone control formal/warm/casual (Tone/Voice Guide) | `cw:style-analysis` + `prose-writing` | Redundant | **Mechanism-duplication argument** — no output compared | unrecorded — **PROVISIONAL** | Duplicate | **Do not install** |
 | Infer style from samples (Voice Analyzer) | `cw:style-analysis` (near-exact match) | Redundant | **Near-exact capability match** with `cw:style-analysis` — the strongest of the redundancy arguments, still not a measured one | unrecorded — **PROVISIONAL** | Duplicate | **Do not install** |
 | **Outreach/cold-email + reply framing (Cold Email)** | **Filled 2026-07-22 by house-owned `outreach-email` skill** (`~/.claude/skills/outreach-email/SKILL.md`) — 3 modes (cold intro / follow-up / reply-to-interest) × 3 tone dials; defers polish to `writing:humanize-text`, voice-match to `cw:style-analysis` | **Gap CLOSED (in-house)** | **Outward discovery ran** — no community cold-email skill worth adopting; documented build decision | 2026-07-22 | N/A — house-owned, no external code | **Use `outreach-email` skill; no external Cold Email install** |
+| **On-screen UI copy (Copy screen)** | **Extended 2026-09-26 in-house, no install:** the installed `writing:humanize-text` rules + the read-only `plain-english-outcome-editor` agent, applied to every string a page shows. Delivered by the fork as STD-COPY-SCREEN-001 (`custom/workflows/design/shared/on-screen-copy-screen.md`): a Copy deck in every design-handoff brief, screened at Gate 1, and the same screen on every shipped string in design-implement before merge. Part (c) is checked by `tools/check-copy-screen.js`. | **New surface for installed skills — house decision** | **Owner instruction in the moment** (2026-09-26, quoted in § Boundary clarification — 2026-09-26) + the owner's live failing example as a golden fixture (`copy-screen-golden-matrix.md`) | 2026-09-26 | None — nothing external added | **Screen every on-screen string with `writing:humanize-text` rules; no external install** |
 
 **Row staleness rule (added 2026-07-24).** A verdict states what it was decided ON, not just what it decided. Any *Do not install* row decided on trigger-collision or duplication grounds alone — with no comparison of provenance or output quality — is **PROVISIONAL**, and a session about to reuse it must run a fresh outward pass (web + GitHub) before treating it as canonical. "Unless the installed skill set has changed" is NOT sufficient: it keys on change inside the machine and is structurally blind to a better external tool appearing, which is exactly the event that should invalidate a suppression verdict. The ledger-conflict diagnostic applies symmetrically — it fires just as loudly when re-affirming a stale suppression as when proposing to contradict one. (Origin: the Humanizer row above sat at *Redundant / Do not install* on trigger-collision reasoning for three weeks while a materially better-sourced skill existed unexamined; an outside human surfaced it, not the mechanism. Logged in `fork-gaps.md` 2026-07-24.)
 
@@ -181,6 +182,36 @@ constrains. Reversal is deleting one file.
 
 **The suppression still stands for its stated scope** — installing an external plain-English
 *writing* skill.
+
+### Boundary clarification — 2026-09-26 (owner instruction): on-screen UI copy
+
+**Classification: PERMITTED, a new SURFACE for an installed skill. Not prohibited, not ambiguous.
+Ledger-conflict diagnostic: none fires.**
+
+The owner, 2026-09-26, reading a live price-list page: *"It's the LLM language on the screen that
+makes no sense to a human... our humanizing email skill is really handy, but I want to broaden it
+basically, so we can do... a humanizing screening every time we do a UI or something... it could do
+this at a handoff level, but also this could also work like this. But it's just statements like this
+that is just, it makes absolutely no sense. 'Check · 13 — boxes compared, something else to settle'"*
+
+1. **Nothing is installed.** The change extends the INSTALLED `writing:humanize-text` rules, and the
+   read-only `plain-english-outcome-editor` agent, to one more surface: text a person reads on a page
+   we design or build. The Plain English row's *Do not install* suppression governs adding an
+   EXTERNAL plain-English skill; it is not reused or contradicted here, so no outward pass is owed.
+2. **Precedent:** the 2026-08-31 clarification above (an internal reviewer added under § Status's
+   "update this file if a new decision is made"), and the 2026-09-14 global CLAUDE.md widening of the
+   humanizer from email to any text a third party reads. This is the same move for the owner as the
+   reader of our own screens.
+3. **Where it lives:** fork standard STD-COPY-SCREEN-001, `custom/workflows/design/shared/on-screen-copy-screen.md`.
+   design-handoff briefs carry a **Copy deck** screened at Gate 1; design-implement screens every
+   user-visible string before merge, including strings the implementation added.
+4. **The screen:** (a) the `writing:humanize-text` rules · (b) the cold-reader test · (c) no internal
+   vocabulary · (d) the rewriter's added-clause rule.
+5. **Enforcement, honestly:** part (c) and the presence of all four marks are DETERMINISTIC in
+   `tools/check-copy-screen.js` (`npm run test:copy-screen`, the owner's example as the failing
+   fixture). Parts (a), (b) and (d) are judgement and stay PROBABILISTIC.
+
+Reversal: delete the shared doc, the checker and the two step paragraphs.
 
 ---
 

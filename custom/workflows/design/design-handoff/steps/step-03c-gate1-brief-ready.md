@@ -75,6 +75,17 @@ every project syncs), record `checker: unavailable` in the artifact and continue
 reviewer alone. **Do not silently skip and report a clean run** — an absent instrument is an
 absent instrument, not a pass.
 
+**Then screen the Copy deck** (`../../shared/on-screen-copy-screen.md`, STD-COPY-SCREEN-001):
+
+```bash
+node ~/bmad-method-v6/tools/check-copy-screen.js --deck "{output_path}" --strict
+```
+
+This one is NOT a question: a hard finding (no deck, an unscreened row, a `✗`, or banned vocabulary in
+*Ships as*) is repaired before the brief is ready — rewrite the string and re-run. `P1`–`P3` are proxies:
+look, then keep or rewrite. The checker cannot judge parts (a), (b) or (d); the reviewer in §2 reads
+the deck for them.
+
 **A fired probe is a QUESTION, not a defect.** Do not put the fired count in front of the
 owner, do not treat it as a score, and do not repair a probe simply because it fired.
 

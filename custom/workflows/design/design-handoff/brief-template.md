@@ -773,6 +773,21 @@ If `{page_mode}` = **detail:**
 
 ---
 
+## Copy deck — every string a person reads on this surface, screened
+
+**Use these words.** Every heading, group title, column head, label, status, empty state, refusal, button, link, tooltip, toast and caption on this surface, one row each, with the words it ships as. A string built from data is listed once as its template (`{n} lines need a look`); a family of sentences a producer system writes is listed once per shape. You may reword a string, but any string you add or change goes through the same screen, and design-implement screens every string again before merge (`shared/on-screen-copy-screen.md`, STD-COPY-SCREEN-001).
+
+**The screen, per row:** (a) humanized under the `writing:humanize-text` rules · (b) the owner, who was not in the build, can say what it means and what to do from the string alone · (c) none of: verdict, disposition, lane, gate, route, provenance, identity test, figure-listing, precondition, settle, rests on, `CHECK`/`SKIP` as bare codes, an ID as the subject · (d) the replacement adds no claim or cause that *What it means* does not carry.
+
+| # | Where | Current | What it means | Ships as | Screen |
+|---|---|---|---|---|---|
+{for s in {copy_deck}}| {s.n} | {s.where} | {s.current or "—"} | {s.means} | {s.ships_as} | {s.screen: e.g. "a✓ b✓ c✓ d✓"} |
+{endfor}
+
+{State the count: "{copy_deck_count} strings; {copy_deck_changed} reworded from the current surface." A surface with no text says so in a sentence; the section is never omitted.}
+
+---
+
 ## Advisory guidance — the designer's call
 
 **Everything from here to §7 is ADVISORY** (`shared/brief-binding-contract.md`). It is here because it is useful: the product's visual system, suggested frames, the page-mode default composition, and the style floors the product usually holds to. None of it can fail your design. Where you depart from it, say so in your notes and say why — a departure is reported downstream as a note, never as a failure. Rules marked **[tradeable]** exist for consistency across the product rather than for correctness: trade them against a better idea when you have one.
