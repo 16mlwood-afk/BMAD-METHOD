@@ -137,6 +137,14 @@ Spawn ONE isolated agent (`Agent` tool, fresh context) with:
    capability that disappeared between §1 and Part 2 with no Part 5 question is a silent drop.
    **And the reverse, which is the over-binding half:** §4f-c prescribing where a control goes,
    what it looks like or what it says is a finding — that section is evidence, not instruction.
+10. **Detail surfaces (2026-09-26, `shared/controls-and-attention.md` §2a).** Three probes.
+   **(a)** A drawer or panel in §7 with no Detail surfaces block, or a block whose answer reads the
+   same on any record ("shows the line's details") — the field dump is being briefed, not prevented.
+   **(b)** An evidence ranking with no reasons, or with provenance fields (match method, source row,
+   "issues: none") ranked as evidence — or a qualifying caveat (not read, basis, floor) filed under
+   provenance, where it would be collapsed away from its figure. **(c)** The over-binding half: a
+   block that prescribes the mechanism (a tab, an accordion, a position, a type size) instead of an
+   order is a finding — TD1 binds the order, never the layout.
 
 Record the reviewer's output verbatim in the artifact. **Do not edit its findings into
 agreement with the brief.**

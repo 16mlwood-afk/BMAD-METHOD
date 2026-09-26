@@ -246,3 +246,9 @@ Set on EVERY run by `steps/step-01-domain-passes.md` §3j, immediately after §3
 - `{background_work}` — what the system can run on its own, with what the page should say instead (what it is doing, when it last ran). The design must NOT turn these into per-row controls.
 - `{fault_categories}` — each category that looks like work and is a defect: `{name, owner (never the operator), why it recurs, what fixes it}`. Rendered as brief §4f-c and as TF1's subject.
 - **TC1, TC2, TA1, TA2, TF1** join `{truth_tests}` on every run, phrased for THIS surface — never as generic boilerplate. They are binding like every other Part 2 test.
+
+### Detail-surface attention (step-01c §5f-b) — each drawer answers its own question (2026-09-26)
+
+Set by `steps/step-01c-topology.md` §5f-b, after §5f-a. Contract: `shared/controls-and-attention.md` §2a (TD0, TD1, TD2).
+
+- `{detail_surface_orders}` — one entry per detail surface (drawer, expanded row, record panel, side sheet, lookup drawer; frame #1 on a `detail` page): `slug · surface · kind · opened_from · answer · next_action · evidence[] {rank, fact, why_it_ranks_here} · provenance · justified_repeats · repeat_risks · source`. Derived from the data model, `{expected_controls}` and the Part 1 moment; where those cannot settle the answer, next action or top evidence, the user is asked one question per surface (autonomous mode included). `[]` only with a recorded reason. Rendered as the brief's Part 2 Detail surfaces block; each entry adds `TD0-{slug}`, `TD1-{slug}`, `TD2-{slug}` to `{truth_tests}`.

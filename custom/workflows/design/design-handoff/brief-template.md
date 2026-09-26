@@ -12,6 +12,13 @@
     git -C ~/bmad-method-v6 show 85d5a189:custom/workflows/design/design-handoff/brief-template.md
   Evidence: docs/design-brief-notes-evidence-2026-09-19.md in the fork.
 
+  Template revisions since the outcome-first shape (newest last):
+  - 2026-09-26 — Part 2 gains the per-DETAIL-SURFACE attention tests TD0 / TD1 / TD2 (a drawer's own
+    five-second answer, its reading order, one fact once) and the "Detail surfaces" block that names
+    each surface's answer, next action and reading order. Standard: shared/controls-and-attention.md
+    §2a. Derived by step-01c §5f-b; rendered by step-03 §2. Inside the existing binding class — no
+    style rule became binding.
+
   How to render:
   - Substitute every {variable}; honour the conditional {if …} / {for …} blocks.
   - Section order is intentional: the five parts (moment → what must be true → what must dominate
@@ -148,6 +155,8 @@ Contract: `shared/brief-binding-contract.md` (STD-BRIEF-BINDING-001). Reviewers 
 
 **Five of the Part 2 tests are on every brief and are worth reading first — TC1, TC2, TA1, TA2, TF1.** They govern whether a control exists, how loud anything is, and what the page treats as work: every action control can say what its press tells the system that the system does not already know · no sentence instructs an action the page gives no way to perform · the most emphasised thing is the most consequential thing and no consequential control is dressed as chrome · no fact is said twice at rest · no system fault is rendered as a category of the operator's work. Source: `shared/controls-and-attention.md` (STD-CONTROLS-ATTENTION-001), which holds **no** colour, shape, placement, spacing or wording rule — those are yours, as always. §4f-c carries the evidence they are judged against.
 
+{if {detail_surface_orders}}**And every drawer or panel answers its own question — TD0, TD1, TD2, once per detail surface.** A detail surface is judged when it opens, not only when the page loads: within five seconds a reader can say that item's answer and the one thing to do next; it reads answer → evidence (ranked by how much each would change the decision) → provenance and audit, the last collapsible or visibly secondary; and no fact appears on it twice unless the brief says why. The Part 2 "Detail surfaces" block names each surface's answer and order. How you make provenance secondary is yours.{endif}
+
 ---
 
 ## Part 1 · The moment
@@ -194,9 +203,100 @@ These are the ONLY things in this brief that can fail your design. Each is a tes
 | TC2 | {tc2_statement — no sentence on THIS surface instructs an action the surface gives no way to perform. Name the instructions this surface's data forces it to write, e.g. "where a row says the price is below the floor, the row carries the control that changes it — or the sentence states the fact and stops".} | Read every instruction in the prose. For each, find the control that performs it on the same surface. No control and the sentence still instructs → fail. | Owner, 2026-09-20 — `controls-and-attention.md` §1. |
 | TA1 | {ta1_statement — the most emphasised thing on THIS surface is the most consequential thing on it, and no consequential control is dressed as an inconsequential one. Name the surface's single most consequential control (usually an irreversible one from §4f-c).} | Rank what the eye reaches first; rank what costs most if pressed or missed; compare the two orders. Then find the most consequential control and check it does not read as chrome. | Owner, 2026-09-20 — `controls-and-attention.md` §2. |
 | TA2 | {ta2_statement — no fact is stated twice on THIS surface at rest. Name the two or three facts this surface will be most tempted to repeat — a group's blocking reason restated per row, a two-authority disagreement said in two voices, a per-figure caveat that belongs to the page.} | Pick the page's three loudest facts. Count where each is said before anything is opened. Twice is a fail; a decomposition carrying a *different* fact is a pass. | Owner, 2026-09-20 — `controls-and-attention.md` §2. |
-| TF1 | {tf1_statement — no system fault is presented as a category of the operator's work on THIS surface, and no control exists only to compensate for one. Name each `{fault_categories}` entry and its non-operator owner.} | For each category the page counts as work, ask who must act for it to stop recurring. An engineer, a rule or a producing system → it is a fault: named as one, owned elsewhere, counted separately. | Owner, 2026-09-20 — `controls-and-attention.md` §3. |
+{for d in {detail_surface_orders}}| TD0-{d.slug} | Within five seconds of **{d.surface}** opening, a reader who has not seen it can state **{d.answer}** and the next thing to do: **{d.next_action}**. Its opening line is true on its own for a reader who stops there, and reaches the answer or its deciding figure within about twelve words. | Open {d.surface} cold for five seconds; write down its answer and what it tells you to do; compare with the Detail surfaces block below. Count the words from the opening line's start to the answer. | `controls-and-attention.md` §2a — T0 per detail surface. |
+| TD1-{d.slug} | **{d.surface}** reads in the order the Detail surfaces block names for it: the answer and next action first, then the evidence in its stated rank, then provenance and audit — collapsed or visibly secondary. Every level (first line, group heading, item first line) is true on its own, and a caveat that changes what a figure means stays beside that figure. | Rank what the eye reaches first on the opened surface; compare with the named order. Evidence out of rank at the top, provenance as loud as the answer, a heading the detail below reverses, or a qualifying caveat collapsed away from its figure, fails. The mechanism is not judged. | `controls-and-attention.md` §2a — reading order. |
+| TD2-{d.slug} | No fact appears twice on **{d.surface}** when it opens{if d.justified_repeats}, except {d.justified_repeats_short}{endif}. Most tempting to repeat here: {d.repeat_risks}. | List every fact visible when it opens; any that appears twice and is not a justified repeat fails. A decomposition carrying a different fact passes. | `controls-and-attention.md` §2a — TA2 per detail surface. |
+{endfor}| TF1 | {tf1_statement — no system fault is presented as a category of the operator's work on THIS surface, and no control exists only to compensate for one. Name each `{fault_categories}` entry and its non-operator owner.} | For each category the page counts as work, ask who must act for it to stop recurring. An engineer, a rule or a producing system → it is a fault: named as one, owned elsewhere, counted separately. | Owner, 2026-09-20 — `controls-and-attention.md` §3. |
 {for t in {truth_tests}}| {t.id} | {t.statement — an outcome, e.g. "A reader can never mistake a stale or partial figure for a current one, including when they screenshot a single row."} | {t.check — what a reviewer looks at to decide pass/fail} | {t.source — the §2 / §2b / §2c / §4d / §4e / policy rule / capability it protects} |
 {endfor}
+
+{if {detail_surface_orders}}
+### Detail surfaces — each one's answer, and the order it is read in
+
+*These blocks are what TD0, TD1 and TD2 above are checked against. They name an ORDER, never a layout:
+whether the evidence is a list, a table, two columns or a sentence, and whether provenance collapses,
+moves to a tab or drops to a quieter weight, is yours. If you merge or split these surfaces, the tests
+follow the record each one shows, not the frame name. A caveat that changes what a figure means
+(a value that was not read, a basis, a floor) is evidence, not provenance: it ranks with the figure it
+qualifies and is never the thing collapsed. Sources: `controls-and-attention.md` §2a, which carries
+in `amazon-removal-assistant`'s R7 ("a reader who stops at the first line is not misled") and its
+twelve-words-to-the-first-figure budget.*
+
+*Advisory, `[tradeable]`, and candidates for the owner's pending decision on binding style (none can
+fail your design): emphasis by weight or size rather than capitals, with capitals kept for a lead-in
+clause and for references; a type scale in which the answer is larger than the evidence and a label
+quieter than its value. Monospace is best kept for codes a reader compares character by character;
+money and counts in proportional type with tabular figures is a candidate, not a rule. Cited in
+`controls-and-attention.md` §2a.*
+
+{#
+  WORKED EXAMPLE — how a block reads when it is right. Kept in a template comment so it guides the
+  author and never ships inside a brief. Source: the owner's review, relayed 2026-09-26, of a line-detail
+  drawer on brand-source-finder's supplier price-list page, for "Oral-B Pro 3 3000 Black".
+
+  What the drawer did (the failure the three tests exist to catch): a market block of eight label/value
+  pairs at equal weight — price basis, 90-day Buy Box ("blank — none, or not read"), price floor, offers,
+  rank drops 30/90 and 180/365, reviews, sales rank — in monospace beside sans labels; a "How it was
+  matched" block printing the matched listing three times ("Matched listing", "Figures are about", and
+  "Found by" repeating "Method"); and "the line as the supplier wrote it" giving section/row and "Issues:
+  none" the same room as price and stock. Nothing said what to do with the line or where to look first.
+
+  The same drawer as a block (illustrative figures — a real brief takes each value from the data model and
+  each ranking from the owner's decision, never from this example):
+
+  **Line detail — one supplier line, e.g. Oral-B Pro 3 3000 Black** (`line-drawer`)
+  - Answer: whether this line is worth buying at the supplier's price, in one phrase — e.g. "margin
+    clears the floor at this price" / "no margin at this price" / "cannot tell: the market was not read".
+  - Next action: the one decision the owner takes on the line — e.g. "add to the order" or "skip the
+    line"; "cannot tell" names the missing read as the next action instead.
+  - Reading order:
+    1. The answer and the next action.
+    2. Evidence, ranked by how much each would change the decision:
+       a. the supplier's unit price against the price we could sell at, and the margin between them —
+          these ARE the decision;
+       b. the price floor, and whether the sell price clears it — flips the answer on its own;
+       c. whether the Buy Box price was actually read, or is blank because nobody read it — a blank
+          that means "not read" changes the answer to "cannot tell", so it outranks everything below,
+          and as a caveat on a figure it is evidence, never collapsed into provenance;
+       d. how fast it sells (rank and rank drops over 30/90 and 180/365 days) and how many offers
+          compete — changes the quantity and the confidence, rarely the yes/no;
+       e. the supplier's stock — caps the quantity, never the answer;
+       f. reviews — context, lowest.
+    3. Provenance and audit — collapsible or visibly secondary: which listing the line was matched to
+       and how (stated ONCE), the price basis, the supplier's section/row, and the issue check.
+  - Justified repeats: none. The matched listing is stated once, in provenance; "Figures are about"
+    and "Found by" are the same fact and fail TD2 if they reappear.
+  - Most tempted to repeat: the matched listing (three times in the drawer reviewed), the method
+    name, and the price basis once per figure instead of once for the block.
+
+  Its three tests, as tests (never as a layout):
+  - TD0-line-drawer — within five seconds of the line drawer opening, a reader can say whether this
+    line is worth buying at the supplier's price, and that the next thing to do is add it or skip it;
+    the drawer's opening line reaches that verdict (or the margin that decides it) within about twelve
+    words, and does not mislead a reader who reads nothing else.
+  - TD1-line-drawer — the drawer reads answer and next action first; then price/margin, floor,
+    whether the Buy Box was read, sales velocity and competition, supplier stock, reviews, in that
+    rank; then how it was matched, the price basis and the supplier's own section/row, collapsed or
+    visibly quieter than the answer. "Issues: none" is audit and never outranks price and stock.
+  - TD2-line-drawer — no fact appears twice on the opened drawer: the matched listing once, the
+    matching method once, the price basis once for the block.
+#}
+
+{for d in {detail_surface_orders}}**{d.surface}** (`{d.slug}` — {d.kind}, opened from {d.opened_from})
+- **Answer:** {d.answer}
+- **Next action:** {d.next_action}
+- **Reading order:**
+  1. The answer and the next action.
+  2. Evidence, ranked by how much each would change the decision:
+     {for e in d.evidence}{e.rank}. {e.fact} — {e.why_it_ranks_here}
+     {endfor}
+  3. Provenance and audit — collapsible or visibly secondary: {d.provenance}
+- **Justified repeats:** {d.justified_repeats — each fact allowed to appear twice, with the reason; or "none"}
+- **Most tempted to repeat:** {d.repeat_risks}
+- **Where this came from:** {d.source — the data fields, the owner decision it serves, and any answer the user supplied in step-01c §5f-b}
+
+{endfor}
+{endif}
 
 {if {preserved_claims}}
 ### Preserved claims — what a redesign may move, but may not lose
@@ -228,7 +328,7 @@ you said it is yours.
 {endfor}
 {endif}
 
-**Where these come from (so nothing binding is invented and nothing true is dropped):** the data's own defects (§2: missing ≠ zero, observed vs declared vs assumed, two authorities kept apart, §2e's three kinds of blank and both sides of a figure owed to a far end), the claims a redesign must not strip (the preserved-claims list above), the finance truth constraints (§2b `must_not_infer`), the runtime honesty budget (§2c — the page never claims more liveness than its transport delivers), analytic and decision honesty (§4d/§4e — no fabricated interval or distribution, derived never shown as stored), the audit contract (§4h obligations restated as outcomes — "every figure's source is inspectable"), the capabilities in §1 (reachability), a data-protecting role boundary (from `shell_role`), and the truth-and-data rules of the project design policy (money basis, no invented figures). **TC1 · TC2 · TA1 · TA2 · TF1 are present on every brief** and come from `shared/controls-and-attention.md` (STD-CONTROLS-ATTENTION-001) — they govern whether a control exists, how loud anything is, and what the page treats as work. Style, layout and composition rules from the policy are NOT here — they are in the Advisory guidance, and `controls-and-attention.md` deliberately holds no colour, shape, placement, spacing or wording rule.
+**Where these come from (so nothing binding is invented and nothing true is dropped):** the data's own defects (§2: missing ≠ zero, observed vs declared vs assumed, two authorities kept apart, §2e's three kinds of blank and both sides of a figure owed to a far end), the claims a redesign must not strip (the preserved-claims list above), the finance truth constraints (§2b `must_not_infer`), the runtime honesty budget (§2c — the page never claims more liveness than its transport delivers), analytic and decision honesty (§4d/§4e — no fabricated interval or distribution, derived never shown as stored), the audit contract (§4h obligations restated as outcomes — "every figure's source is inspectable"), the capabilities in §1 (reachability), a data-protecting role boundary (from `shell_role`), and the truth-and-data rules of the project design policy (money basis, no invented figures). **TD0 · TD1 · TD2 are present once per detail surface** (the Detail surfaces block above; `controls-and-attention.md` §2a) — a drawer, expanded row, record panel or side sheet answers its own question, in a named order, saying each fact once. **TC1 · TC2 · TA1 · TA2 · TF1 are present on every brief** and come from `shared/controls-and-attention.md` (STD-CONTROLS-ATTENTION-001) — they govern whether a control exists, how loud anything is, and what the page treats as work. Style, layout and composition rules from the policy are NOT here — they are in the Advisory guidance, and `controls-and-attention.md` deliberately holds no colour, shape, placement, spacing or wording rule.
 
 ---
 
@@ -1255,6 +1355,7 @@ This page spawns secondary surfaces at runtime — the detail drawer the operato
 
 **Notes on the suggestions (advisory unless a line says it is a Part 2 test):**
 - **A state frame is a NAME here; what it looks like is in §2g.** Every `{primary}--{state}` row below has a row in §2g carrying what is true in that state, how to see it, and either a capture or a declared absence. Read them together: the name says a state exists, and only §2g says what you are drawing. A `NOT CAPTURED` there is not permission to skip the frame — it means you are drawing that one from a description.
+- **Every detail frame below carries its own binding tests in Part 2 (TD0/TD1/TD2)** — its answer, next action and reading order are in the Detail surfaces block. The frame is a suggestion; its tests are not. Merge, split or redraw the frames as you like: the tests follow the record the surface shows.
 - **No bare stubs.** A suggested lookup-drawer's "What it would carry" must name the fields the relation actually needs (a `warehouse-lookup` opened from an order shows code/type/status/location AND what's routed through it for this order), never identity alone. If the record genuinely carries nothing past identity, state that explicitly.
 - **Depth-1 only.** A lookup drawer lists its own immediate lookups; the foreign record's own §2a owns the next level. Do not inline the recursive order→catalog→supplier graph.
 - **Money is basis-complete — this one is a Part 2 test wherever money appears.** Every figure in a "Figures" cell follows `docs/design-policy.md` §15 — VAT basis, native currency framed against GBP, no decontextualised fragment; rendered as the detail surface, not a bare-number dump. **A derived figure (computed at render — e.g. a pack-split implied unit cost) is labelled DERIVED, never shown as a persisted value** (per §4d basis, carried from the finance-domain-pass `basis` field).

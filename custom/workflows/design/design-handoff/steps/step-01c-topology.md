@@ -165,6 +165,61 @@ Set `{spawned_surfaces}` — frame #1 always present; the detail-drawer frame pr
 
 Set `{state_material}` — **never empty** (the three universal rows are unconditional). Renders into brief **§2g**, which is unconditional for the same reason. It adds **nothing** to `{expected_required_frames}` and changes no halt condition in §5h: a missing capture is material for the designer to weigh, not a frame to fail a build on.
 
+### 5f-b. Detail-surface attention — each drawer's answer, next action and reading order (REQUIRED whenever a detail surface exists)
+
+§5f names the frames; this says what each detail frame is FOR. A drawer, expanded row, record panel,
+side sheet or §13 lookup drawer opens after the page has done its job, and without this pass nothing
+binds it — which is how detail surfaces keep coming back as field dumps: every value at equal weight,
+no focal point, the same fact printed three times, provenance as loud as the decision. Standard:
+`{project-root}/_bmad/bmm/workflows/design/shared/controls-and-attention.md` §2a (TD0, TD1, TD2). Read
+it; do not restate it.
+
+**Which frames.** Every `{spawned_surfaces}` entry whose `render_as` is `drawer-over-…`, every
+expanded-row / record-panel / side-sheet the §5a composition implies, and frame #1 when
+`{page_mode}` is `detail`. State frames (`{primary}--{state}`) are not detail surfaces. None → set
+`{detail_surface_orders}` = `[]` and record `detail surfaces: none — {why}`; an empty list with no
+reason is the silent gap this pass exists to close.
+
+**Build `{detail_surface_orders}` — one entry per detail surface, DERIVED, never left blank:**
+
+1. **`answer`** — what this one item tells the operator, in one phrase, taken from the decision the
+   record serves: the §4d decision numbers it carries, the verdict/state field in the data model,
+   and the Part 1 moment. It names the kind of answer and its possible values ("margin clears the
+   floor / no margin / cannot tell — market not read"), never a figure invented for the brief.
+2. **`next_action`** — the ONE thing to do next, from `{expected_controls}` (§3j) where the surface
+   carries a control, else the navigation the answer implies. Where there is genuinely nothing to
+   do, say so ("nothing — read-only reference") — that is an answer, a blank is not.
+3. **`evidence`** — every remaining decision-relevant field, **ranked by how much it would change
+   the decision**. The test per field: *if this value were different, would the answer or the next
+   action change?* Flips it → top; shifts the quantity or the confidence → middle; changes neither →
+   it is not evidence. Each entry carries `why_it_ranks_here` in one clause. **A caveat that changes
+   what a figure means** (a value not read, a basis, a floor) ranks with that figure — it is
+   evidence, never provenance.
+4. **`provenance`** — where the values came from and how: source, match method, as-at stamps, raw
+   supplier wording, audit trail, "issues: none". Collapsible or secondary by the test; named here
+   so the designer knows what to demote.
+5. **`justified_repeats`** — a fact allowed to appear twice, with the reason (default `none`), and
+   **`repeat_risks`** — the two or three facts this surface is most tempted to repeat (a matched
+   record restated as "about" and "found by", a basis stamped per figure).
+6. **`source`** — the data fields and the owner decision the ordering rests on, plus any answer the
+   user supplied below.
+
+**Ground or ask — never guess, never leave blank.** The ranking is a decision about the owner's
+decision, and a wrong ranking produces a confidently ordered wrong drawer. If the data model and
+the captured decisions cannot settle `answer`, `next_action` or the top of `evidence` for a surface,
+**ask the user ONE question for that surface** ("On the {surface}, what do you decide from it, and
+which figure decides it?"). This holds in autonomous mode too, the same way §5e holds for an
+unresolvable hero. If the user cannot be reached, record the best derivation, mark the entry
+`provisional — {what is unknown}`, and copy the question into `{open_questions}` verbatim.
+
+**Each entry becomes three Part 2 tests**, suffixed with its `slug`: `TD0-{slug}`, `TD1-{slug}`,
+`TD2-{slug}`. Append the ids to `{truth_tests}`; step-03 §2 renders them and the brief's Detail
+surfaces block.
+
+**§ Enforcement tier (honest).** PROBABILISTIC — workflow prose. Nothing checks that a ranking
+reflects the decision, or that an answer phrase is the right one. What is mechanical is narrow: the
+ids land in `{truth_tests}`, so every downstream reviewer that already walks Part 2 walks these.
+
 ### 5g. List-rendering — pagination / virtualization is a DERIVED requirement, not flavour text
 
 The gather already captures **Data volume** (§1 — "Typical data volume", e.g. "1,400+ records/quarter") and §5d uses it to decide *page splits*. But volume is never **derived into a list-rendering requirement** — so an operational/analytical worklist whose row count grows unbounded ships as a single un-paginated render, every time. Volume captured as flavour text is the gap; the fix is to derive a verdict and make it a **deliverable**, the same way §5b derives the band and §5f derives the frames. (Contract-dimension-gap, derive-to-requirement flavour: the input axis exists, the requirement never gets formed.)
@@ -247,6 +302,7 @@ Confirm populated:
 - `{spawned_surfaces}` ✓ (§5f — one **suggested frame** per surface this page spawns (listed in full so none is lost; advisory to the designer since 2026-09-19 — `shared/brief-binding-contract.md`): the primary surface, the drilled detail drawer (per the §5a composition), one lookup drawer per `{linked_records_inventory}` entry, one state-variant frame per operator-distinct lifecycle state from `{runtime_behavior_contract}` (iff `{is_live_process_surface}` — rule 4), and one workflow-state frame per operator-distinct step (iff ≥2 operator-distinct steps — rule 5, deduped against rule 4 by `frame_name`); each with `frame_name · trigger · render_as · must_contain · figures (§4d) · lookups (depth-1 §2a)`; richness floor applied — no bare identity stubs; depth-1 lookups. Renders into brief **§7 Surface Inventory** and is cross-checked by `design-implement` step-03 §2f. Empty only for a true leaf surface with no drawer, no linked records, and a single step.)
 - `{is_live_process_surface}` ✓ (§3c — `true` iff the surface's primary job is watching/controlling a long-running in-flight process; `false` for CRUD and finished-output surfaces) — plus `{runtime_behavior_contract}` (populated iff `true`: run lifecycle state machine · per-item states incl. failure/partial lanes · update transport & staleness · control verbs as outcomes · available progress signals; derived from the driving code, never invented; renders into brief **§2c** and feeds the §5f state-variant frames)
 - `{state_material}` ✓ (§5f-a — one entry per state this surface can be in, `{ state · what_is_true · how_to_see · material }`; **never empty**, because `empty` / `far-end-unreachable` / `loading` are unconditional rows on any surface that reads anything, plus one row per `{primary}--{state}` frame and per state a `nobody-looked` blank or a `{far_end_figures}` entry can produce. `material` is a path to a capture **or** `NOT CAPTURED — {reason}` — a declared absence is a pass, a missing row is not. Renders into brief **§2g**; adds nothing to `{expected_required_frames}` and no halt to §5h)
+- `{detail_surface_orders}` ✓ (§5f-b — one entry per detail surface: `slug · surface · kind · opened_from · answer · next_action · evidence[] (ranked, each with why_it_ranks_here) · provenance · justified_repeats · repeat_risks · source`; derived from the data model and the captured decisions, a user question asked where they cannot settle it; `[]` only with a stated reason. Adds `TD0/TD1/TD2-{slug}` to `{truth_tests}`)
 - `{surface_completeness_verdict}` ✓ (§5h — `complete | complete-with-noted-exceptions | unverified-basis-absent`; a **required** frame missing from `{spawned_surfaces}`, or a displayed-but-undeclared edge, HALTs here before step-02 rather than producing a passing "incomplete" verdict — `shared/spawned-surface-completeness.md`/STD-SURFACECOMPLETE-001. Derivation basis = Drizzle FKs + `docs/relational-coherence/relational-edges.yaml`, same source as `relational-coherence-audit`. Additive to step-04's Block-B `frames` well-formedness assertion, not a replacement) — plus `{surface_completeness_notes}` (out-of-scope-edge rationales `edge · why-not-displayed` + any degradation note; empty only when verdict is `complete`)
 - `{list_rendering_verdict}` ✓ (§5g — `single-render | paginate | virtualize | load-more` for a list-bearing operational/analytical surface; NOT `single-render` ⇒ the mechanism is a REQUIRED §7 deliverable + a `{must_support_capabilities}` entry, enforced by `design-implement` step-03's List-rendering row; empty only for a non-list `detail` surface) — plus `{list_rendering_rationale}` (the volume/growth read, or the hard ceiling that justifies `single-render`)
 - `{user_context}` ✓
