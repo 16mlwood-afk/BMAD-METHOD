@@ -54,7 +54,7 @@ class Installer {
       }
 
       if (existingInstall.installed) {
-        await this._removeDeselectedModules(existingInstall, config, paths);
+        await this._removeDeselectedModules(existingInstall, config, paths, originalConfig._preserveModules || []);
         updateState = await this._prepareUpdateState(paths, config, existingInstall, officialModules);
         await this._removeDeselectedIdes(existingInstall, config, paths);
       }
@@ -76,25 +76,23 @@ class Installer {
       const results = [];
       const addResult = (step, status, detail = '', meta = {}) => results.push({ step, status, detail, ...meta });
 
-      // Capture previously installed skill IDs before they get overwritten
-      const previousSkillIds = new Set();
-      const prevCsvPath = path.join(paths.bmadDir, '_config', 'skill-manifest.csv');
-      if (await fs.pathExists(prevCsvPath)) {
-        try {
-          const csvParse = require('csv-parse/sync');
-          const content = await fs.readFile(prevCsvPath, 'utf8');
-          const records = csvParse.parse(content, { columns: true, skip_empty_lines: true });
-          for (const r of records) {
-            if (r.canonicalId) previousSkillIds.add(r.canonicalId);
-          }
-        } catch (error) {
-          await prompts.log.warn(`Failed to parse skill-manifest.csv: ${error.message}`);
-        }
-      }
+      // Capture previously installed skill rows before they get overwritten
+      const preservedModules = originalConfig._preserveModules || [];
+      const previousSkillManifestRows = await this._readSkillManifestRows(paths.bmadDir);
+      const previousSkillIds = this._getPreviousSkillIdsForCleanup(previousSkillManifestRows, preservedModules);
 
       const allModules = config.modules || [];
 
-      await this._installAndConfigure(config, originalConfig, paths, allModules, allModules, addResult, officialModules);
+      await this._installAndConfigure(
+        config,
+        originalConfig,
+        paths,
+        allModules,
+        allModules,
+        addResult,
+        officialModules,
+        previousSkillManifestRows,
+      );
 
       await this._setupIdes(config, allModules, paths, addResult, previousSkillIds);
 
@@ -144,10 +142,11 @@ class Installer {
    * Remove modules that were previously installed but are no longer selected.
    * No confirmation — the user's module selection is the decision.
    */
-  async _removeDeselectedModules(existingInstall, config, paths) {
+  async _removeDeselectedModules(existingInstall, config, paths, preservedModules = []) {
     const previouslyInstalled = new Set(existingInstall.moduleIds);
     const newlySelected = new Set(config.modules || []);
-    const toRemove = [...previouslyInstalled].filter((m) => !newlySelected.has(m) && m !== 'core');
+    const preserved = new Set(preservedModules);
+    const toRemove = [...previouslyInstalled].filter((m) => !newlySelected.has(m) && m !== 'core' && !preserved.has(m));
 
     for (const moduleId of toRemove) {
       const modulePath = paths.moduleDir(moduleId);
@@ -212,7 +211,16 @@ class Installer {
   /**
    * Install modules, create directories, generate configs and manifests.
    */
-  async _installAndConfigure(config, originalConfig, paths, officialModuleIds, allModules, addResult, officialModules) {
+  async _installAndConfigure(
+    config,
+    originalConfig,
+    paths,
+    officialModuleIds,
+    allModules,
+    addResult,
+    officialModules,
+    previousSkillManifestRows = [],
+  ) {
     const isQuickUpdate = config.isQuickUpdate();
     const moduleConfigs = officialModules.moduleConfigs;
 
@@ -291,25 +299,29 @@ class Installer {
 
         message('Generating manifests...');
         const manifestGen = new ManifestGenerator();
+        const preservedModules = originalConfig._preserveModules || [];
 
         const allModulesForManifest = config.isQuickUpdate()
           ? originalConfig._existingModules || allModules || []
-          : originalConfig._preserveModules
-            ? [...allModules, ...originalConfig._preserveModules]
+          : preservedModules.length > 0
+            ? [...allModules, ...preservedModules]
             : allModules || [];
 
         let modulesForCsvPreserve;
         if (config.isQuickUpdate()) {
           modulesForCsvPreserve = originalConfig._existingModules || allModules || [];
         } else {
-          modulesForCsvPreserve = originalConfig._preserveModules ? [...allModules, ...originalConfig._preserveModules] : allModules;
+          modulesForCsvPreserve = preservedModules.length > 0 ? [...allModules, ...preservedModules] : allModules;
         }
+
+        await this._trackPreservedModuleFiles(paths.bmadDir, preservedModules);
 
         await manifestGen.generateManifests(paths.bmadDir, allModulesForManifest, [...this.installedFiles], {
           ides: config.ides || [],
           preservedModules: modulesForCsvPreserve,
           moduleConfigs,
         });
+        await this._appendPreservedSkillManifestRows(paths.bmadDir, previousSkillManifestRows, preservedModules);
 
         // Apply post-install --set TOML patches. Runs after writeCentralConfig
         // (inside generateManifests above) so the patch operates on the
@@ -407,8 +419,89 @@ class Installer {
       const sourceDir = path.dirname(path.join(bmadDir, relativePath));
       if (await fs.pathExists(sourceDir)) {
         await fs.remove(sourceDir);
+        await this._removeEmptyParents(path.dirname(sourceDir), bmadDir);
       }
     }
+  }
+
+  /**
+   * Remove now-empty parent directories left behind after skill dir cleanup.
+   * Walks up from dir, stopping at (and never removing) bmadDir. Best-effort:
+   * a directory that vanishes or fills in mid-walk just ends the walk.
+   * @param {string} dir - Directory to start walking up from
+   * @param {string} bmadDir - BMAD installation directory (boundary)
+   */
+  async _removeEmptyParents(dir, bmadDir) {
+    let current = dir;
+    while (true) {
+      // Path-boundary check (not a string prefix, so siblings like _bmad2 don't match).
+      const rel = path.relative(bmadDir, current);
+      if (rel === '' || rel.startsWith('..') || path.isAbsolute(rel)) break;
+      try {
+        const entries = await fs.readdir(current);
+        if (entries.length > 0) break;
+        await fs.rmdir(current);
+      } catch {
+        break;
+      }
+      current = path.dirname(current);
+    }
+  }
+
+  async _readSkillManifestRows(bmadDir) {
+    const csvPath = path.join(bmadDir, '_config', 'skill-manifest.csv');
+    if (!(await fs.pathExists(csvPath))) return [];
+
+    try {
+      const csvParse = require('csv-parse/sync');
+      const content = await fs.readFile(csvPath, 'utf8');
+      return csvParse.parse(content, { columns: true, skip_empty_lines: true });
+    } catch (error) {
+      await prompts.log.warn(`Failed to parse skill-manifest.csv: ${error.message}`);
+      return [];
+    }
+  }
+
+  _getPreviousSkillIdsForCleanup(previousRows, preservedModules = []) {
+    const preservedModuleSet = new Set(preservedModules || []);
+    const ids = new Set();
+    for (const row of previousRows || []) {
+      if (row.canonicalId && !preservedModuleSet.has(row.module)) {
+        ids.add(row.canonicalId);
+      }
+    }
+    return ids;
+  }
+
+  async _appendPreservedSkillManifestRows(bmadDir, previousRows, preservedModules = []) {
+    if (!previousRows || previousRows.length === 0 || preservedModules.length === 0) return;
+
+    const preservedModuleSet = new Set(preservedModules);
+    const rowsToPreserve = previousRows.filter((row) => row.canonicalId && row.module && preservedModuleSet.has(row.module));
+    if (rowsToPreserve.length === 0) return;
+
+    const csvPath = path.join(bmadDir, '_config', 'skill-manifest.csv');
+    if (!(await fs.pathExists(csvPath))) return;
+
+    const currentRows = await this._readSkillManifestRows(bmadDir);
+    const activeIds = new Set(currentRows.map((row) => row.canonicalId).filter(Boolean));
+    const appendedRows = [];
+
+    for (const row of rowsToPreserve) {
+      if (activeIds.has(row.canonicalId)) continue;
+      activeIds.add(row.canonicalId);
+      appendedRows.push(
+        [row.canonicalId, row.name || row.canonicalId, row.description || '', row.module, row.path || '']
+          .map((field) => this.escapeCSVField(field))
+          .join(','),
+      );
+    }
+
+    if (appendedRows.length === 0) return;
+
+    const currentContent = await fs.readFile(csvPath, 'utf8');
+    const prefix = currentContent.endsWith('\n') ? currentContent : `${currentContent}\n`;
+    await fs.writeFile(csvPath, prefix + appendedRows.join('\n') + '\n', 'utf8');
   }
 
   /**
@@ -562,6 +655,7 @@ class Installer {
   /**
    * Sync src/scripts/* → _bmad/scripts/ so shared Python scripts
    * (e.g. resolve_customization.py) are available at install time.
+   * Excludes dev-only tests and Python caches so they don't ship to users.
    * Wipes the destination first so files removed or renamed in source
    * don't linger and get recorded as installed. Also seeds
    * _bmad/custom/.gitignore on fresh installs so *.user.toml overrides
@@ -575,7 +669,12 @@ class Installer {
 
     await fs.remove(paths.scriptsDir);
     await fs.ensureDir(paths.scriptsDir);
-    await fs.copy(srcScriptsDir, paths.scriptsDir, { overwrite: true });
+    // Ship only the runtime scripts — dev-only tests and Python caches must not land in user projects.
+    const isInstallable = (srcPath) => {
+      const base = path.basename(srcPath);
+      return base !== 'tests' && base !== '__pycache__' && base !== '.pytest_cache' && !base.endsWith('.pyc');
+    };
+    await fs.copy(srcScriptsDir, paths.scriptsDir, { overwrite: true, filter: isInstallable });
     await this._trackFilesRecursive(paths.scriptsDir);
 
     const customGitignore = path.join(paths.customDir, '.gitignore');
@@ -593,6 +692,15 @@ class Installer {
         await this._trackFilesRecursive(full);
       } else if (entry.isFile()) {
         this.installedFiles.add(full);
+      }
+    }
+  }
+
+  async _trackPreservedModuleFiles(bmadDir, preservedModules = []) {
+    for (const moduleName of preservedModules) {
+      const modulePath = path.join(bmadDir, moduleName);
+      if (await fs.pathExists(modulePath)) {
+        await this._trackFilesRecursive(modulePath);
       }
     }
   }
@@ -640,13 +748,7 @@ class Installer {
       const moduleInfo = sourcePath ? await officialModules.getModuleInfo(sourcePath, moduleName, '') : null;
       const displayName = moduleInfo?.name || moduleName;
 
-      const externalResolution = officialModules.externalModuleManager.getResolution(moduleName);
-      let communityResolution = null;
-      if (!externalResolution) {
-        const { CommunityModuleManager } = require('../modules/community-manager');
-        communityResolution = new CommunityModuleManager().getResolution(moduleName);
-      }
-      const resolution = externalResolution || communityResolution;
+      const resolution = officialModules.externalModuleManager.getResolution(moduleName);
       const cachedResolution = CustomModuleManager._resolutionCache.get(moduleName);
       const versionInfo = await resolveModuleVersion(moduleName, {
         moduleSourcePath: sourcePath,
@@ -1131,6 +1233,9 @@ class Installer {
       `    1. Launch your AI agent from your project folder`,
       `    2. Not sure what to do? Invoke the ${color.cyan('bmad-help')} skill and ask it what to do!`,
       '',
+      `    ${color.cyan('Tip:')} BMAD workflows increasingly run Python scripts via ${color.cyan('uv run')} — uv is`,
+      `    becoming the de facto standard. If you don't have it yet, ask your agent to set it up.`,
+      '',
       `    Blog, Docs and Guides: ${color.blue('https://bmadcode.com/')}`,
       `    Community: ${color.blue('https://discord.gg/gk8jAdXWmj')}`,
     );
@@ -1174,21 +1279,6 @@ class Installer {
           name: externalModule.name,
           isExternal: true,
           fromExternal: true,
-        });
-      }
-    }
-
-    // Add installed community modules to available modules
-    const { CommunityModuleManager } = require('../modules/community-manager');
-    const communityMgr = new CommunityModuleManager();
-    const communityModules = await communityMgr.listAll();
-    for (const communityModule of communityModules) {
-      if (installedModules.includes(communityModule.code) && !availableModules.some((m) => m.id === communityModule.code)) {
-        availableModules.push({
-          id: communityModule.code,
-          name: communityModule.displayName,
-          isExternal: true,
-          fromCommunity: true,
         });
       }
     }

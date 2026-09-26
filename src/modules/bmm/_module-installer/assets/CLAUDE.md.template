@@ -1,0 +1,159 @@
+# CLAUDE.md
+
+## Project Structure
+
+<!-- TODO: Replace with your project's actual directories -->
+- `src/` — Application source code
+- `_bmad-output/` — Planning and implementation artifacts
+- `_bmad/` — BMAD workflow engine and configuration
+
+## Key Conventions
+
+<!-- TODO: Replace with your stack details -->
+- **Backend:** (e.g., Express + Drizzle, FastAPI + SQLAlchemy, Next.js API routes)
+- **Frontend:** (e.g., React + Vite, Next.js, SvelteKit)
+- **Test runner:** (e.g., vitest, pytest, jest)
+- **DB:** (e.g., PostgreSQL via Drizzle, SQLite via aiosqlite, Prisma)
+- **Secrets:** auto-loaded by a global SessionStart hook (sources `~/.secrets` into the session via `$CLAUDE_ENV_FILE`). Available as normal env vars — no `zsh -ic` needed.
+
+## Agent Behavior Rules
+
+### ALWAYS Use Worktrees — CRITICAL
+<!-- bmad:worktrees-required -->
+- **Call `EnterWorktree` at the start of EVERY session before editing any files.** Do not wait for the user to tell you about parallel sessions — you will not always know. The cost of an unnecessary worktree is near zero; the cost of a collision (silent overwrites, lost edits) is high.
+- The ONLY exception: the user explicitly tells you "you're the only session, skip worktree."
+- When spawning sub-agents via the `Agent` tool for work that edits files, always set `isolation: "worktree"` so each agent gets its own copy of the repo.
+- The user has authorized worktree usage as project policy — you do not need an explicit per-session request.
+
+### Branch Naming Convention
+<!-- bmad:branch-naming -->
+- **Always use descriptive branch names.** Format: `<type>/<short-description>` (e.g., `feat/user-auth`, `fix/null-metadata`, `refactor/format-utils`).
+- Types: `feat/`, `fix/`, `refactor/`, `chore/`, `docs/`.
+- If `EnterWorktree` auto-generates a name, rename the branch before committing: `git branch -m <new-name>`.
+
+### Worktree Hygiene
+<!-- bmad:worktree-hygiene -->
+- **Auto-reap runs on every BMAD sync.** `sync-bmad-workflows.sh` invokes the reaper per-project; worktrees whose branch is fully merged AND whose working tree is **completely clean** (no untracked, no modified, no anything) are removed automatically.
+- **Manual reap for stale-but-not-strict-clean cases.** The auto-reaper is conservative by design — a previous incident showed lenient reaping can destroy uncommitted in-progress work. Worktrees with stray BMAD sync artifacts in the working tree won't auto-reap. Run `~/bmad-method-v6/sync-bmad-workflows.sh --reap` (all targets) or `--reap <project-path>` (one project) to clean those up; verify each worktree's branch and status first.
+- **Never leave a worktree behind after delivering work.** Always clean up via `ExitWorktree` after the PR is merged. The reaper is a safety net, not the primary cleanup mechanism.
+- **One worktree per task.** Don't reuse a worktree from a previous task — create fresh from current HEAD.
+
+### Worktree Enforcement Hooks
+<!-- bmad:worktree-hooks -->
+- **UserPromptSubmit hook** — warns about parallel sessions, suppresses when already in a worktree (`$PWD` contains `/.claude/worktrees/`). Cooldown: emits at most once per 30 minutes per project (marker at `.claude/.parallel-warn-last`).
+- **PreToolUse hook (Edit|Write)** — hard-blocks file edits when parallel sessions detected and NOT in a worktree. Allowlisted paths: anything under `/Users/*/bmad-method-v6/` (fork — its own repo) and `_bmad-output/` / `.claude/` (artifact/state dirs that always exist outside worktrees).
+- **PreToolUse hook (Bash)** — hard-blocks bash commands that look like edit-equivalents (`sed -i`, `cat > FILE`, `tee FILE`, `awk -i inplace`, `printf/echo > FILE`) under the same conditions as Edit|Write. Targets in `/tmp/`, `/dev/`, fork paths, `.claude/`, and `~/.secrets` are still permitted.
+- **After admin-merge with worktree still active:** `gh pr merge --delete-branch` errors locally because the worktree references the branch. The remote merge succeeded; immediately call `ExitWorktree action: "remove" discard_changes: true` to clear the worktree, then fast-forward main from the parent checkout. The local error is harmless; don't chase it as a real failure.
+- Hooks count all `claude` processes system-wide (includes other projects). This is intentionally conservative — false positive (forced worktree when unnecessary) is safer than false negative (collision).
+
+### Cross-Repo Edits — when worktree pattern doesn't scale
+<!-- bmad:cross-repo-edits -->
+- Some tasks legitimately touch multiple repos at once: rolling a BMAD contract change across 13 projects, applying a small refactor to the fork + every consumer, syncing a CLAUDE.md template update everywhere.
+- Creating 13 separate worktrees for one script-driven rollout is not the right pattern. Instead:
+  - Use **bash-driven multi-repo edits**: a single shell script that loops projects, appends/sed-edits the config, commits, pushes, opens PR, admin-merges.
+  - Per-repo commit and per-repo PR (not one giant commit across repos).
+  - The bash edit-guard hook allows this implicitly when the edit-equivalents target paths outside the current project worktree.
+  - For doc-only / config-only PRs across many repos, `--admin` merge is acceptable per the BMAD deploy contract.
+- Fork edits (`~/bmad-method-v6/`) are explicitly allowlisted by the hook — you can Edit/Write fork files directly without a project-worktree gymnastic. The fork is its own git repo with its own delivery flow (`git push myfork custom` after `gh auth setup-git` is configured).
+
+### ALWAYS Deliver Your Work — CRITICAL
+<!-- bmad:deliver-work -->
+- **Work that isn't merged to `origin/main` doesn't exist.** Never end a session with code sitting on an unmerged branch.
+- **SINGLE DELIVERY TRACK — PR to `origin/main`, always. There is no "solo project" local-merge exception.** EVERY implementation workflow (dev-story, quick-dev, design-implement) and every hand edit delivers the same way: **commit → push → PR → merge → deploy**. Skipping a step means the work isn't live.
+- **NEVER `git merge` a feature branch into a local `main` you don't push.** That forks local `main` from `origin/main`, and the two diverge silently — the canonical failure is domain/Story work piling up on an unpushed local `main` while UI work ships via PR, producing an N-commits-ahead fork that someone later has to reconcile by hand. `origin/main` is the one source of truth; local `main` only ever moves by fast-forwarding from `origin/main` (`git merge --ff-only origin/main`), never by merging a branch into it.
+- In worktrees: use `gh pr view` to verify merge (you can't `git checkout main` from a worktree). Then call `ExitWorktree` with `action: "remove"` to clean up.
+- Never push directly to `main` — always a feature branch + PR.
+- If the worktree branch name is generic (auto-generated), rename it to `<type>/<short-description>` (`feat/`, `fix/`, `refactor/`) before pushing.
+
+### Deployment — BMAD contract
+<!-- bmad:deploy-contract -->
+- Deploys follow the universal BMAD deploy-to-prod contract: `_bmad/bmm/workflows/shared/deployment-to-prod.md`.
+- After merging a PR, run `./scripts/bmad-deploy.sh`. Never leave merged code undeployed.
+- The script reads `_bmad/bmm/config.yaml` → `deploy:` for project-specific values (platform, build command, dep installer, deploy command, irrelevant-paths filter, success_pattern).
+- `npm ci` / `pnpm install --frozen-lockfile` / `yarn install --immutable` are pre-authorized by the contract (lockfile-clean — cannot mutate `package.json`). The script auto-runs the configured one when `dep_state_check` is missing.
+- BMAD-managed dirty paths (`_bmad/`, `.claude/`, `_bmad-output/`, `docs/`) are filtered as deploy-irrelevant by default; only real code changes block a deploy.
+- **Admin-merge on code PRs** is allowed iff the failing required check is structurally unavailable (zero-step quota-exhausted: `conclusion: failure`, `steps: 0`, elapsed < 15s) AND `npm run build` (or equivalent) passed locally. Substantive CI failures never qualify.
+- Doc-only / config-only PRs can admin-merge freely and skip the deploy.
+- Opt-out: set `deploy.bmad_contract: skip` in `_bmad/bmm/config.yaml` for projects whose deploy doesn't fit the contract (auto-deploy-on-push platforms like Railway/Vercel, multi-step deploys, etc.). The script exits 99 (no-op) and the agent defers to the project's own CLAUDE.md.
+- **Posture when `bmad_contract: skip` — NO per-session deploy question.** A skipped contract means deploy is the **owner's deliberate, manual step**, not the agent's. After merging a PR, **state the deploy status as a fact and STOP — do NOT ask "want me to deploy?"**: e.g. *"Merged to `origin/main`; undeployed — deploy is your manual step (see `docs/deployment.md`)."* Deploy ONLY when the owner explicitly says "deploy." This turns a recurring end-of-run question into a one-line status statement. (When the contract is ACTIVE, the rule above already stands — run `./scripts/bmad-deploy.sh` after merge — so neither posture asks.)
+
+### CI Health Check — diagnosis
+<!-- bmad:ci-health-check -->
+- After pushing/merging: `gh run list --limit 1 --json conclusion,name,createdAt --jq '.[0]'`.
+- If the latest run failed in <15s with zero steps → structural failure (GH Actions quota exhausted). The contract's admin-merge carve-out applies.
+- If CI failed WITH steps executed → substantive failure. Read the logs and fix; admin-merge is NOT allowed.
+- Diagnosis: `gh run view --json jobs --jq '.jobs[0] | {steps: (.steps | length), conclusion}'` — zero steps = structural, non-zero = substantive.
+
+### Local Dev
+<!-- bmad:local-dev -->
+<!-- TODO: Replace with your dev server commands and port -->
+- **Start:** `npm run dev` (or `./dev.sh`, `docker compose up`, etc.)
+- **Port:** (e.g., 5173 for Vite, 3000 for Express, 8787 for Wrangler)
+- **Check port availability before starting.** Only kill processes belonging to this project.
+- Check `lsof -iTCP:<port> -sTCP:LISTEN` before starting. If held by a different project, use the next available port.
+<!-- If this project should NEVER be run locally, replace the above with:
+- **This project is production-only.** Do not start a dev server, run `docker compose up`, or browse to `localhost`. All changes are tested via CI and deployed to Railway. -->
+
+### Production Data Awareness
+<!-- bmad:production-data -->
+<!-- TODO: Set has_local_db to true/false and customize -->
+- **This project has no local database.** The dev server connects to the same production Railway Postgres as the deployed app. Every query, migration, and script hits real data.
+<!-- If you DO have a local DB, replace the above with:
+- **This project has a local database.** Use `DATABASE_URL_LOCAL` for dev servers. Production `DATABASE_URL` is only used by Railway. -->
+- **Before running migrations:** state what changes, confirm the target database with the user, and warn any parallel sessions that their dev server may need a restart.
+- **Before running scripts that modify data:** verify `DATABASE_URL` points where you expect. Never seed, wipe, or bulk-update without explicit user approval.
+
+### Shared Resources
+<!-- bmad:shared-resources -->
+- **Database:** shared across all worktrees and sessions — a migration in one affects all others.
+- **Dev server:** only one instance per project at a time. Check before starting; don't stack a second on a different worktree.
+- **External services:** R2 buckets, webhooks, third-party APIs are shared. Worktrees isolate code, not infrastructure.
+<!-- TODO: Add project-specific shared resources if any (e.g., shared file directories, message queues) -->
+
+<!-- If using local SQLite, add this block: -->
+<!-- ### SQLite + Worktrees
+- **The DB path MUST be absolute** — set via env var (e.g., `BSF_DATABASE_URL=sqlite:////Users/.../app.db`). Relative paths like `sqlite:///app.db` resolve differently in each worktree, creating orphaned DB copies and WAL corruption.
+- **`.db-wal` and `.db-shm` must be in `.gitignore`** alongside `*.db`. These are SQLite lock files — if they end up in a worktree, they'll cause "database is locked" or corruption errors.
+- **WAL mode allows concurrent readers but only one writer.** Don't run multiple backend instances (from different worktrees) against the same DB simultaneously. If you need a second backend, use a separate DB file.
+- **Never delete `.db-wal` while a process has the DB open** — this causes data loss. Stop all processes first, then clean up. -->
+
+### Stale Server Code — Check Before Debugging
+<!-- bmad:stale-server-code -->
+- **When investigating runtime bugs (unexpected API responses, missing features), first check whether the running server has the latest code.** Compare `ps -p <pid> -o etime` against recent `git log --oneline -5` timestamps. If commits landed after the server started, restart the server before investigating further.
+- Quick check: `curl` the affected endpoint and compare the response against the code on disk. If the response doesn't match, the server is stale.
+
+### Pre-flight Check — Verify the Project Builds Before Committing
+<!-- bmad:preflight-build -->
+- **At the start of a session (or before your first commit), run the project's build/type check** to catch pre-existing errors: `tsc --noEmit`, `svelte-check`, `npm run build`, `pyright`, or whatever the project uses.
+- **If pre-existing errors exist, flag them to the user immediately** — don't silently skip them. These block pushes (via pre-push hooks) and rot quietly until someone tries to ship real work.
+- **If only your changes introduce new errors, fix them before committing.** If errors are pre-existing and unrelated to your task, note them in your response so the user can triage, then proceed with your work.
+- **The goal is to surface rot early.** A type error that sits unfixed for weeks becomes a push blocker at the worst possible time — when someone is trying to ship urgent work.
+<!-- Customize: replace the check command above with this project's actual command (e.g., `npm run check`, `npx tsc --noEmit`, `ruff check src/`) -->
+
+### NEVER Hardcode Secrets — CRITICAL
+<!-- bmad:no-hardcoded-secrets -->
+- **Scripts must read secrets from the environment.** If a required env var is not set, the script must exit with a clear error message — never fall back to a hardcoded value.
+- Local secrets go in `~/.secrets` (sourced by `~/.zshrc`). If a Claude session can't see it, tell the user to set it — do NOT embed credentials in code.
+- Secrets are injected at session start (global SessionStart hook → `$CLAUDE_ENV_FILE`), so they're available as normal env vars. Mid-session additions to `~/.secrets` require a session restart.
+
+### Do NOT search endlessly for files
+<!-- bmad:no-endless-search -->
+- If a glob/grep returns no results after 1-2 attempts, **stop searching and move on**.
+- Prefer `find` with `head` over repeated glob attempts when exploring unknown file structures.
+
+### File discovery strategy
+<!-- bmad:file-discovery -->
+1. Try the most likely path first
+2. If not found, try ONE broader glob
+3. If still not found, **assume it doesn't exist and proceed**
+
+### General efficiency
+<!-- bmad:general-efficiency -->
+- Read files you need, then start coding. Don't over-research.
+- If type-checking reveals only pre-existing errors unrelated to your changes, note them and move on.
+- **Don't ask permission for obvious next steps.** If tests pass and the work is done, push the branch and create the PR. If the user says "y" or "go ahead", that means execute — don't ask again.
+
+### Memory
+<!-- bmad:memory -->
+- This project follows the **global memory doctrine** (machine-level, under `~/.claude`), which loads every session — this repo is under it before it has a single saved fact. The rulebook is `memory-library-discipline` (write) + `memory-retrieval-policy` (read) + `memory-hygiene` (procedure); the synced `STANDARDS.md` (in your `_bmad` shared standards) catalogs them under its Memory section.
+- **Create persistent memory only when a durable fact appears.** When it does: write `memory/<slug>.md` (frontmatter `name`/`description`/`metadata.type`, then body — Why/How-to-apply for feedback/project) FIRST, then add its line to `MEMORY.md` (the auto-loaded index), grouped under its shelf. One file per fact; durable items only; current instructions always beat stored memory; log any deletion/edit in `memory-changelog.md` first. Full lifecycle (start → change → debug) is in `memory-library-discipline`.

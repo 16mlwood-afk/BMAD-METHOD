@@ -9,6 +9,9 @@ package-lock.json
 test-output/*
 coverage/
 
+# v6.8 skills migration — generated, re-runnable build output of tools/port-workflows-to-skills.sh
+custom/skills-native/
+
 # Logs
 logs/
 *.log
@@ -25,6 +28,9 @@ design-artifacts/
 # Python
 __pycache__/
 .pytest_cache/
+
+# BMad run artifacts (memlogs are per-run working memory, never committed)
+.memlog.md
 
 # System files
 .DS_Store
@@ -81,3 +87,9 @@ _bmad/custom/*.user.toml
 website/.astro/
 website/dist/
 build/
+# Web bundle release artifacts
+dist/web-bundles/
+
+# Sharded module build output
+bmad/
+.fork-gaps-last-scan

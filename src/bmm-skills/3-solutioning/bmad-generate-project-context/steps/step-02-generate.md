@@ -48,6 +48,10 @@ Collaboratively generate specific, critical rules that AI agents must follow whe
 
 ## CONTEXT GENERATION SEQUENCE:
 
+### 0. Product Concept & End-to-End Flow (emit this FIRST — it is the most load-bearing section)
+
+Using the concept captured in step-01 (one-line concept, value-flow & spine, cause/effect, forbidden behaviours), draft the **Product Concept & End-to-End Flow** section AT THE TOP of the file, above Technology Stack. Confirm with the user that the cause/effect is stated correctly — which events are pipeline OUTPUTS vs INPUTS — since an inverted cause/effect is the exact failure this section exists to prevent. Ensure `product_concept` is in `sections_completed`.
+
 ### 1. Technology Stack & Versions
 
 Document the exact technology stack from discovery:
@@ -218,6 +222,16 @@ For each category, prepare lean content for the project context file:
 #### Content Structure:
 
 ```markdown
+## Product Concept & End-to-End Flow
+
+{{one_line_concept}}
+
+{{value_flow_and_spine}}
+
+**Cause/effect (do not invert):** {{pipeline_outputs_vs_inputs}}
+
+**Forbidden agent behaviours:** {{forbidden_behaviours}}
+
 ## Technology Stack & Versions
 
 {{concise_technology_list_with_exact_versions}}
