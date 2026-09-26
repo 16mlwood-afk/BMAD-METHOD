@@ -2,7 +2,11 @@
 
 **Home of the rule:** `workflow.md` Critical Rule *"Claude Design is the source of truth for
 design — an implementer may not cherry-pick"*, and `steps/step-04-apply-and-deliver.md` §5c.
-**Machine check:** `node ~/bmad-method-v6/tools/check-design-sendback.js --sendback <file>`.
+**Machine check:** `node ~/bmad-method-v6/tools/check-design-sendback.js --sendback <the emitted sendback>`.
+
+> **This file is the CONTRACT, not a sendback.** Running `--sendback` against *this* file correctly
+> reports `S4-FRONTMATTER-MISSING`: it describes the frontmatter rather than carrying it. Point the
+> checker at the artefact a run emitted, never at this document.
 
 ---
 
