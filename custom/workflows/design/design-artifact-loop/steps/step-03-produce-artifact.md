@@ -75,12 +75,13 @@ Never cite `{user_summary}` or `{user_instruction}` as authority. They are conve
 
 ### 3a. Gate 3 — Review Sufficiency (`review-only` and `refine-screen`)
 
-Before finalizing a `screen-review` output, confirm all four:
+Before finalizing a `screen-review` output, confirm all five:
 
 - Top issues are ranked (V1 = most damaging by trust/comprehension/next-action impact).
 - Edge states are named (at least one, even if just "all-zero state" or "all-action-required state").
 - Each confirmed issue cites visible evidence (a class name, file:line, screenshot region) OR a cited brief / policy rule.
 - "What to keep" is present if the screen has any acceptable solved areas.
+- Every detail surface in `{brief_detail_surfaces}` has been opened and judged on TD0/TD1/TD2 (`shared/controls-and-attention.md` §2a) — or is recorded `UNVERIFIED(test: TD…-{slug} — <why>)`. A drawer the review never opened is not a pass.
 
 If any of these is missing, do NOT emit the file — return to evidence assembly. In the synthesized-review-then-handoff case (`refine-screen` mode without a pre-existing review), this gate applies to the synthesized review BEFORE the handoff section is built.
 

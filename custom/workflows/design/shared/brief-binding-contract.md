@@ -33,6 +33,11 @@ reads a brief must keep them apart.
 before can state the page's answer — the brief's `page_answer` — within five seconds of it
 loading.* This is judged by a reader (human or an isolated reviewer), never by counting frames.
 
+**T0 has a per-surface twin (2026-09-26).** Every detail surface the brief names — a drawer, an
+expanded row, a record panel, a side sheet — carries its own five-second test, **TD0**, plus a reading
+order (**TD1**) and a once-per-surface rule (**TD2**). They are Part 2 tests like any other and bind the
+same way; `controls-and-attention.md` §2a owns them, and this contract does not restate them.
+
 ## 2. How the project design policy splits
 
 The project's `docs/design-policy.md` is **not rewritten** by this contract and stays the project's
@@ -129,4 +134,4 @@ listed below stops referencing this file.
 | `shared/design-standards.md` | AI-fingerprint taxonomy, composite test and scrub checklist are advisory notes; only the undisclosed-fixture-data half of the placeholder row is truth |
 | `shared/claude-design-prompt.md` | Paste prompt splits policy constraints into TRUTH (can fail) and ADVISORY (designer's call); artifact shape and in-surface composition are advisory |
 | `design-elevation` | Candidate filter: hard-rejects only a candidate that breaks a truth test, T0 or a truth-class rule; a style-rule departure survives with an advisory note; changing advisory guidance is not an intent change |
-| `shared/controls-and-attention.md` | Supplies five further truth tests and the second classification question (§2a); its own advisory half stays advisory |
+| `shared/controls-and-attention.md` | Supplies five further truth tests and the second classification question (§2a), and the per-detail-surface TD0/TD1/TD2 (its own §2a); its own advisory half stays advisory |

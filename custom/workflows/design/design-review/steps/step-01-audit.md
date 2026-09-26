@@ -81,6 +81,13 @@ The independent live-page net for the bundle→implement seam. **What may block 
 - **TA2** — count where each of the page's three loudest facts appears at rest. The same fact twice is a `hard failure`: a group header restated in every row, two columns in two voices, per-row provenance that belongs to the page. A decomposition carrying a genuinely different fact passes.
 - **TF1** — for each category the page counts as work, ask who must act for it to stop recurring. An engineer, a rule or a producing system means it is a fault, and it fails unless named as one, owned by someone other than the operator, and counted apart. A control whose only job is to compensate for that fault is an independent `hard failure`.
 
+0d. **Detail surfaces — TD0/TD1/TD2, once per drawer or panel** (`{project-root}/_bmad/bmm/workflows/design/shared/controls-and-attention.md` §2a). Open every detail surface the brief's Part 2 "Detail surfaces" block names — and, with no brief, the drawer or panel a row drills into — and judge it the way 0a judges the page. Judged under 0b's rules; a fail is `Binding: truth`, `hard failure`, citing `Brief Part 2 TD…-{slug}`.
+
+- **TD0** — open the surface cold. Within five seconds, write down its answer and the one thing it tells you to do; compare with the block. A different answer, none, a next action you had to hunt for, or an opening line that misleads a reader who stops there fails. Count the words from the opening line to the answer: about twelve is the budget.
+- **TD1** — rank what the eye reaches first on the opened surface and compare it with the block's order: answer and next action, then evidence in rank, then provenance and audit collapsed or visibly quieter. Provenance as loud as the answer, a qualifying caveat (not read, basis, floor) collapsed away from its figure, or a heading the detail below reverses, fails. **The mechanism is not judged** — collapse, tab, weight and position are the designer's.
+- **TD2** — list every fact visible when the surface opens; any that appears twice and is not in the block's justified repeats fails (the matched record printed as "matched", "about" and "found by" is three appearances of one fact).
+- A detail surface that cannot be opened in-session is `UNVERIFIED(test: TD…-{slug} — <why>)`, disclosed, never marked pass.
+
 **Keep these out of the style lane.** A colour, shape, placement, spacing or wording finding answers neither question the standard asks: it is `Binding: advisory`, at most `major`, exactly as every other style finding here. `controls-and-attention.md` §4 excludes them on purpose.
 
 **Structure — advisory notes (never blocking unless a truth test above already names the same break):**
