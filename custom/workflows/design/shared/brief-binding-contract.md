@@ -1,9 +1,10 @@
 ---
 name: brief-binding-contract
-description: 'What a design brief BINDS and what it only ADVISES. The one split every producer and consumer of a design-handoff brief applies: the designer is bound only by the brief''s "what must be true" tests and the five-second answer test; everything else (frames, layout, composition, tokens, component guidance, the style parts of the design policy) is advisory, and departing from it is a note, never a failure.'
+description: 'What a design brief BINDS and what it only ADVISES. The one split every producer and consumer of a design-handoff brief applies: the designer is bound by the brief''s "what must be true" tests, the five-second answer test, and (since v2, 2026-09-27) the Part 2b presentation floor — type scale, spacing, colours, attention plan, item layout, banned patterns; everything else (frames, composition, component guidance, the remaining style parts of the design policy) is advisory, and departing from it is a note, never a failure.'
 standard: STD-BRIEF-BINDING-001
-version: 1
+version: 2
 ratified: 2026-09-19
+amended: 2026-09-27
 ---
 
 # Brief binding contract — what binds the designer, and what is advice
@@ -25,7 +26,7 @@ reads a brief must keep them apart.
 
 | | **BINDING** — can fail a design | **ADVISORY** — the designer's call |
 |---|---|---|
-| What | The brief's **Part 2 "What must be true" tests** (T1…Tn), plus **T0, the five-second answer test** | Everything else: suggested frames, layout, order, layer, persistence, column lists, composition, page-mode defaults, tokens, pills, colour, component guidance, the style/layout/composition rules of the project design policy, the AI-fingerprint floor, the comfort floor |
+| What | The brief's **Part 2 "What must be true" tests** (T1…Tn), plus **T0, the five-second answer test**, plus **the Part 2b presentation floor** (§1a) — the type scale, spacing tokens, colour set, attention plan, item layout and banned patterns, with the concrete values the brief states | Everything else: suggested frames, order, layer, persistence, column lists, composition, page-mode defaults, pills, component guidance, the style/layout/composition rules of the project design policy that Part 2b does not name, the rest of the AI-fingerprint floor and the comfort floor |
 | Written as | A pass/fail outcome a finished design either meets or does not — **never the mechanism that meets it** | Suggestions, starting points, and rules kept for consistency (each marked `[tradeable]`) |
 | A departure is | A **failure** (the only kind a gate may raise) | A **note**. Reported, never scored as a fail, never blocking |
 
@@ -37,6 +38,33 @@ loading.* This is judged by a reader (human or an isolated reviewer), never by c
 expanded row, a record panel, a side sheet — carries its own five-second test, **TD0**, plus a reading
 order (**TD1**) and a once-per-surface rule (**TD2**). They are Part 2 tests like any other and bind the
 same way; `controls-and-attention.md` §2a owns them, and this contract does not restate them.
+
+### 1a. The presentation floor — the second binding class (v2, 2026-09-27)
+
+> **Owner, 2026-09-27, verbatim:** *"we need to go back to the drawing board with the UI... treat Claude
+> Design like an idiot... we've left basic gaps to Claude Design... it's reading like a ledger printed on
+> a screen... no font size enforcement... that yellow thing at the top, the most AI pattern I've ever
+> seen, which hasn't been caught by our anti-AI patterns... audit text at the top... a complete violation
+> of our user attention policy."*
+
+Version 1 of this contract put tokens, colour, the AI-fingerprint floor and the comfort floor in the
+advisory column, *"a note, never a failure"*. The price-list page audit of 2026-09-27 traced a rejected
+page straight to that line: the brief told the designer *"What IS yours: typography and scale, spacing
+and rhythm… and the weight system"*, only the five-second tests bound, and a tinted notice box is the
+cheapest way to pass a five-second test. So v2 moves seven things into the binding column, **specified
+in the brief rather than delegated**, and checked on the rendered page:
+
+1. a type scale of five named roles (answer, section heading, figure, body, caption), one size each;
+2. spacing tokens; 3. a colour set, each colour with one meaning; 4. the attention plan — the answer at
+the top, the first actionable item above the fold at 1440×900, a word budget above it, provenance and
+audit text in the footer or behind a disclosure; 5. the layout — a summary, then items as cards or
+groups, detail on open; 6. the banned patterns — tinted callouts, coloured edge stripes, stacked badges,
+all-caps labels, the same fact twice; 7. the answer visually heavier than the evidence.
+
+`presentation-floor.md` (STD-PRESENTATION-FLOOR-001) owns the detail, the fork default values, the ten
+policy citations and the checks; this section does not restate them. **The v1 governing principle still
+holds for everything else** — Claude Design does the heavy lifting on composition and wording — and the
+v1 text is recoverable verbatim at `git -C ~/bmad-method-v6 show c2951122:custom/workflows/design/shared/brief-binding-contract.md`.
 
 ## 2. How the project design policy splits
 
@@ -50,8 +78,10 @@ own document. What changes is how the fork's workflows **treat** it:
   figure is never presented as a stored one; a stale or partial read is never presentable as current;
   a linked value is the resolved foreign record, never re-keyed text; a fixture surface discloses
   that it is not live data; a role boundary that protects data (a clerk never sees owner money).
-- **Styling, layout and composition rules are ADVISORY.** Status colour caps, pill geometry,
-  radius, type scale, table-first defaults, band placement, drawer mechanics, density, hard-failure
+- **Styling, layout and composition rules are ADVISORY — except what the presentation floor (§1a)
+  names.** The policy's type scale, spacing and colours are the SOURCE the brief's Part 2b is filled
+  from, and once there they bind. The rest stays advisory: status colour caps, pill geometry,
+  radius, table-first defaults, band placement, drawer mechanics, density, hard-failure
   lists that are about look rather than truth. They are passed to the designer as advice. Where a
   rule exists only for consistency across the product, it is labelled `[tradeable]` so a better idea
   can be traded against it.
@@ -98,12 +128,15 @@ PROCESS (what they read), not the design.
 
 ## 4. What a gate may and may not fail on
 
-- **May fail:** a broken Part 2 truth test; a failed T0 five-second test; a brief-provenance defect
-  at intake (unchanged — that is about which brief is current, not about the design).
-- **Must not fail — report as a note instead:** a suggested frame not drawn; a different layout,
-  layer, order or persistence; a different composition from the page-mode default; a token, pill or
-  colour choice; a column set; any style/layout/composition rule from the design policy; the
-  AI-fingerprint composite; the comfort floor.
+- **May fail:** a broken Part 2 truth test; a failed T0 five-second test; a broken Part 2b
+  presentation-floor item (§1a — a size off the scale, the answer not the heaviest text, a tinted
+  callout, an edge stripe, stacked badges, capitals, a fact twice, provenance at the top, the first
+  item below the fold, a contrast failure); a brief-provenance defect at intake (unchanged — that is
+  about which brief is current, not about the design).
+- **Must not fail — report as a note instead:** a suggested frame not drawn; a different layer, order
+  or persistence; a different composition from the page-mode default; a pill choice; a column set;
+  any style/layout/composition rule from the design policy that Part 2b does not name; the rest of the
+  AI-fingerprint composite; the rest of the comfort floor.
 - **Implementation fidelity is a different question.** Whether the CODE matches the DESIGN the
   designer actually drew (`design-implement`'s grid) is not a judgement on the design and is not
   changed by this contract. A frame the designer drew and the build omitted is still a build gap.
@@ -118,7 +151,10 @@ outcome rather than a mechanism, and whether a reader really got the answer in f
 judgements. The deterministic slice is narrow: `tools/check-brief-readiness.py` probe P6 warns when
 an outcome-first brief is missing its moment, its binding tests, its single dominant, or its open
 questions; and `tools/validate-prose-consumers.mjs` fails the fork's own test suite if a consumer
-listed below stops referencing this file.
+listed below stops referencing this file. **Since v2 the presentation floor is DETERMINISTIC on both
+ends:** `tools/check-rendered-page.js --validate-brief` fails a brief whose Part 2b is incomplete
+(Gate 1), and the same tool's rendered-page checks fail a page that breaks it (design-implement
+step-04b). Their ceiling: they prove counts and presence, never that the page reads well.
 
 ## Prose consumers
 
@@ -126,7 +162,8 @@ listed below stops referencing this file.
 |---|---|
 | `design-handoff` | Produces the five-part brief; classifies policy rules binding vs advisory |
 | `design-review-pr` | Fails only on a Part 2 test or T0; every other finding is an advisory note |
-| `design-implement` | Bundle→brief conformance gate halts only on a truth test or T0; frame/shell/composition diffs are notes |
+| `design-implement` | Bundle→brief conformance gate halts only on a truth test, T0 or a presentation-floor failure (step-04b rendered-page checks); frame/shell/composition diffs are notes |
+| `shared/presentation-floor.md` | Owns the second binding class (§1a): the seven floor parts, the fork default values, the policy citations and the checks |
 | `design-synthesize` | Suggested frames are the synthesizer's call; self-critique fails only on a truth test or T0 |
 | `design-artifact-loop` | Parses the five parts; treats advisory sections as advice; verdict `FAIL` only on a truth issue (the dissent pass may demote to `FAIL` only for one); `PASS WITH NOTES` (formerly `PASS WITH ISSUES`) carries advisory notes |
 | `design-review` | Live-page audit: T0 and truth tests are the only `hard failure` / blocking findings; frame coverage, shell chrome, composition shape, the Anti-AI checklist and policy style rules are advisory (`Binding:` on every violation) |

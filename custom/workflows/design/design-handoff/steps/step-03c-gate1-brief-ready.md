@@ -86,6 +86,22 @@ This one is NOT a question: a hard finding (no deck, an unscreened row, a `✗`,
 look, then keep or rewrite. The checker cannot judge parts (a), (b) or (d); the reviewer in §2 reads
 the deck for them.
 
+**Then check the presentation floor** (`../../shared/presentation-floor.md`, STD-PRESENTATION-FLOOR-001):
+
+```bash
+node ~/bmad-method-v6/tools/check-rendered-page.js --validate-brief "{output_path}"
+```
+
+This one is NOT a question either. The brief is not ready until it exits 0: Part 2b present (B1), its
+`presentation-floor` block parses (B2), five type roles at five distinct sizes with the answer largest
+(B3), a spacing scale (B4), colours each with a meaning (B5), the attention plan with provenance sent to
+the footer or a disclosure (B6), the summary-then-items layout (B7), all five banned patterns (B8), the
+1440×900 viewport (B9), all ten policy citations by path with their rule (B10), and no unrendered
+placeholder (B11). Repair the brief and re-run. **Also read the brief for any sentence that hands the
+type scale, spacing, weight system or the top of the page to the designer ("typography and scale … is
+yours") — that is a hard defect, whatever the checker says.** The reviewer in §2 checks Part 2b agrees
+with the rest of the brief (the answer in Part 2b is `{page_answer}`; the repeat risks match TA2).
+
 **A fired probe is a QUESTION, not a defect.** Do not put the fired count in front of the
 owner, do not treat it as a score, and do not repair a probe simply because it fired.
 

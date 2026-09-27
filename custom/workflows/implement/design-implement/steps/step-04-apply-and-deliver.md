@@ -243,7 +243,9 @@ The apply ledger above dispositions every *grid* row — but the grid has no row
 
 **4. Copy screen — every user-visible string, before merge (`../../../design/shared/on-screen-copy-screen.md`, STD-COPY-SCREEN-001).** Collect every string the built surface can show — literals in the changed components AND producer-written text rendered as-is — into `{copy_strings}` (`_bmad-output/implementation-artifacts/copy-strings-{target_slug}.txt`, one per line, templates with `{n}`). Every string must be in the brief's Copy deck or be screened here; **a string the implementation added that the deck never listed is screened like any other, and listed in §9 as added.** Run `node ~/bmad-method-v6/tools/check-copy-screen.js --strings {copy_strings} --strict` for part (c), then read each string for parts (a) humanized, (b) the cold-reader test and (d) no added claim. A hard finding blocks the merge: fix the string, or, where the words come from the design, send it back under §5c rather than shipping it. Record the count screened and the count changed in §9.
 
-Declaring "done" off the grid alone — no render-compare, no bundle-render fallback, no owed-disclosure — is non-conformant. It is the precise false-green this section exists to stop: the supply-order cost drawer shipped with a generic header, a relabeled footer, and paraphrased copy while every CSS cell matched.
+**5. Rendered-page checks — run `step-04b-rendered-page-checks.md` before §6** (STD-PRESENTATION-FLOOR-001, `../../../design/shared/presentation-floor.md`): the brief's Part 2b, measured on the rendered bundle and built page, light and dark, 1440×900. A failure, or a check that could not run, blocks the merge; design-side failures go back under §5c.
+
+Declaring "done" off the grid alone — no render-compare, no bundle-render fallback, no owed-disclosure, no floor check — is non-conformant. It is the precise false-green this section exists to stop: the supply-order cost drawer shipped with a generic header, a relabeled footer, and paraphrased copy while every CSS cell matched.
 
 ### 5c. Departures and the formal SENDBACK — the design is the authority, so the loop goes back
 
