@@ -18,6 +18,14 @@
     each surface's answer, next action and reading order. Standard: shared/controls-and-attention.md
     §2a. Derived by step-01c §5f-b; rendered by step-03 §2. Inside the existing binding class — no
     style rule became binding.
+  - 2026-09-27 — Part 2b, THE PRESENTATION FLOOR, becomes a second binding class (brief-binding-contract
+    v2, shared/presentation-floor.md STD-PRESENTATION-FLOOR-001). Owner, verbatim: "we've left basic
+    gaps to Claude Design... no font size enforcement... that yellow thing at the top, the most AI
+    pattern I've ever seen". The brief now SPECIFIES a five-role type scale, spacing, colours with
+    meanings, the attention plan, the summary-then-items layout and a banned-patterns list, with a
+    machine block that tools/check-rendered-page.js reads. Evidence: the price-list page audit of
+    2026-09-27. The §5 style floor and §5a comfort floor stay advisory for everything Part 2b does not
+    name; "three font sizes or fewer" is superseded by the role scale.
 
   How to render:
   - Substitute every {variable}; honour the conditional {if …} / {for …} blocks.
@@ -140,18 +148,21 @@ deferred_violations:
 
 > **"the biggest takeaway is claude design should do the heavy lifting everything else is mostly advisory"** — the product owner, 2026-09-19.
 
-You do the heavy lifting. This brief binds you in exactly one place: **Part 2, "What must be true"** — a short list of tests your finished design either passes or fails. Nothing else in this document can fail your design. Everything from the **Advisory guidance** heading down (suggested frames, layout, composition, visual direction, tokens, style floors, the style parts of the design policy) is advice: take it, trade it, or ignore it for a better idea, and say what you did in your notes. A rule kept only for consistency with the rest of the product is marked **[tradeable]**.
+You do the heavy lifting on composition and wording. This brief binds you in two places: **Part 2, "What must be true"** — a short list of tests your finished design either passes or fails — and **Part 2b, the presentation floor**, which fixes the type scale (one size per job), the spacing and colours, what sits at the top of the page, the summary-then-items layout, and a list of banned patterns. Those are decided for you, and a rendered-page check fails a design that departs from them. Everything from the **Advisory guidance** heading down (suggested frames, composition, visual direction, the style parts of the design policy Part 2b does not name) is advice: take it, trade it, or ignore it for a better idea, and say what you did in your notes. A rule kept only for consistency with the rest of the product is marked **[tradeable]**.
+
+> **Owner, 2026-09-27:** *"we've left basic gaps to Claude Design... no font size enforcement... that yellow thing at the top, the most AI pattern I've ever seen."* Part 2b closes those gaps. It is binding (`shared/presentation-floor.md`, STD-PRESENTATION-FLOOR-001).
 
 ```
   answer:       {page_answer}              # T0 — a reader states this within 5 seconds of the page loading
   dominant:     {dominant}                 # the ONE thing that leads; everything else is available-on-demand
-  binding:      {truth_test_ids}           # the Part 2 tests — the only pass/fail items in this brief
+  binding:      {truth_test_ids}           # the Part 2 tests
+  floor:        Part 2b · P1–P7            # type scale, spacing, colours, attention plan, layout, banned patterns — binding, checked on the rendered page
   route:        {route}
   mutations:    {mutation_posture}         # none (read-only) | the jobs the operator must still be able to do (each is a Part 2 test)
   suggested:    frames {frames_list} · composition {composition} · page_mode {page_mode}   # ADVISORY — yours to change
 ```
 
-Contract: `shared/brief-binding-contract.md` (STD-BRIEF-BINDING-001). Reviewers downstream (`design-review-pr`, the `design-implement` conformance gate) may fail your design only on a Part 2 test; every other departure is reported as a note.
+Contract: `shared/brief-binding-contract.md` (STD-BRIEF-BINDING-001, v2). Reviewers downstream (`design-review-pr`, the `design-implement` conformance gate and its rendered-page check) may fail your design on a Part 2 test or a Part 2b floor item; every other departure is reported as a note.
 
 **Five of the Part 2 tests are on every brief and are worth reading first — TC1, TC2, TA1, TA2, TF1.** They govern whether a control exists, how loud anything is, and what the page treats as work: every action control can say what its press tells the system that the system does not already know · no sentence instructs an action the page gives no way to perform · the most emphasised thing is the most consequential thing and no consequential control is dressed as chrome · no fact is said twice at rest · no system fault is rendered as a category of the operator's work. Source: `shared/controls-and-attention.md` (STD-CONTROLS-ATTENTION-001), which holds **no** colour, shape, placement, spacing or wording rule — those are yours, as always. §4f-c carries the evidence they are judged against.
 
@@ -328,7 +339,110 @@ you said it is yours.
 {endfor}
 {endif}
 
-**Where these come from (so nothing binding is invented and nothing true is dropped):** the data's own defects (§2: missing ≠ zero, observed vs declared vs assumed, two authorities kept apart, §2e's three kinds of blank and both sides of a figure owed to a far end), the claims a redesign must not strip (the preserved-claims list above), the finance truth constraints (§2b `must_not_infer`), the runtime honesty budget (§2c — the page never claims more liveness than its transport delivers), analytic and decision honesty (§4d/§4e — no fabricated interval or distribution, derived never shown as stored), the audit contract (§4h obligations restated as outcomes — "every figure's source is inspectable"), the capabilities in §1 (reachability), a data-protecting role boundary (from `shell_role`), and the truth-and-data rules of the project design policy (money basis, no invented figures). **TD0 · TD1 · TD2 are present once per detail surface** (the Detail surfaces block above; `controls-and-attention.md` §2a) — a drawer, expanded row, record panel or side sheet answers its own question, in a named order, saying each fact once. **TC1 · TC2 · TA1 · TA2 · TF1 are present on every brief** and come from `shared/controls-and-attention.md` (STD-CONTROLS-ATTENTION-001) — they govern whether a control exists, how loud anything is, and what the page treats as work. Style, layout and composition rules from the policy are NOT here — they are in the Advisory guidance, and `controls-and-attention.md` deliberately holds no colour, shape, placement, spacing or wording rule.
+**Where these come from (so nothing binding is invented and nothing true is dropped):** the data's own defects (§2: missing ≠ zero, observed vs declared vs assumed, two authorities kept apart, §2e's three kinds of blank and both sides of a figure owed to a far end), the claims a redesign must not strip (the preserved-claims list above), the finance truth constraints (§2b `must_not_infer`), the runtime honesty budget (§2c — the page never claims more liveness than its transport delivers), analytic and decision honesty (§4d/§4e — no fabricated interval or distribution, derived never shown as stored), the audit contract (§4h obligations restated as outcomes — "every figure's source is inspectable"), the capabilities in §1 (reachability), a data-protecting role boundary (from `shell_role`), and the truth-and-data rules of the project design policy (money basis, no invented figures). **TD0 · TD1 · TD2 are present once per detail surface** (the Detail surfaces block above; `controls-and-attention.md` §2a) — a drawer, expanded row, record panel or side sheet answers its own question, in a named order, saying each fact once. **TC1 · TC2 · TA1 · TA2 · TF1 are present on every brief** and come from `shared/controls-and-attention.md` (STD-CONTROLS-ATTENTION-001) — they govern whether a control exists, how loud anything is, and what the page treats as work. The type scale, spacing, colours, what sits at the top, the layout pattern and the banned patterns are NOT here — they bind in **Part 2b** below. Everything else about look and composition is in the Advisory guidance.
+
+---
+
+## Part 2b · The presentation floor — binding, and specified for you
+
+*Standard: `shared/presentation-floor.md` (STD-PRESENTATION-FLOOR-001, 2026-09-27). This part is not a
+suggestion and it is not yours to choose. The owner rejected a page in September 2026 because the brief
+left type, colour and the top of the page to the designer: three font sizes did nine jobs, the headline
+and every row's figure were the same size, provenance filled the top, and an amber notice box said the
+next action a third time. So this brief decides those things, and a rendered-page check fails any design
+that departs from them. Composition, wording and everything not named here are still yours.*
+
+**Values from:** {floor_source — "project design policy §N" | "project tokens `{design_system_pointer}`, mapped role by role" | "fork default (the project declares no scale — see Part 5)"}
+
+### 1. Type scale — one size, one job
+
+| Role | Size | Weight | Used for | Never used for |
+|---|---|---|---|---|
+| answer | {type_scale.answer.size}px | {type_scale.answer.weight} | {type_scale.answer.use} | anything else — no figure, heading or label shares this size |
+| section heading | {type_scale.sectionHeading.size}px | {type_scale.sectionHeading.weight} | {type_scale.sectionHeading.use} | figures, the answer |
+| figure | {type_scale.figure.size}px | {type_scale.figure.weight}, tabular numerals | {type_scale.figure.use} | the answer; prose |
+| body | {type_scale.body.size}px | {type_scale.body.weight} | {type_scale.body.use} | provenance, which is caption |
+| caption / footnote | {type_scale.caption.size}px | {type_scale.caption.weight} | {type_scale.caption.use} | column headers that are sentences; methodology at the top |
+
+No other size exists on this surface. **The answer is visually heavier than the evidence**: larger than
+every figure and heading, and never the size a row's figure is set at. Monospace only for codes, and a
+code is never a row's label.
+
+### 2. Spacing and colour
+
+**Spacing:** {spacing_scale — e.g. "4 · 8 · 12 · 16 · 24 · 32 · 48px"}. Every margin, padding and gap
+comes from it; the gap between groups is visibly larger than the gap inside one.
+
+| Colour | Value | Means | Never means |
+|---|---|---|---|
+{for c in {colour_set}}| {c.name} | `{c.value}` | {c.means} | {c.never} |
+{endfor}
+
+One secondary grey. An accent means *someone must act and nobody is acting yet*; it never means
+"important". Every text colour meets WCAG AA (4.5:1, 3:1 at large sizes) on its ground, in both themes.
+
+### 3. Where the user looks — the attention plan
+
+1. **The top is the answer:** {page_answer}, carrying its deciding figure within twelve words, on the
+   element marked `data-answer`.
+2. **The next action is said once, inside the answer's line or directly under it, in body weight** —
+   {next_action_once}. Not in a box, not repeated in a side panel.
+3. **The first actionable item is {first_item}**, marked `data-first-item`, fully visible at **1440×900**
+   and starting in the top 40% of the screen. No more than **{prose_above_first_item} words** sit above it.
+4. **Provenance and audit go to the {provenance_to}, never the top:** {provenance_items — e.g. "the FX
+   rate and its source, the data dates, the import stamp, the file name and run id, the 'figures before
+   freight' note"}. A caveat that changes what a figure means is the one exception: it stays beside that
+   figure, once.
+
+### 4. Layout — a summary, then items, detail on open
+
+A one-block summary first, then the items as scannable **{item_pattern}** (each marked `data-item`)
+showing at most **{at_rest_fields} fields at rest**: {at_rest_field_names}. Everything else about an item
+is on open. This is not a ledger: a column per field, a row per record, every field at rest, is the
+pattern this brief exists to replace.
+
+### 5. Banned on this surface — a design that uses one fails
+
+1. **Tinted notice or callout boxes** — a block of prose on a pastel or coloured fill, usually with a
+   matching thin border, a small radius and a bold lead-in word. The rejected example:
+   `border:1px solid oklch(0.62 0.13 70); background:oklch(0.98 0.02 85)` around *"Next: get Spain →
+   Leipzig priced. It is question 1 on the right…"*.
+2. **Coloured edge stripes** — a 2–4px coloured border on one edge of a card or block.
+3. **Stacked badges** — two or more pills or chips on one item.
+4. **All-caps labels** — capitals for emphasis or as a label (`CHECK`, `SKIP`); acronyms are fine.
+5. **The same fact twice** — a sentence repeated, a clause restated down every row, one question asked
+   in three places. Most tempting here: {repeat_risks}.
+6. Also: a banner or hero strip above the items, a stat-card grid as the opener, an identifier as a row's
+   label or a sentence's subject.
+
+### 6. Markers the design must carry
+
+`data-answer` on the answer · `data-first-item` on the first actionable item · `data-item` on every item
+card or group · `data-page` on the surface root. The rendered-page check reads them; a page without them
+fails as unchecked.
+
+### 7. The policies behind this part — cited so a reviewer can check the source
+
+| Policy | Path | The rule you are held to |
+|---|---|---|
+{for p in {floor_citations}}| {p.id} | `{p.path}` | {p.rule} |
+{endfor}
+
+### 8. The machine copy — the checker reads this block; it must agree with the tables above
+
+```json presentation-floor
+{presentation_floor_json}
+```
+
+| Id | A finished design passes if… | How it is checked |
+|---|---|---|
+| P1 | Every text size is a role size above, and the answer size is used by the answer alone | `check-rendered-page.js` R1 |
+| P2 | The answer is the largest text on the surface | R2 |
+| P3 | No tinted callout, no edge stripe, bordered prose blocks within {bordered_allowed} | R3, R4, R5 |
+| P4 | The answer reaches a figure within 12 words, and ≤ {prose_above_first_item} words sit above the first item | R6, R7 |
+| P5 | Nothing is said twice | R8 |
+| P6 | Every text colour meets AA in both themes, and nothing is in capitals for emphasis | R9, R10 |
+| P7 | At 1440×900 the first item is fully visible in the top 40% | R11 |
 
 ---
 
@@ -790,7 +904,7 @@ If `{page_mode}` = **detail:**
 
 ## Advisory guidance — the designer's call
 
-**Everything from here to §7 is ADVISORY** (`shared/brief-binding-contract.md`). It is here because it is useful: the product's visual system, suggested frames, the page-mode default composition, and the style floors the product usually holds to. None of it can fail your design. Where you depart from it, say so in your notes and say why — a departure is reported downstream as a note, never as a failure. Rules marked **[tradeable]** exist for consistency across the product rather than for correctness: trade them against a better idea when you have one.
+**Everything from here to §7 is ADVISORY** (`shared/brief-binding-contract.md`) — **except what Part 2b already fixed.** Where anything below appears to leave the type scale, spacing, colours, the top of the page, the item layout or a banned pattern to you, Part 2b wins. It is here because it is useful: the product's visual system, suggested frames, the page-mode default composition, and the style floors the product usually holds to. None of it can fail your design. Where you depart from it, say so in your notes and say why — a departure is reported downstream as a note, never as a failure. Rules marked **[tradeable]** exist for consistency across the product rather than for correctness: trade them against a better idea when you have one.
 
 **Token, pill and colour detail is not restated in this brief.** It lives in the project's design system — `{design_system_pointer}` — and you read it there.
 
@@ -1248,7 +1362,7 @@ auditability actually gets lost (D7).}
 
 ## 5. Style floor — advisory
 
-*These are the product's style and anti-AI-slop floors. They are ADVISORY (brief-binding-contract.md §2). Any item that is really a truth rule (a reader could come away believing something false) has already been carried into Part 2 and binds there; what remains here is look and feel. Items that exist only for consistency across the product are **[tradeable]**.*
+*These are the product's style and anti-AI-slop floors. They are ADVISORY (brief-binding-contract.md §2) — except item 2 below (no banner above working content) and every pattern Part 2b §5 lists, which bind there. Any item that is really a truth rule (a reader could come away believing something false) has already been carried into Part 2 and binds there; what remains here is look and feel. Items that exist only for consistency across the product are **[tradeable]**.*
 
 {Use ONE of the following variants based on `{design_system}`:}
 
@@ -1314,13 +1428,12 @@ Restated from `shared/design-standards.md` § Quality Checklist — the designer
 - Every spacing value comes from one scale (multiples of 4 or 8). No ad-hoc values.
 - If rows, labels, or controls collide, or must be re-read to be told apart, density has passed its floor.
 
-**Typography**
+**Typography** — *the size rules now bind in Part 2b §1 (five roles, one size per job), which supersedes "three sizes or fewer".*
 - Primary, secondary and tertiary content are identifiable in under 2 seconds.
-- Three font sizes or fewer on the surface. More is a hierarchy failure, not richness.
-- Monospace only for codes and identifiers.
+- Monospace only for codes and identifiers (binding, Part 2b §1).
 
 **Accessibility**
-- WCAG AA contrast: 4.5:1 body text, 3:1 large text.
+- WCAG AA contrast: 4.5:1 body text, 3:1 large text (binding, Part 2b §2 — checked on the rendered page in both themes).
 - Keyboard focus visible — 2px minimum, high contrast.
 - Colour is never the sole differentiator of meaning.
 - Touch targets ≥ 44px on any handheld-class surface.
@@ -1400,7 +1513,7 @@ Inside the canonical render: the primary action and the next-step loop are the m
 **Avoid a symmetric row of phone/tablet/desktop comps.** That shape reads as a **review board**, not an operator surface; review notes it.
 
 {if this surface is table-first — its primary content is a list, table, queue, or worklist:}
-**In-surface composition — a suggestion: a COMPRESSED OPERATIONAL STACK, not a dashboard opener (B7, advisory; review notes a departure).** The suggestions above are about how the ARTIFACT is arranged. This one is about how the SURFACE itself is composed: a render can satisfy every rule above — first, dominant, correctly labelled, primary action unmistakably loudest — and still open with a hero band and a wall of chips. Compose it as a compact header block, then data, immediately:
+**In-surface composition — a suggestion: a COMPRESSED OPERATIONAL STACK, not a dashboard opener (B7, advisory; review notes a departure — except the no-banner rule, the header height and the first item above the fold, which bind in Part 2b §3).** The suggestions above are about how the ARTIFACT is arranged. This one is about how the SURFACE itself is composed: a render can satisfy every rule above — first, dominant, correctly labelled, primary action unmistakably loudest — and still open with a hero band and a wall of chips. Compose it as a compact header block, then data, immediately:
 
 1. **Keep the header as ONE compact operational block** — not a banner, hero, opener card, or summary card above the list. It shares the worklist's horizontal grid and vertical rhythm and reads as the **top of the list, not a thing before the list**. If the header could be lifted onto an unrelated page unchanged, it is a banner.
 2. **The loud count and the primary action ({the surface's primary action, e.g. "Go receive"}) may dominate — but only INLINE within the worklist header.** No large empty right half. No billboard CTA row of its own. No separate summary-card feel: no distinct background, border, or elevation separating the header from the list. Exactly ONE element carries display weight — the count and its action read as a single unit.
