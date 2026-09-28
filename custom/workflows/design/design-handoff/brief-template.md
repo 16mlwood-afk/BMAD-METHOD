@@ -26,6 +26,12 @@
     machine block that tools/check-rendered-page.js reads. Evidence: the price-list page audit of
     2026-09-27. The §5 style floor and §5a comfort floor stay advisory for everything Part 2b does not
     name; "three font sizes or fewer" is superseded by the role scale.
+  - 2026-09-28 — Part 2 gains PROJECT-MANDATED SHARED COMPONENTS (TM… rows, step-01 §3l): where the
+    target project's CLAUDE.md or design policy mandates a shared component on a class of surface and
+    this surface is in the class, the brief binds that the surface opens with it, reuses it rather than
+    redrawing it, and keeps its honest empty states. Where none applies, the brief says so in one line.
+    Also the always-on TV1 verification-pace test for any surface showing records that point outside
+    the product. Both inside the existing binding class.
 
   How to render:
   - Substitute every {variable}; honour the conditional {if …} / {for …} blocks.
@@ -218,8 +224,26 @@ These are the ONLY things in this brief that can fail your design. Each is a tes
 | TD1-{d.slug} | **{d.surface}** reads in the order the Detail surfaces block names for it: the answer and next action first, then the evidence in its stated rank, then provenance and audit — collapsed or visibly secondary. Every level (first line, group heading, item first line) is true on its own, and a caveat that changes what a figure means stays beside that figure. | Rank what the eye reaches first on the opened surface; compare with the named order. Evidence out of rank at the top, provenance as loud as the answer, a heading the detail below reverses, or a qualifying caveat collapsed away from its figure, fails. The mechanism is not judged. | `controls-and-attention.md` §2a — reading order. |
 | TD2-{d.slug} | No fact appears twice on **{d.surface}** when it opens{if d.justified_repeats}, except {d.justified_repeats_short}{endif}. Most tempting to repeat here: {d.repeat_risks}. | List every fact visible when it opens; any that appears twice and is not a justified repeat fails. A decomposition carrying a different fact passes. | `controls-and-attention.md` §2a — TA2 per detail surface. |
 {endfor}| TF1 | {tf1_statement — no system fault is presented as a category of the operator's work on THIS surface, and no control exists only to compensate for one. Name each `{fault_categories}` entry and its non-operator owner.} | For each category the page counts as work, ask who must act for it to stop recurring. An engineer, a rule or a producing system → it is a fault: named as one, owned elsewhere, counted separately. | Owner, 2026-09-20 — `controls-and-attention.md` §3. |
-{for t in {truth_tests}}| {t.id} | {t.statement — an outcome, e.g. "A reader can never mistake a stale or partial figure for a current one, including when they screenshot a single row."} | {t.check — what a reviewer looks at to decide pass/fail} | {t.source — the §2 / §2b / §2c / §4d / §4e / policy rule / capability it protects} |
+{if {outward_links_present}}| TV1 | Every record or claim on this surface that points outside the product — {outward_link_kinds — name them for THIS surface, e.g. "each supplier's website, each quoted source page"} — opens its target in one action, in a new tab, visibly a link at rest; the list can be checked top to bottom without opening a detail surface. Full wording: the TV1 block below the table. | The reviewer check in the TV1 block below. | Owner, 2026-09-28 — verification pace (step-01 §3l). |
+{endif}{for t in {truth_tests}}| {t.id} | {t.statement — an outcome, e.g. "A reader can never mistake a stale or partial figure for a current one, including when they screenshot a single row."} | {t.check — what a reviewer looks at to decide pass/fail} | {t.source — the §2 / §2b / §2c / §4d / §4e / policy rule / capability it protects} |
 {endfor}
+
+{if {outward_links_present}}
+### TV1 — the verification-pace test, in full
+
+> TV1 — Verification pace (on every brief whose surface shows records that point outside the product: a site, a source page, a document, a partner record). Wherever such a record or a claim about it is shown — a list row, a quote, a failed read, a detail surface — the thing it points to opens in one action, in a new tab, and is visibly a link at rest, not only on hover. No URL is printed as text that cannot be followed; a URL inside an error or reason renders as a short link, and a URL inside a verbatim quote keeps its exact characters but is followable. A reader can check every item's outward link top to bottom without opening a detail surface, and the list scans as one line per item. Reviewer check: run down the list and open each item's outward link with no drawer opened; then search the render and one opened detail surface for any unclickable URL. Either failing fails the test. Why: a general 'the owner can do every job' test never fails a surface on this, and a page whose claims cannot be checked quickly will not get checked.
+{else}
+*TV1 (verification pace) does not apply: {outward_links_none_reason — one line, e.g. "this surface shows no record that points outside the product"}.*
+{endif}
+
+### Project-mandated shared components
+
+{if {mandated_components}}*The project requires the components below on this class of surface (step-01 §3l). Each is a Part 2 test above (`TM…` ids, also in `truth_tests`). Where the component goes, how big it is and what surrounds it are yours; replacing it with markup that imitates it, or dropping one of its empty states, is not.*
+
+| Id | Component (reuse it — do not redraw it) | Why this surface is in the class | Empty states it must keep | Source — the project's words |
+|---|---|---|---|---|
+{for m in {mandated_components}}| {m.id} | `{m.component}` at `{m.component_path}` | {m.because} | {m.empty_states} | {m.source} |
+{endfor}{else}*{mandated_components_none_reason — e.g. "No mandated shared component applies — the project names none." or "No mandated shared component applies — the project mandates <component> on <class>, and this surface is not one: <because>."}*{endif}
 
 {if {detail_surface_orders}}
 ### Detail surfaces — each one's answer, and the order it is read in
@@ -339,7 +363,7 @@ you said it is yours.
 {endfor}
 {endif}
 
-**Where these come from (so nothing binding is invented and nothing true is dropped):** the data's own defects (§2: missing ≠ zero, observed vs declared vs assumed, two authorities kept apart, §2e's three kinds of blank and both sides of a figure owed to a far end), the claims a redesign must not strip (the preserved-claims list above), the finance truth constraints (§2b `must_not_infer`), the runtime honesty budget (§2c — the page never claims more liveness than its transport delivers), analytic and decision honesty (§4d/§4e — no fabricated interval or distribution, derived never shown as stored), the audit contract (§4h obligations restated as outcomes — "every figure's source is inspectable"), the capabilities in §1 (reachability), a data-protecting role boundary (from `shell_role`), and the truth-and-data rules of the project design policy (money basis, no invented figures). **TD0 · TD1 · TD2 are present once per detail surface** (the Detail surfaces block above; `controls-and-attention.md` §2a) — a drawer, expanded row, record panel or side sheet answers its own question, in a named order, saying each fact once. **TC1 · TC2 · TA1 · TA2 · TF1 are present on every brief** and come from `shared/controls-and-attention.md` (STD-CONTROLS-ATTENTION-001) — they govern whether a control exists, how loud anything is, and what the page treats as work. The type scale, spacing, colours, what sits at the top, the layout pattern and the banned patterns are NOT here — they bind in **Part 2b** below. Everything else about look and composition is in the Advisory guidance.
+**Where these come from (so nothing binding is invented and nothing true is dropped):** the data's own defects (§2: missing ≠ zero, observed vs declared vs assumed, two authorities kept apart, §2e's three kinds of blank and both sides of a figure owed to a far end), the claims a redesign must not strip (the preserved-claims list above), the finance truth constraints (§2b `must_not_infer`), the runtime honesty budget (§2c — the page never claims more liveness than its transport delivers), analytic and decision honesty (§4d/§4e — no fabricated interval or distribution, derived never shown as stored), the audit contract (§4h obligations restated as outcomes — "every figure's source is inspectable"), the capabilities in §1 (reachability), a data-protecting role boundary (from `shell_role`), and the truth-and-data rules of the project design policy (money basis, no invented figures). **TD0 · TD1 · TD2 are present once per detail surface** (the Detail surfaces block above; `controls-and-attention.md` §2a) — a drawer, expanded row, record panel or side sheet answers its own question, in a named order, saying each fact once. **TM… rows are present once per project-mandated shared component whose class this surface is in** (step-01 §3l — the project's own CLAUDE.md or design policy), and the "Project-mandated shared components" block above says which, or says in one line that none applies. **TV1 is present on every brief whose surface shows records that point outside the product.** **TC1 · TC2 · TA1 · TA2 · TF1 are present on every brief** and come from `shared/controls-and-attention.md` (STD-CONTROLS-ATTENTION-001) — they govern whether a control exists, how loud anything is, and what the page treats as work. The type scale, spacing, colours, what sits at the top, the layout pattern and the banned patterns are NOT here — they bind in **Part 2b** below. Everything else about look and composition is in the Advisory guidance.
 
 ---
 
