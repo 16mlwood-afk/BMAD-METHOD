@@ -2,9 +2,9 @@
 name: presentation-floor
 description: 'The binding presentation floor every design brief SPECIFIES and every rendered page is CHECKED against: a named type scale (one size, one job), spacing tokens, a colour set with meanings, a where-the-user-looks plan, the summary-then-items layout, a banned-patterns list, and "the answer is heavier than the evidence". Replaces the advisory style floor for these seven things.'
 standard: STD-PRESENTATION-FLOOR-001
-version: 3
+version: 4
 ratified: 2026-09-27
-amended: 2026-09-28 (v2 — §8 brief completeness, B12–B20, from Claude Design's pre-build review of the price-list v4 brief); 2026-09-28 (v3 — §9 below the fold, B21 and R12–R14, from the price-list v6 design's prose wall)
+amended: 2026-09-28 (v2 — §8 brief completeness, B12–B20, from Claude Design's pre-build review of the price-list v4 brief); 2026-09-28 (v3 — §9 below the fold, B21 and R12–R14, from the price-list v6 design's prose wall); 2026-09-28 (v4 — §10 label/value row groups, B22 and R15–R18, from the bundle 6 drawer's journey section)
 ---
 
 # The presentation floor — what a brief specifies, and what a rendered page must pass
@@ -134,7 +134,7 @@ B9 1440×900 · B10 all ten citations by path with their rule · B11 no unrender
 field names what must survive and the near-duplicates · B14 the Copy deck says nothing twice · B15 the
 brief is self-contained · B16 a states × views matrix · B17 1440, 1280 and a narrow width · B18
 feedback after an action · B19 15% headroom under the word budget · B20 the brief's notation is not
-rendering. **B21 (§9)** every section of the page declares its form and word budget.
+rendering. **B21 (§9)** every section of the page declares its form and word budget. **B22 (§10)** every label/value row group is specified as one.
 
 **design-implement, the rendered page** — `steps/step-04b-rendered-page-checks.md`, running
 `check-rendered-page.js --snapshot|--url … --brief <brief.md>` on the rendered DOM, both themes:
@@ -155,6 +155,10 @@ rendering. **B21 (§9)** every section of the page declares its form and word bu
 | R12 | prose-wall | anywhere on the page, more than 2 paragraphs run back to back, or a paragraph is over 40 words |
 | R13 | section-form | a section the brief declares is not in its form at rest: over its word budget; a rows section without labelled rows, over 5 rows, or a row over 12 words after its label; a held, provenance, method, skipped or message section open at rest or with a summary over 12 words; a marked section the brief never declared |
 | R14 | footer-at-rest | the footer shows more than 2 lines at rest, or has no disclosure for the rest |
+| R15 | row-cells | in a `[data-row-group]`: a row has other than one value cell or more than one status; a cell repeats another cell of its row; a value is more than 4 words and not money or a count; an explanation is over 12 words |
+| R16 | row-grid | value cells do not share one right edge, or status cells one left edge (±2px); a figure is not right-aligned or not in tabular numerals; rows are no further apart than the lines inside a row |
+| R17 | internal-words | a row group shows a word from `internalWords` (default: export, handoff, pipeline, record, run) |
+| R18 | row-total | a group with an unpriced row has no total, or its total is not labelled as partial |
 
 Each check is **pass**, **fail** or **unchecked**; unchecked is reported and never counts as a pass.
 Goldens: `npm run test:rendered-page` — the yellow box and the 288-words case fail, and so does the live
@@ -170,7 +174,7 @@ page rebuilt from the audit's measurements.
 
 ## 7. Enforcement, honestly
 
-**DETERMINISTIC:** Gate 1's brief check (B1–B21) and the fourteen rendered checks, each with goldens that fail the
+**DETERMINISTIC:** Gate 1's brief check (B1–B22) and the eighteen rendered checks, each with goldens that fail the
 audit's live examples. **PROBABILISTIC:** whether the answer is the right answer, whether the page reads
 well, whether items are genuinely scannable (F5 beyond its declared count), and whether spacing tokens are
 used (F2 is declared and checked in the brief, not on the page). A page can pass every check and still bury
@@ -254,6 +258,47 @@ screenshot showed it fails R12, R13 and R14; the same content structured passes.
 row can be twelve true words that miss the point; a summary line can be vague. That stays with the
 designer's pre-build review and the reader.
 
+## 10. Label/value row groups — a grid, not text in rows (v4, 2026-09-28)
+
+> **Owner, 2026-09-28,** on the line drawer's *The journey to Amazon UK, cost by cost* in Claude
+> Design's bundle 6: it *"reads as a mess printed on a screen, not much thought about font size,
+> spacing."*
+
+The brief asked for three columns "separated by space alone" and a caption under every leg, and gave
+an unpriced leg the words *not priced* both as its standing and in its figure's place. Design drew
+exactly that: *not priced | not priced*, the standing at a different x on every row, a bold sentence
+about our own tooling in the value column, two-line notes, rows as close as the lines inside a row,
+and no total. The gap was the template's. Gap G11 in `brief-gap-ledger.md`.
+
+**A label/value row group** — a cost breakdown, a fact list, the money section of a drawer — is the
+named form `value-rows`, section kind `facts`. Its rules:
+
+| Rule | Why, or where it is already stated |
+|---|---|
+| One value cell per row, and at most one status badge | a badge that restates the value is the same fact twice (§3 `repeated-fact`) |
+| A fixed column grid: every value ends on one right edge, every badge starts on one left edge | amazon-removal-assistant `docs/decision-document-policy.md` §2a: *"the figure (tabular, in a table)"* is its own register |
+| Values right-aligned, in tabular numerals, at the `figure` role | §1 F1; the figure role already says tabular |
+| A value is money, a count, or at most 4 words — never a sentence | `docs/artifact-policy.md` §4: *"a figure goes in a sentence when it is the point, and in a table when it is one of several being compared. Not both."* |
+| An explanation is at most 12 words, in the `caption` role, under the label | a longer reason goes behind the section's disclosure |
+| Rows sit further apart than the lines inside a row (`rowGap` > `innerGap`, both from the spacing scale) | §1 F2: the gap between groups is larger than the gap inside one |
+| A status badge is from a small fixed set, and never says a figure is missing (that is the value's job) | `docs/decision-document-policy.md` §2b: *a status tag, set apart* — one state, said once |
+| No internal vocabulary: `export`, `handoff`, `pipeline`, `record`, `run`, and any the project adds | `on-screen-copy-screen.md` (STD-COPY-SCREEN-001) and `docs/artifact-policy.md` §4 (identifiers go to the footer or are cut) |
+| A total over rows with an unpriced value is labelled as partial (*Priced so far, partial*); no total needs a stated reason | `docs/human-facing-documents.md` R7: a reader who stops at the figure is not misled |
+
+**Machine block:** a section `{ name, view?, kind: "facts", form: "value-rows", wordBudget, columns:
+[label, value, status?, note?], valueMaxWords ≤ 4, noteMaxWords ≤ 12, valueAlign: "right", numerals:
+"tabular", rowGap, innerGap, maxRows ≤ 10, statusValues?, total: { label, partial } | "none: <why>" }`,
+and at floor level `internalWords` carrying at least the five. `view` names the `data-page` the group
+lives on (a drawer), so a page snapshot does not look for it. **Markers:** `data-row-group="<name>"` on
+the group, `data-row` on each row, `data-cell="label|value|status|note"` on each cell,
+`data-row-total` on the total row (with `data-total="partial"` when it is).
+
+**Checks.** Gate 1 **B22**. Rendered **R15–R18** (§5). Goldens: bundle 6's drawer journey fails all
+four; the same five legs as a grid, with a partial total, pass.
+
+**What these cannot do.** They prove the grid, the counts and the words, not that the right figure is
+in the right row or that a 12-word note is the useful 12 words.
+
 ## Prose consumers
 
 | Consumer | Bound how |
@@ -265,3 +310,4 @@ designer's pre-build review and the reader.
 | `shared/brief-gap-ledger.md` | The running record of §8's gaps: every template gap a designer finds, with the rule and check added |
 | `design-handoff` step-05 | The designer's pre-build review of the brief; template gaps it finds are appended to the ledger (§8) |
 | `design-handoff/brief-template.md` Part 2b §10 | Renders the sections table of §9 and the `sections` machine entry (B21) |
+| `design-handoff/brief-template.md` Part 2b §11 | Renders each label/value row group of §10 and its machine entry (B22) |

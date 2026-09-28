@@ -77,7 +77,7 @@ in §9 with the exact command to run. It is never reported as passed.
 
 ### 3. Record it
 
-In the §9 report, one line per theme: `rendered-page (light): 14 checks, 0 failed, 0 unchecked` — or the
+In the §9 report, one line per theme: `rendered-page (light): 18 checks, 0 failed, 0 unchecked` — or the
 failing ids with their one-line detail, and where each went (fixed in build · SENDBACK · owed). Keep the
 JSON under `_bmad-output/implementation-artifacts/` beside the grid.
 
