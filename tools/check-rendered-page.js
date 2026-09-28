@@ -82,7 +82,24 @@
  *   node tools/check-rendered-page.js --snapshot <snap.json> --brief <brief.md>   [--json]
  *   node tools/check-rendered-page.js --snapshot <snap.json> --floor <floor.json> [--json]
  *   node tools/check-rendered-page.js --url <url> --brief <brief.md> [--theme dark] [--json]
- *        (needs `playwright` resolvable from the current directory; otherwise exit 2 and says so)
+ *        [signed in: --auth-header-env VAR [--auth-header-name NAME] [--auth-drop-header NAME]
+ *                    [--auth-session-marker KEY] [--auth-storage-env KEY=VAR]]
+ *        (needs `playwright` resolvable from the current directory, NODE_PATH or --playwright <dir>;
+ *        otherwise exit 2 with the install command)
+ *
+ * ── Signed in (friction WF-20260928-085) ──
+ *   A protected app renders its sign-in form to a stranger, and the checks then grade the form. The
+ *   credential is only ever read from an ENVIRONMENT VARIABLE named on the command line, never from a
+ *   literal, is sent only to the page's own origin, only over https or to localhost, and never printed.
+ *     --auth-header-env VAR       send the value of $VAR as a request header on same-origin requests
+ *     --auth-header-name NAME     that header's name (default Authorization; e.g. X-API-Key)
+ *     --auth-drop-header NAME     remove this header from same-origin requests (an app's placeholder
+ *                                 session header must not reach the server beside the real one)
+ *     --auth-session-marker KEY   put a non-secret placeholder in localStorage KEY before the app starts,
+ *                                 for an app that shows its sign-in form while that key is empty
+ *     --auth-storage-env KEY=VAR  put the value of $VAR in localStorage KEY (a real session token)
+ *   A page that still renders a password field and no [data-answer] is reported as UNCHECKED — the
+ *   sign-in form is never graded as the page.
  *   node tools/check-rendered-page.js --validate-brief <brief.md> [--json]        (Gate 1)
  *   node tools/check-rendered-page.js --print-probe                                (browser-side probe)
  *
@@ -1624,26 +1641,121 @@ function probe(opts) {
   };
 }
 
-async function snapshotFromUrl(url, floor, theme) {
-  let playwright;
+const PLAYWRIGHT_INSTALL = 'npm i -D playwright && npx playwright install chromium';
+const ENV_NAME = /^[A-Za-z_]\w*$/;
+const SESSION_MARKER = 'signed-in-by-check-rendered-page';
+
+/**
+ * Turn the --auth-* flags into a plan, or a refusal. Pure: it reads `env` and never prints a value.
+ * Returns { plan } where plan is null when no auth flag was given, or { error }.
+ */
+function authPlan(url, opts, env) {
+  const o = opts || {};
+  const any = o.headerEnv || o.sessionMarker || (o.storageEnv && o.storageEnv.length > 0) || (o.dropHeaders && o.dropHeaders.length > 0);
+  if (!any) return { plan: null };
+  let origin;
   try {
-    // Resolved from the PROJECT (or NODE_PATH), never from the fork: the fork does not ship a browser.
+    const u = new URL(url);
+    origin = u.origin;
+    const local = ['localhost', '127.0.0.1', '[::1]'].includes(u.hostname);
+    if (u.protocol !== 'https:' && !local)
+      return { error: `refusing to send a credential to ${origin} over ${u.protocol} — https, or localhost only` };
+  } catch {
+    return { error: `--url "${url}" is not a URL` };
+  }
+  const headers = {};
+  if (o.headerEnv) {
+    if (!ENV_NAME.test(o.headerEnv))
+      return {
+        error: `--auth-header-env takes the NAME of an environment variable, not a value ("${o.headerEnv.slice(0, 3)}…" is not a name)`,
+      };
+    const v = env[o.headerEnv];
+    if (!v) return { error: `$${o.headerEnv} is not set or is empty; nothing was sent` };
+    headers[(o.headerName || 'Authorization').toLowerCase()] = v;
+  } else if (o.headerName) return { error: '--auth-header-name needs --auth-header-env' };
+  const storage = {};
+  if (o.sessionMarker) storage[o.sessionMarker] = SESSION_MARKER;
+  for (const kv of o.storageEnv || []) {
+    const m = /^([^=]+)=(.+)$/.exec(kv);
+    if (!m || !ENV_NAME.test(m[2]))
+      return { error: `--auth-storage-env takes KEY=ENV_VAR_NAME ("${kv.split('=')[0]}=…" does not name a variable)` };
+    if (!env[m[2]]) return { error: `$${m[2]} is not set or is empty; nothing was stored` };
+    storage[m[1]] = env[m[2]];
+  }
+  return { plan: { origin, headers, drop: (o.dropHeaders || []).map((h) => h.toLowerCase()), storage } };
+}
+
+/** The headers a request should carry under the plan: auth only to the page's own origin. */
+function headersFor(plan, requestUrl, headers) {
+  if (!plan) return headers;
+  let origin;
+  try {
+    origin = new URL(requestUrl).origin;
+  } catch {
+    return headers;
+  }
+  if (origin !== plan.origin) return headers;
+  const out = {};
+  for (const [k, v] of Object.entries(headers || {})) if (!plan.drop.includes(k.toLowerCase())) out[k.toLowerCase()] = v;
+  return { ...out, ...plan.headers };
+}
+
+/** Where to look for playwright: the project, NODE_PATH, and an explicit --playwright directory. */
+function loadPlaywright(extraDir) {
+  const paths = [process.cwd(), ...(process.env.NODE_PATH || '').split(':').filter(Boolean)];
+  if (extraDir) paths.unshift(extraDir);
+  try {
     const browserModule = 'playwright';
-    const where = require.resolve(browserModule, { paths: [process.cwd(), ...(process.env.NODE_PATH || '').split(':').filter(Boolean)] });
-    playwright = require(where);
+    return { playwright: require(require.resolve(browserModule, { paths })) };
   } catch {
     return {
       error:
-        'playwright is not resolvable from this directory, so the page could not be rendered here. Capture a snapshot instead: ' +
-        'run the output of `--print-probe` in the page (console or Claude-in-Chrome) at 1440×900, save the JSON, and pass --snapshot. ' +
+        `playwright is not installed where this looked (${paths.join(', ')}), so the page could not be rendered. ` +
+        `Install it in the project: \`${PLAYWRIGHT_INSTALL}\`, or point at one that has it: --playwright <dir containing node_modules>. ` +
+        'Or capture a snapshot by hand: run the output of `--print-probe` in the page at 1440×900 and pass --snapshot. ' +
         'This is UNCHECKED, not passed.',
     };
   }
+}
+
+async function snapshotFromUrl(url, floor, theme, auth, playwrightDir) {
+  const { plan, error: authError } = authPlan(url, auth, process.env);
+  if (authError) return { error: `${authError}. This is UNCHECKED, not passed.` };
+  const { playwright, error } = loadPlaywright(playwrightDir);
+  if (error) return { error };
   const vp = floor.viewport || { width: 1440, height: 900 };
-  const browser = await playwright.chromium.launch();
+  let browser;
   try {
-    const page = await browser.newPage({ viewport: vp, colorScheme: theme === 'dark' ? 'dark' : 'light' });
+    browser = await playwright.chromium.launch();
+  } catch (error_) {
+    return {
+      error: `playwright is installed but its browser is not (${String(error_.message).split('\n')[0]}). Run \`npx playwright install chromium\`. This is UNCHECKED, not passed.`,
+    };
+  }
+  try {
+    const context = await browser.newContext({ viewport: vp, colorScheme: theme === 'dark' ? 'dark' : 'light' });
+    if (plan) {
+      await context.route('**/*', (route) => {
+        const r = route.request();
+        return route.continue({ headers: headersFor(plan, r.url(), r.headers()) });
+      });
+      if (Object.keys(plan.storage).length > 0)
+        await context.addInitScript((pairs) => {
+          for (const [k, v] of pairs) localStorage.setItem(k, v);
+        }, Object.entries(plan.storage));
+    }
+    const page = await context.newPage();
     await page.goto(url, { waitUntil: 'networkidle' });
+    const gated = await page.evaluate(
+      (answerSel) => !!document.querySelector('input[type=password]') && !document.querySelector(answerSel || '[data-answer]'),
+      (floor.selectors || {}).answer,
+    );
+    if (gated)
+      return {
+        error: plan
+          ? 'the page still rendered a sign-in form with the credentials given, so nothing was checked. UNCHECKED, not passed.'
+          : 'the page rendered a sign-in form, so nothing was checked. Sign in with --auth-header-env (the signed-in flags are listed at the top of tools/check-rendered-page.js). UNCHECKED, not passed.',
+      };
     return { snapshot: await page.evaluate(probe, floor.selectors || {}) };
   } finally {
     await browser.close();
@@ -1705,7 +1817,20 @@ async function main(argv) {
   let snapshot;
   if (arg('--snapshot')) snapshot = JSON.parse(fs.readFileSync(arg('--snapshot'), 'utf8'));
   else if (arg('--url')) {
-    const got = await snapshotFromUrl(arg('--url'), floor, arg('--theme'));
+    const all = (k) => argv.flatMap((x, i) => (x === k && argv[i + 1] ? [argv[i + 1]] : []));
+    const got = await snapshotFromUrl(
+      arg('--url'),
+      floor,
+      arg('--theme'),
+      {
+        headerEnv: arg('--auth-header-env'),
+        headerName: arg('--auth-header-name'),
+        dropHeaders: all('--auth-drop-header'),
+        sessionMarker: arg('--auth-session-marker'),
+        storageEnv: all('--auth-storage-env'),
+      },
+      arg('--playwright'),
+    );
     if (got.error) {
       console.error(`check-rendered-page: ${got.error}`);
       return 2;
@@ -1751,4 +1876,9 @@ module.exports = {
   ownBudgetFindings,
   DEFAULT_INTERNAL_WORDS,
   DEFAULT_PROVENANCE,
+  authPlan,
+  headersFor,
+  loadPlaywright,
+  snapshotFromUrl,
+  PLAYWRIGHT_INSTALL,
 };
