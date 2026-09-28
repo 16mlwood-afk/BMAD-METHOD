@@ -44,6 +44,18 @@
  *   R17 internal-words     no pipeline vocabulary (export, handoff, pipeline, record, run by default) in a
  *                          row group
  *   R18 row-total          a group with an unpriced row carries a total labelled as partial
+ *   R19 inline-provenance  no provenance caption in the body ("Named from…", "Known because…", "· the
+ *                          supplier's list", "as listed by…", "found by…"): provenance goes to the footer
+ *                          or a closed disclosure (amazon-removal-assistant docs/artifact-policy.md §2, §4)
+ *
+ * ── Declared exemptions (presentation-floor.md §11, gap G12) — never global, always visible ──
+ *   quotedSources   text inside [data-source="<source>"] is the source's own words, verbatim: exempt from
+ *                   the checks the brief names for that source (R8, R10, R17, R19 only). An undeclared
+ *                   source exempts nothing, and the answer is never exempt.
+ *   exemptions      R6 for a named view whose answer has no figure by design; R8 for a sentence said once
+ *                   in each of at most `max` different items (two products that share a name).
+ *   internalWordExceptions  an exact phrase where an internal word carries its ordinary meaning.
+ *   Every exemption used is printed in the check's detail; a check it clears reports "exempt", not "pass".
  *
  * ── Gate 1 (--validate-brief) ──
  *   B1–B11  the floor itself is specified (Part 2b and its machine block)
@@ -53,6 +65,9 @@
  *           gap Claude Design found in a brief that had passed B1–B11 (shared/brief-gap-ledger.md).
  *   B21     every section of the page has a declared visual form and word budget (presentation-floor.md
  *           §9, gap G10): the below-the-fold prose wall of the price-list v6 design.
+ *   B23     every exemption is declared, narrow and argued: known checks only, a reason, a view or a cap
+ *   B24     the brief keeps its own budgets: each section's `sample` (its at-rest strings, found verbatim in
+ *           the brief) fits its wordBudget (gap G13: the journey's own content was 96 words against 90)
  *   B22     every label/value row group is specified as one (presentation-floor.md §10, gap G11): its
  *           columns, value and explanation word caps, right-aligned tabular values, row gap larger than
  *           the gap inside a row, its total (partial and labelled so, or none with a reason), and the
@@ -124,7 +139,28 @@ const DEFAULT_BUDGETS = {
 /** §10: words that name our own machinery, never shown in a row group. The owner's list, 2026-09-28. */
 const DEFAULT_INTERNAL_WORDS = ['export', 'handoff', 'pipeline', 'record', 'run'];
 /** A value that says no figure exists yet. A group holding one owes a total labelled as partial. */
-const UNPRICED_VALUE = /\b(not priced|not quoted|unknown|not known|no figure|open)\b/i;
+// "open" was here and matched the control "Open WhatsApp": an ordinary word is not a missing figure.
+const UNPRICED_VALUE = /\b(not priced|not quoted|unknown|not known|no figure)\b/i;
+/**
+ * §11 (G12): the checks a quoted source may be exempted from, and the checks a declared exemption may
+ * clear. Everything else can never be exempted: a floor a brief could switch off is not a floor.
+ */
+const QUOTABLE_CHECKS = new Set(['R8', 'R10', 'R17', 'R19']);
+const EXEMPTABLE_CHECKS = new Set(['R6', 'R8']);
+const MAX_ACROSS_ITEMS = 3;
+/**
+ * R19: provenance written into the body. Each is a caption the owner rejected in the live drawer of
+ * 2026-09-28, or its plain variant. A brief may add its own in `provenancePhrases`.
+ */
+const DEFAULT_PROVENANCE = [
+  String.raw`\bnamed from\b`,
+  String.raw`\bknown because\b`,
+  String.raw`\bas listed by\b`,
+  String.raw`\bfound by\b`,
+  String.raw`\baccording to\b`,
+  String.raw`\b(?:taken|sourced|read) from\b`,
+  String.raw`[·•,]\s*the supplier[’']s (?:price-)?list\b`,
+];
 /** The words that label a total as partial. */
 const PARTIAL_LABEL = /\b(partial|so far|priced only|not the full|incomplete|of the known)\b/i;
 /** §9: the forms a section may take, and the kinds that must be collapsed at rest. */
@@ -575,6 +611,8 @@ function completenessFindings(markdown, floor) {
 
   for (const d of sectionSpecFindings(f)) add('B21', d);
   for (const d of rowGroupSpecFindings(f)) add('B22', d);
+  for (const d of exemptionSpecFindings(f)) add('B23', d);
+  for (const d of ownBudgetFindings(markdown, f)) add('B24', d);
 
   return out;
 }
@@ -692,6 +730,84 @@ function rowGroupSpecFindings(floor) {
   return out;
 }
 
+/* ───────────────────── declared exemptions (B23) and the brief's own budgets (B24) ───────────────────── */
+/*
+ * Owner's build agent, 2026-09-28, on the live price list: the checker failed strings the brief itself
+ * prescribes — two real products sharing a name (R8), supplier codes and the supplier's own capitalised
+ * Spanish title (R10), a supplier drawer whose answer has no figure by design (R6) — and R17/R18 made it
+ * reword the brief's own copy. The fix is not a looser check: it is an exemption the BRIEF declares,
+ * that this validator can see, that names its reason, and that the rendered report prints every time.
+ */
+function exemptionSpecFindings(floor) {
+  const out = [];
+  const text = (v) => typeof v === 'string' && v.trim().length >= 10;
+  for (const q of Array.isArray(floor.quotedSources) ? floor.quotedSources : []) {
+    if (!q || typeof q.source !== 'string' || !/^[a-z][a-z-]*$/.test(q.source))
+      out.push('a quotedSources entry needs "source": the lower-case value of its data-source marker');
+    if (!text(q && q.what)) out.push(`quoted source "${(q && q.source) || '?'}" needs "what": which strings are that source's own words`);
+    const ex = Array.isArray(q && q.exempts) ? q.exempts : [];
+    if (ex.length === 0 || ex.some((c) => !QUOTABLE_CHECKS.has(c)))
+      out.push(`quoted source "${(q && q.source) || '?'}" may exempt only ${[...QUOTABLE_CHECKS].join(', ')}, and must name which`);
+  }
+  for (const e of Array.isArray(floor.exemptions) ? floor.exemptions : []) {
+    const c = e && e.check;
+    if (!EXEMPTABLE_CHECKS.has(c)) {
+      out.push(
+        `an exemption from "${c || '?'}" is not allowed: only ${[...EXEMPTABLE_CHECKS].join(', ')} can be exempted, and only narrowly`,
+      );
+      continue;
+    }
+    if (!text(e.why)) out.push(`the ${c} exemption needs "why": the reason in at least a sentence`);
+    if (c === 'R6' && (typeof e.view !== 'string' || !e.view.trim()))
+      out.push('an R6 exemption needs "view": the one data-page whose answer carries no figure by design');
+    if (c === 'R8' && (e.scope !== 'across-items' || typeof e.max !== 'number' || e.max < 2 || e.max > MAX_ACROSS_ITEMS))
+      out.push(`an R8 exemption needs "scope": "across-items" and "max" from 2 to ${MAX_ACROSS_ITEMS}`);
+  }
+  const internal = (Array.isArray(floor.internalWords) ? floor.internalWords : DEFAULT_INTERNAL_WORDS).map((w) => String(w).toLowerCase());
+  for (const x of Array.isArray(floor.internalWordExceptions) ? floor.internalWordExceptions : []) {
+    const ph = String((x && x.phrase) || '').toLowerCase();
+    if (!internal.some((w) => new RegExp(String.raw`\b${w}\b`).test(ph)))
+      out.push(`internalWordExceptions "${(x && x.phrase) || '?'}" contains no internal word: it exempts nothing, remove it`);
+    else if (ph.trim().split(/\s+/).length < 3)
+      out.push(`internalWordExceptions "${x.phrase}" must be a phrase of three or more words, not the word itself`);
+    if (!text(x && x.why)) out.push(`internalWordExceptions "${(x && x.phrase) || '?'}" needs "why"`);
+  }
+  return out;
+}
+
+/**
+ * B24 (G13). A brief used to declare a section's wordBudget and never count its own content against it:
+ * the price-list journey declared 90 and its own row 7 came to 96 with the heading and caption, so a
+ * build that followed the brief word for word failed R13. Each section below the items now carries a
+ * `sample` — the at-rest strings of the brief's own worked instance — every one of which must appear in
+ * the brief's prose, and whose words must fit the budget.
+ */
+function ownBudgetFindings(markdown, floor) {
+  const out = [];
+  const secs = Array.isArray(floor.sections) ? floor.sections : [];
+  const flat = (t) =>
+    String(t || '')
+      .replaceAll(/[*`_]/g, '')
+      .replaceAll(/\s+/g, ' ')
+      .trim()
+      .toLowerCase();
+  const prose = flat(proseOf(markdown));
+  for (const s of secs) {
+    if (s.kind === 'items') continue;
+    const n = s.name || '?';
+    if (!Array.isArray(s.sample) || s.sample.length === 0 || !s.sample.every((x) => typeof x === 'string' && x.trim())) {
+      out.push(`section "${n}" needs "sample": the at-rest strings of this brief's own worked instance, in order`);
+      continue;
+    }
+    for (const x of s.sample)
+      if (!prose.includes(flat(x))) out.push(`section "${n}" sample "${x.slice(0, 50)}" is not written anywhere in the brief's prose`);
+    const count = s.sample.reduce((a, x) => a + words(x).length, 0);
+    if (typeof s.wordBudget === 'number' && count > s.wordBudget)
+      out.push(`section "${n}": the brief's own content is ${count} words at rest, over its wordBudget of ${s.wordBudget}`);
+  }
+  return out;
+}
+
 /* ─────────────────────────────── page checks ─────────────────────────────── */
 
 function checkSnapshot(snapshot, floor) {
@@ -704,6 +820,17 @@ function checkSnapshot(snapshot, floor) {
   const first = snapshot && snapshot.firstItem;
   const ts = floor.typeScale || {};
   const visible = texts.filter((t) => words(t.text).length > 0);
+  // §11: a text is exempt from check `id` only when its data-source is declared for that check, and
+  // never when it is part of the answer.
+  const quoted = new Map((floor.quotedSources || []).map((q) => [q.source, new Set(q.exempts || [])]));
+  const isQuoted = (t, id) => !!t.quoted && !t.inAnswer && quoted.has(t.quoted) && quoted.get(t.quoted).has(id);
+  const exemption = (id) => (floor.exemptions || []).filter((e) => e.check === id);
+  const itemBlocks = blocks.filter((b) => b.item);
+  const itemOf = (t) =>
+    itemBlocks.findIndex(
+      (b) =>
+        t.top >= b.top - 1 && t.bottom <= b.bottom + 1 && t.left >= (b.left ?? 0) - 1 && t.left < (b.left ?? 0) + (b.width ?? Infinity),
+    );
 
   if (visible.length === 0) {
     for (const [id, name] of [
@@ -715,6 +842,7 @@ function checkSnapshot(snapshot, floor) {
       ['R9', 'contrast'],
       ['R10', 'all-caps'],
       ['R11', 'above-the-fold'],
+      ['R19', 'inline-provenance'],
     ])
       put(id, name, 'unchecked', 'the snapshot carries no text — a check over nothing has not passed');
   }
@@ -833,7 +961,9 @@ function checkSnapshot(snapshot, floor) {
 
   if (visible.length > 0) {
     // R6 — headline within N words of a figure (the answer, then whatever follows it in reading order)
-    if (answer) {
+    const r6 = exemption('R6').find((e) => snapshot.page && e.view === snapshot.page);
+    if (answer && r6) put('R6', 'headline-figure', 'exempt', `exempt on "${snapshot.page}" by the brief: ${r6.why}`);
+    else if (answer) {
       const ordered = [...visible].sort((x, y) => (x.order ?? 0) - (y.order ?? 0));
       const startIdx = ordered.findIndex((t) => t.inAnswer);
       const run = ordered.slice(Math.max(startIdx, 0)).flatMap((t) => words(t.text));
@@ -863,7 +993,12 @@ function checkSnapshot(snapshot, floor) {
 
     // R8 — repeated sentences, and a clause repeated down the items
     const sentenceCount = new Map();
-    for (const t of visible)
+    let quotedSkipped = 0;
+    for (const t of visible) {
+      if (isQuoted(t, 'R8')) {
+        quotedSkipped += 1;
+        continue;
+      }
       for (const s of sentencesOf(t.text)) {
         if (s.length < MIN_SENTENCE_CHARS) continue;
         // Literal, as artifact-policy-check.ts does: a sentence with a different number in it is a
@@ -873,29 +1008,42 @@ function checkSnapshot(snapshot, floor) {
           .toLowerCase()
           .replaceAll(/\s+/g, ' ')
           .replace(/[.!?]+$/, '');
-        const e = sentenceCount.get(k) || { n: 0, sample: s };
+        const e = sentenceCount.get(k) || { n: 0, sample: s, items: [] };
         e.n += 1;
+        e.items.push(itemOf(t));
         sentenceCount.set(k, e);
       }
+    }
     const clauseEls = new Map();
     for (const t of visible) {
-      if (t.control) continue;
+      if (t.control || isQuoted(t, 'R8')) continue;
       for (const c of new Set(clausesOf(t.text).map(normalise))) {
         if (c.split(' ').filter((w) => /\p{L}/u.test(w)).length < 3) continue;
         clauseEls.set(c, (clauseEls.get(c) || 0) + 1);
       }
     }
-    const dupS = [...sentenceCount.values()].filter((e) => e.n > 1);
+    // A sentence said once in each of up to `max` different items is two products that share a name,
+    // not a fact said twice — when, and only when, the brief declares it (§11).
+    const across = exemption('R8').find((e) => e.scope === 'across-items');
+    const acrossOk = (e) => !!across && e.n <= across.max && e.items.every((i) => i !== -1) && new Set(e.items).size === e.items.length;
+    const exemptS = [...sentenceCount.values()].filter((e) => e.n > 1 && acrossOk(e));
+    const dupS = [...sentenceCount.values()].filter((e) => e.n > 1 && !acrossOk(e));
     const dupC = [...clauseEls.entries()].filter(([, n]) => n > budgets.repeatedClauseMax);
     const ev = [...dupS.map((e) => `×${e.n} "${e.sample.slice(0, 70)}"`), ...dupC.map(([c, n]) => `×${n} clause "${c.slice(0, 70)}"`)];
+    const exemptNote = [
+      quotedSkipped > 0 ? `${quotedSkipped} quoted-source text(s) not compared` : '',
+      exemptS.length > 0 ? `${exemptS.length} sentence(s) once in each of ≤ ${across.max} items, exempt by the brief: ${across.why}` : '',
+    ]
+      .filter(Boolean)
+      .join('; ');
     put(
       'R8',
       'repeated-sentence',
-      ev.length > 0 ? 'fail' : 'pass',
+      ev.length > 0 ? 'fail' : exemptNote ? 'exempt' : 'pass',
       ev.length > 0
         ? `${dupS.length} sentence(s) said more than once, ${dupC.length} clause(s) repeated in more than ${budgets.repeatedClauseMax} places`
-        : 'nothing said twice',
-      ev,
+        : exemptNote || 'nothing said twice',
+      [...ev, ...exemptS.map((e) => `exempt ×${e.n} "${e.sample.slice(0, 70)}"`)],
     );
 
     // R9 — WCAG contrast
@@ -926,7 +1074,12 @@ function checkSnapshot(snapshot, floor) {
 
     // R10 — all caps
     const caps = [];
+    let capsQuoted = 0;
     for (const t of visible) {
+      if (isQuoted(t, 'R10')) {
+        capsQuoted += 1;
+        continue;
+      }
       if (t.textTransform === 'uppercase' && /\p{L}/u.test(t.text)) {
         caps.push(`text-transform:uppercase "${t.text.slice(0, 50)}"`);
         continue;
@@ -946,9 +1099,39 @@ function checkSnapshot(snapshot, floor) {
     put(
       'R10',
       'all-caps',
-      caps.length > 0 ? 'fail' : 'pass',
-      caps.length > 0 ? `${caps.length} shouted run(s)` : 'no all-caps text',
+      caps.length > 0 ? 'fail' : capsQuoted > 0 ? 'exempt' : 'pass',
+      caps.length > 0
+        ? `${caps.length} shouted run(s)`
+        : capsQuoted > 0
+          ? `no all-caps text of ours; ${capsQuoted} quoted-source text(s) not read, as the brief declares`
+          : 'no all-caps text',
       caps.slice(0, 8),
+    );
+
+    // R19 — provenance written into the body
+    const prov = [...DEFAULT_PROVENANCE, ...(Array.isArray(floor.provenancePhrases) ? floor.provenancePhrases : [])].map(
+      (x) => new RegExp(x, 'iu'),
+    );
+    const inline = [];
+    let provQuoted = 0;
+    for (const t of visible) {
+      if (t.inFooter || t.inDisclosure || t.control) continue;
+      const hit = prov.find((re) => re.test(t.text));
+      if (!hit) continue;
+      if (isQuoted(t, 'R19')) {
+        provQuoted += 1;
+        continue;
+      }
+      inline.push(`"${hit.exec(t.text)[0].trim()}" in "${t.text.slice(0, 70)}"`);
+    }
+    put(
+      'R19',
+      'inline-provenance',
+      inline.length > 0 ? 'fail' : 'pass',
+      inline.length > 0
+        ? `${inline.length} provenance caption(s) in the body; they belong in the footer or a closed disclosure`
+        : `no provenance caption in the body${provQuoted > 0 ? `; ${provQuoted} quoted-source text(s) not read` : ''}`,
+      inline.slice(0, 10),
     );
   }
 
@@ -1125,6 +1308,16 @@ function rowGroupChecks(snapshot, floor, budgets) {
     Array.isArray(floor.internalWords) && floor.internalWords.length > 0 ? floor.internalWords : DEFAULT_INTERNAL_WORDS
   ).map((w) => String(w).toLowerCase());
   // Internal words are plain words; anything that is not a letter is dropped rather than escaped.
+  const quotedSrc = new Map((floor.quotedSources || []).map((q) => [q.source, new Set(q.exempts || [])]));
+  const quotedFor = (c, id) => !!c.quoted && quotedSrc.has(c.quoted) && quotedSrc.get(c.quoted).has(id);
+  const allowed = (floor.internalWordExceptions || []).map((x) => String(x.phrase || '').toLowerCase()).filter(Boolean);
+  // An internal word inside a declared phrase ("an export from Spain") carries its ordinary meaning.
+  const inAllowedPhrase = (t, at) =>
+    allowed.some((ph) => {
+      const low = (t || '').toLowerCase();
+      for (let i = low.indexOf(ph); i !== -1; i = low.indexOf(ph, i + 1)) if (at >= i && at < i + ph.length) return true;
+      return false;
+    });
   const internalRe = new RegExp(`\\b(${internal.map((w) => w.replaceAll(/[^\p{L}]/gu, '')).join('|')})\\b`, 'iu');
   const cells = [],
     grid = [],
@@ -1161,9 +1354,13 @@ function rowGroupChecks(snapshot, floor, budgets) {
       }
       for (const n of byRole('note')) if (wc(n.text) > nMax) cells.push(`${at}: the explanation is ${wc(n.text)} words; at most ${nMax}`);
       for (const st of byRole('status')) if (typeof st.left === 'number') statusLefts.push(st.left);
-      for (const c of cs)
-        for (const m of (c.text || '').matchAll(new RegExp(internalRe.source, 'giu')))
+      for (const c of cs) {
+        if (quotedFor(c, 'R17')) continue;
+        for (const m of (c.text || '').matchAll(new RegExp(internalRe.source, 'giu'))) {
+          if (inAllowedPhrase(c.text, m.index)) continue;
           words.push(`${at}: "${m[0]}" in the ${c.role} ("${c.text.slice(0, 50)}")`);
+        }
+      }
       // Inside a row: the vertical space between stacked cells. Between rows: this row to the next.
       const stacked = [...cs].filter((c) => typeof c.top === 'number').sort((x, y) => x.top - y.top);
       for (let k = 1; k < stacked.length; k++) {
@@ -1290,6 +1487,9 @@ function probe(opts) {
       bgStack: bgStack(el),
       inAnswer: !!(answerEl && answerEl.contains(el)),
       control: isControl(el),
+      quoted: el.closest('[data-source]') ? el.closest('[data-source]').dataset.source : null,
+      inFooter: !!el.closest('[data-footer], footer'),
+      inDisclosure: !!el.closest('details[open], [data-disclosure]'),
       ...rect(el),
     });
   }
@@ -1370,6 +1570,7 @@ function probe(opts) {
       bottom: Math.round(r.bottom + scrollY),
       textAlign: cs.textAlign,
       numeric: cs.fontVariantNumeric,
+      quoted: c.closest('[data-source]') ? c.closest('[data-source]').dataset.source : null,
     };
   };
   const rowGroups = [...scope.querySelectorAll('[data-row-group]')].filter(shown).map((g) => {
@@ -1458,7 +1659,7 @@ function report(results, json) {
   else {
     console.log(`rendered-page: ${results.length} checks, ${fails.length} failed, ${unchecked.length} could not run.`);
     for (const r of results) {
-      console.log(`  ${{ pass: '✓', fail: '✗', unchecked: '?' }[r.status]} ${r.id} ${r.name}: ${r.detail}`);
+      console.log(`  ${{ pass: '✓', fail: '✗', unchecked: '?', exempt: '–' }[r.status]} ${r.id} ${r.name}: ${r.detail}`);
       for (const e of r.evidence || []) console.log(`      · ${e}`);
     }
   }
@@ -1546,5 +1747,8 @@ module.exports = {
   SECTION_FORMS,
   SECTION_KINDS,
   rowGroupSpecFindings,
+  exemptionSpecFindings,
+  ownBudgetFindings,
   DEFAULT_INTERNAL_WORDS,
+  DEFAULT_PROVENANCE,
 };

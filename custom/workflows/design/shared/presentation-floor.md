@@ -2,9 +2,9 @@
 name: presentation-floor
 description: 'The binding presentation floor every design brief SPECIFIES and every rendered page is CHECKED against: a named type scale (one size, one job), spacing tokens, a colour set with meanings, a where-the-user-looks plan, the summary-then-items layout, a banned-patterns list, and "the answer is heavier than the evidence". Replaces the advisory style floor for these seven things.'
 standard: STD-PRESENTATION-FLOOR-001
-version: 4
+version: 5
 ratified: 2026-09-27
-amended: 2026-09-28 (v2 — §8 brief completeness, B12–B20, from Claude Design's pre-build review of the price-list v4 brief); 2026-09-28 (v3 — §9 below the fold, B21 and R12–R14, from the price-list v6 design's prose wall); 2026-09-28 (v4 — §10 label/value row groups, B22 and R15–R18, from the bundle 6 drawer's journey section)
+amended: 2026-09-28 (v2 — §8 brief completeness, B12–B20, from Claude Design's pre-build review of the price-list v4 brief); 2026-09-28 (v3 — §9 below the fold, B21 and R12–R14, from the price-list v6 design's prose wall); 2026-09-28 (v4 — §10 label/value row groups, B22 and R15–R18, from the bundle 6 drawer's journey section); 2026-09-28 (v5 — §11 declared exemptions, the brief's own budgets and inline provenance, B23, B24 and R19, from the live build)
 ---
 
 # The presentation floor — what a brief specifies, and what a rendered page must pass
@@ -134,7 +134,7 @@ B9 1440×900 · B10 all ten citations by path with their rule · B11 no unrender
 field names what must survive and the near-duplicates · B14 the Copy deck says nothing twice · B15 the
 brief is self-contained · B16 a states × views matrix · B17 1440, 1280 and a narrow width · B18
 feedback after an action · B19 15% headroom under the word budget · B20 the brief's notation is not
-rendering. **B21 (§9)** every section of the page declares its form and word budget. **B22 (§10)** every label/value row group is specified as one.
+rendering. **B21 (§9)** every section of the page declares its form and word budget. **B22 (§10)** every label/value row group is specified as one. **B23 (§11)** every exemption is declared, narrow and argued. **B24 (§11)** each section's own worked words fit its budget.
 
 **design-implement, the rendered page** — `steps/step-04b-rendered-page-checks.md`, running
 `check-rendered-page.js --snapshot|--url … --brief <brief.md>` on the rendered DOM, both themes:
@@ -159,6 +159,7 @@ rendering. **B21 (§9)** every section of the page declares its form and word bu
 | R16 | row-grid | value cells do not share one right edge, or status cells one left edge (±2px); a figure is not right-aligned or not in tabular numerals; rows are no further apart than the lines inside a row |
 | R17 | internal-words | a row group shows a word from `internalWords` (default: export, handoff, pipeline, record, run) |
 | R18 | row-total | a group with an unpriced row has no total, or its total is not labelled as partial |
+| R19 | inline-provenance | a provenance caption sits in the body, outside the footer and outside an open disclosure: *Named from…*, *Known because…*, *· the supplier's list*, *as listed by…*, *found by…*, *according to…*, *taken / sourced / read from…*, and any phrase the brief adds in `provenancePhrases` |
 
 Each check is **pass**, **fail** or **unchecked**; unchecked is reported and never counts as a pass.
 Goldens: `npm run test:rendered-page` — the yellow box and the 288-words case fail, and so does the live
@@ -174,7 +175,7 @@ page rebuilt from the audit's measurements.
 
 ## 7. Enforcement, honestly
 
-**DETERMINISTIC:** Gate 1's brief check (B1–B22) and the eighteen rendered checks, each with goldens that fail the
+**DETERMINISTIC:** Gate 1's brief check (B1–B24) and the nineteen rendered checks, each with goldens that fail the
 audit's live examples. **PROBABILISTIC:** whether the answer is the right answer, whether the page reads
 well, whether items are genuinely scannable (F5 beyond its declared count), and whether spacing tokens are
 used (F2 is declared and checked in the brief, not on the page). A page can pass every check and still bury
@@ -298,6 +299,42 @@ four; the same five legs as a grid, with a partial total, pass.
 
 **What these cannot do.** They prove the grid, the counts and the words, not that the right figure is
 in the right row or that a 12-word note is the useful 12 words.
+
+## 11. Declared exemptions, the brief's own budgets, and provenance in the body (v5, 2026-09-28)
+
+**The failure, from the build of the live price list.** The checker failed strings the brief itself
+prescribes, and the builder reworded the brief's copy to get past it (*Open WhatsApp* lost *Open*;
+*export* became *leaving the EU*). A check that fails the content it was asked to allow is not strict,
+it is wrong, and a builder who edits copy to pass it is the worse outcome. Gap G12.
+
+**The rule: never loosen a check globally. A brief declares the exemption it needs, the validator
+sees it, and the report prints it.** Three kinds, and no others:
+
+| Kind | Machine block | What it exempts | Limits |
+|---|---|---|---|
+| A **quoted source** | `quotedSources: [{ source, what, exempts }]`; the page marks each such element `data-source="<source>"` | text that is another party's words, verbatim — a supplier's codes, their Spanish title in capitals, their brand, their file name; a listing's title as its seller wrote it | R8, R10, R17, R19 only; an undeclared source exempts nothing; text in the answer is never exempt |
+| A **check exemption** | `exemptions: [{ check, why, view? , scope?, max? }]` | R6 on one named view whose answer has no figure by design (a yes / no / not-known drawer); R8 for a sentence said once in each of at most `max` different items (two real products sharing a name) | only R6 and R8; R8 `max` from 2 to 3; the reason is required |
+| An **internal-word phrase** | `internalWordExceptions: [{ phrase, why }]` | an internal word in its ordinary sense, inside that exact phrase (*invoice it as an export*) | a phrase of three or more words containing the word; the bare word is refused |
+
+A check an exemption clears reports **exempt** with the brief's reason, never **pass**. The floor's
+other checks (type, colour, callouts, stripes, the fold, the prose wall, the grid) cannot be exempted.
+
+**The brief keeps its own budgets.** Gate 1 used to check only that a declared budget was under its cap,
+never that the brief's own content fitted it: the price-list journey declared 90 words and its own
+worked row 7 came to 96, so a build that followed the brief word for word failed R13. Every section
+below the items now carries `sample` — its at-rest strings for the brief's worked instance, each of
+which must appear in the brief's prose — and B24 counts them against the budget. Gap G13.
+
+**Provenance is not body text.** amazon-removal-assistant `docs/artifact-policy.md` §2 (*Provenance —
+conditional: footer only*) and §4 already say where it goes; the live drawer carried six provenance
+captions in its body in each of the three drawers captured (*Named from the supplier's price-list
+line.*, *Known because the price-list run matched…*, *· the supplier's list* twice, *as listed by the
+supplier*, *found by Keepa's code lookup*) and none on the list page. R19 fails a caption of that
+kind outside the footer and outside an open disclosure. It is a new check rather than an extension of
+R17 because R17 reads only label/value row groups, and these captions sit in ordinary body text.
+
+**Markers:** `data-source="<source>"` on quoted text; `data-footer` or `<footer>` and `<details open>`
+are read by R19 as the places provenance may live.
 
 ## Prose consumers
 

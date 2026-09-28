@@ -513,6 +513,13 @@ the rendered page fails R12–R14.*
 {for s in {sections}}| {s.name} | {s.kind} | {s.form} | ≤ {s.wordBudget} | {s.at_rest — rows: "≤ {s.maxRows} rows, a label then ≤ {s.rowMaxWords} words, the why on open" · disclosure: "{s.summary}" · message-block: "{s.summary}, with {s.controls}" · footer: "{s.linesAtRest} lines, then {s.disclosure}"} |
 {endfor}
 
+Every section below the items also carries `sample` in the machine copy: its at-rest strings for this
+brief's worked instance, each written in this brief, whose words fit the budget (B24).
+{if exemptions}**Declared exemptions** (§11 of the presentation floor; each prints on the check report):
+{quoted_sources} are that source's own words, marked `data-source="<source>"` on the page and exempt from
+{their checks}; {exemptions}; {internal_word_exceptions}.{endif} No provenance caption in the body
+(*Named from…*, *Known because…*, *· the supplier's list*): the footer or a closed disclosure (R19).
+
 Never, anywhere on the page: more than two paragraphs in a row, or one paragraph over 40 words.
 Caveats are at most five labelled rows. Held questions, provenance, method notes and skipped lines are
 collapsed behind a one-line summary. A message to send is a collapsed message block with Copy and its
