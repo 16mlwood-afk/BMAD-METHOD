@@ -592,6 +592,142 @@ it('the gap ledger carries G10 with its checks', () => {
   assert.match(ledger, /\| G10 \|[^\n]*\bB21\b[^\n]*\bR12\b/);
 });
 
+/* ── label/value row groups: the bundle 6 journey (presentation-floor.md §10, brief-gap-ledger G11) ── */
+
+const RG = F.floorWithRowGroups;
+const rgRun = (snap) => run(snap, RG);
+const rg = (snap, id) => rgRun(snap).find((r) => r.id === id);
+it('GOLDEN bundle 6 drawer — fails the row cells, the grid, the internal words and the total', () => {
+  const f = failed(F.bundle6Drawer(), RG);
+  for (const id of ['R15', 'R16', 'R17', 'R18']) assert.ok(f.includes(id), `${id} missing: ${f.join(',')}`);
+});
+it('GOLDEN bundle 6 — R15 names the status that repeats the value, the sentence in the value column and the long notes', () => {
+  const ev = rg(F.bundle6Drawer(), 'R15').evidence.join('; ');
+  assert.match(ev, /the value repeats the status \("not priced"\)/);
+  assert.match(ev, /the value "in the export; not in this handoff" is 7 words; at most 4/);
+  assert.match(ev, /the explanation is \d+ words; at most 12/);
+});
+it('GOLDEN bundle 6 — R16 finds the ragged status column, the ragged value edge, the proportional figures and the rows spaced like lines', () => {
+  const ev = rg(F.bundle6Drawer(), 'R16').evidence.join('; ');
+  assert.match(ev, /status text starts at \d+px of different x/);
+  assert.match(ev, /value cells end at \d+px of different x/);
+  assert.match(ev, /not in tabular numerals/);
+  assert.match(ev, /rows are 8px apart and lines inside a row 8px/);
+});
+it('GOLDEN bundle 6 — R17 catches "export", "handoff" and "record"', () => {
+  const ev = rg(F.bundle6Drawer(), 'R17').evidence.join('; ');
+  for (const w of ['export', 'handoff', 'record']) assert.ok(ev.includes(`"${w}"`), ev);
+});
+it('GOLDEN bundle 6 — R18: unpriced legs and no total', () => {
+  assert.match(rg(F.bundle6Drawer(), 'R18').evidence.join('; '), /has an unpriced row and shows no total/);
+});
+it('GOLDEN corrected drawer — the same legs as a grid pass R15–R18, and nothing fails', () => {
+  assert.deepStrictEqual(failed(F.correctedDrawer(), RG), []);
+  for (const id of ['R15', 'R16', 'R17', 'R18']) assert.strictEqual(rg(F.correctedDrawer(), id).status, 'pass', id);
+});
+it('R18 — a total over an unpriced leg that does not say partial fails', () => {
+  const s = F.correctedDrawer();
+  s.rowGroups[0].total = { text: 'Total £1.23', label: 'Total', partial: false };
+  assert.strictEqual(rg(s, 'R18').status, 'fail');
+});
+it('R15 silent — "£0.27" is one value, and money is never counted as words', () => {
+  const s = F.correctedDrawer();
+  s.rowGroups[0].rows[2].cells[1].text = '£1,234.56 a unit';
+  assert.strictEqual(rg(s, 'R15').status, 'pass');
+});
+it('R15 — two value cells in one row fail', () => {
+  const s = F.correctedDrawer();
+  s.rowGroups[0].rows[2].cells.push({ ...s.rowGroups[0].rows[2].cells[1], text: '£0.30' });
+  assert.strictEqual(rg(s, 'R15').status, 'fail');
+});
+it('R16 — a status column one row 10px out fails; within 2px passes', () => {
+  const s = F.correctedDrawer();
+  s.rowGroups[0].rows[4].cells[3].left += 10;
+  assert.strictEqual(rg(s, 'R16').status, 'fail');
+  const ok = F.correctedDrawer();
+  ok.rowGroups[0].rows[4].cells[3].left += 2;
+  assert.strictEqual(rg(ok, 'R16').status, 'pass');
+});
+it('R17 silent — "running", "exported" and "recorded" are not the banned words themselves', () => {
+  const s = F.correctedDrawer();
+  s.rowGroups[0].rows[2].cells[2].text = 'Recorded on the running tally we exported.';
+  assert.strictEqual(rg(s, 'R17').status, 'pass');
+});
+it('R15–R18 unchecked on an old-probe snapshot; pass on a page that has no row group and declares none here', () => {
+  for (const id of ['R15', 'R16', 'R17', 'R18']) assert.strictEqual(rg(F.cleanPage(), id).status, 'unchecked', id);
+  const page = { ...F.structuredLowerHalf(), page: 'price-list', rowGroups: [] };
+  for (const id of ['R15', 'R16', 'R17', 'R18']) assert.strictEqual(rg(page, id).status, 'pass', id);
+});
+it('R15–R18 unchecked when the brief declares a row group for this view and the page marks none', () => {
+  const s = { page: 'line-drawer', sections: [], rowGroups: [] };
+  assert.strictEqual(rg(s, 'R15').status, 'unchecked');
+});
+it('R13 does not look for a drawer section on the page snapshot', () => {
+  const page = { ...F.structuredLowerHalf(), page: 'price-list' };
+  assert.strictEqual(status(page, 'R13', RG), 'pass');
+});
+
+/* ── Gate 1, B22: a row group is specified as one ── */
+
+const withJourney = (edit) =>
+  withFloor(GOLDEN_BRIEF, (f) => {
+    const j = structuredClone(F.JOURNEY_SPEC);
+    f.internalWords = ['export', 'handoff', 'pipeline', 'record', 'run'];
+    f.sections.push(j);
+    if (edit) edit(j, f);
+  });
+it('B22 — a fully specified row group passes', () => {
+  assert.deepStrictEqual(detailsOf(withJourney(), 'B22'), []);
+});
+it('GOLDEN v4 — the v4 brief fails B22 once its journey is declared as facts (the form bundle 6 drew)', () => {
+  const b = withFloor(V4, (f) => {
+    f.sections = [{ name: 'journey', kind: 'facts', form: 'rows', wordBudget: 200 }];
+  });
+  assert.ok(codesOf(b).includes('B22'));
+});
+it('B22 — a status value that says "not priced" repeats the value and fails', () => {
+  const b = withJourney((j) => (j.statusValues = ['not priced', 'assumed']));
+  assert.ok(detailsOf(b, 'B22').some((d) => d.includes('repeats the value cell')));
+});
+it('B22 — rows no further apart than the lines in a row fail', () => {
+  const b = withJourney((j) => (j.rowGap = 4));
+  assert.ok(detailsOf(b, 'B22').some((d) => d.includes('"rowGap" larger than "innerGap"')));
+});
+it('B22 — a partial total whose label does not say so fails; no total needs a reason', () => {
+  const b = withJourney((j) => (j.total = { label: 'Total', partial: true }));
+  assert.ok(detailsOf(b, 'B22').some((d) => d.includes('does not say so')));
+  const none = withJourney((j) => (j.total = 'none'));
+  assert.ok(detailsOf(none, 'B22').some((d) => d.includes('none: <why>')));
+});
+it('B22 — a value cap over 4 words, a note cap over 12 and left-aligned values each fail', () => {
+  assert.ok(
+    detailsOf(
+      withJourney((j) => (j.valueMaxWords = 8)),
+      'B22',
+    ).some((d) => d.includes('valueMaxWords')),
+  );
+  assert.ok(
+    detailsOf(
+      withJourney((j) => (j.noteMaxWords = 30)),
+      'B22',
+    ).some((d) => d.includes('noteMaxWords')),
+  );
+  assert.ok(
+    detailsOf(
+      withJourney((j) => (j.valueAlign = 'left')),
+      'B22',
+    ).some((d) => d.includes('"valueAlign"')),
+  );
+});
+it('B22 — a row group needs the internal-word list', () => {
+  const b = withJourney((j, f) => (f.internalWords = ['export']));
+  assert.ok(detailsOf(b, 'B22').some((d) => d.includes('"handoff"')));
+});
+it('the gap ledger carries G11 with its checks', () => {
+  const ledger = fs.readFileSync(path.join(__dirname, '..', 'custom', 'workflows', 'design', 'shared', 'brief-gap-ledger.md'), 'utf8');
+  assert.match(ledger, /\| G11 \|[^\n]*\bB22\b[^\n]*\bR15\b/);
+});
+
 /* ── the template and the probe stay wired ── */
 
 it('brief-template.md carries Part 2b and a presentation-floor block', () => {

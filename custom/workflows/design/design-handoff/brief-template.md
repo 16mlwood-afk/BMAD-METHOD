@@ -156,7 +156,7 @@ You do the heavy lifting on composition and wording. This brief binds you in two
   answer:       {page_answer}              # T0 — a reader states this within 5 seconds of the page loading
   dominant:     {dominant}                 # the ONE thing that leads; everything else is available-on-demand
   binding:      {truth_test_ids}           # the Part 2 tests
-  floor:        Part 2b · P1–P8            # type scale, spacing, colours, attention plan, layout, banned patterns, sections below the fold — binding, checked on the rendered page
+  floor:        Part 2b · P1–P9            # type scale, spacing, colours, attention plan, layout, banned patterns, sections below the fold, label/value row groups — binding, checked on the rendered page
   route:        {route}
   mutations:    {mutation_posture}         # none (read-only) | the jobs the operator must still be able to do (each is a Part 2 test)
   suggested:    frames {frames_list} · composition {composition} · page_mode {page_mode}   # ADVISORY — yours to change
@@ -444,6 +444,7 @@ fails as unchecked.
 | P6 | Every text colour meets AA in both themes, and nothing is in capitals for emphasis | R9, R10 |
 | P7 | At 1440×900 the first item is fully visible in the top 40% | R11 |
 | P8 | Below the first item every section is in its declared form (§10): no more than 2 paragraphs in a row, none over 40 words; caveats as labelled rows; held, provenance, method, skipped and message sections collapsed; the footer 2 lines at rest | R12, R13, R14 |
+| P9 | Every label/value list is a grid (§11): one value and at most one badge per row, values right-aligned in tabular numerals on one edge, no sentence as a value, notes of 12 words or fewer, rows spaced apart, no internal words, a partial total labelled so | R15, R16, R17, R18 |
 
 ### 9. Completeness — what you would otherwise have to guess
 
@@ -494,6 +495,25 @@ collapsed behind a one-line summary. A message to send is a collapsed message bl
 channel. The footer is two lines at rest. A note about this brief (*sample*, *stand-in*) is never a
 section of the page. Markers: `data-section` on each section, `data-row` and `data-row-label` on each
 row, `data-footer` on the footer.
+
+### 11. Label/value lists — a grid, not text in rows
+
+*Standard: `shared/presentation-floor.md` §10 (G11). Gate 1 fails a `facts` section not specified this
+way (B22); the rendered page fails R15–R18.*
+
+{for g in {row_groups}}**{g.name}** (`data-row-group="{g.name}"`{if g.view}, on `{g.view}`{endif}):
+columns {g.columns}; value right-aligned in tabular numerals, money, a count or at most
+{g.valueMaxWords} words; {if note}an explanation of at most {g.noteMaxWords} words in caption under the
+label; {endif}{if status}a status badge from {g.statusValues}, never the value's own words; {endif}rows
+{g.rowGap}px apart, lines inside a row {g.innerGap}px apart; total: {g.total}.
+
+| Label | Value | Status | Explanation |
+|---|---|---|---|
+{for r in {g.rows}}| {r.label} | {r.value} | {r.status or "—"} | {r.note} |
+{endfor}
+{endfor}
+Never in a row group: {internal_words}. Markers: `data-row`, `data-cell="label|value|status|note"`,
+`data-row-total` (and `data-total="partial"`).
 
 ---
 
