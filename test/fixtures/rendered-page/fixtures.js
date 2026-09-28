@@ -361,4 +361,91 @@ function structuredLowerHalf() {
   };
 }
 
-module.exports = { floorWithSections, v6LowerHalf, structuredLowerHalf, HELD, FREIGHT_Q, floor, cleanPage, cleanWithYellowBox, livePriceList, clean288, yellowBox, text, block, allRound, YELLOW_BOX_TEXT, WHITE, MUTED };
+/*
+ * A label/value row group (presentation-floor.md §10, brief-gap-ledger G11). Owner, 2026-09-28, on
+ * Claude Design's bundle 6 line drawer, section "The journey to Amazon UK, cost by cost": it "reads as
+ * a mess printed on a screen, not much thought about font size, spacing". Row 7's five legs, as the
+ * v4 brief asked for them and bundle 6 drew them: a standing column that repeats "not priced", the
+ * standing text at a different x on every row, a sentence about our own tooling in the value column,
+ * two-line explanations under each leg, rows as close together as the lines inside a row, no total.
+ */
+const JOURNEY_SPEC = {
+  name: 'journey',
+  view: 'line-drawer',
+  kind: 'facts',
+  form: 'value-rows',
+  wordBudget: 90,
+  columns: ['label', 'value', 'status', 'note'],
+  valueMaxWords: 4,
+  noteMaxWords: 12,
+  valueAlign: 'right',
+  numerals: 'tabular',
+  rowGap: 16,
+  innerGap: 4,
+  maxRows: 6,
+  statusValues: ['assumed', 'conditional'],
+  total: { label: 'Priced so far, partial', partial: true },
+};
+const floorWithRowGroups = {
+  ...floorWithSections,
+  internalWords: ['export', 'handoff', 'pipeline', 'record', 'run'],
+  sections: [...floorWithSections.sections, JOURNEY_SPEC],
+};
+
+function cell(role, text, left, right, top, height, extra = {}) {
+  return { role, text, left, right, top, bottom: top + height, textAlign: 'left', numeric: 'normal', ...extra };
+}
+
+/** Bundle 6 as drawn. */
+function bundle6Drawer() {
+  const legs = [
+    ['Spain → Great Blakenham freight (customs cleared)', 'not priced', 'not priced', 'The supplier\'s freight quote to TheFBAPrep Great Blakenham, customs cleared with Bison Management Ltd as importer on its UK EORI and VAT number, fills it.', 902, 1296],
+    ['UK import VAT', '£0 while it holds', '£0', '£0 because we account for it on our own VAT return; the supplier\'s forwarder must be told our EORI and VAT number in writing.', 884, 1301],
+    ['UK import duty', 'recorded', '£0.27', '2%, the base case', 915, 1288],
+    ['Prep at Great Blakenham (TheFBAPrep)', 'not priced', 'in the export; not in this handoff', 'Inbound box handling £0.18 is on record; labelling each unit and packing the outbound cartons are not, so none of it is in the profit yet. 10 units a box, assumed.', 896, 1310],
+    ['Great Blakenham → Amazon UK (parcel)', 'assumed', '£0.96', 'Parcelforce via Parcel2Go at that box count; not measured.', 909, 1293],
+  ];
+  let y = 400;
+  const rows = legs.map(([label, status, value, note, sx, vr]) => {
+    const top = y;
+    const cells = [
+      cell('label', label, 560, 860, top, 20),
+      cell('status', status, sx, sx + 90, top, 16),
+      cell('value', value, vr - 120, vr, top, 22, { textAlign: 'right', numeric: 'normal', fontWeight: 600 }),
+      cell('note', note, 560, 1100, top + 30, 30),
+    ];
+    y = top + 60 + 8;
+    return { top, bottom: top + 60, cells };
+  });
+  return { page: 'line-drawer', sections: [], rowGroups: [{ name: 'journey', rows, total: null }] };
+}
+
+/** The same five legs as a grid: one value, a badge only where it adds something, short notes, a partial total. */
+function correctedDrawer() {
+  const legs = [
+    ['Spain → Great Blakenham freight', 'not priced', null, "The supplier's freight quote to Great Blakenham fills it."],
+    ['UK import VAT', '£0', 'conditional', 'Accounted on our VAT return; their forwarder needs our EORI.'],
+    ['UK import duty', '£0.27', null, '2%, the base case.'],
+    ['Prep at Great Blakenham', 'not priced', null, 'Box handling £0.18 known; labels and cartons not; 10 a box assumed.'],
+    ['Great Blakenham → Amazon UK parcel', '£0.96', 'assumed', 'Parcelforce via Parcel2Go at that box count; not measured.'],
+  ];
+  let y = 400;
+  const rows = legs.map(([label, value, status, note]) => {
+    const top = y;
+    const cells = [
+      cell('label', label, 560, 900, top, 20),
+      cell('value', value, 1180, 1300, top, 22, { textAlign: 'right', numeric: 'tabular-nums' }),
+      cell('note', note, 560, 1100, top + 24, 16),
+    ];
+    if (status) cells.push(cell('status', status, 1060, 1150, top + 2, 16));
+    y = top + 40 + 16;
+    return { top, bottom: top + 40, cells };
+  });
+  return {
+    page: 'line-drawer',
+    sections: [],
+    rowGroups: [{ name: 'journey', rows, total: { text: 'Priced so far, partial £1.23', label: 'Priced so far, partial', partial: true } }],
+  };
+}
+
+module.exports = { floorWithRowGroups, JOURNEY_SPEC, bundle6Drawer, correctedDrawer, floorWithSections, v6LowerHalf, structuredLowerHalf, HELD, FREIGHT_Q, floor, cleanPage, cleanWithYellowBox, livePriceList, clean288, yellowBox, text, block, allRound, YELLOW_BOX_TEXT, WHITE, MUTED };

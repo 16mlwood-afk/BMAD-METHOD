@@ -35,6 +35,15 @@
  *                          message sections are collapsed behind a disclosure with a one-line summary
  *   R14 footer-at-rest     the footer shows at most footerLinesAtRest (default 2) lines at rest; the rest
  *                          sits behind a disclosure
+ *   R15 row-cells          in a label/value row group ([data-row-group]): one value cell and at most one
+ *                          status per row, no cell repeating another cell of its row, a value of money, a
+ *                          count or at most 4 words, an explanation of at most 12 words
+ *   R16 row-grid           the value cells share one right edge and the status cells one left edge, values
+ *                          are right-aligned in tabular numerals, and rows sit further apart than the
+ *                          spacing inside a row
+ *   R17 internal-words     no pipeline vocabulary (export, handoff, pipeline, record, run by default) in a
+ *                          row group
+ *   R18 row-total          a group with an unpriced row carries a total labelled as partial
  *
  * ── Gate 1 (--validate-brief) ──
  *   B1–B11  the floor itself is specified (Part 2b and its machine block)
@@ -44,6 +53,10 @@
  *           gap Claude Design found in a brief that had passed B1–B11 (shared/brief-gap-ledger.md).
  *   B21     every section of the page has a declared visual form and word budget (presentation-floor.md
  *           §9, gap G10): the below-the-fold prose wall of the price-list v6 design.
+ *   B22     every label/value row group is specified as one (presentation-floor.md §10, gap G11): its
+ *           columns, value and explanation word caps, right-aligned tabular values, row gap larger than
+ *           the gap inside a row, its total (partial and labelled so, or none with a reason), and the
+ *           internal words it may not show.
  *
  * ── What it CANNOT check, on purpose ──
  *   Whether the page reads well, whether the answer is the RIGHT answer, and whether a reader gets it
@@ -100,10 +113,23 @@ const DEFAULT_BUDGETS = {
   summaryMaxWords: 12, // the one line a collapsed section shows at rest
   rowMaxWords: 12, // a labelled row: the label, then at most this many words
   maxRows: 5,
+  // §10 (G11) — a label/value row group. The price-list drawer's journey section, bundle 6: a status
+  // column repeating the value, statuses at a different x on every row, sentences in the value
+  // column, two-line notes, pipeline words and no labelled total.
+  valueMaxWords: 4,
+  noteMaxWords: 12,
+  gridTolerancePx: 2,
+  maxFactRows: 10,
 };
+/** §10: words that name our own machinery, never shown in a row group. The owner's list, 2026-09-28. */
+const DEFAULT_INTERNAL_WORDS = ['export', 'handoff', 'pipeline', 'record', 'run'];
+/** A value that says no figure exists yet. A group holding one owes a total labelled as partial. */
+const UNPRICED_VALUE = /\b(not priced|not quoted|unknown|not known|no figure|open)\b/i;
+/** The words that label a total as partial. */
+const PARTIAL_LABEL = /\b(partial|so far|priced only|not the full|incomplete|of the known)\b/i;
 /** §9: the forms a section may take, and the kinds that must be collapsed at rest. */
-const SECTION_FORMS = ['cards', 'rows', 'disclosure', 'message-block'];
-const SECTION_KINDS = ['items', 'caveats', 'held', 'provenance', 'method', 'skipped', 'message', 'footer', 'other'];
+const SECTION_FORMS = ['cards', 'rows', 'disclosure', 'message-block', 'value-rows'];
+const SECTION_KINDS = ['items', 'caveats', 'facts', 'held', 'provenance', 'method', 'skipped', 'message', 'footer', 'other'];
 const COLLAPSED_KINDS = new Set(['held', 'provenance', 'method', 'skipped', 'message', 'footer']);
 const SIZE_TOLERANCE_PX = 0.5;
 const CHROMA_TINT = 0.015; // oklch chroma above which a fill reads as a colour, not a grey
@@ -548,6 +574,7 @@ function completenessFindings(markdown, floor) {
     );
 
   for (const d of sectionSpecFindings(f)) add('B21', d);
+  for (const d of rowGroupSpecFindings(f)) add('B22', d);
 
   return out;
 }
@@ -580,7 +607,7 @@ function sectionSpecFindings(floor) {
     if (!SECTION_FORMS.includes(s.form)) out.push(`section "${n}" needs "form", one of ${SECTION_FORMS.join(', ')}: never running prose`);
     if (typeof s.wordBudget !== 'number' || s.wordBudget <= 0)
       out.push(`section "${n}" needs a numeric "wordBudget" (words visible at rest)`);
-    else if (s.kind !== 'items' && s.wordBudget > b.sectionWordsMax)
+    else if (s.kind !== 'items' && s.kind !== 'facts' && s.wordBudget > b.sectionWordsMax)
       out.push(
         `section "${n}" allows ${s.wordBudget} words at rest; a section that is not the items may show at most ${b.sectionWordsMax}`,
       );
@@ -606,6 +633,62 @@ function sectionSpecFindings(floor) {
       out.push(`section "${n}" is a message block: name its "controls" (e.g. Copy, Open WhatsApp)`);
   }
   if (!secs.some((s) => s.kind === 'footer')) out.push('no section of kind "footer": say what the footer shows at rest');
+  return out;
+}
+
+/* ───────────────────── label/value row groups (B22, presentation-floor.md §10, G11) ───────────────────── */
+/*
+ * Owner, 2026-09-28, on Claude Design's bundle 6 drawer, "The journey to Amazon UK, cost by cost": it
+ * "reads as a mess printed on a screen, not much thought about font size, spacing". The brief itself
+ * had asked for a standing column beside a figure that, for an unpriced leg, was the same words, and a
+ * caption paragraph under every leg. A label/value list is now a named form with its own rules.
+ */
+function rowGroupSpecFindings(floor) {
+  const out = [];
+  const b = { ...DEFAULT_BUDGETS, ...floor.budgets };
+  const text = (v) => typeof v === 'string' && v.trim().length > 0;
+  const groups = (Array.isArray(floor.sections) ? floor.sections : []).filter((s) => s.form === 'value-rows' || s.kind === 'facts');
+  if (groups.length === 0) return out;
+  const internal = Array.isArray(floor.internalWords) ? floor.internalWords.map((w) => String(w).toLowerCase()) : [];
+  for (const w of DEFAULT_INTERNAL_WORDS)
+    if (!internal.includes(w)) out.push(`"internalWords" must list "${w}": a row group may not show our own machinery's words`);
+  for (const g of groups) {
+    const n = g.name || '?';
+    if (g.form !== 'value-rows') out.push(`section "${n}" is a list of facts: its form must be "value-rows"`);
+    const cols = Array.isArray(g.columns) ? g.columns : [];
+    if (!cols.includes('label') || !cols.includes('value') || cols.some((c) => !['label', 'value', 'status', 'note'].includes(c)))
+      out.push(`section "${n}" needs "columns" from label, value, status, note, with label and value`);
+    if (cols.filter((c) => c === 'value').length > 1 || cols.filter((c) => c === 'status').length > 1)
+      out.push(`section "${n}" has more than one value or status column: one value cell and one optional status per row`);
+    if (typeof g.valueMaxWords !== 'number' || g.valueMaxWords > b.valueMaxWords)
+      out.push(
+        `section "${n}" needs "valueMaxWords" of at most ${b.valueMaxWords}: a value is money, a count or a few words, never a sentence`,
+      );
+    if (cols.includes('note') && (typeof g.noteMaxWords !== 'number' || g.noteMaxWords > b.noteMaxWords))
+      out.push(`section "${n}" needs "noteMaxWords" of at most ${b.noteMaxWords}, in the secondary style`);
+    if (g.valueAlign !== 'right' || g.numerals !== 'tabular')
+      out.push(`section "${n}" needs "valueAlign": "right" and "numerals": "tabular"`);
+    const sp = Array.isArray(floor.spacing) ? floor.spacing : [];
+    if (typeof g.rowGap !== 'number' || typeof g.innerGap !== 'number' || g.rowGap <= g.innerGap)
+      out.push(`section "${n}" needs "rowGap" larger than "innerGap": rows must sit further apart than the lines inside a row`);
+    else if (sp.length > 0 && (!sp.includes(g.rowGap) || !sp.includes(g.innerGap)))
+      out.push(`section "${n}": rowGap and innerGap must come from the spacing scale`);
+    if (typeof g.maxRows !== 'number' || g.maxRows > b.maxFactRows) out.push(`section "${n}" needs "maxRows" of at most ${b.maxFactRows}`);
+    if (cols.includes('status')) {
+      const sv = g.statusValues;
+      if (!Array.isArray(sv) || sv.length === 0 || sv.length > 5 || !sv.every((x) => text(x) && x.trim().split(/\s+/).length <= 3))
+        out.push(`section "${n}" has a status column: list its "statusValues" (at most 5, each at most 3 words)`);
+      else if (sv.some((x) => UNPRICED_VALUE.test(x)))
+        out.push(`section "${n}": a status that says a figure is missing repeats the value cell; say it once, in the value`);
+    }
+    const t = g.total;
+    if (typeof t === 'string') {
+      if (!/^none:\s*\S.{8,}/i.test(t)) out.push(`section "${n}" "total" must be a { label, partial } object or "none: <why>"`);
+    } else if (!t || !text(t.label) || typeof t.partial !== 'boolean')
+      out.push(`section "${n}" needs "total": { "label", "partial": true|false }, or "none: <why>"`);
+    else if (t.partial && !PARTIAL_LABEL.test(t.label))
+      out.push(`section "${n}" total is partial but its label "${t.label}" does not say so`);
+  }
   return out;
 }
 
@@ -893,6 +976,7 @@ function checkSnapshot(snapshot, floor) {
   }
 
   for (const r of belowFoldChecks(snapshot || {}, floor, budgets)) put(r.id, r.name, r.status, r.detail, r.evidence);
+  for (const r of rowGroupChecks(snapshot || {}, floor, budgets)) put(r.id, r.name, r.status, r.detail, r.evidence);
 
   results.sort((x, y) => Number(x.id.slice(1)) - Number(y.id.slice(1)));
   return results;
@@ -924,7 +1008,10 @@ function belowFoldChecks(snapshot, floor, budgets) {
   } else put('R12', 'prose-wall', 'unchecked', 'the snapshot carries no paragraph list (take it with the current --print-probe)');
 
   // R13 — every declared section in its form, and anything collapsible collapsed
-  const declared = Array.isArray(floor.sections) ? floor.sections : [];
+  // A section declared for another view (the drawer, say) is not looked for on this snapshot.
+  const declared = (Array.isArray(floor.sections) ? floor.sections : []).filter(
+    (d) => !d.view || !snapshot.page || d.view === snapshot.page,
+  );
   if (!Array.isArray(snapshot.sections)) put('R13', 'section-form', 'unchecked', 'the snapshot carries no [data-section] list');
   else if (declared.length === 0 && snapshot.sections.length === 0)
     put('R13', 'section-form', 'unchecked', 'the floor declares no sections and the page marks none');
@@ -998,6 +1085,143 @@ function belowFoldChecks(snapshot, floor, budgets) {
     );
   }
 
+  return out;
+}
+
+/** R15–R18 (presentation-floor.md §10): a label/value row group is a grid, not text printed in rows. */
+function rowGroupChecks(snapshot, floor, budgets) {
+  const out = [];
+  const put = (id, name, status, detail, evidence = []) => out.push({ id, name, status, detail, evidence });
+  const ids = [
+    ['R15', 'row-cells'],
+    ['R16', 'row-grid'],
+    ['R17', 'internal-words'],
+    ['R18', 'row-total'],
+  ];
+  const groups = snapshot.rowGroups;
+  const specs = (Array.isArray(floor.sections) ? floor.sections : []).filter((s) => s.form === 'value-rows');
+  const here = specs.filter((d) => !d.view || !snapshot.page || d.view === snapshot.page);
+  if (!Array.isArray(groups)) {
+    for (const [id, name] of ids)
+      put(id, name, 'unchecked', 'the snapshot carries no [data-row-group] list (take it with the current --print-probe)');
+    return out;
+  }
+  if (groups.length === 0) {
+    const detail =
+      here.length > 0
+        ? `the brief declares ${here.map((d) => `"${d.name}"`).join(', ')} as a row group here, but the page marks none`
+        : 'no label/value row group is declared for this view or present on it';
+    for (const [id, name] of ids) put(id, name, here.length > 0 ? 'unchecked' : 'pass', detail);
+    return out;
+  }
+  const wc = (t) => (t || '').split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w)).length;
+  const norm = (t) =>
+    (t || '')
+      .toLowerCase()
+      .replaceAll(/[^\p{L}\p{N}£€$%.]+/gu, ' ')
+      .trim();
+  const isMoneyOrCount = (t) => /^[−-]?[£€$]?\s?[\d.,]+(\s?%|\s?[a-z]{0,6})?$/i.test((t || '').trim());
+  const internal = (
+    Array.isArray(floor.internalWords) && floor.internalWords.length > 0 ? floor.internalWords : DEFAULT_INTERNAL_WORDS
+  ).map((w) => String(w).toLowerCase());
+  // Internal words are plain words; anything that is not a letter is dropped rather than escaped.
+  const internalRe = new RegExp(`\\b(${internal.map((w) => w.replaceAll(/[^\p{L}]/gu, '')).join('|')})\\b`, 'iu');
+  const cells = [],
+    grid = [],
+    words = [],
+    totals = [];
+  for (const g of groups) {
+    const spec = specs.find((d) => d.name === g.name) || {};
+    const vMax = spec.valueMaxWords ?? budgets.valueMaxWords;
+    const nMax = spec.noteMaxWords ?? budgets.noteMaxWords;
+    const rows = g.rows || [];
+    const valueRights = [],
+      statusLefts = [];
+    let minRowGap = Infinity,
+      maxInner = 0;
+    for (const [i, r] of rows.entries()) {
+      const cs = r.cells || [];
+      const byRole = (role) => cs.filter((c) => c.role === role);
+      const label = (byRole('label')[0] || {}).text || `row ${i + 1}`;
+      const at = `"${g.name}" row "${label.slice(0, 40)}"`;
+      if (byRole('value').length !== 1) cells.push(`${at} has ${byRole('value').length} value cells; exactly one`);
+      if (byRole('status').length > 1) cells.push(`${at} has ${byRole('status').length} status badges; at most one`);
+      for (let a = 0; a < cs.length; a++)
+        for (let z = a + 1; z < cs.length; z++)
+          if (norm(cs[a].text) && norm(cs[a].text) === norm(cs[z].text))
+            cells.push(`${at}: the ${cs[z].role} repeats the ${cs[a].role} ("${cs[a].text.slice(0, 30)}")`);
+      for (const v of byRole('value')) {
+        if (!isMoneyOrCount(v.text) && wc(v.text) > vMax)
+          cells.push(`${at}: the value "${v.text.slice(0, 50)}" is ${wc(v.text)} words; at most ${vMax}`);
+        if (/\d/.test(v.text)) {
+          if (!['right', 'end'].includes(v.textAlign)) grid.push(`${at}: the value is aligned ${v.textAlign || 'unknown'}, not right`);
+          if (!/tabular-nums/.test(v.numeric || '')) grid.push(`${at}: the value is not in tabular numerals`);
+        }
+        if (typeof v.right === 'number') valueRights.push(v.right);
+      }
+      for (const n of byRole('note')) if (wc(n.text) > nMax) cells.push(`${at}: the explanation is ${wc(n.text)} words; at most ${nMax}`);
+      for (const st of byRole('status')) if (typeof st.left === 'number') statusLefts.push(st.left);
+      for (const c of cs)
+        for (const m of (c.text || '').matchAll(new RegExp(internalRe.source, 'giu')))
+          words.push(`${at}: "${m[0]}" in the ${c.role} ("${c.text.slice(0, 50)}")`);
+      // Inside a row: the vertical space between stacked cells. Between rows: this row to the next.
+      const stacked = [...cs].filter((c) => typeof c.top === 'number').sort((x, y) => x.top - y.top);
+      for (let k = 1; k < stacked.length; k++) {
+        const gap = stacked[k].top - Math.max(...stacked.slice(0, k).map((c) => c.bottom));
+        if (gap > 0) maxInner = Math.max(maxInner, gap);
+      }
+      const next = rows[i + 1];
+      if (next && typeof next.top === 'number' && typeof r.bottom === 'number') minRowGap = Math.min(minRowGap, next.top - r.bottom);
+    }
+    const spread = (xs) => (xs.length > 1 ? Math.max(...xs) - Math.min(...xs) : 0);
+    if (spread(valueRights) > budgets.gridTolerancePx)
+      grid.push(`"${g.name}": the value cells end at ${spread(valueRights)}px of different x across rows; one right edge`);
+    if (spread(statusLefts) > budgets.gridTolerancePx)
+      grid.push(`"${g.name}": the status text starts at ${spread(statusLefts)}px of different x across rows; one column`);
+    if (rows.length > 1 && minRowGap !== Infinity && minRowGap <= maxInner)
+      grid.push(`"${g.name}": rows are ${minRowGap}px apart and lines inside a row ${maxInner}px; the gap between rows must be larger`);
+    const t = g.total;
+    if (t && internalRe.test(t.text || '')) words.push(`"${g.name}" total: "${internalRe.exec(t.text)[0]}"`);
+    const unpriced = rows.some((r) =>
+      (r.cells || []).some((c) => c.role === 'value' && UNPRICED_VALUE.test(c.text || '') && !/\d/.test(c.text || '')),
+    );
+    const wantTotal = spec.total && typeof spec.total === 'object';
+    if (unpriced || wantTotal) {
+      if (!t) totals.push(`"${g.name}" ${unpriced ? 'has an unpriced row' : 'declares a total'} and shows no total`);
+      else if (unpriced && !PARTIAL_LABEL.test(t.label || t.text || ''))
+        totals.push(
+          `"${g.name}" totals rows with an unpriced cost, but "${(t.label || t.text || '').slice(0, 50)}" does not say it is partial`,
+        );
+    }
+  }
+  put(
+    'R15',
+    'row-cells',
+    cells.length > 0 ? 'fail' : 'pass',
+    cells.length > 0 ? `${cells.length} cell problem(s)` : `${groups.length} row group(s), cells in order`,
+    cells.slice(0, 10),
+  );
+  put(
+    'R16',
+    'row-grid',
+    grid.length > 0 ? 'fail' : 'pass',
+    grid.length > 0 ? `${grid.length} grid problem(s)` : 'values on one right edge, statuses in one column, rows spaced apart',
+    grid.slice(0, 10),
+  );
+  put(
+    'R17',
+    'internal-words',
+    words.length > 0 ? 'fail' : 'pass',
+    words.length > 0 ? `${words.length} internal word(s) shown` : 'no internal vocabulary in a row group',
+    words.slice(0, 10),
+  );
+  put(
+    'R18',
+    'row-total',
+    totals.length > 0 ? 'fail' : 'pass',
+    totals.length > 0 ? `${totals.length} total problem(s)` : 'every total says what it covers',
+    totals,
+  );
   return out;
 }
 
@@ -1133,6 +1357,35 @@ function probe(opts) {
     }),
   }));
   const footEl = scope.querySelector('[data-footer]') || document.querySelector('footer');
+  // §10 (G11): label/value row groups, each cell with its role, box and alignment.
+  const cellOf = (c) => {
+    const r = c.getBoundingClientRect();
+    const cs = getComputedStyle(c);
+    return {
+      role: c.dataset.cell,
+      text: rendered(c),
+      left: Math.round(r.left),
+      right: Math.round(r.right),
+      top: Math.round(r.top + scrollY),
+      bottom: Math.round(r.bottom + scrollY),
+      textAlign: cs.textAlign,
+      numeric: cs.fontVariantNumeric,
+    };
+  };
+  const rowGroups = [...scope.querySelectorAll('[data-row-group]')].filter(shown).map((g) => {
+    const totalEl = g.querySelector('[data-row-total]');
+    const totalLabel = totalEl && totalEl.querySelector('[data-cell="label"]');
+    return {
+      name: g.dataset.rowGroup,
+      rows: [...g.querySelectorAll('[data-row]')]
+        .filter((r) => shown(r) && !Object.hasOwn(r.dataset, 'rowTotal'))
+        .map((r) => ({ ...rect(r), cells: [...r.querySelectorAll('[data-cell]')].filter(shown).map(cellOf) })),
+      total:
+        totalEl && shown(totalEl)
+          ? { text: rendered(totalEl), label: totalLabel ? rendered(totalLabel) : '', partial: totalEl.dataset.total === 'partial' }
+          : null,
+    };
+  });
   let footer = null;
   if (footEl && shown(footEl)) {
     const tops = new Map();
@@ -1165,6 +1418,8 @@ function probe(opts) {
     paragraphRuns,
     sections,
     footer,
+    rowGroups,
+    page: scope.dataset ? scope.dataset.page || null : null,
   };
 }
 
@@ -1290,4 +1545,6 @@ module.exports = {
   DEFAULT_BUDGETS,
   SECTION_FORMS,
   SECTION_KINDS,
+  rowGroupSpecFindings,
+  DEFAULT_INTERNAL_WORDS,
 };
