@@ -478,6 +478,113 @@ it('the gap ledger is seeded with G1–G9 and each names its check', () => {
   for (let i = 1; i <= 9; i++) assert.match(ledger, new RegExp(`\\| G${i} \\|[^\\n]*\\bB${11 + i}\\b`));
 });
 
+/* ── below the fold: the v6 prose wall (presentation-floor.md §9, brief-gap-ledger G10) ── */
+
+const statusW = (snap, id) => status(snap, id, F.floorWithSections);
+it('GOLDEN v6 lower half — fails the prose wall, the section forms and the footer', () => {
+  const f = failed(F.v6LowerHalf(), F.floorWithSections);
+  for (const id of ['R12', 'R13', 'R14']) assert.ok(f.includes(id), `${id} missing: ${f.join(',')}`);
+});
+it('GOLDEN v6 — R12 names the six-paragraph run under Before you order', () => {
+  const r = run(F.v6LowerHalf(), F.floorWithSections).find((x) => x.id === 'R12');
+  assert.ok(
+    r.evidence.some((e) => e.startsWith('6 paragraphs in a row in "before-you-order"')),
+    r.evidence.join('; '),
+  );
+});
+it('GOLDEN v6 — R13 says the held questions are open at rest and Before you order is not rows', () => {
+  const ev = run(F.v6LowerHalf(), F.floorWithSections)
+    .find((x) => x.id === 'R13')
+    .evidence.join('; ');
+  assert.match(ev, /"held-questions" \(held\) is open at rest/);
+  assert.match(ev, /"before-you-order" is declared as rows but carries no \[data-row\]/);
+});
+it('GOLDEN v6 — R14 fails a six-line footer with no disclosure', () => {
+  assert.strictEqual(statusW(F.v6LowerHalf(), 'R14'), 'fail');
+});
+it('GOLDEN structured lower half — the same content in rows, disclosures and a two-line footer passes everything', () => {
+  assert.deepStrictEqual(failed(F.structuredLowerHalf(), F.floorWithSections), []);
+  for (const id of ['R12', 'R13', 'R14']) assert.strictEqual(statusW(F.structuredLowerHalf(), id), 'pass', id);
+});
+it('R12 silent — two paragraphs side by side are fine', () => {
+  const s = F.structuredLowerHalf();
+  s.paragraphRuns = [{ length: 2, section: null, sample: 'x' }];
+  assert.strictEqual(statusW(s, 'R12'), 'pass');
+});
+it('R12 — one paragraph over 40 words fails on its own', () => {
+  const s = F.structuredLowerHalf();
+  s.paragraphs.push({ text: F.FREIGHT_Q, words: 54, section: 'x' });
+  assert.strictEqual(statusW(s, 'R12'), 'fail');
+});
+it('R13 — a row over 12 words after its label fails', () => {
+  const s = F.structuredLowerHalf();
+  s.sections[2].rows[0].words = 15;
+  assert.strictEqual(statusW(s, 'R13'), 'fail');
+});
+it('R13 — a sixth caveat row fails the five-row cap', () => {
+  const s = F.structuredLowerHalf();
+  s.sections[2].rows.push({ label: 'Stand-in', text: 'Stand-in wording', words: 1 });
+  assert.strictEqual(statusW(s, 'R13'), 'fail');
+});
+it('R13 — the message block open at rest fails', () => {
+  const s = F.structuredLowerHalf();
+  s.sections[3].collapsed = false;
+  assert.strictEqual(statusW(s, 'R13'), 'fail');
+});
+it('R13 — a section on the page that the brief never declared fails', () => {
+  const s = F.structuredLowerHalf();
+  s.sections.push({ name: 'stand-in-note', kind: null, form: null, wordsAtRest: 14, collapsed: false, rows: [] });
+  assert.strictEqual(statusW(s, 'R13'), 'fail');
+});
+it('R13 unchecked — a declared section the page does not mark is not a pass', () => {
+  const s = F.structuredLowerHalf();
+  s.sections = s.sections.filter((x) => x.name !== 'held-questions');
+  assert.strictEqual(statusW(s, 'R13'), 'unchecked');
+});
+it('R12–R14 unchecked on an old-probe snapshot, never a pass', () => {
+  for (const id of ['R12', 'R13', 'R14']) assert.strictEqual(statusW(F.cleanPage(), id), 'unchecked', id);
+});
+it('R14 — a two-line footer with no disclosure fails: the rest was dropped or printed', () => {
+  const s = F.structuredLowerHalf();
+  s.footer.hasDisclosure = false;
+  assert.strictEqual(statusW(s, 'R14'), 'fail');
+});
+
+/* ── Gate 1, B21: every section declares its form ── */
+
+it('B21 — the golden brief declares its sections and passes', () => {
+  assert.ok(!codesOf(GOLDEN_BRIEF).includes('B21'));
+});
+it('GOLDEN v4 — the v4 brief, which let v6 draw the prose wall, fails B21', () => {
+  assert.ok(codesOf(V4).includes('B21'));
+});
+it('B21 — caveats as running prose fail; caveats must be rows', () => {
+  const b = withFloor(GOLDEN_BRIEF, (f) => (f.sections[1].form = 'cards'));
+  assert.ok(detailsOf(b, 'B21').some((d) => d.includes('must be "rows"')));
+});
+it('B21 — held questions open at rest fail; they must be a disclosure with a one-line summary', () => {
+  const open = withFloor(GOLDEN_BRIEF, (f) => (f.sections[2].form = 'rows'));
+  assert.ok(detailsOf(open, 'B21').some((d) => d.includes('must be "disclosure"')));
+  const noSummary = withFloor(GOLDEN_BRIEF, (f) => delete f.sections[2].summary);
+  assert.ok(detailsOf(noSummary, 'B21').some((d) => d.includes('"summary"')));
+});
+it('B21 — a message block names its controls', () => {
+  const b = withFloor(GOLDEN_BRIEF, (f) => delete f.sections[3].controls);
+  assert.ok(detailsOf(b, 'B21').some((d) => d.includes('"controls"')));
+});
+it('B21 — a footer of six lines at rest fails', () => {
+  const b = withFloor(GOLDEN_BRIEF, (f) => (f.sections[4].linesAtRest = 6));
+  assert.ok(detailsOf(b, 'B21').some((d) => d.includes('linesAtRest')));
+});
+it('B21 — a non-item section budget over 60 words fails', () => {
+  const b = withFloor(GOLDEN_BRIEF, (f) => (f.sections[1].wordBudget = 180));
+  assert.ok(detailsOf(b, 'B21').some((d) => d.includes('at most 60')));
+});
+it('the gap ledger carries G10 with its checks', () => {
+  const ledger = fs.readFileSync(path.join(__dirname, '..', 'custom', 'workflows', 'design', 'shared', 'brief-gap-ledger.md'), 'utf8');
+  assert.match(ledger, /\| G10 \|[^\n]*\bB21\b[^\n]*\bR12\b/);
+});
+
 /* ── the template and the probe stay wired ── */
 
 it('brief-template.md carries Part 2b and a presentation-floor block', () => {

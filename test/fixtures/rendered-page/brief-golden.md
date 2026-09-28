@@ -134,6 +134,13 @@ Tinted callout boxes, coloured edge stripes, stacked badges, all-caps labels, th
   ],
   "feedback": { "position": "bottom left of the content area, 24px in", "look": "ink text on the surface colour, 1px rule, no icon, no colour", "durationMs": 4000, "wording": "says exactly what was copied, from the Copy deck toast rows" },
   "notation": { "notLiteral": "the middle dot and the » in this brief separate alternatives and steps and are never printed", "separators": "on the page, fields sit on their own lines and a list inside a sentence is joined with commas" },
+  "sections": [
+    { "name": "items", "kind": "items", "form": "cards", "wordBudget": 400 },
+    { "name": "before-you-order", "kind": "caveats", "form": "rows", "wordBudget": 60, "maxRows": 4, "rowMaxWords": 12 },
+    { "name": "held-questions", "kind": "held", "form": "disclosure", "wordBudget": 6, "summary": "3 questions held for later" },
+    { "name": "question", "kind": "message", "form": "message-block", "wordBudget": 10, "summary": "The freight question, ready to send", "controls": ["Copy", "Open WhatsApp"] },
+    { "name": "footer", "kind": "footer", "form": "disclosure", "wordBudget": 30, "linesAtRest": 2, "disclosure": "How these figures were worked out" }
+  ],
   "banned": ["tinted-callout", "edge-stripe", "stacked-badges", "all-caps-labels", "repeated-fact"],
   "budgets": { "wordsToFigure": 12, "proseAboveFirstItem": 60, "borderedAllowed": 0, "headerMaxFraction": 0.4, "repeatedClauseMax": 4 },
   "citations": [
