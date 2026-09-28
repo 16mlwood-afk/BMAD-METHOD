@@ -493,3 +493,85 @@ detector keyed on an empty cell or a definite article would fire on ordinary wor
 The deterministic slice is the same narrow one the rest of this step has: `{preserved_claims}` ids land
 in `{truth_tests}`, so a preserved claim is judged by exactly the machinery that already fails a design
 — it is not a second gate, and it cannot claim an enforcement the Part 2 table does not have.
+
+### 3l. Mandated-components pass — shared components the project requires on this class of surface (every run)
+
+**Why this pass exists.** A project can decide that a whole class of surface opens with one shared
+component — a record header, an identity block, a standard summary strip — and write that down in its
+own `CLAUDE.md` or design policy. The blank-canvas brief then works against it: step-01 withholds the
+current layout, so the one place the component was visible is gone, and the designer, told nothing,
+either redraws it as bespoke markup or leaves it out. Both look fine on the render. Neither is caught
+downstream, because no Part 2 test asked for it. This pass reads the project's mandates and turns each
+one that applies into a binding test, and when none applies it says so in one line, so an absent test
+reads as a decision rather than as nobody having looked.
+
+**1. Find the mandates — read, never recall.** Read, in this order:
+
+- `{project-root}/CLAUDE.md`, and any nested `CLAUDE.md` on the path to the surface's implementing files
+  (a frontend package often carries its own);
+- `{project-root}/docs/design-policy.md` (already loaded in §1b as `{brand_identity}` when present).
+
+A **mandate** is a sentence of the shape *"every <class of surface> opens with / carries / renders
+<named component>"*, or a section heading that says the same, which names **both** a class of surface
+and a concrete shared component (a file path or an exported component name). A style preference, a
+token rule or a general "reuse components" instruction is not a mandate; skip it. Collect each as
+`{ component · component_path · class · source · empty_states · adopters }`:
+
+- `component` / `component_path` — the name and file the project names. If the project names the
+  component but no path, find the file by name in the repo; if it cannot be found, record the mandate
+  with `component_path: not found` and raise it in `{open_questions}` rather than guessing.
+- `class` — the class of surface in the project's own words ("every product page", "every record
+  drawer").
+- `source` — file and heading the sentence came from, quoted verbatim.
+- `empty_states` — the honest empty or unknown states the project names for the component (e.g. a
+  "not held" line, an "unknown" reading that must never read as "none"), verbatim from the source.
+  Where the source names none, read the component's own file for the strings it renders when a value is
+  absent, and list those; say which route you used.
+- `adopters` — the surfaces the source says already carry it, if it lists them.
+
+**2. Does THIS surface belong to the class?** Decide per mandate from the surface's own data (§3): a
+surface belongs when its primary record is the kind of thing the class names (a page whose route or
+primary entity is one product belongs to "every product page"; a list of many products does not, but a
+drawer on that list that opens ONE product does, and §7 names it as its own frame). Also belongs: any
+surface the mandate's `adopters` list already names. Record `applies: yes | no` and one-line
+`because`. **When the class is ambiguous for this surface, it applies** — a test that turns out
+unnecessary costs a line; a missing one costs the component. Record the ambiguity in
+`{open_questions}`.
+
+**3. Emit.** For each mandate with `applies: yes`, add one entry to `{mandated_components}` and one row
+to `{truth_tests}` with id `TM1`, `TM2`… (per frame where the class matches a frame rather than the
+whole page: `TM1-{frame-slug}`). The row states three outcomes, **never a position or a look**:
+
+- the surface (or frame) **opens with** the component — it is the first thing of substance a reader
+  meets on it, after only the answer where the surface carries a T0/TD0 answer that must come first;
+- the component is **reused, not redrawn** — the render uses the project's component at
+  `component_path`, not markup that imitates it; a design may place, size and surround it, but not
+  replace it;
+- its **honest empty states are kept** — each `empty_states` string (or its meaning) still renders
+  when the value is absent, and an unknown is never shown as a none.
+
+The check column names what a reviewer looks at: the built surface's source imports and renders the
+component at `component_path`; the first substantive block on the render is it; each empty state
+renders with its fixture. Source column: the mandate's `source`, verbatim.
+
+If **no mandate applies** (none found, or every one is `applies: no`), set
+`{mandated_components}` empty and `{mandated_components_none_reason}` to one line saying which: *"no
+mandated shared component applies — the project names none"* or *"… — the project mandates <component>
+on <class>, and this surface is not one: <because>"*. This line renders in Part 2 so the absence is
+visible.
+
+**4. `{outward_links_present}` — for the always-on TV1 test.** `true` when the surface shows any record
+or claim that points outside the product: a website, a source page, a document, a partner's record, a
+marketplace listing. Decide from §3's fields (a URL, a domain, an external id with a known public page)
+and §3a's linked records whose owner is external. When `true`, set `{outward_link_kinds}` to the kinds
+this surface shows, in words ("each supplier's website, each quoted source page"), and add `TV1` to
+`{truth_tests}`. When `false`, set `{outward_links_none_reason}` to one line; TV1 is then recorded in the
+brief as not applicable, never silently absent. The TV1 wording is fixed in the brief template — do not
+paraphrase it.
+
+**§ Enforcement tier (honest).** PROBABILISTIC — workflow prose. Nothing checks that every mandate was
+found, that the class decision was right, or that `{outward_links_present}` was set correctly. What
+binds is the same narrow slice as §3k: each `TM…` and TV1 id lands in `{truth_tests}`, so it is judged
+by the machinery that already fails a design. The project's own deterministic check (a test that fails
+when an adopter stops rendering the component) is the project's to build and is the stronger half; this
+pass makes sure a new surface in the class is asked for it at brief time.

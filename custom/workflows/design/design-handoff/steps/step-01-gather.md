@@ -384,6 +384,12 @@ there were one — each a subtraction that leaves a page looking cleaner and rea
 
 **Full capture procedure: `{project-root}/_bmad/bmm/workflows/design/design-handoff/steps/step-01-domain-passes.md` §3k — read it and follow it exactly.** Do not paraphrase from memory.
 
+### 3l. Mandated-components pass — shared components the PROJECT requires on this class of surface (every run)
+
+Fires on **every run**. It reads the target project's own `CLAUDE.md` (root, plus any nested `CLAUDE.md` on the path to the surface's files) and `docs/design-policy.md` for components the project **mandates on a class of surface** — a sentence of the shape *"every <class> page / drawer / surface opens with (or carries) <component>"* — and decides, per mandate, whether THIS surface is in that class. It sets `{mandated_components}` (each a binding Part 2 `TM…` test) or `{mandated_components_none_reason}` (one line, so absence is visible), and `{outward_links_present}` for the always-on TV1 test. Run it IMMEDIATELY AFTER §3k. **Why:** the blank-canvas mandate withholds the current layout, and the one place a project's standard head (an identity block, a record header) was visible goes with it — a brief that never names the mandated component gets a redesign that redraws it as bespoke markup or drops it, and nothing downstream notices because no test asked for it.
+
+**Full capture procedure: `{project-root}/_bmad/bmm/workflows/design/design-handoff/steps/step-01-domain-passes.md` §3l — read it and follow it exactly.** Do not paraphrase from memory.
+
 ### 4. Capture Feature Purpose
 
 Write `{feature_purpose}`:
