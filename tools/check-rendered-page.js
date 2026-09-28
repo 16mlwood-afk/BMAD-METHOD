@@ -338,7 +338,8 @@ const DECK_PLACEHOLDER =
  * Where-cells the say-once screen skips: strings not at rest (said on an event, or never shown), and
  * controls, whose label may echo the thing they act on — R8 on the rendered page skips controls too.
  */
-const NOT_AT_REST = /toast|snackbar|hover|tooltip|screen reader|aria|alt text|title attribute|\bcontrols?\b|\bbutton|\blink\b/i;
+// "on open": text inside a disclosure that is closed at rest (presentation-floor.md §9) is not at rest.
+const NOT_AT_REST = /toast|snackbar|hover|tooltip|screen reader|aria|alt text|title attribute|\bcontrols?\b|\bbutton|\blink\b|\bon open\b/i;
 const STOP = new Set(
   'a an the and or but of to in on at for by with from as is are was were be been it its this that these those there their they them you your we our not no nothing so if then than into onto up out yet'.split(
     ' ',

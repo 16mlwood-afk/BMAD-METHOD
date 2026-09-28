@@ -405,6 +405,13 @@ it('G3 silent — alternatives in one slot, toasts and controls are not repeats'
   );
   assert.deepStrictEqual(detailsOf(b, 'B14'), []);
 });
+it('G3 silent — a string shown only inside a closed disclosure ("on open") is not at rest', () => {
+  const rep = GOLDEN_BRIEF.replace(
+    '| 9 | Footer |',
+    '| 12 | Held questions, on open | Up to £{n} a unit once at the warehouse, from Keepa. | new | a✓ b✓ c✓ d✓ |\n| 9 | Footer |',
+  );
+  assert.ok(!codesOf(rep).includes('B14'), detailsOf(rep, 'B14').join('; '));
+});
 it('G3 — a declared, argued exception passes; an undeclared one does not', () => {
   const rep = GOLDEN_BRIEF.replace('Prices as Keepa read them on {date}.', 'Up to £{n} a unit once at the warehouse, from Keepa.');
   assert.ok(codesOf(rep).includes('B14'));
