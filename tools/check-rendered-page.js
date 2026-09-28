@@ -28,6 +28,13 @@
  *   R10 all-caps           no text-transform:uppercase, no shouted run outside a known acronym
  *   R11 above-the-fold     at the declared viewport (1440×900) the first item is fully visible and
  *                          starts in the top part of the screen (header ≤ headerMaxFraction)
+ *   R12 prose-wall         nowhere on the page, above or below the fold, do more than 2 paragraphs run
+ *                          back to back, and no paragraph is longer than maxParagraphWords (default 40)
+ *   R13 section-form       every section the brief declares carries its declared form at rest: within its
+ *                          word budget; rows are short labelled rows; held, provenance, method, skipped and
+ *                          message sections are collapsed behind a disclosure with a one-line summary
+ *   R14 footer-at-rest     the footer shows at most footerLinesAtRest (default 2) lines at rest; the rest
+ *                          sits behind a disclosure
  *
  * ── Gate 1 (--validate-brief) ──
  *   B1–B11  the floor itself is specified (Part 2b and its machine block)
@@ -35,6 +42,8 @@
  *           must-survive token, say-once inside the Copy deck, self-contained, states × views,
  *           responsive widths, action feedback, 15% word headroom, notation not literal. Each is a
  *           gap Claude Design found in a brief that had passed B1–B11 (shared/brief-gap-ledger.md).
+ *   B21     every section of the page has a declared visual form and word budget (presentation-floor.md
+ *           §9, gap G10): the below-the-fold prose wall of the price-list v6 design.
  *
  * ── What it CANNOT check, on purpose ──
  *   Whether the page reads well, whether the answer is the RIGHT answer, and whether a reader gets it
@@ -82,7 +91,20 @@ const DEFAULT_BUDGETS = {
   repeatedClauseMax: 4, // a clause down more items than this is the same fact restated per row
   contrastMin: 4.5,
   contrastLargeMin: 3,
+  // §9 (G10) — below the fold is not a place for running prose. The v6 price-list design ran six
+  // paragraphs back to back under "Before you order", and a six-line provenance footer.
+  maxConsecutiveParagraphs: 2,
+  maxParagraphWords: 40,
+  footerLinesAtRest: 2,
+  sectionWordsMax: 60, // at rest, for any section that is not the items themselves
+  summaryMaxWords: 12, // the one line a collapsed section shows at rest
+  rowMaxWords: 12, // a labelled row: the label, then at most this many words
+  maxRows: 5,
 };
+/** §9: the forms a section may take, and the kinds that must be collapsed at rest. */
+const SECTION_FORMS = ['cards', 'rows', 'disclosure', 'message-block'];
+const SECTION_KINDS = ['items', 'caveats', 'held', 'provenance', 'method', 'skipped', 'message', 'footer', 'other'];
+const COLLAPSED_KINDS = new Set(['held', 'provenance', 'method', 'skipped', 'message', 'footer']);
 const SIZE_TOLERANCE_PX = 0.5;
 const CHROMA_TINT = 0.015; // oklch chroma above which a fill reads as a colour, not a grey
 const MIN_BLOCK_WORDS = 4; // a block with fewer words is a label or a control, not a notice
@@ -316,7 +338,8 @@ const DECK_PLACEHOLDER =
  * Where-cells the say-once screen skips: strings not at rest (said on an event, or never shown), and
  * controls, whose label may echo the thing they act on — R8 on the rendered page skips controls too.
  */
-const NOT_AT_REST = /toast|snackbar|hover|tooltip|screen reader|aria|alt text|title attribute|\bcontrols?\b|\bbutton|\blink\b/i;
+// "on open": text inside a disclosure that is closed at rest (presentation-floor.md §9) is not at rest.
+const NOT_AT_REST = /toast|snackbar|hover|tooltip|screen reader|aria|alt text|title attribute|\bcontrols?\b|\bbutton|\blink\b|\bon open\b/i;
 const STOP = new Set(
   'a an the and or but of to in on at for by with from as is are was were be been it its this that these those there their they them you your we our not no nothing so if then than into onto up out yet'.split(
     ' ',
@@ -524,6 +547,65 @@ function completenessFindings(markdown, floor) {
       'the machine block needs "notation": { "notLiteral": what the brief\'s own marks mean, "separators": what the page prints between items }',
     );
 
+  for (const d of sectionSpecFindings(f)) add('B21', d);
+
+  return out;
+}
+
+/* ───────────────────── sections below the fold (B21, presentation-floor.md §9, G10) ───────────────────── */
+/*
+ * Owner, 2026-09-28, on Claude Design's v6 of the price-list page, scrolled down: "not too happy when I
+ * scrolled down.. looks like text printed on a screen with no thought." The floor limited prose ABOVE
+ * the first item only, so six paragraphs of caveats, five long held questions, a stand-in note and a
+ * six-line provenance footer sat below it untouched. Every section now declares its form and budget.
+ */
+function sectionSpecFindings(floor) {
+  const out = [];
+  const b = { ...DEFAULT_BUDGETS, ...floor.budgets };
+  const text = (v) => typeof v === 'string' && v.trim().length > 0;
+  const secs = floor.sections;
+  if (!Array.isArray(secs) || secs.length === 0) {
+    out.push(
+      'the machine block has no "sections": every section of the page needs { name, kind, form: cards|rows|disclosure|message-block, wordBudget }',
+    );
+    return out;
+  }
+  const names = new Set();
+  for (const s of secs) {
+    const n = s.name || '?';
+    if (!text(s.name)) out.push('a section has no "name" (the value of its data-section marker)');
+    else if (names.has(s.name)) out.push(`section "${n}" is declared twice`);
+    else names.add(s.name);
+    if (!SECTION_KINDS.includes(s.kind)) out.push(`section "${n}" needs "kind", one of ${SECTION_KINDS.join(', ')}`);
+    if (!SECTION_FORMS.includes(s.form)) out.push(`section "${n}" needs "form", one of ${SECTION_FORMS.join(', ')}: never running prose`);
+    if (typeof s.wordBudget !== 'number' || s.wordBudget <= 0)
+      out.push(`section "${n}" needs a numeric "wordBudget" (words visible at rest)`);
+    else if (s.kind !== 'items' && s.wordBudget > b.sectionWordsMax)
+      out.push(
+        `section "${n}" allows ${s.wordBudget} words at rest; a section that is not the items may show at most ${b.sectionWordsMax}`,
+      );
+    if (COLLAPSED_KINDS.has(s.kind) && s.kind !== 'footer') {
+      const want = s.kind === 'message' ? 'message-block' : 'disclosure';
+      if (s.form !== want) out.push(`section "${n}" is ${s.kind}: its form must be "${want}", collapsed at rest`);
+      if (!text(s.summary) || s.summary.trim().split(/\s+/).length > b.summaryMaxWords)
+        out.push(`section "${n}" is collapsed at rest: give its one-line "summary" (at most ${b.summaryMaxWords} words)`);
+    }
+    if (s.kind === 'footer') {
+      if (typeof s.linesAtRest !== 'number' || s.linesAtRest > b.footerLinesAtRest)
+        out.push(`the footer needs "linesAtRest" of at most ${b.footerLinesAtRest}; the rest goes behind a disclosure`);
+      if (!text(s.disclosure)) out.push('the footer needs "disclosure": the label of the control that opens the rest');
+    }
+    if (s.kind === 'caveats' && s.form !== 'rows')
+      out.push(`section "${n}" holds caveats: its form must be "rows" (a label and a short line each)`);
+    if (s.form === 'rows') {
+      if (typeof s.maxRows !== 'number' || s.maxRows > b.maxRows) out.push(`section "${n}" needs "maxRows" of at most ${b.maxRows}`);
+      if (typeof s.rowMaxWords !== 'number' || s.rowMaxWords > b.rowMaxWords)
+        out.push(`section "${n}" needs "rowMaxWords" of at most ${b.rowMaxWords} (after the row's label)`);
+    }
+    if (s.form === 'message-block' && !(Array.isArray(s.controls) && s.controls.length > 0 && s.controls.every(text)))
+      out.push(`section "${n}" is a message block: name its "controls" (e.g. Copy, Open WhatsApp)`);
+  }
+  if (!secs.some((s) => s.kind === 'footer')) out.push('no section of kind "footer": say what the footer shows at rest');
   return out;
 }
 
@@ -810,8 +892,113 @@ function checkSnapshot(snapshot, floor) {
     put('R11', 'above-the-fold', 'unchecked', 'no element marked [data-first-item]');
   }
 
+  for (const r of belowFoldChecks(snapshot || {}, floor, budgets)) put(r.id, r.name, r.status, r.detail, r.evidence);
+
   results.sort((x, y) => Number(x.id.slice(1)) - Number(y.id.slice(1)));
   return results;
+}
+
+/** R12–R14 (presentation-floor.md §9): the page below the first item has structure, not prose. */
+function belowFoldChecks(snapshot, floor, budgets) {
+  const out = [];
+  const put = (id, name, status, detail, evidence = []) => out.push({ id, name, status, detail, evidence });
+
+  // R12 — prose wall, anywhere on the page
+  if (Array.isArray(snapshot.paragraphs)) {
+    const runs = (snapshot.paragraphRuns || []).filter((r) => r.length > budgets.maxConsecutiveParagraphs);
+    const wc = (p) => p.words ?? words(p.text).length;
+    const long = snapshot.paragraphs.filter((p) => wc(p) > budgets.maxParagraphWords);
+    const ev = [
+      ...runs.map((r) => `${r.length} paragraphs in a row${r.section ? ` in "${r.section}"` : ''}: "${(r.sample || '').slice(0, 60)}"`),
+      ...long.map((p) => `${wc(p)}-word paragraph: "${(p.text || '').slice(0, 60)}"`),
+    ];
+    put(
+      'R12',
+      'prose-wall',
+      ev.length > 0 ? 'fail' : 'pass',
+      ev.length > 0
+        ? `${runs.length} run(s) of more than ${budgets.maxConsecutiveParagraphs} paragraphs, ${long.length} paragraph(s) over ${budgets.maxParagraphWords} words: text printed on a screen`
+        : `${snapshot.paragraphs.length} paragraph(s), none in a wall`,
+      ev.slice(0, 8),
+    );
+  } else put('R12', 'prose-wall', 'unchecked', 'the snapshot carries no paragraph list (take it with the current --print-probe)');
+
+  // R13 — every declared section in its form, and anything collapsible collapsed
+  const declared = Array.isArray(floor.sections) ? floor.sections : [];
+  if (!Array.isArray(snapshot.sections)) put('R13', 'section-form', 'unchecked', 'the snapshot carries no [data-section] list');
+  else if (declared.length === 0 && snapshot.sections.length === 0)
+    put('R13', 'section-form', 'unchecked', 'the floor declares no sections and the page marks none');
+  else {
+    const bad = [];
+    const missing = [];
+    const byName = new Map(snapshot.sections.map((s) => [s.name, s]));
+    const specs = declared.filter((d) => d.kind !== 'footer');
+    for (const s of snapshot.sections)
+      if (!declared.some((d) => d.name === s.name)) specs.push({ name: s.name, kind: s.kind, form: s.form, undeclared: true });
+    for (const d of specs) {
+      const s = byName.get(d.name);
+      if (!s) {
+        missing.push(d.name);
+        continue;
+      }
+      if (d.undeclared && !d.form) {
+        bad.push(`"${d.name}" is on the page but the brief declares no form for it`);
+        continue;
+      }
+      const budget = typeof d.wordBudget === 'number' ? d.wordBudget : d.kind === 'items' ? Infinity : budgets.sectionWordsMax;
+      if (s.wordsAtRest > budget) bad.push(`"${d.name}" shows ${s.wordsAtRest} words at rest; budget ${budget}`);
+      if (COLLAPSED_KINDS.has(d.kind) || d.form === 'disclosure' || d.form === 'message-block') {
+        if (s.collapsed !== true) bad.push(`"${d.name}" (${d.kind || d.form}) is open at rest; it belongs behind a disclosure`);
+        else if (s.wordsAtRest > budgets.summaryMaxWords)
+          bad.push(`"${d.name}" is collapsed but shows ${s.wordsAtRest} words; one summary line of at most ${budgets.summaryMaxWords}`);
+      }
+      if (d.form === 'rows') {
+        const rows = s.rows || [];
+        const maxRows = d.maxRows ?? budgets.maxRows;
+        const rowMax = d.rowMaxWords ?? budgets.rowMaxWords;
+        if (rows.length === 0) bad.push(`"${d.name}" is declared as rows but carries no [data-row]`);
+        if (rows.length > maxRows) bad.push(`"${d.name}" has ${rows.length} rows; at most ${maxRows}`);
+        for (const r of rows) {
+          if (!r.label) bad.push(`"${d.name}" has a row with no [data-row-label]: "${(r.text || '').slice(0, 50)}"`);
+          if (r.words > rowMax)
+            bad.push(`"${d.name}" row "${(r.label || r.text || '').slice(0, 30)}" is ${r.words} words after its label; at most ${rowMax}`);
+        }
+      }
+    }
+    if (bad.length > 0) put('R13', 'section-form', 'fail', `${bad.length} section problem(s)`, bad.slice(0, 10));
+    else if (missing.length > 0)
+      put('R13', 'section-form', 'unchecked', `${missing.length} declared section(s) are not marked on the page: ${missing.join(', ')}`);
+    else put('R13', 'section-form', 'pass', `${specs.length} section(s), each in its declared form`);
+  }
+
+  // R14 — footer lines at rest
+  const ft = snapshot.footer;
+  const footSpec = declared.find((d) => d.kind === 'footer');
+  const maxLines = Math.min(
+    budgets.footerLinesAtRest,
+    footSpec && typeof footSpec.linesAtRest === 'number' ? footSpec.linesAtRest : Infinity,
+  );
+  if (!ft) put('R14', 'footer-at-rest', 'unchecked', 'no [data-footer] or <footer> in the snapshot');
+  else if (ft.linesAtRest > maxLines)
+    put(
+      'R14',
+      'footer-at-rest',
+      'fail',
+      `the footer shows ${ft.linesAtRest} lines at rest; at most ${maxLines}, the rest behind a disclosure`,
+      [(ft.text || '').slice(0, 120)],
+    );
+  else if (ft.hasDisclosure) {
+    put('R14', 'footer-at-rest', 'pass', `the footer shows ${ft.linesAtRest} line(s) at rest, the rest behind a disclosure`);
+  } else {
+    put(
+      'R14',
+      'footer-at-rest',
+      'fail',
+      'the footer has no disclosure: the provenance beyond its lines at rest must open, not be dropped or printed',
+    );
+  }
+
+  return out;
 }
 
 /* ─────────────────────────── the browser-side probe ─────────────────────────── */
@@ -906,6 +1093,63 @@ function probe(opts) {
       ...rect(el),
     });
   }
+  // §9 (G10): paragraphs, runs of paragraphs, declared sections and the footer, as seen at rest.
+  const sectionOf = (el) => {
+    const s = el.closest('[data-section]');
+    return s ? s.dataset.section : null;
+  };
+  const countWords = (t) => t.split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w)).length;
+  const paragraphs = [];
+  for (const el of scope.querySelectorAll('p')) {
+    if (!shown(el) || isControl(el)) continue;
+    const t = rendered(el);
+    if (t) paragraphs.push({ text: t, words: countWords(t), section: sectionOf(el), top: rect(el).top });
+  }
+  const paragraphRuns = [];
+  for (const parent of new Set([...scope.querySelectorAll('p')].map((p) => p.parentElement))) {
+    let run = [];
+    const flush = () => {
+      if (run.length > 1) paragraphRuns.push({ length: run.length, section: sectionOf(run[0]), sample: rendered(run[0]).slice(0, 80) });
+      run = [];
+    };
+    for (const c of parent.children) {
+      if (!shown(c)) continue;
+      if (c.tagName === 'P' && rendered(c)) run.push(c);
+      else flush();
+    }
+    flush();
+  }
+  const sections = [...scope.querySelectorAll('[data-section]')].filter(shown).map((el) => ({
+    name: el.dataset.section,
+    kind: el.dataset.sectionKind || null,
+    form: el.dataset.sectionForm || null,
+    wordsAtRest: countWords(rendered(el)),
+    collapsed: !!el.querySelector('details:not([open]), [aria-expanded="false"]') || (el.tagName === 'DETAILS' && !el.open),
+    rows: [...el.querySelectorAll('[data-row]')].filter(shown).map((r) => {
+      const l = r.querySelector('[data-row-label]');
+      const lt = l ? rendered(l) : '';
+      const all = rendered(r);
+      return { label: lt, text: all, words: countWords(all) - countWords(lt) };
+    }),
+  }));
+  const footEl = scope.querySelector('[data-footer]') || document.querySelector('footer');
+  let footer = null;
+  if (footEl && shown(footEl)) {
+    const tops = new Map();
+    for (const el of footEl.querySelectorAll('*')) {
+      if (!shown(el) || ![...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())) continue;
+      const r = el.getBoundingClientRect();
+      const cs = getComputedStyle(el);
+      const lh = Number.parseFloat(cs.lineHeight) || Number.parseFloat(cs.fontSize) * 1.3;
+      const key = Math.round(r.top);
+      tops.set(key, Math.max(tops.get(key) || 0, Math.max(1, Math.round(r.height / lh))));
+    }
+    footer = {
+      text: rendered(footEl),
+      linesAtRest: [...tops.values()].reduce((a, b) => a + b, 0),
+      hasDisclosure: !!footEl.querySelector('details, [aria-expanded]'),
+    };
+  }
   return {
     schema: 'rendered-page-snapshot/1',
     url: location.href,
@@ -917,6 +1161,10 @@ function probe(opts) {
     firstItem: firstEl ? { text: rendered(firstEl).slice(0, 200), ...rect(firstEl) } : null,
     texts,
     blocks,
+    paragraphs,
+    paragraphRuns,
+    sections,
+    footer,
   };
 }
 
@@ -1028,6 +1276,7 @@ module.exports = {
   checkSnapshot,
   validateBrief,
   completenessFindings,
+  sectionSpecFindings,
   deckRepeats,
   floorFromBrief,
   parseColour,
@@ -1039,4 +1288,6 @@ module.exports = {
   BANNED_KEYS,
   REQUIRED_CITATIONS,
   DEFAULT_BUDGETS,
+  SECTION_FORMS,
+  SECTION_KINDS,
 };

@@ -64,7 +64,7 @@ all-caps labels, the same fact twice; 7. the answer visually heavier than the ev
 **Brief completeness (2026-09-28, presentation-floor.md §8).** The same binding class covers what a
 designer would otherwise have to guess: the order of a ranked list (evidence tier first), what survives
 a truncation, a layout for every state in every view, the widths (1440, 1280, narrow), feedback after an
-action, headroom under the word budget, and the brief's notation. They bind the BRIEF (Gate 1, B12–B20)
+action, headroom under the word budget, and the brief's notation. They bind the BRIEF (Gate 1, B12–B20; and B21, every section's form below the fold, §9)
 so the designer is never left to invent them; each came from a designer's pre-build review and is
 recorded in `brief-gap-ledger.md`.
 

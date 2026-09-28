@@ -241,4 +241,124 @@ function clean288() {
   return s;
 }
 
-module.exports = { floor, cleanPage, cleanWithYellowBox, livePriceList, clean288, yellowBox, text, block, allRound, YELLOW_BOX_TEXT, WHITE, MUTED };
+/*
+ * Below the fold (presentation-floor.md §9, brief-gap-ledger G10). Owner, 2026-09-28, on Claude Design's
+ * v6 of the price-list page after scrolling down: "not too happy when I scrolled down.. looks like text
+ * printed on a screen with no thought." The v6 lower half as his screenshot showed it: six paragraphs
+ * under "Before you order", five held questions each open with its trigger line, a stand-in note, the
+ * skipped summary, and a six-line provenance footer. Strings are the v4 brief's own deck rows.
+ */
+const floorWithSections = {
+  ...floor,
+  sections: [
+    { name: 'items', kind: 'items', form: 'cards', wordBudget: 400 },
+    { name: 'skipped', kind: 'skipped', form: 'disclosure', wordBudget: 12, summary: '38 lines skipped' },
+    { name: 'before-you-order', kind: 'caveats', form: 'rows', wordBudget: 60, maxRows: 5, rowMaxWords: 12 },
+    {
+      name: 'freight-question',
+      kind: 'message',
+      form: 'message-block',
+      wordBudget: 10,
+      summary: 'The freight question, as it will be sent',
+      controls: ['Copy', 'Open WhatsApp'],
+    },
+    { name: 'held-questions', kind: 'held', form: 'disclosure', wordBudget: 8, summary: '5 questions held for later' },
+    { name: 'footer', kind: 'footer', form: 'disclosure', wordBudget: 30, linesAtRest: 2, disclosure: 'How these figures were worked out' },
+  ],
+};
+
+const FREIGHT_Q =
+  "Could you quote freight from you to our UK warehouse in Great Blakenham, Suffolk (IP6)? We'd want it customs cleared with Bison Management Ltd as the importer, on our UK EORI and VAT number, so we account for the import VAT ourselves. Can your forwarder clear it that way? A price per pallet or per carton is fine.";
+const BEFORE_YOU_ORDER_PROSE = [
+  'Unit labels and outbound cartons at Great Blakenham are a question for our prep, not the supplier.',
+  'Every cost is what the supplier charges at 0% Spanish VAT, as an export from Spain. That holds while they invoice it as an export and keep their own proof the goods left the EU. Without it they may charge 21% Spanish VAT.',
+  'Whether their prices include Spanish VAT is still open with the supplier. If they do, the real cost is lower than shown.',
+  'Every cost treats their listed price as per unit until they confirm it; a per-case price would divide every cost by the case size.',
+  'No total is given: nothing has been chosen to buy yet.',
+  `The freight question, as it will be sent: ${FREIGHT_Q}`,
+];
+const HELD = [
+  ['Which water flosser ships under EAN 4210201445760: the cordless Oxyjet unit your list describes, or the countertop unit with a water tank?', 'Ask at the first order.'],
+  ['Do the iO 9 brushes you are sending come with the charging travel case?', 'Ask at the first order.'],
+  ['For the Oral-B goods you supplied, can you give us a statement on origin for UK import, and are you registered on REX?', 'Ask once the first delivery has landed and been counted.'],
+  ['Please invoice this order at 0% to our German VAT number DE367673042, as an intra-EU supply delivered to Leipzig.', 'Ask only if we go back to shipping through Leipzig.'],
+  ['What would freight cost from you to our warehouse in Leipzig (04356)? A price per pallet is fine, or per carton if that is how you work it out.', 'Ask only if we go back to shipping through Leipzig.'],
+];
+const wc = (t) => t.split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w)).length;
+const para = (t, section, top) => ({ text: t, words: wc(t), section, top });
+
+/** v6 as drawn: the lower half is running prose. */
+function v6LowerHalf() {
+  const s = cleanPage();
+  let y = 700;
+  const paragraphs = [];
+  for (const p of BEFORE_YOU_ORDER_PROSE) paragraphs.push(para(p, 'before-you-order', (y += 40)));
+  paragraphs.push(para('Held for later: 5 questions', 'held-questions', (y += 40)));
+  for (const [q, w] of HELD) paragraphs.push(para(q, 'held-questions', (y += 30)), para(w, 'held-questions', (y += 20)));
+  paragraphs.push(
+    para('Stand-in wording: the held questions below are placeholders until the export carries them.', 'held-questions', (y += 30)),
+  );
+  const footerText =
+    'file 2026-09-23-price-list-of-oral-b-23-09.xlsx run SR-20260926-005, export version 2 generated 2026-09-27 14:14 UTC imported 2026-09-27 14:22 list sha256 0f4f4525…8976 sheet Hoja1 archive data/sourcing-runs/SR-20260926-005 €1 = £0.86045, ECB reference rate of 25 Sep 2026, fetched 2026-09-26 11:00 UK prices and sales as Keepa read them on 25–26 Sep, not live. 46 matched, 11 uncertain, 4 not matched search #190 an earlier check of this list exists';
+  const words = (name) => paragraphs.filter((p) => p.section === name).reduce((n, p) => n + p.words, 0);
+  return {
+    ...s,
+    paragraphs,
+    paragraphRuns: [
+      { length: 6, section: 'before-you-order', sample: BEFORE_YOU_ORDER_PROSE[0] },
+      { length: 12, section: 'held-questions', sample: 'Held for later: 5 questions' },
+    ],
+    sections: [
+      { name: 'items', kind: 'items', form: 'cards', wordsAtRest: 60, collapsed: false, rows: [] },
+      {
+        name: 'skipped',
+        kind: 'skipped',
+        form: 'disclosure',
+        wordsAtRest: 22,
+        collapsed: true,
+        rows: [],
+      },
+      { name: 'before-you-order', kind: null, form: null, wordsAtRest: words('before-you-order'), collapsed: false, rows: [] },
+      { name: 'held-questions', kind: null, form: null, wordsAtRest: words('held-questions'), collapsed: false, rows: [] },
+    ],
+    footer: { text: footerText, linesAtRest: 6, hasDisclosure: false },
+  };
+}
+
+/** The same content, structured: labelled rows, collapsed held questions and message, a two-line footer. */
+function structuredLowerHalf() {
+  const s = cleanPage();
+  const rows = [
+    ['Prep', 'Labels and outbound cartons: ask our prep, not the supplier.'],
+    ['VAT', '0% Spanish VAT while they invoice it as an export.'],
+    ['Price basis', 'Whether prices include Spanish VAT is still open.'],
+    ['Per unit', 'Costs treat each listed price as one unit.'],
+    ['Total', 'None given: nothing is chosen to buy yet.'],
+  ].map(([label, t]) => ({ label, text: `${label} ${t}`, words: wc(t) }));
+  return {
+    ...s,
+    paragraphs: [para('Profits leave out freight and prep: neither is priced yet.', null, 172)],
+    paragraphRuns: [],
+    sections: [
+      { name: 'items', kind: 'items', form: 'cards', wordsAtRest: 60, collapsed: false, rows: [] },
+      { name: 'skipped', kind: 'skipped', form: 'disclosure', wordsAtRest: 11, collapsed: true, rows: [] },
+      {
+        name: 'before-you-order',
+        kind: 'caveats',
+        form: 'rows',
+        wordsAtRest: rows.reduce((n, r) => n + wc(r.text), 0) + 3,
+        collapsed: false,
+        rows,
+      },
+      { name: 'freight-question', kind: 'message', form: 'message-block', wordsAtRest: 9, collapsed: true, rows: [] },
+      { name: 'held-questions', kind: 'held', form: 'disclosure', wordsAtRest: 6, collapsed: true, rows: [] },
+    ],
+    footer: {
+      text: 'Media Electrónics list of 23 September, checked 27 Sep 14:14 UTC; €1 = £0.86045. How these figures were worked out',
+      linesAtRest: 2,
+      hasDisclosure: true,
+    },
+  };
+}
+
+module.exports = { floorWithSections, v6LowerHalf, structuredLowerHalf, HELD, FREIGHT_Q, floor, cleanPage, cleanWithYellowBox, livePriceList, clean288, yellowBox, text, block, allRound, YELLOW_BOX_TEXT, WHITE, MUTED };

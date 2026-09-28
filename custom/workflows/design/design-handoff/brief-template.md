@@ -156,7 +156,7 @@ You do the heavy lifting on composition and wording. This brief binds you in two
   answer:       {page_answer}              # T0 — a reader states this within 5 seconds of the page loading
   dominant:     {dominant}                 # the ONE thing that leads; everything else is available-on-demand
   binding:      {truth_test_ids}           # the Part 2 tests
-  floor:        Part 2b · P1–P7            # type scale, spacing, colours, attention plan, layout, banned patterns — binding, checked on the rendered page
+  floor:        Part 2b · P1–P8            # type scale, spacing, colours, attention plan, layout, banned patterns, sections below the fold — binding, checked on the rendered page
   route:        {route}
   mutations:    {mutation_posture}         # none (read-only) | the jobs the operator must still be able to do (each is a Part 2 test)
   suggested:    frames {frames_list} · composition {composition} · page_mode {page_mode}   # ADVISORY — yours to change
@@ -443,6 +443,7 @@ fails as unchecked.
 | P5 | Nothing is said twice | R8 |
 | P6 | Every text colour meets AA in both themes, and nothing is in capitals for emphasis | R9, R10 |
 | P7 | At 1440×900 the first item is fully visible in the top 40% | R11 |
+| P8 | Below the first item every section is in its declared form (§10): no more than 2 paragraphs in a row, none over 40 words; caveats as labelled rows; held, provenance, method, skipped and message sections collapsed; the footer 2 lines at rest | R12, R13, R14 |
 
 ### 9. Completeness — what you would otherwise have to guess
 
@@ -474,6 +475,25 @@ above carries each one; Gate 1 fails the brief without it (B12–B20).*
 **The brief is self-contained (G4).** Every string you ship is in the Copy deck, and every view this
 brief mentions is described here. Nothing is "as it is" and nothing is "in the earlier brief": if you
 find a view or a string you cannot draw from this document alone, that is a brief defect — say so.
+
+### 10. Below the first item — every section has a form, none is running prose
+
+*Standard: `shared/presentation-floor.md` §9 (G10). The owner, on a design that met every check above
+and still ended in six paragraphs of caveats, five open questions and a six-line footer: "looks like
+text printed on a screen with no thought." Gate 1 fails the brief without the `sections` entry (B21);
+the rendered page fails R12–R14.*
+
+| Section (`data-section`) | Kind | Form | Words at rest | What shows at rest |
+|---|---|---|---|---|
+{for s in {sections}}| {s.name} | {s.kind} | {s.form} | ≤ {s.wordBudget} | {s.at_rest — rows: "≤ {s.maxRows} rows, a label then ≤ {s.rowMaxWords} words, the why on open" · disclosure: "{s.summary}" · message-block: "{s.summary}, with {s.controls}" · footer: "{s.linesAtRest} lines, then {s.disclosure}"} |
+{endfor}
+
+Never, anywhere on the page: more than two paragraphs in a row, or one paragraph over 40 words.
+Caveats are at most five labelled rows. Held questions, provenance, method notes and skipped lines are
+collapsed behind a one-line summary. A message to send is a collapsed message block with Copy and its
+channel. The footer is two lines at rest. A note about this brief (*sample*, *stand-in*) is never a
+section of the page. Markers: `data-section` on each section, `data-row` and `data-row-label` on each
+row, `data-footer` on the footer.
 
 ---
 

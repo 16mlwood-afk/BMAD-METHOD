@@ -34,7 +34,7 @@ Connect to {github_repo_url} and read `{output_path_relative_to_repo_root}` on m
 anything yet.
 
 Review this brief against its own tests, as the person who has to build from it:
-- Part 2 (T0, T1…Tn, TD0–TD2, TC1, TC2, TA1, TA2, TF1) and Part 2b (P1–P7, and §9 completeness).
+- Part 2 (T0, T1…Tn, TD0–TD2, TC1, TC2, TA1, TA2, TF1) and Part 2b (P1–P8, §9 completeness and §10 sections below the first item).
 - For each frame the brief asks for: could you draw it from this document alone?
 
 List every place you would have to GUESS, one numbered line each, saying what is missing and where:

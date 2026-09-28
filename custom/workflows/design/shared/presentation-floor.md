@@ -2,9 +2,9 @@
 name: presentation-floor
 description: 'The binding presentation floor every design brief SPECIFIES and every rendered page is CHECKED against: a named type scale (one size, one job), spacing tokens, a colour set with meanings, a where-the-user-looks plan, the summary-then-items layout, a banned-patterns list, and "the answer is heavier than the evidence". Replaces the advisory style floor for these seven things.'
 standard: STD-PRESENTATION-FLOOR-001
-version: 2
+version: 3
 ratified: 2026-09-27
-amended: 2026-09-28 (v2 — §8 brief completeness, B12–B20, from Claude Design's pre-build review of the price-list v4 brief)
+amended: 2026-09-28 (v2 — §8 brief completeness, B12–B20, from Claude Design's pre-build review of the price-list v4 brief); 2026-09-28 (v3 — §9 below the fold, B21 and R12–R14, from the price-list v6 design's prose wall)
 ---
 
 # The presentation floor — what a brief specifies, and what a rendered page must pass
@@ -134,7 +134,7 @@ B9 1440×900 · B10 all ten citations by path with their rule · B11 no unrender
 field names what must survive and the near-duplicates · B14 the Copy deck says nothing twice · B15 the
 brief is self-contained · B16 a states × views matrix · B17 1440, 1280 and a narrow width · B18
 feedback after an action · B19 15% headroom under the word budget · B20 the brief's notation is not
-rendering.
+rendering. **B21 (§9)** every section of the page declares its form and word budget.
 
 **design-implement, the rendered page** — `steps/step-04b-rendered-page-checks.md`, running
 `check-rendered-page.js --snapshot|--url … --brief <brief.md>` on the rendered DOM, both themes:
@@ -152,6 +152,9 @@ rendering.
 | R9 | contrast | a text colour is under WCAG AA (4.5:1, 3:1 large) against its composited ground |
 | R10 | all-caps | `text-transform: uppercase`, or a non-acronym word in capitals |
 | R11 | above-the-fold | at 1440×900 the first item is cut by the fold or starts below 40% of the height |
+| R12 | prose-wall | anywhere on the page, more than 2 paragraphs run back to back, or a paragraph is over 40 words |
+| R13 | section-form | a section the brief declares is not in its form at rest: over its word budget; a rows section without labelled rows, over 5 rows, or a row over 12 words after its label; a held, provenance, method, skipped or message section open at rest or with a summary over 12 words; a marked section the brief never declared |
+| R14 | footer-at-rest | the footer shows more than 2 lines at rest, or has no disclosure for the rest |
 
 Each check is **pass**, **fail** or **unchecked**; unchecked is reported and never counts as a pass.
 Goldens: `npm run test:rendered-page` — the yellow box and the 288-words case fail, and so does the live
@@ -167,7 +170,7 @@ page rebuilt from the audit's measurements.
 
 ## 7. Enforcement, honestly
 
-**DETERMINISTIC:** Gate 1's brief check (B1–B20) and the eleven rendered checks, each with goldens that fail the
+**DETERMINISTIC:** Gate 1's brief check (B1–B21) and the fourteen rendered checks, each with goldens that fail the
 audit's live examples. **PROBABILISTIC:** whether the answer is the right answer, whether the page reads
 well, whether items are genuinely scannable (F5 beyond its declared count), and whether spacing tokens are
 used (F2 is declared and checked in the brief, not on the page). A page can pass every check and still bury
@@ -207,6 +210,50 @@ review and the Gate 1 reviewer.
 tests before building. Each finding that reveals a gap in the template, rather than in one brief, is
 appended to `brief-gap-ledger.md` with the rule and the check added for it, in the same change.
 
+## 9. Below the fold — structure, never running prose (v3, 2026-09-28)
+
+> **Owner, 2026-09-28, verbatim,** on Claude Design's v6 of the price-list page after scrolling down:
+> *"not too happy when I scrolled down.. looks like text printed on a screen with no thought."* Earlier
+> the same day: *"ensure this is systematic brief workflow fix not a one time brief patch."*
+
+The floor of §1 limited prose **above** the first item (F4, R7) and said nothing about the rest of the
+page, so v6 met every check and still ended in a wall: six paragraphs of caveats under *Before you
+order*, five long held questions each open with its trigger line, a *stand-in wording* note, and a
+six-line provenance footer. The brief had asked for exactly that (*"Before you order, body text, in this
+order: …"*). The gap was the template's, so the rule is the template's: **every section of the page has
+a visual structure, and no section is running prose.** Gap G10 in `brief-gap-ledger.md`.
+
+| Kind of section | Form | At rest |
+|---|---|---|
+| `items` — the cards or groups | `cards` | the layout of §1 F5 |
+| `caveats` — conditions and cautions before acting | `rows` | at most **5** short labelled rows: a label, then at most **12** words; the "why" behind each is a disclosure on the row |
+| `held` — questions held for later · `provenance` · `method` — how the figures were worked out · `skipped` | `disclosure` | **collapsed**, showing one summary line of at most 12 words (*5 questions held for later*) |
+| `message` — a verbatim outbound message (the question to send a supplier) | `message-block` | **collapsed**, with its controls (Copy, Open WhatsApp); opened, the message word for word in a block |
+| `footer` | `disclosure` (or `rows`) | at most **2** lines; everything else behind a disclosure |
+| `other` | any form above | within its word budget |
+
+Every section also carries a **word budget at rest**, at most 60 for anything that is not the items.
+**No section is written as paragraphs**: on the rendered page, more than two paragraphs in a row, or one
+paragraph over 40 words, fails wherever it sits (R12). A note about the brief itself (*stand-in wording*,
+*sample*) is not a section; if something is sample, it is labelled on its face, in the element it
+qualifies.
+
+**Machine block:** `sections: [{ name, kind, form, wordBudget, summary?, maxRows?, rowMaxWords?,
+controls?, linesAtRest?, disclosure? }]`. **Markers the page carries:** `data-section="<name>"` on each
+section root (optionally `data-section-kind` / `data-section-form`), `data-row` on each row with its label
+in `data-row-label`, and `data-footer` on the footer (else `<footer>`). A collapsed section is a `<details>`
+without `open`, or holds an `[aria-expanded="false"]` control.
+
+**Checks.** Gate 1 **B21**: `sections` present; every entry has a valid kind, form and budget; caveats are
+rows with `maxRows` ≤ 5 and `rowMaxWords` ≤ 12; held, provenance, method and skipped are disclosures, a
+message is a message block with its controls, each with a summary of ≤ 12 words; the footer declares
+`linesAtRest` ≤ 2 and its disclosure. Rendered **R12–R14** (§5). Goldens: the v6 lower half as the owner's
+screenshot showed it fails R12, R13 and R14; the same content structured passes.
+
+**What these cannot do.** They prove the page is structured, not that the right thing is in the rows. A
+row can be twelve true words that miss the point; a summary line can be vague. That stays with the
+designer's pre-build review and the reader.
+
 ## Prose consumers
 
 | Consumer | Bound how |
@@ -217,3 +264,4 @@ appended to `brief-gap-ledger.md` with the rule and the check added for it, in t
 | `shared/claude-design-prompt.md` | Tells the designer Part 2b binds and names the markers |
 | `shared/brief-gap-ledger.md` | The running record of §8's gaps: every template gap a designer finds, with the rule and check added |
 | `design-handoff` step-05 | The designer's pre-build review of the brief; template gaps it finds are appended to the ledger (§8) |
+| `design-handoff/brief-template.md` Part 2b §10 | Renders the sections table of §9 and the `sections` machine entry (B21) |
