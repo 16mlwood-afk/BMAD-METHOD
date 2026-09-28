@@ -225,13 +225,18 @@ function checkStrings(list) {
 
 /* ─────────────────────────────────── CLI ────────────────────────────────── */
 
-function main(argv) {
+function main(argvIn) {
+  // The switches are read wherever they sit, then removed, so `--deck --strict <file>` and
+  // `--deck <file> --strict` mean the same thing (WF-20260928-001: the first form read "--strict" as
+  // the file name and crashed).
+  const SWITCHES = new Set(['--json', '--strict']);
+  const json = argvIn.includes('--json');
+  const strict = argvIn.includes('--strict');
+  const argv = argvIn.filter((a) => !SWITCHES.has(a));
   const arg = (k) => {
     const i = argv.indexOf(k);
     return i === -1 ? undefined : argv[i + 1];
   };
-  const json = argv.includes('--json');
-  const strict = argv.includes('--strict');
   let result;
   if (arg('--deck')) result = checkDeck(fs.readFileSync(arg('--deck'), 'utf8'));
   else if (arg('--strings'))
@@ -261,4 +266,4 @@ function main(argv) {
 
 if (require.main === module) process.exit(main(process.argv.slice(2)));
 
-module.exports = { screenString, checkDeck, checkStrings, parseDeck, BANNED };
+module.exports = { screenString, checkDeck, checkStrings, parseDeck, BANNED, main };

@@ -351,6 +351,133 @@ it('an unrendered {placeholder} in Part 2b fails', () => {
   assert.ok(validateBrief(b).findings.some((f) => f.code === 'B11'));
 });
 
+/* ── Gate 1, completeness: the gaps Claude Design found in the v4 brief (brief-gap-ledger.md G1–G9) ── */
+
+const V4 = fs.readFileSync(path.join(__dirname, 'fixtures', 'rendered-page', 'brief-v4-pre-review.md'), 'utf8');
+const codesOf = (md) => validateBrief(md).findings.map((f) => f.code);
+const detailsOf = (md, code) =>
+  validateBrief(md)
+    .findings.filter((f) => f.code === code)
+    .map((f) => f.detail);
+const withFloor = (md, edit) =>
+  md.replace(/```json presentation-floor\n([\s\S]*?)```/, (_, j) => {
+    const floor = JSON.parse(j);
+    edit(floor);
+    return '```json presentation-floor\n' + JSON.stringify(floor, null, 2) + '\n```';
+  });
+
+it('GOLDEN v4 — passes B1–B11, as the real brief did', () => {
+  const old = codesOf(V4).filter((c) => Number(c.slice(1)) <= 11);
+  assert.deepStrictEqual(old, []);
+});
+it('GOLDEN v4 — fails every one of B12–B20', () => {
+  const got = new Set(codesOf(V4));
+  for (const c of ['B12', 'B13', 'B14', 'B15', 'B16', 'B17', 'B18', 'B19', 'B20'])
+    assert.ok(got.has(c), `${c} missing: ${[...got].join(',')}`);
+});
+it('G1 ranked by magnitude alone — fails B12 until evidence tiers lead', () => {
+  assert.ok(codesOf(V4).includes('B12'));
+  const oneTier = withFloor(GOLDEN_BRIEF, (f) => (f.ordering[0].tiers = ['all lines']));
+  assert.ok(codesOf(oneTier).includes('B12'));
+});
+it('G1 silent — a brief with no ranked list needs no ordering', () => {
+  const b = withFloor(GOLDEN_BRIEF.replace('Cards are ranked by', 'Cards come by'), (f) => delete f.ordering);
+  assert.ok(!codesOf(b.replace('highest first', 'in the list order')).includes('B12'), detailsOf(b, 'B12').join('; '));
+});
+it('G2 truncation — fails B13 without what must survive, and without the near-duplicates', () => {
+  assert.ok(codesOf(V4).includes('B13'));
+  const noSurvive = withFloor(GOLDEN_BRIEF, (f) => (f.truncation[0].mustSurvive = ''));
+  assert.ok(detailsOf(noSurvive, 'B13').some((d) => d.includes('mustSurvive')));
+  const noDupes = withFloor(GOLDEN_BRIEF, (f) => delete f.truncation[0].nearDuplicates);
+  assert.ok(detailsOf(noDupes, 'B13').some((d) => d.includes('nearDuplicates')));
+});
+it('G2 silent — "none: <how checked>" is a legitimate near-duplicates answer', () => {
+  const b = withFloor(GOLDEN_BRIEF, (f) => (f.truncation[0].nearDuplicates = 'none: all 61 names differ in their first 40 characters'));
+  assert.ok(!codesOf(b).includes('B13'));
+});
+it('G3 say-once — the v4 deck says "before freight and prep" in three strings', () => {
+  assert.ok(detailsOf(V4, 'B14').some((d) => d.includes('before freight and prep') && d.includes('11, 63, 72')));
+});
+it('G3 silent — alternatives in one slot, toasts and controls are not repeats', () => {
+  const b = GOLDEN_BRIEF.replace(
+    '| 9 | Footer |',
+    '| 10 | Page answer, some to buy | {n} of these {n} lines could make money once freight is priced, and {n} are buys. | new | a✓ b✓ c✓ d✓ |\n| 11 | Toast after copying twice | Copied a link to row {n} again | new | a✓ b✓ c✓ d✓ |\n| 9 | Footer |',
+  );
+  assert.deepStrictEqual(detailsOf(b, 'B14'), []);
+});
+it('G3 — a declared, argued exception passes; an undeclared one does not', () => {
+  const rep = GOLDEN_BRIEF.replace('Prices as Keepa read them on {date}.', 'Up to £{n} a unit once at the warehouse, from Keepa.');
+  assert.ok(codesOf(rep).includes('B14'));
+  const ok = withFloor(rep, (f) => (f.sayOnceExceptions = [{ phrase: 'a unit once at the warehouse', why: 'test' }]));
+  assert.ok(!codesOf(ok).includes('B14'));
+});
+it('G3 — a brief with no Copy deck is not screened, and that is a finding', () => {
+  const b = GOLDEN_BRIEF.slice(0, GOLDEN_BRIEF.indexOf('## Copy deck'));
+  assert.ok(detailsOf(b, 'B14').some((d) => d.includes('no Copy deck')));
+});
+it('G4 self-contained — placeholder deck row, "as it is" and a pointer to another brief all fail', () => {
+  const d = detailsOf(V4, 'B15');
+  assert.ok(
+    d.some((x) => x.includes('row 165')),
+    d.join('; '),
+  );
+  assert.ok(
+    d.some((x) => x.includes('"as they are"')),
+    d.join('; '),
+  );
+  assert.ok(
+    d.some((x) => x.includes('"as it is"')),
+    d.join('; '),
+  );
+  assert.ok(
+    d.some((x) => x.includes('points at another brief')),
+    d.join('; '),
+  );
+});
+it('G4 silent — "do not design from the earlier brief" and "the price as it is listed" are not pointers', () => {
+  const b = GOLDEN_BRIEF.replace(
+    '### 4b. Notation',
+    'Do not design from the earlier brief for this page. The name is shown as it is listed by the supplier.\n\n### 4b. Notation',
+  );
+  assert.deepStrictEqual(detailsOf(b, 'B15'), []);
+});
+it('G5 states × views — a missing cell (skipped × drawer) fails', () => {
+  assert.ok(codesOf(V4).includes('B16'));
+  const b = withFloor(GOLDEN_BRIEF, (f) => (f.states = f.states.filter((s) => !(s.state === 'skipped' && s.view === 'drawer'))));
+  assert.ok(detailsOf(b, 'B16').some((d) => d.includes('"skipped" in view "drawer"')));
+});
+it('G5 — a matrix without a loading state fails', () => {
+  const b = withFloor(GOLDEN_BRIEF, (f) => (f.states = f.states.filter((s) => s.state !== 'loading')));
+  assert.ok(detailsOf(b, 'B16').some((d) => d.includes('"loading"')));
+});
+it('G6 responsive — 1280 missing fails, and a drawer needs overlay or push', () => {
+  assert.ok(codesOf(V4).includes('B17'));
+  const no1280 = withFloor(GOLDEN_BRIEF, (f) => (f.responsive = f.responsive.filter((r) => r.width !== 1280)));
+  assert.ok(detailsOf(no1280, 'B17').some((d) => d.includes('1280')));
+  const noMode = withFloor(GOLDEN_BRIEF, (f) => delete f.responsive[2].drawer);
+  assert.ok(detailsOf(noMode, 'B17').some((d) => d.includes('overlays or pushes')));
+});
+it('G7 feedback — actions without a feedback spec fail; one without a duration fails', () => {
+  assert.ok(codesOf(V4).includes('B18'));
+  const b = withFloor(GOLDEN_BRIEF, (f) => delete f.feedback.durationMs);
+  assert.ok(detailsOf(b, 'B18').some((d) => d.includes('duration')));
+});
+it('G8 headroom — 56 of 60 words fails; 51 passes', () => {
+  const at56 = withFloor(GOLDEN_BRIEF, (f) => (f.attention.wordsAboveFirstItem = 56));
+  assert.ok(detailsOf(at56, 'B19').some((d) => d.includes('no headroom')));
+  const at51 = withFloor(GOLDEN_BRIEF, (f) => (f.attention.wordsAboveFirstItem = 51));
+  assert.ok(!codesOf(at51).includes('B19'));
+});
+it('G9 notation — without a notation line the brief fails B20', () => {
+  assert.ok(codesOf(V4).includes('B20'));
+  const b = withFloor(GOLDEN_BRIEF, (f) => delete f.notation.separators);
+  assert.ok(codesOf(b).includes('B20'));
+});
+it('the gap ledger is seeded with G1–G9 and each names its check', () => {
+  const ledger = fs.readFileSync(path.join(__dirname, '..', 'custom', 'workflows', 'design', 'shared', 'brief-gap-ledger.md'), 'utf8');
+  for (let i = 1; i <= 9; i++) assert.match(ledger, new RegExp(`\\| G${i} \\|[^\\n]*\\bB${11 + i}\\b`));
+});
+
 /* ── the template and the probe stay wired ── */
 
 it('brief-template.md carries Part 2b and a presentation-floor block', () => {

@@ -96,8 +96,13 @@ This one is NOT a question either. The brief is not ready until it exits 0: Part
 `presentation-floor` block parses (B2), five type roles at five distinct sizes with the answer largest
 (B3), a spacing scale (B4), colours each with a meaning (B5), the attention plan with provenance sent to
 the footer or a disclosure (B6), the summary-then-items layout (B7), all five banned patterns (B8), the
-1440×900 viewport (B9), all ten policy citations by path with their rule (B10), and no unrendered
-placeholder (B11). Repair the brief and re-run. **Also read the brief for any sentence that hands the
+1440×900 viewport (B9), all ten policy citations by path with their rule (B10), no unrendered
+placeholder (B11), and the brief completeness checks of presentation-floor.md §8: a ranked list
+ordered by evidence tier first (B12), a truncated field's must-survive token and near-duplicates
+(B13), nothing said twice in the Copy deck (B14), a self-contained brief with no placeholder rows, no
+"as it is" and no pointer to another brief (B15), a states × views matrix (B16), 1440, 1280 and a
+narrow width (B17), feedback after an action (B18), 15% headroom under the word budget (B19), and the
+brief's notation declared not literal (B20). Repair the brief and re-run. **Also read the brief for any sentence that hands the
 type scale, spacing, weight system or the top of the page to the designer ("typography and scale … is
 yours") — that is a hard defect, whatever the checker says.** The reviewer in §2 checks Part 2b agrees
 with the rest of the brief (the answer in Part 2b is `{page_answer}`; the repeat risks match TA2).

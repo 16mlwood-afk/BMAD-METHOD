@@ -427,6 +427,7 @@ Delivery
 {If {gate1_owner_decisions} is non-empty: this LEADS the whole close-out, above "Active artifact" — one sentence per decision, why the brief cannot answer it, what a generator will do unanswered, and the options where they exist. Say that delivery is PAUSED for this brief and that this is the route refusing to guess an owner decision, not the gate blocking on findings.}
 
 For {consumer}
+{If {consumer} is Claude Design: the FIRST paste is the pre-build review in `step-05-design-prebuild-review.md` §1, not the build. Give that paste here instead of the lines below; the lines below are the build paste, handed over after step-05 has folded the review back into the brief.}
 - Connect to {github_repo_url} and use `{output_path_filename}` on main as the SOLE active source brief for `{route}`.
 - Interpret it as a {page_mode} {scope: redesign | new} of `{route}`.
 {If scope is redesign / change_class material_revision:}
@@ -446,6 +447,12 @@ Outstanding (design backlog) — for the owner, not {consumer}
 **Completion disposition (STD-COMPLETION-001).** design-handoff is a completion workflow — its deliverable is the brief. The `Completion:` line in the Delivery block above IS its `completion_disposition` per `shared/completion-contract.md`: `pr_merged` when the brief PR merged, `pr_open` (with the reason) if `--no-deliver`/skip or a blocked merge left it undelivered, `owner_gated_residue` if something the owner must resolve remains. Ending step-04 with the brief written but no disposition declared is the invalid commentator exit (contract §3).
 
 **Outstanding-backlog tail (register-optional, design-lane triage).** Never stop at only the surface just delivered. After the consumer-facing block, append the short owner-facing **Outstanding (design backlog)** triage above, in priority order: (1) designed-but-not-built, (2) built-but-unbriefed (reconcile — "do NOT greenfield" on surface-identity drift), (3) unowned concept gaps in briefs/PRD but not in routes. **Register-optional:** if a surface register exists (`docs/surface-register.*` — e.g. cash-recovery's `npm run surface-register`), triage from it; if none exists (most projects), derive an approximate list from existing `design-brief-*.md` + built routes — never reference a register file a project lacks. This is owner-facing, distinct from the `For {consumer}` block (STD-CLOSEOUT-001 §2 next-actor section). PROBABILISTIC guidance only — no hard gate (a Stop-hook backlog scan would be the indiscriminate-detector anti-pattern); the lever for drift is §4 of the contract. Keep it to the three bullets; omit an empty bucket.
+
+### 10a. Next: the designer reviews the brief before it builds
+
+When the consumer is Claude Design, continue to `step-05-design-prebuild-review.md`. Its findings are
+folded back into this brief, and any gap in the template itself is closed in the fork and written to
+`shared/brief-gap-ledger.md`.
 
 ### 11. Exit the Worktree
 

@@ -444,6 +444,37 @@ fails as unchecked.
 | P6 | Every text colour meets AA in both themes, and nothing is in capitals for emphasis | R9, R10 |
 | P7 | At 1440×900 the first item is fully visible in the top 40% | R11 |
 
+### 9. Completeness — what you would otherwise have to guess
+
+*Standard: `shared/presentation-floor.md` §8 (G1–G9). Each item below is a gap a designer found in an
+earlier brief that this template had let through (`shared/brief-gap-ledger.md`). The machine copy
+above carries each one; Gate 1 fails the brief without it (B12–B20).*
+
+1. **Order of every ranked list** — evidence first, then size. {for o in {ordering}}**{o.list}:**
+   {o.tiers joined " → "}; within a tier, {o.thenBy}.{endfor} {or "No list on this surface is ranked."}
+2. **Truncation** — {for t in {truncation}}**{t.field}** may be shortened; **{t.mustSurvive}** is
+   never cut. Near-identical items in the data: {t.nearDuplicates}.{endfor} {or "Nothing on this
+   surface is truncated."}
+3. **Every state in every view** — one row per state × view; a cell is a layout, "same as <state>",
+   or "cannot arise: <why>". Empty, loading and error are always rows.
+
+   | State | View | Layout |
+   |---|---|---|
+{for s in {states_matrix}}   | {s.state} | {s.view} | {s.layout} |
+{endfor}
+4. **Widths** — {for r in {responsive}}**{r.width}px:** {r.layout}{if drawer} The drawer
+   {r.drawer}s the page.{endif} {endfor}
+5. **Feedback after an action** — {feedback.position}; {feedback.look}; stays {feedback.duration};
+   wording: {feedback.wording}. {or "Nothing on this surface is an action."}
+6. **Words above the first item** — this design puts **{words_above_first_item}** there, of a
+   budget of {prose_above_first_item}: at most 85%, so your heading or label has room.
+7. **This brief's notation is not the page's.** {notation.notLiteral}. On the page:
+   {notation.separators}.
+
+**The brief is self-contained (G4).** Every string you ship is in the Copy deck, and every view this
+brief mentions is described here. Nothing is "as it is" and nothing is "in the earlier brief": if you
+find a view or a string you cannot draw from this document alone, that is a brief defect — say so.
+
 ---
 
 ## Part 3 · What must dominate
@@ -722,7 +753,9 @@ would fire on every legitimate sentence in a lane and be switched off within a w
 
 ## 2g. The states, and what this surface renders in each — material, not a list of names
 
-**What binds here: nothing new.** This section is MATERIAL handed to you, not a test you can fail. §7
+**What binds here: nothing new.** This section is MATERIAL handed to you, not a test you can fail. The
+binding half — every state × view with its layout — is Part 2b §9 item 3; this section shows you what
+each state looks like. §7
 already offers the state frames as suggestions, and any claim that lives in a state is already a Part 2
 test. What this adds is the one thing a frame NAME cannot carry — what the surface actually looks like
 when it is in that state, and where you can go and see it for yourself.
@@ -1238,7 +1271,8 @@ invented, never read from the current UI.*
 
 {Render on EVERY `page` run (required; `chrome` runs skip — nav breakpoints are in step-01 §0). If `{viewport_present}` — fill the table from policy. If `{viewport_pending_policy}` (an owner class whose §8.3 mobile ambition is still OPEN) — STILL render, but show the ⚠ PENDING POLICY banner below and leave the six fields as `pending`; never render a guessed posture.}
 
-The per-surface viewport posture, sourced from `docs/design-policy.md §8` — not invented. **Advisory** (a layout rule, brief-binding-contract.md §2): design for the posture the policy names unless you have a better idea, and say so if you depart.
+The widths you must lay out (1440, 1280 and a narrow one, with the drawer's overlay or push) bind in
+Part 2b §9 item 4; this table is the policy posture behind them. The per-surface viewport posture, sourced from `docs/design-policy.md §8` — not invented. **Advisory** (a layout rule, brief-binding-contract.md §2): design for the posture the policy names unless you have a better idea, and say so if you depart.
 
 | Field | Value |
 |---|---|
