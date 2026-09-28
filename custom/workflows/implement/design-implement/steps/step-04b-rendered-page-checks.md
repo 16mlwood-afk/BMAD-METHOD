@@ -66,6 +66,16 @@ node ~/bmad-method-v6/tools/check-rendered-page.js --url "{built_url}" --brief "
 node ~/bmad-method-v6/tools/check-rendered-page.js --url "{built_url}" --brief "{brief_path}" --theme dark --json > {artifacts}/rendered-page-{target_slug}-dark.json
 ```
 
+**A protected app.** Rendered signed out, a protected app shows its sign-in form, and the checker
+reports that as UNCHECKED rather than grading the form. Sign in with a credential from an environment
+variable, never a literal; it is sent only to the page's own origin, over https or to localhost:
+`--auth-header-env <VAR> [--auth-header-name <Header>] [--auth-drop-header <Header>]
+[--auth-session-marker <localStorage key>] [--auth-storage-env <key>=<VAR>]`. Where playwright is not
+installed in the project, pass `--playwright <dir with node_modules/playwright>`; without either, the
+checker exits 2 with the install command. Worked example (brand-source-finder, whose app shows its form
+while `bsf_auth_token` is empty and accepts the site key as `X-API-Key`):
+`node ~/bmad-method-v6/tools/check-rendered-page.js --url https://brand-source-finder.fly.dev/product/190 --brief <brief> --auth-header-env BSF_API_KEY --auth-header-name X-API-Key --auth-drop-header Authorization --auth-session-marker bsf_auth_token --playwright <dir>`.
+
 **A failure the design did not have is a build defect: fix it and re-run.** The usual causes: a literal
 `font-size` or colour copied from the bundle instead of the token (the price-list stylesheet had 25
 literal sizes and 0 token uses), a local grey ramp, a missing `data-*` marker, a component default that

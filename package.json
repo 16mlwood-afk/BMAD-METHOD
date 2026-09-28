@@ -69,7 +69,7 @@
     "test:install": "node test/test-installation-components.js",
     "test:refs": "node test/test-file-refs-csv.js",
     "test:release": "python3 test/test-bmad-release.py",
-    "test:rendered-page": "node test/test-rendered-page-check.js",
+    "test:rendered-page": "node test/test-rendered-page-check.js && node test/test-rendered-page-auth.js",
     "test:representation": "python3 test/test-representation.py",
     "test:settings-merge": "bash tools/verify-settings-merge.sh",
     "test:standards-corpus": "node test/test-standards-corpus.js",
