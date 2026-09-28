@@ -52,6 +52,10 @@ Each card has a copy control for the line's link; what the page says after a cop
 machine copy. The drawer that opens a line, the states it can be in and how the page reflows at 1440,
 1280 and 768 are all in the machine copy.
 
+### 4a. Below the items, as drawn for this list
+
+Before you order, as rows: *Prep* — *Labels and cartons: ask our prep.* · *VAT* — *0% while billed as an export.* Held questions, closed: *3 questions held for later*. The question, closed: *The freight question, ready to send*. Footer line: *Checked 25 September; rate of 25 September.*
+
 ### 4b. Notation in this brief
 
 The middle dot and the » in this brief separate alternatives and steps; they are never printed. On the
@@ -136,10 +140,10 @@ Tinted callout boxes, coloured edge stripes, stacked badges, all-caps labels, th
   "notation": { "notLiteral": "the middle dot and the » in this brief separate alternatives and steps and are never printed", "separators": "on the page, fields sit on their own lines and a list inside a sentence is joined with commas" },
   "sections": [
     { "name": "items", "kind": "items", "form": "cards", "wordBudget": 400 },
-    { "name": "before-you-order", "kind": "caveats", "form": "rows", "wordBudget": 60, "maxRows": 4, "rowMaxWords": 12 },
-    { "name": "held-questions", "kind": "held", "form": "disclosure", "wordBudget": 6, "summary": "3 questions held for later" },
-    { "name": "question", "kind": "message", "form": "message-block", "wordBudget": 10, "summary": "The freight question, ready to send", "controls": ["Copy", "Open WhatsApp"] },
-    { "name": "footer", "kind": "footer", "form": "disclosure", "wordBudget": 30, "linesAtRest": 2, "disclosure": "How these figures were worked out" }
+    { "name": "before-you-order", "kind": "caveats", "form": "rows", "wordBudget": 60, "maxRows": 4, "rowMaxWords": 12, "sample": ["Prep", "Labels and cartons: ask our prep.", "VAT", "0% while billed as an export."] },
+    { "name": "held-questions", "kind": "held", "form": "disclosure", "wordBudget": 6, "summary": "3 questions held for later", "sample": ["3 questions held for later"] },
+    { "name": "question", "kind": "message", "form": "message-block", "wordBudget": 10, "summary": "The freight question, ready to send", "controls": ["Copy", "Open WhatsApp"], "sample": ["The freight question, ready to send"] },
+    { "name": "footer", "kind": "footer", "form": "disclosure", "wordBudget": 30, "linesAtRest": 2, "disclosure": "How these figures were worked out", "sample": ["Checked 25 September; rate of 25 September."] }
   ],
   "banned": ["tinted-callout", "edge-stripe", "stacked-badges", "all-caps-labels", "repeated-fact"],
   "budgets": { "wordsToFigure": 12, "proseAboveFirstItem": 60, "borderedAllowed": 0, "headerMaxFraction": 0.4, "repeatedClauseMax": 4 },
