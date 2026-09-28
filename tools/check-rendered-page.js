@@ -29,6 +29,13 @@
  *   R11 above-the-fold     at the declared viewport (1440×900) the first item is fully visible and
  *                          starts in the top part of the screen (header ≤ headerMaxFraction)
  *
+ * ── Gate 1 (--validate-brief) ──
+ *   B1–B11  the floor itself is specified (Part 2b and its machine block)
+ *   B12–B20 brief completeness, presentation-floor.md §8: ranked-list evidence tiers, truncation's
+ *           must-survive token, say-once inside the Copy deck, self-contained, states × views,
+ *           responsive widths, action feedback, 15% word headroom, notation not literal. Each is a
+ *           gap Claude Design found in a brief that had passed B1–B11 (shared/brief-gap-ledger.md).
+ *
  * ── What it CANNOT check, on purpose ──
  *   Whether the page reads well, whether the answer is the RIGHT answer, and whether a reader gets it
  *   in five seconds (T0/TD0). Those stay a reader's judgement. A green run proves counts and presence,
@@ -276,7 +283,248 @@ function validateBrief(markdown) {
   const part = /##\s*Part 2b\b[\s\S]*?(?=\n## (?!#))/.exec(markdown || '');
   if (part && /\{[a-z_]+[^}]*\}/i.test(part[0].replaceAll(/```json[\s\S]*?```/g, '')))
     add('B11', 'Part 2b still carries an unrendered {placeholder}');
+  for (const f of completenessFindings(markdown, floor)) add(f.code, f.detail);
   return { findings, floor };
+}
+
+/* ───────────────────── brief completeness (B12–B20, the gap ledger) ───────────────────── */
+/*
+ * Each of these is a class of gap Claude Design found in a brief that had passed B1–B11 — the
+ * price-list v4 brief of 2026-09-27. The ledger that records them, and every gap found since, is
+ * custom/workflows/design/shared/brief-gap-ledger.md; the rule each enforces is
+ * presentation-floor.md §8. A trigger (a ranked list, a truncated field, an action) is read from the
+ * brief's prose; the specification it demands is read from the machine block, so a brief cannot pass
+ * by containing the right words in the wrong place.
+ */
+
+/** Prose the triggers read: the brief without its fenced blocks (the machine copy is not prose). */
+const proseOf = (markdown) => (markdown || '').replaceAll(/```[\s\S]*?```/g, (m) => m.replaceAll(/[^\n]/g, ''));
+const TRIGGER_RANKED =
+  /\b(ranked|ranking|ranks? by|sorted by|sorts? by|ordered by|highest first|lowest first|largest first|smallest first|biggest first|newest first|oldest first|most first)\b/i;
+const TRIGGER_TRUNCATION = /\b(ellips[ie]s|truncat\w*|line[- ]clamp\w*|clamped to|cut off at)\b/i;
+const TRIGGER_ACTION = /\b(toast|snackbar|button|copy control|copies|copied|save|saves|submit|send|delete|undo|confirm)\b/i;
+const TRIGGER_DRAWER = /\b(drawer|side sheet|side panel|slide-over)\b/i;
+/** "Keep X as it is" hands the designer a view the brief does not contain. */
+const AS_IT_IS = /\bas (?:it|they) (?:is|are)\b(?=\s*(?:[,.;:|)\]—–]|$|re-set))/im;
+/** A pointer to another brief in place of the content. "Do not design from the earlier brief" is not one. */
+const OTHER_BRIEF =
+  /\b(?:see|refer to|per|as in|same as in|carried forward(?: unchanged)? from|unchanged from|taken from|copied from|kept from|reuse)\s+(?:the |any |an )?(?:older|previous|earlier|prior|landed|last|original|old|v\d+)\s+(?:version of (?:the |this )?)?brief\b/i;
+/** A deck cell that is an instruction or a pointer, not the words the surface ships. */
+const DECK_PLACEHOLDER =
+  /^\s*(?:|—|-|tbd|todo|tba|\?+|\.\.\.|…)\s*$|^\s*\(.*\)\s*$|carried forward|unchanged from|as before\b|same as (?:the )?(?:current|live|landed|previous|earlier|older|existing)\b|\{(?:for|if|endfor|endif)\b|\{s\./i;
+/**
+ * Where-cells the say-once screen skips: strings not at rest (said on an event, or never shown), and
+ * controls, whose label may echo the thing they act on — R8 on the rendered page skips controls too.
+ */
+const NOT_AT_REST = /toast|snackbar|hover|tooltip|screen reader|aria|alt text|title attribute|\bcontrols?\b|\bbutton|\blink\b/i;
+const STOP = new Set(
+  'a an the and or but of to in on at for by with from as is are was were be been it its this that these those there their they them you your we our not no nothing so if then than into onto up out yet'.split(
+    ' ',
+  ),
+);
+const PHRASE_WORDS = 4;
+const HEADROOM = 0.85;
+const NARROW_MAX = 1024;
+
+/** The phrases said in more than one at-rest deck string (different slots). Exported for the tests. */
+function deckRepeats(markdown, exceptions = []) {
+  let parseDeck;
+  try {
+    ({ parseDeck } = require('./check-copy-screen.js'));
+  } catch {
+    return { error: 'tools/check-copy-screen.js is not beside this checker, so the Copy deck could not be read' };
+  }
+  const deck = parseDeck(markdown || '');
+  if (!deck || !deck.header || deck.rows.length === 0) return { error: 'no Copy deck table to screen for repeats' };
+  const col = (names) => deck.header.findIndex((h) => names.some((n) => h.includes(n)));
+  const where = col(['where']);
+  const ships = col(['ships as', 'replacement']);
+  if (ships === -1) return { error: 'the Copy deck has no "Ships as" column' };
+  const allowed = exceptions.map((e) => normalise(String(e.phrase || '')));
+  const grams = new Map();
+  const rows = [];
+  for (const r of deck.rows) {
+    const w = where === -1 ? '' : r.cells[where] || '';
+    if (NOT_AT_REST.test(w)) continue;
+    // A slot is one place on the surface; its rows are alternatives never shown together.
+    const slot = w.split(',')[0].trim().toLowerCase() || `row ${r.cells[0]}`;
+    const text = (r.cells[ships] || '').replaceAll(/\{[^}]*\}/g, ' ');
+    rows.push({ n: r.cells[0], slot, text });
+    // An argued exception is blanked out of every string before the rest is screened.
+    let screened = ` ${normalise(text)} `;
+    for (const a of allowed) if (a) screened = screened.replaceAll(` ${a} `, ' | ');
+    const tokens = screened.split(' ').filter((x) => x && x !== '#');
+    const seen = new Set();
+    for (let i = 0; i + PHRASE_WORDS <= tokens.length; i++) {
+      const g = tokens.slice(i, i + PHRASE_WORDS);
+      if (g.includes('|')) continue;
+      if (g.filter((x) => !STOP.has(x) && x.length > 2).length < 2) continue;
+      const key = g.join(' ');
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const e = grams.get(key) || [];
+      e.push({ n: r.cells[0], slot });
+      grams.set(key, e);
+    }
+  }
+  const repeats = [];
+  for (const [phrase, at] of grams) {
+    if (new Set(at.map((x) => x.slot)).size < 2) continue;
+    repeats.push({ phrase, rows: at.map((x) => x.n) });
+  }
+  // Overlapping windows of one repeated run are one finding, not five.
+  const merged = [];
+  for (const r of repeats) {
+    const same = merged.find((m) => m.rows.join(',') === r.rows.join(','));
+    if (same) same.phrases.push(r.phrase);
+    else merged.push({ rows: r.rows, phrases: [r.phrase] });
+  }
+  return { repeats: merged, atRest: rows.length };
+}
+
+function completenessFindings(markdown, floor) {
+  const out = [];
+  const add = (code, detail) => out.push({ code, detail });
+  const prose = proseOf(markdown);
+  const f = floor || {};
+  const text = (v) => typeof v === 'string' && v.trim().length > 0;
+
+  // B12 — a ranked list declares evidence-strength tiers ahead of magnitude.
+  if (TRIGGER_RANKED.test(prose)) {
+    const o = f.ordering;
+    if (!Array.isArray(o) || o.length === 0)
+      add('B12', `the brief ranks a list ("${TRIGGER_RANKED.exec(prose)[0]}") but the machine block has no "ordering"`);
+    else
+      for (const e of o)
+        if (!text(e.list) || !Array.isArray(e.tiers) || e.tiers.length < 2 || !e.tiers.every(text) || !text(e.thenBy))
+          add(
+            'B12',
+            `ordering "${e.list || '?'}" needs "list", at least two evidence "tiers" (strongest first) and "thenBy" (the magnitude)`,
+          );
+  }
+
+  // B13 — a truncated field names what must survive, and the near-duplicates it must tell apart.
+  if (TRIGGER_TRUNCATION.test(prose)) {
+    const t = f.truncation;
+    if (!Array.isArray(t) || t.length === 0)
+      add('B13', `the brief truncates a field ("${TRIGGER_TRUNCATION.exec(prose)[0]}") but the machine block has no "truncation"`);
+    else
+      for (const e of t) {
+        if (!text(e.field) || !text(e.mustSurvive))
+          add('B13', `truncation "${e.field || '?'}" needs "field" and "mustSurvive" (the token that tells near-identical items apart)`);
+        const nd = e.nearDuplicates;
+        const listed = Array.isArray(nd) && nd.length > 0 && nd.every(text);
+        const declaredNone = typeof nd === 'string' && /^none\b.{10,}/i.test(nd.trim());
+        if (!listed && !declaredNone)
+          add(
+            'B13',
+            `truncation "${e.field || '?'}" needs "nearDuplicates": the near-identical items in the data, or "none: <how that was checked>"`,
+          );
+      }
+  }
+
+  // B14 — say-once inside the brief's own Copy deck.
+  const deck = deckRepeats(markdown, Array.isArray(f.sayOnceExceptions) ? f.sayOnceExceptions : []);
+  if (deck.error) add('B14', `${deck.error} — a deck that cannot be screened has not passed`);
+  else
+    for (const r of deck.repeats)
+      add('B14', `the Copy deck says "${r.phrases[0]}" in more than one at-rest string (rows ${r.rows.join(', ')}) — say it once`);
+
+  // B15 — self-contained: no placeholder rows, no "as it is", no pointer to another brief.
+  const deckParsed = (() => {
+    try {
+      return require('./check-copy-screen.js').parseDeck(markdown || '');
+    } catch {
+      return null;
+    }
+  })();
+  if (deckParsed && deckParsed.header) {
+    const ships = deckParsed.header.findIndex((h) => h.includes('ships as') || h.includes('replacement'));
+    if (ships !== -1)
+      for (const r of deckParsed.rows)
+        if (DECK_PLACEHOLDER.test(r.cells[ships] || ''))
+          add('B15', `Copy deck row ${r.cells[0]} ships "${(r.cells[ships] || '').slice(0, 70)}" — a placeholder, not the words`);
+  }
+  const lineOf = (i) => prose.slice(0, i).split('\n').length;
+  for (const m of prose.matchAll(new RegExp(AS_IT_IS.source, 'gim')))
+    add('B15', `line ${lineOf(m.index)}: "${m[0]}" hands the designer a view the brief does not contain — write its content inline`);
+  for (const m of prose.matchAll(new RegExp(OTHER_BRIEF.source, 'gi')))
+    add('B15', `line ${lineOf(m.index)}: "${m[0]}" points at another brief — the designer can read only this one; carry the content here`);
+
+  // B16 — every state × every view has a layout (or an explicit "same as …" / "cannot arise: …").
+  const st = f.states;
+  if (!Array.isArray(st) || st.length === 0) add('B16', 'the machine block has no "states" matrix (state × view → layout)');
+  else {
+    const states = [...new Set(st.map((s) => s.state))];
+    const views = [...new Set(st.map((s) => s.view))];
+    for (const s of st)
+      if (!text(s.state) || !text(s.view) || !text(s.layout) || /^\s*(tbd|todo|\?|—|-)\s*$/i.test(s.layout))
+        add('B16', `states entry "${s.state || '?'} × ${s.view || '?'}" needs a layout, "same as <state>", or "cannot arise: <why>"`);
+    for (const s of states)
+      for (const v of views)
+        if (!st.some((x) => x.state === s && x.view === v))
+          add('B16', `no layout for state "${s}" in view "${v}" — give one, "same as <state>", or "cannot arise: <why>"`);
+    for (const [need, re] of [
+      ['empty', /empty|nothing|no (items|lines|rows|results)/i],
+      ['loading', /load/i],
+      ['error', /error|fail|unreachable|refus/i],
+    ])
+      if (!states.some((s) => re.test(s))) add('B16', `the states matrix has no "${need}" state`);
+  }
+
+  // B17 — responsive: 1440, 1280 and a narrow width, each with a layout; drawer overlay or push.
+  const rs = f.responsive;
+  if (!Array.isArray(rs) || rs.length === 0) add('B17', 'the machine block has no "responsive" spec (1440, 1280 and one narrow width)');
+  else {
+    const widths = rs.map((r) => r.width);
+    if (!widths.includes(1440)) add('B17', 'responsive has no 1440 entry');
+    if (!widths.includes(1280)) add('B17', 'responsive has no 1280 entry');
+    if (!widths.some((w) => typeof w === 'number' && w <= NARROW_MAX)) add('B17', `responsive has no narrow entry (≤ ${NARROW_MAX}px)`);
+    const hasDrawer = TRIGGER_DRAWER.test(prose);
+    for (const r of rs) {
+      if (!text(r.layout)) add('B17', `responsive ${r.width || '?'}px has no "layout"`);
+      if (hasDrawer && !['overlay', 'push'].includes(r.drawer))
+        add('B17', `responsive ${r.width || '?'}px must say whether the drawer overlays or pushes ("drawer": "overlay" | "push")`);
+    }
+  }
+
+  // B18 — actions ⇒ feedback: position, look, duration, wording.
+  if (TRIGGER_ACTION.test(prose)) {
+    const fb = f.feedback;
+    if (!fb || typeof fb !== 'object')
+      add('B18', `the brief has actions ("${TRIGGER_ACTION.exec(prose)[0]}") but the machine block has no "feedback" spec`);
+    else {
+      for (const k of ['position', 'look', 'wording']) if (!text(fb[k])) add('B18', `feedback needs "${k}"`);
+      if (!(typeof fb.durationMs === 'number' && fb.durationMs > 0) && !/^until\b/i.test(String(fb.duration || '')))
+        add('B18', 'feedback needs "durationMs" (a number) or "duration": "until <what dismisses it>"');
+    }
+  }
+
+  // B19 — headroom: the brief's own count of words above the first item leaves 15% of the budget.
+  const budget = { ...DEFAULT_BUDGETS, ...f.budgets }.proseAboveFirstItem;
+  const declared = f.attention && f.attention.wordsAboveFirstItem;
+  if (typeof declared === 'number') {
+    const floorCount = words(f.attention.top).length;
+    if (declared < floorCount)
+      add('B19', `attention.wordsAboveFirstItem (${declared}) is fewer than the answer alone (${floorCount}) — the count is wrong`);
+    if (declared > Math.floor(budget * HEADROOM))
+      add(
+        'B19',
+        `${declared} words above the first item leaves no headroom: the brief may spend ${Math.floor(budget * HEADROOM)} of the ${budget}-word budget (85%)`,
+      );
+  } else {
+    add('B19', 'attention.wordsAboveFirstItem is not declared — count the words the design puts above the first item');
+  }
+
+  // B20 — the brief's notation is not rendering: say so, and say what the page prints between items.
+  const nt = f.notation;
+  if (!nt || !text(nt.notLiteral) || !text(nt.separators))
+    add(
+      'B20',
+      'the machine block needs "notation": { "notLiteral": what the brief\'s own marks mean, "separators": what the page prints between items }',
+    );
+
+  return out;
 }
 
 /* ─────────────────────────────── page checks ─────────────────────────────── */
@@ -779,6 +1027,8 @@ if (require.main === module) {
 module.exports = {
   checkSnapshot,
   validateBrief,
+  completenessFindings,
+  deckRepeats,
   floorFromBrief,
   parseColour,
   contrastRatio,

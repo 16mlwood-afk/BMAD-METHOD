@@ -61,6 +61,13 @@ audit text in the footer or behind a disclosure; 5. the layout — a summary, th
 groups, detail on open; 6. the banned patterns — tinted callouts, coloured edge stripes, stacked badges,
 all-caps labels, the same fact twice; 7. the answer visually heavier than the evidence.
 
+**Brief completeness (2026-09-28, presentation-floor.md §8).** The same binding class covers what a
+designer would otherwise have to guess: the order of a ranked list (evidence tier first), what survives
+a truncation, a layout for every state in every view, the widths (1440, 1280, narrow), feedback after an
+action, headroom under the word budget, and the brief's notation. They bind the BRIEF (Gate 1, B12–B20)
+so the designer is never left to invent them; each came from a designer's pre-build review and is
+recorded in `brief-gap-ledger.md`.
+
 `presentation-floor.md` (STD-PRESENTATION-FLOOR-001) owns the detail, the fork default values, the ten
 policy citations and the checks; this section does not restate them. **The v1 governing principle still
 holds for everything else** — Claude Design does the heavy lifting on composition and wording — and the

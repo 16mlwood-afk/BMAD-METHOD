@@ -132,7 +132,9 @@ This uses **step-file architecture** for focused execution:
 
 - Each step loads fresh to combat "lost in the middle"
 - State persists via variables (see below)
-- Sequential progression: gather → audit → generate → deliver
+- Sequential progression: gather → audit → generate → deliver → designer pre-build review
+
+**Step 5 (design pre-build review)** — when the consumer is Claude Design, its first paste asks it to review the brief against the brief's own tests before building; findings are folded back into the brief, and a gap in the template is closed in the fork and appended to `shared/brief-gap-ledger.md` (`steps/step-05-design-prebuild-review.md`).
 
 **Step 4 (deliver)** is governed by `shared/delivery-to-main.md`. It commits the brief, opens a PR, merges to `main`, and surfaces the merged URL — closing the gap between "file written to disk" and "file accessible to external consumers (Claude Design, downstream synthesize, design-implement) via `origin/main`". Skippable via `--no-deliver` or `delivery.design-handoff: skip` in config.
 

@@ -45,6 +45,17 @@ rendered-page goldens run against. Values are the fork default (the project decl
 ### 4. Layout — a summary, then items, detail on open
 
 A one-block summary, then the lines as cards, three fields at rest: product, the most it could make a unit, and its basis.
+Cards are ranked by how firmly the figure is known first, then by the most a line could make, highest first
+(the ordering in the machine copy). A product name longer than the card ends in an ellipsis, and the
+variant words that tell two near-identical lines apart are kept (the truncation in the machine copy).
+Each card has a copy control for the line's link; what the page says after a copy is the feedback in the
+machine copy. The drawer that opens a line, the states it can be in and how the page reflows at 1440,
+1280 and 768 are all in the machine copy.
+
+### 4b. Notation in this brief
+
+The middle dot and the » in this brief separate alternatives and steps; they are never printed. On the
+page, fields sit on their own lines and a list inside a sentence is joined with commas.
 
 ### 5. Banned on this surface
 
@@ -94,9 +105,35 @@ Tinted callout boxes, coloured edge stripes, stacked badges, all-caps labels, th
     "top": "the answer",
     "firstItem": "the first line worth a look",
     "provenance": ["FX rate and source", "Keepa read dates", "import stamp", "file name and check id", "figures-before-freight note"],
-    "provenanceTo": "footer"
+    "provenanceTo": "footer",
+    "wordsAboveFirstItem": 38
   },
   "layout": { "summaryFirst": true, "items": "cards", "atRestFields": 3, "detailOnOpen": true },
+  "ordering": [
+    { "list": "the cards worth a look", "tiers": ["listing confirmed and price read in the last 7 days", "listing unconfirmed", "price stale or absent"], "thenBy": "the most a line could make a unit, highest first" }
+  ],
+  "truncation": [
+    { "field": "product name on a card", "mustSurvive": "the variant words (colour, pack size, model suffix) that differ between near-identical lines; the middle of the name is cut, never the end", "nearDuplicates": ["rows 24 and 25: the same brush in white and in black", "rows 40 and 41: heads in packs of 4 and 8"] }
+  ],
+  "states": [
+    { "state": "worth a look", "view": "card", "layout": "name, figure, basis on three lines" },
+    { "state": "worth a look", "view": "drawer", "layout": "answer, next action, product, money, journey" },
+    { "state": "skipped", "view": "card", "layout": "name and the reason in place of the figure" },
+    { "state": "skipped", "view": "drawer", "layout": "answer names the reason; money and journey sections are not drawn; the product section is kept" },
+    { "state": "empty list", "view": "card", "layout": "cannot arise: an empty list draws no cards, only the answer saying so" },
+    { "state": "empty list", "view": "drawer", "layout": "cannot arise: there is no line to open" },
+    { "state": "loading", "view": "card", "layout": "three grey lines per card at the card's height, no spinner" },
+    { "state": "loading", "view": "drawer", "layout": "same as loading card, one block per section" },
+    { "state": "far end unreachable", "view": "card", "layout": "the card draws; the figure reads 'price not read' in body, muted" },
+    { "state": "far end unreachable", "view": "drawer", "layout": "same as far end unreachable card, and the money section says which read failed" }
+  ],
+  "responsive": [
+    { "width": 1440, "layout": "two card columns; drawer 720px", "drawer": "overlay" },
+    { "width": 1280, "layout": "two card columns; drawer 640px", "drawer": "overlay" },
+    { "width": 768, "layout": "one card column; drawer full width", "drawer": "overlay" }
+  ],
+  "feedback": { "position": "bottom left of the content area, 24px in", "look": "ink text on the surface colour, 1px rule, no icon, no colour", "durationMs": 4000, "wording": "says exactly what was copied, from the Copy deck toast rows" },
+  "notation": { "notLiteral": "the middle dot and the » in this brief separate alternatives and steps and are never printed", "separators": "on the page, fields sit on their own lines and a list inside a sentence is joined with commas" },
   "banned": ["tinted-callout", "edge-stripe", "stacked-badges", "all-caps-labels", "repeated-fact"],
   "budgets": { "wordsToFigure": 12, "proseAboveFirstItem": 60, "borderedAllowed": 0, "headerMaxFraction": 0.4, "repeatedClauseMax": 4 },
   "citations": [
@@ -117,3 +154,17 @@ Tinted callout boxes, coloured edge stripes, stacked badges, all-caps labels, th
 ## Part 3 · What must dominate
 
 (omitted in this fixture)
+
+## Copy deck — every string a person reads on this surface, screened
+
+| # | Where | Ships as | Source | Screen |
+|---|---|---|---|---|
+| 1 | Page answer | {n} of these {n} lines could make money once freight is priced; none is a buy yet. | new | a✓ b✓ c✓ d✓ |
+| 2 | Next action | Next: ask the supplier what freight to Leipzig costs. | new | a✓ b✓ c✓ d✓ |
+| 3 | Card, figure | £{profit} a unit | new | a✓ b✓ c✓ d✓ |
+| 4 | Card, basis | sells at £{price}, lowest offer | new | a✓ b✓ c✓ d✓ |
+| 5 | Card, skipped reason | Sells under £{floor} | new | a✓ b✓ c✓ d✓ |
+| 6 | Card copy control | Copy link | new | a✓ b✓ c✓ d✓ |
+| 7 | Toast after copying | Copied a link to row {n} | new | a✓ b✓ c✓ d✓ |
+| 8 | Drawer answer | Up to £{profit} a unit once at the warehouse. | new | a✓ b✓ c✓ d✓ |
+| 9 | Footer | Prices as Keepa read them on {date}. | new | a✓ b✓ c✓ d✓ |

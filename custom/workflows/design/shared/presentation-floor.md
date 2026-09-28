@@ -2,8 +2,9 @@
 name: presentation-floor
 description: 'The binding presentation floor every design brief SPECIFIES and every rendered page is CHECKED against: a named type scale (one size, one job), spacing tokens, a colour set with meanings, a where-the-user-looks plan, the summary-then-items layout, a banned-patterns list, and "the answer is heavier than the evidence". Replaces the advisory style floor for these seven things.'
 standard: STD-PRESENTATION-FLOOR-001
-version: 1
+version: 2
 ratified: 2026-09-27
+amended: 2026-09-28 (v2 — §8 brief completeness, B12–B20, from Claude Design's pre-build review of the price-list v4 brief)
 ---
 
 # The presentation floor — what a brief specifies, and what a rendered page must pass
@@ -128,7 +129,12 @@ fails a brief missing any of them. Paths are relative to amazon-removal-assistan
 B1 Part 2b present · B2 the `presentation-floor` JSON block parses · B3 five roles, five distinct sizes,
 answer largest and at least as heavy as a figure · B4 spacing scale · B5 colours with meanings · B6 the
 attention plan, provenance to footer or disclosure · B7 the layout pattern · B8 the five banned keys ·
-B9 1440×900 · B10 all ten citations by path with their rule · B11 no unrendered `{placeholder}`.
+B9 1440×900 · B10 all ten citations by path with their rule · B11 no unrendered `{placeholder}` ·
+**B12–B20 brief completeness (§8)**: B12 a ranked list orders by evidence tier first · B13 a truncated
+field names what must survive and the near-duplicates · B14 the Copy deck says nothing twice · B15 the
+brief is self-contained · B16 a states × views matrix · B17 1440, 1280 and a narrow width · B18
+feedback after an action · B19 15% headroom under the word budget · B20 the brief's notation is not
+rendering.
 
 **design-implement, the rendered page** — `steps/step-04b-rendered-page-checks.md`, running
 `check-rendered-page.js --snapshot|--url … --brief <brief.md>` on the rendered DOM, both themes:
@@ -161,11 +167,45 @@ page rebuilt from the audit's measurements.
 
 ## 7. Enforcement, honestly
 
-**DETERMINISTIC:** Gate 1's brief check and the eleven rendered checks, each with goldens that fail the
+**DETERMINISTIC:** Gate 1's brief check (B1–B20) and the eleven rendered checks, each with goldens that fail the
 audit's live examples. **PROBABILISTIC:** whether the answer is the right answer, whether the page reads
 well, whether items are genuinely scannable (F5 beyond its declared count), and whether spacing tokens are
 used (F2 is declared and checked in the brief, not on the page). A page can pass every check and still bury
 the answer; T0 and TD0 remain a reader's judgement. The checks prove counts and presence, never quality.
+
+## 8. Brief completeness — the gaps a designer should never have to find (v2, 2026-09-28)
+
+> **Owner, 2026-09-28, verbatim:** *"ensure this is systematic brief workflow fix not a one time brief
+> patch."*
+
+The price-list v4 brief passed B1–B11 and Claude Design, asked to review it before building, still
+found nine gaps. Each was a class, not a slip: nothing in the template asked for the thing, so every
+future brief would have had it too. Each is now a rule here, a subsection of Part 2b (§9 in
+`brief-template.md`) and a Gate 1 check. The running record, and every gap found since, is
+`brief-gap-ledger.md`. The triggers are read from the brief's prose; the specification they demand
+is read from the `presentation-floor` block, so the right words in the wrong place do not pass.
+
+| # | Rule | Machine block | Check |
+|---|---|---|---|
+| G1 | **A ranked list orders by evidence strength before magnitude.** Tiers first — confirmed and live, then unconfirmed, then stale or absent — and the figure ranks only within a tier. Ranking by magnitude alone puts the weakest evidence at the top. | `ordering: [{ list, tiers[≥2, strongest first], thenBy }]` | B12, when the prose ranks, sorts or orders a list |
+| G2 | **A truncated field names what must survive**, the token that tells near-identical items apart (colour, pack size, model suffix), and the brief lists the near-duplicate items in the data so the designer can test the rule. | `truncation: [{ field, mustSurvive, nearDuplicates[] \| "none: <how checked>" }]` | B13, when the prose mentions an ellipsis, truncation or a clamp |
+| G3 | **Say-once holds inside the brief's own Copy deck.** A phrase of four or more words in two at-rest strings is said twice on the surface. Alternatives for one slot (same *Where* before its first comma), toasts, tooltips, screen-reader text and control labels are not compared. An unavoidable repeat is declared with its reason. | `sayOnceExceptions: [{ phrase, why }]` (optional) | B14 |
+| G4 | **The brief is self-contained.** No deck row is a placeholder or a pointer; no view is kept "as it is"; no content is "in the older brief". Claude Design can read this brief and nothing else, so every referenced view carries its content inline. | — | B15 |
+| G5 | **Every state has a layout in every view.** A states × views matrix (e.g. buy / check / skip × card / drawer, plus empty, loading and error), each cell a layout, "same as <state>" or "cannot arise: <why>". This is binding; §2g's state MATERIAL stays advisory. | `states: [{ state, view, layout }]` | B16 |
+| G6 | **A responsive spec**: at least 1440, 1280 and one narrow width (≤ 1024), each with a layout, and for a drawer whether it overlays or pushes. | `responsive: [{ width, layout, drawer? }]` | B17 |
+| G7 | **Feedback after an action is designed**: where it appears, how it looks, how long it stays (or what dismisses it), and its wording. | `feedback: { position, look, durationMs \| duration: "until …", wording }` | B18, when the prose names an action |
+| G8 | **Headroom under the word budget.** The brief counts the words its own design puts above the first item and spends at most 85% of the budget, so a designer's heading does not break it. | `attention.wordsAboveFirstItem` | B19 |
+| G9 | **The brief's notation is not rendering.** The brief says its own marks (`·`, `»`, braces) are not printed, and names the separators the page does print. | `notation: { notLiteral, separators }` | B20 |
+
+**What these checks cannot do.** They prove a specification is PRESENT and well-formed, never that it
+is right: a tier order can be wrong, a "must survive" token can be the wrong one, a layout can be
+described badly. The deck screen (B14) reads phrases, not meaning, so a repeat said in different
+words passes and a shared proper name can fire (declare it). Those stay with the designer's pre-build
+review and the Gate 1 reviewer.
+
+**How the list grows.** `design-handoff` step-05 asks Claude Design to review the brief against its
+tests before building. Each finding that reveals a gap in the template, rather than in one brief, is
+appended to `brief-gap-ledger.md` with the rule and the check added for it, in the same change.
 
 ## Prose consumers
 
@@ -175,3 +215,5 @@ the answer; T0 and TD0 remain a reader's judgement. The checks prove counts and 
 | `design-implement` | Runs the rendered-page checks on the design bundle and the built page (step-04b); a design-side failure is a SENDBACK |
 | `shared/brief-binding-contract.md` | Lists the floor as a binding class (v2) |
 | `shared/claude-design-prompt.md` | Tells the designer Part 2b binds and names the markers |
+| `shared/brief-gap-ledger.md` | The running record of §8's gaps: every template gap a designer finds, with the rule and check added |
+| `design-handoff` step-05 | The designer's pre-build review of the brief; template gaps it finds are appended to the ledger (§8) |

@@ -165,6 +165,29 @@ it('the section ends at the next heading of the same level', () => {
   assert.strictEqual(checkDeck(md).rows, 1);
 });
 
+/* ── the CLI reads its switches wherever they sit (WF-20260928-001) ── */
+
+{
+  const { spawnSync } = require('node:child_process');
+  const os = require('node:os');
+  const tool = path.join(__dirname, '..', 'tools', 'check-copy-screen.js');
+  const file = path.join(os.tmpdir(), `copy-screen-order-${process.pid}.md`);
+  fs.writeFileSync(file, deck(['| 1 | Top | — | the answer | Price sits in the band | a✓ b✓ c✓ d✓ |']));
+  const runCli = (...a) => spawnSync(process.execPath, [tool, ...a], { encoding: 'utf8' });
+  it('--deck --strict <file> reads the file, not "--strict"', () => {
+    const r = runCli('--deck', '--strict', file);
+    assert.doesNotMatch(r.stderr, /ENOENT/, r.stderr);
+    assert.match(r.stdout, /1 string\(s\) screened/);
+  });
+  it('--strict and --json anywhere give the same verdict as the documented order', () => {
+    const a = runCli('--deck', file, '--strict', '--json');
+    const b = runCli('--json', '--strict', '--deck', file);
+    assert.strictEqual(a.status, b.status);
+    assert.deepStrictEqual(JSON.parse(a.stdout), JSON.parse(b.stdout));
+  });
+  fs.rmSync(file, { force: true });
+}
+
 console.log(`copy-screen: ${pass} passed, ${failures.length} failed`);
 if (failures.length > 0) {
   for (const f of failures) console.log(`  ✗ ${f}`);
