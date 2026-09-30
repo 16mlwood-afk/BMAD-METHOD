@@ -610,6 +610,22 @@ Fields are in domain language. Grouping, derivation, and presentation are design
 
 ---
 
+## 2a-x. Quick actions & deep links to outside systems — advisory
+
+{Render on every `page` run. When `{outbound_lookups}` is empty, render this heading plus the one-line stated reason from step-01 §3a-x and nothing else — the reason shows the question was asked.}
+
+These are checks the operator already does by hand against a system outside this product — copying an identifier, opening a new tab, searching for it. A **deep link** lands straight on the result (a search already run, a record already open); a **quick action** is that check reduced to one click. They are quality-of-life (QoL) affordances: they save effort on a routine check and change nothing about what this surface decides.
+
+| Entity | Identifier | Outside system | Deep-link pattern | Precedence | Prominent when |
+|---|---|---|---|---|---|
+| {entity} | {identifier} | {target system} | `{url_pattern}` | {e.g. "EAN first; title is the fallback"} | {row state where it is the likely next move, or "always quiet"} |
+
+{One row per entry in `{outbound_lookups}`.}
+
+**Form (the same quiet-link rule as §2a and policy §4):** each one is a quiet, labelled external link that opens in a new tab, and its label says where it goes ("Search Amazon UK by EAN", not "Search"). Never a CTA button, coloured pill or chip, and never louder than the surface's own decision. Where a row's "Prominent when" state holds, the link may sit closer to the eye in that row — still a link. Placement is your call.
+
+---
+
 {if {is_finance_surface}}
 ## 2b. Finance semantics & accounting truth
 

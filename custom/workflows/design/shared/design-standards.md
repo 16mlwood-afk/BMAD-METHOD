@@ -162,6 +162,7 @@ Every clickable element must have a clear destination and purpose:
 - **Do links work?** Click them. Do they navigate to the expected destination?
 - **Is the destination clear?** "View" links — view what? Where? A link label should tell the user what happens when they click it. "View lead details", "Open in Amazon", "See matching products" > "View".
 - **Are external links distinguished?** Links that leave the app (Amazon, Keepa, etc.) should be visually distinct (external link icon, open in new tab).
+- **Is there a lookup the operator does by hand that should be a link?** If a row carries an EAN, ASIN, title + brand, tracking number, VAT number or supplier domain that someone would otherwise copy into Amazon UK, Keepa, a carrier's tracking page, VIES, Companies House or the supplier's site, that check belongs on the row as a quiet, labelled deep link that opens a new tab (e.g. "Search Amazon UK by EAN") — not a button. The design-handoff brief lists these in §2a-x.
 - **Do row-level actions make sense?** Can the user click a row to expand/navigate? Is this affordance visible?
 
 ### 12. Information Architecture
