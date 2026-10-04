@@ -13,7 +13,7 @@ const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const { screenString, checkDeck } = require('../tools/check-copy-screen.js');
+const { screenString, checkDeck, chromeCarriesFact } = require('../tools/check-copy-screen.js');
 
 let pass = 0;
 const failures = [];
@@ -45,7 +45,7 @@ const golden = MATRIX.split('\n')
     return { id: c[1], current: unq(c[2]), ships: unq(c[4]) };
   });
 
-it('the matrix carries five rows', () => assert.strictEqual(golden.length, 5));
+it('the matrix carries eight rows', () => assert.strictEqual(golden.length, 8));
 
 it('G1 — the owner example fails on the label code and on "settle"', () => {
   const g = golden.find((x) => x.id === 'G1');
@@ -187,6 +187,51 @@ it('the section ends at the next heading of the same level', () => {
   });
   fs.rmSync(file, { force: true });
 }
+
+/* ── claims and chrome (§1a, 2026-10-04) ── */
+
+it('G6 — a structural label the designer adds is silent: chrome is free', () => {
+  const g = golden.find((x) => x.id === 'G6');
+  assert.deepStrictEqual(all(g.current), []);
+  assert.strictEqual(chromeCarriesFact(g.current), false);
+});
+it('G7 — chrome is free in wording, not exempt from the vocabulary screen', () => {
+  const g = golden.find((x) => x.id === 'G7');
+  assert.ok(hard(g.current).includes('V1'));
+  assert.deepStrictEqual(all(g.ships), []);
+});
+it('G8 — a "label" carrying a figure is a claim: the proxy fires on it and not on its fixed form', () => {
+  const g = golden.find((x) => x.id === 'G8');
+  assert.strictEqual(chromeCarriesFact(g.current), true);
+  assert.strictEqual(chromeCarriesFact(g.ships), false);
+});
+const kindDeck = (rows) => ['## Copy deck', '', '| # | Where | Kind | Ships as | Screen |', '|---|---|---|---|---|', ...rows].join('\n');
+it('K1 — a row that is neither claim nor chrome fails', () => {
+  const r = checkDeck(kindDeck(['| 1 | column head | label | Most a unit | a✓ b✓ c✓ d✓ |']));
+  assert.ok(r.findings.some((f) => f.code === 'K1' && f.severity === 'hard'));
+});
+it('P4 — chrome carrying a figure is a look, never a hard finding', () => {
+  const r = checkDeck(kindDeck(['| 1 | group marker | chrome | 13 not counted | a✓ b✓ c✓ d✓ |']));
+  assert.deepStrictEqual(
+    r.findings.map((f) => `${f.code}:${f.severity}`),
+    ['P4:proxy'],
+  );
+});
+it('a claim row with a figure, and a plain chrome row, are silent', () => {
+  const r = checkDeck(
+    kindDeck([
+      '| 1 | card, figure | claim | £{profit} a unit | a✓ b✓ c✓ d✓ |',
+      '| 2 | group marker | chrome | Not counted | a✓ b✓ c✓ d✓ |',
+    ]),
+  );
+  assert.deepStrictEqual(r.findings, []);
+});
+it('a deck with no Kind column is screened as before (delivered briefs are not failed here)', () => {
+  const r = checkDeck(
+    ['## Copy deck', '', '| # | Ships as | Screen |', '|---|---|---|', '| 1 | 13 not counted | a✓ b✓ c✓ d✓ |'].join('\n'),
+  );
+  assert.deepStrictEqual(r.findings, []);
+});
 
 console.log(`copy-screen: ${pass} passed, ${failures.length} failed`);
 if (failures.length > 0) {

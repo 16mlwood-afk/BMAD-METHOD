@@ -59,7 +59,7 @@ Before evaluating, answer:
 ### 4. Typography Is 80% Of Design
 
 - System font stack for UI: `-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`
-- Monospace only for codes, IDs, technical values
+- One typeface. Size is set by where text sits in the hierarchy, never by what kind of datum it is, and a line of text is one size (`presentation-floor.md` §12 O4). Monospace is not a second role: where a project's own policy mandates a data face for codes or IDs, it sits at the size of its line
 - Maximum 3 font sizes per component. If you need 4+, the hierarchy is wrong.
 - Body: 14-15px, `line-height: 1.5-1.6`, color `#333` or `#374151`
 - Secondary: 12-13px, color `#6B7280` or `#9CA3AF`

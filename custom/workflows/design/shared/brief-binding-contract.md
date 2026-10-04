@@ -2,9 +2,9 @@
 name: brief-binding-contract
 description: 'What a design brief BINDS and what it only ADVISES. The one split every producer and consumer of a design-handoff brief applies: the designer is bound by the brief''s "what must be true" tests, the five-second answer test, and (since v2, 2026-09-27) the Part 2b presentation floor — type scale, spacing, colours, attention plan, item layout, banned patterns; everything else (frames, composition, component guidance, the remaining style parts of the design policy) is advisory, and departing from it is a note, never a failure.'
 standard: STD-BRIEF-BINDING-001
-version: 2
+version: 3
 ratified: 2026-09-19
-amended: 2026-09-27
+amended: 2026-09-27; 2026-10-04 (v3 — §1b the opening)
 ---
 
 # Brief binding contract — what binds the designer, and what is advice
@@ -54,7 +54,7 @@ and rhythm… and the weight system"*, only the five-second tests bound, and a t
 cheapest way to pass a five-second test. So v2 moves seven things into the binding column, **specified
 in the brief rather than delegated**, and checked on the rendered page:
 
-1. a type scale of five named roles (answer, section heading, figure, body, caption), one size each;
+1. a type scale, one typeface and four sizes set by position (the page's lead line, a block's lead line, inside an item or row, secondary) — five roles until 2026-10-04, when the by-datum `figure` role was removed (§1b);
 2. spacing tokens; 3. a colour set, each colour with one meaning; 4. the attention plan — the answer at
 the top, the first actionable item above the fold at 1440×900, a word budget above it, provenance and
 audit text in the footer or behind a disclosure; 5. the layout — a summary, then items as cards or
@@ -72,6 +72,31 @@ recorded in `brief-gap-ledger.md`.
 policy citations and the checks; this section does not restate them. **The v1 governing principle still
 holds for everything else** — Claude Design does the heavy lifting on composition and wording — and the
 v1 text is recoverable verbatim at `git -C ~/bmad-method-v6 show c2951122:custom/workflows/design/shared/brief-binding-contract.md`.
+
+### 1b. The opening — what good looks like, ahead of what is forbidden (v3, 2026-10-04)
+
+> **Owner, 2026-10-04, verbatim:** *"we've narrowed it down to the brief being the problem. Take this
+> feedback and solve the gap."*
+
+Versions 1 and 2 said what binds and what is advice. Neither said what good looks like, and a designer
+given only tests and a floor aims at passing them. So a brief now **opens** with the job, a picture of
+good (one accepted reference screen and a short component vocabulary), five rules (use the product's
+vocabulary · claims word for word, chrome the designer's · one value leads · type by position · absence
+is quiet), the words on screen, and a required self-review that ends on *would this ship at a good
+product company?* The five rules and the frozen words bind with the floor; the reference is a bar and a
+vocabulary, never a layout to copy.
+
+Two things follow for every consumer. **Claims and chrome are different classes of text**: a claim
+(a field's value and qualifier, a figure, a caveat, a state word) is frozen, a basis sentence must appear in
+the opened record but is placed by the designer, and a structural label (a section heading, a column
+header, a row label, a group name) is the designer's to add, word or drop, so a design is never failed for
+adding or rewording chrome. **The checker's matter is not the designer's copy**: how a test is checked,
+the markers, the policy citations, the machine copy and every count sit in the brief's checker appendix.
+A count is applied to the built page and is never a reason to reword a claim.
+
+`presentation-floor.md` §12 and §13 own the detail and the Gate 1 checks (B25–B35);
+`on-screen-copy-screen.md` §1a owns claims and chrome. The prior text of everything this replaced is in
+`docs/decision-design-brief-picture-of-good-2026-10-04.md`.
 
 ## 2. How the project design policy splits
 
@@ -117,8 +142,10 @@ outside it. Read that file; this section does not restate it.
 
 ## 3. The brief shape this implies (outcome-first, five parts)
 
-1. **The moment** — who opens the page, after what, to decide what. One paragraph, plus the
-   `page_answer`.
+0. **The opening** (§1b) — the job (the moment and the `page_answer`, said once), the picture of
+   good, the five rules, the words on screen, the self-review. Then a `# Reference` divider.
+1. **The moment** — who opens the page, after what, to decide what. Stated in the opening; Part 1
+   keeps the purpose and the user.
 2. **What must be true** — the binding tests, pass/fail, never mechanisms.
 3. **What must dominate** — ONE thing. Everything else is explicitly available-on-demand, so
    demoting it is legal.
@@ -126,7 +153,8 @@ outside it. Read that file; this section does not restate it.
    you, which figures are derived, where the gaps are.
 5. **Open questions, unfenced** — named, with an invitation to sketch two options.
 
-Then an **Advisory guidance** appendix carrying everything else, labelled as such. The template is
+Then an **Advisory guidance** appendix carrying everything else, labelled as such, and last a
+**Checker appendix** holding what only our gate reads. The template is
 `design-handoff/brief-template.md`.
 
 **Kept, and not advisory: the anti-anchoring rule.** A redesign brief still lists the current view's
@@ -178,4 +206,5 @@ step-04b). Their ceiling: they prove counts and presence, never that the page re
 | `shared/design-standards.md` | AI-fingerprint taxonomy, composite test and scrub checklist are advisory notes; only the undisclosed-fixture-data half of the placeholder row is truth |
 | `shared/claude-design-prompt.md` | Paste prompt splits policy constraints into TRUTH (can fail) and ADVISORY (designer's call); artifact shape and in-surface composition are advisory |
 | `design-elevation` | Candidate filter: hard-rejects only a candidate that breaks a truth test, T0 or a truth-class rule; a style-rule departure survives with an advisory note; changing advisory guidance is not an intent change |
+| `design-handoff` (opening, v3) | Renders the opening of §1b ahead of the five parts, and the checker appendix after them; Gate 1 checks B25–B35 |
 | `shared/controls-and-attention.md` | Supplies five further truth tests and the second classification question (§2a), and the per-detail-surface TD0/TD1/TD2 (its own §2a); its own advisory half stays advisory |

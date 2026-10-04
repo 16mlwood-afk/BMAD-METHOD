@@ -1,61 +1,9 @@
-# Design Brief: price list (golden fixture — the opening and Part 2b)
+# Design Brief: price list (golden fixture — Part 2b only)
 
 A worked Part 2b, rendered from `custom/workflows/design/design-handoff/brief-template.md` for the
 brand-source-finder price-list page the owner rejected on 2026-09-27. Used by
 `test/test-rendered-page-check.js` as the brief that validates clean at Gate 1 and whose floor the
-rendered-page goldens run against. Values are the fork default (the project declares no scale). The
-five-role scale this fixture carried before 2026-10-04 is kept beside it as `brief-legacy-five-role.md`.
-
-## The job
-
-The owner opens this page after a supplier sends a price list, to decide which lines to chase a
-freight price for. Within five seconds they can say how many lines could make money and that none is
-a buy yet.
-
-## Picture of good
-
-**Reference screen:** the supplier terms page, as accepted by the owner on 26 September 2026 —
-`docs/design-references/supplier-terms-accepted.png`. Borrow its vocabulary and its level of finish.
-Do not copy its layout: that page compares terms, this one ranks lines.
-
-**Component vocabulary:**
-
-- A grouped table with aligned columns, for the lines.
-- An expandable record sheet of label and value rows, for one line opened.
-- A status dot with the stage in text, for where a line stands.
-
-## The five rules
-
-1. **Use the product's vocabulary.** Build from the components above before inventing one.
-2. **Claims are verbatim; chrome is yours.** A value and its qualifier ship word for word. Column
-   headers, section labels and group names are your call.
-3. **One value leads.** On a line, the most it could make a unit leads; everything else is secondary.
-4. **Type by position.** One typeface, four sizes, set by where text sits. Never two sizes on one line.
-5. **Absence is quiet.** A value that is not there is set small and grey.
-
-## Before you deliver — self-review
-
-Render the draft, screenshot it, and judge it against the five rules and against one question: would
-this ship at a good product company? Fix what fails, then deliver.
-
-# Reference — read as needed
-
-## Screen words
-
-| Field | State | Value | Qualifier | Tone | Basis, shown when the line is opened |
-|---|---|---|---|---|---|
-| what a line could make | priced | £{profit} a unit | before freight | ink | Sells at £{price}, the lowest offer on {date}; freight to the warehouse is not priced. |
-| selling price | read | Matched | — | ink | The selling price was read from the matched listing on {date}. |
-| selling price | not read | Not checked | — | muted | Nobody has read the selling price for this line yet. |
-| selling price | read, nothing there | None reported | — | muted | The listing was read on {date} and shows no selling price. |
-
-**Missing values, in grey:** *Not checked* (nobody looked) · *None* (we asked; there is nothing) · *n/a* (does not apply) · *Not set* (nothing chosen yet).
-**Your moves:** *Send draft to supplier* · *Copy link*. **Whose move:** You · Supplier · Nobody.
-**Labels on an opened line:** Where it stands · Money · Journey.
-**Never confuse:** *Not checked* (nobody looked) with *None reported* (we looked and the seller lists none).
-
-**Worked example.** Raw: *"the 90-day Buy Box is blank — none, or not read"*. Value: *Not checked*.
-Basis: *Nobody has read the selling price for this line yet.*
+rendered-page goldens run against. Values are the fork default (the project declares no scale).
 
 ## Part 2 · What must be true — the binding tests
 
@@ -65,17 +13,15 @@ Basis: *Nobody has read the selling price for this line yet.*
 
 **Values from:** fork default (the project declares no scale — see Part 5)
 
-### 1. Type scale — four sizes, set by position
+### 1. Type scale — one size, one job
 
-| Position | Size | Weight | What sits here |
-|---|---|---|---|
-| the page's lead line (answer) | 28px | 600 | the sentence that answers the page |
-| a block's lead line (section heading) | 18px | 600 | the name of a group of lines, or the one value that leads an opened line |
-| inside an item or row (body) | 14px | 400, 600 for the value that leads | names, values, figures and sentences alike |
-| secondary (caption) | 12px | 400 | the basis under a value, an absent value, and the footer |
-
-One typeface. A line of text is one size; the value that leads a row is heavier, never larger.
-An absent value is set in the secondary size, in muted.
+| Role | Size | Weight | Used for | Never used for |
+|---|---|---|---|---|
+| answer | 28px | 600 | the sentence that answers the page | anything else — no figure, heading or label shares this size |
+| section heading | 18px | 600 | the name of a group of lines | figures, the answer |
+| figure | 16px | 500, tabular numerals | the most a line could make a unit | the answer; prose |
+| body | 14px | 400 | product names and sentences | provenance, which is caption |
+| caption / footnote | 12px | 400 | the basis beside a figure, and the footer | column headers that are sentences; methodology at the top |
 
 ### 2. Spacing and colour
 
@@ -146,51 +92,10 @@ Tinted callout boxes, coloured edge stripes, stacked badges, all-caps labels, th
   "viewport": { "width": 1440, "height": 900 },
   "typeScale": {
     "answer": { "size": 28, "weight": 600, "use": "the sentence that answers the page" },
-    "sectionHeading": { "size": 18, "weight": 600, "use": "a block's lead line: the name of a group of lines, or the value that leads an opened line" },
-    "body": { "size": 14, "weight": 400, "use": "everything inside an item or row: names, values, figures and sentences" },
+    "sectionHeading": { "size": 18, "weight": 600, "use": "the name of a group of lines" },
+    "figure": { "size": 16, "weight": 500, "use": "the most a line could make a unit" },
+    "body": { "size": 14, "weight": 400, "use": "product names and sentences" },
     "caption": { "size": 12, "weight": 400, "use": "the basis beside a figure, and the footer" }
-  },
-  "pictureOfGood": {
-    "reference": {
-      "surface": "the supplier terms page",
-      "where": "docs/design-references/supplier-terms-accepted.png",
-      "acceptedBy": "the owner, 26 September 2026",
-      "borrow": "its component vocabulary and its level of finish",
-      "notCopy": "its layout: that page compares terms, this one ranks lines"
-    },
-    "vocabulary": [
-      { "component": "a grouped table with aligned columns", "use": "the lines" },
-      { "component": "an expandable record sheet of label and value rows", "use": "one line opened" },
-      { "component": "a status dot with the stage in text", "use": "where a line stands" }
-    ]
-  },
-  "focal": [
-    { "item": "a line in the list", "leads": "the most it could make a unit", "secondary": ["the product name", "the basis of the price"] },
-    { "item": "a line opened", "leads": "whether it is worth chasing a freight price for", "secondary": ["the money rows", "the journey rows", "how it was matched"] }
-  ],
-  "absence": { "role": "caption", "colour": "muted" },
-  "screenWords": {
-    "fields": [
-      { "field": "what a line could make", "state": "priced", "value": "£{profit} a unit", "qualifier": "before freight", "tone": "ink", "basis": "Sells at £{price}, the lowest offer on {date}; freight to the warehouse is not priced." },
-      { "field": "selling price", "state": "read", "value": "Matched", "tone": "ink", "basis": "The selling price was read from the matched listing on {date}." },
-      { "field": "selling price", "state": "not read", "value": "Not checked", "tone": "muted", "basis": "Nobody has read the selling price for this line yet." },
-      { "field": "selling price", "state": "read, nothing there", "value": "None reported", "tone": "muted", "basis": "The listing was read on {date} and shows no selling price." }
-    ],
-    "tones": { "ink": "ink", "muted": "muted" },
-    "missing": [
-      { "means": "nobody looked", "word": "Not checked" },
-      { "means": "we asked and there is nothing", "word": "None" },
-      { "means": "does not apply", "word": "n/a" },
-      { "means": "nothing chosen yet", "word": "Not set" }
-    ],
-    "actions": [{ "move": "ask the supplier for a freight price", "phrase": "Send draft to supplier" }, { "move": "share a line", "phrase": "Copy link" }],
-    "whoseMove": ["You", "Supplier", "Nobody"],
-    "openedLabels": ["Where it stands", "Money", "Journey"],
-    "distinctions": [{ "a": "Not checked", "b": "None reported", "means": "nobody looked, against we looked and the seller lists none" }],
-    "examples": [
-      { "raw": "the 90-day Buy Box is blank — none, or not read", "value": "Not checked", "basis": "Nobody has read the selling price for this line yet." },
-      { "raw": "margin 24.1% · floor is 30.0%", "value": "24% margin", "qualifier": "under your floor", "basis": "The margin is 24.1% against your floor of 30.0%." }
-    ]
   },
   "spacing": [4, 8, 12, 16, 24, 32, 48],
   "colours": [
@@ -263,15 +168,14 @@ Tinted callout boxes, coloured edge stripes, stacked badges, all-caps labels, th
 
 ## Copy deck — every string a person reads on this surface, screened
 
-| # | Where | Kind | Ships as | Source | Screen |
-|---|---|---|---|---|---|
-| 1 | Page answer | claim | {n} of these {n} lines could make money once freight is priced; none is a buy yet. | new | a✓ b✓ c✓ d✓ |
-| 2 | Next action | claim | Next: ask the supplier what freight to Leipzig costs. | new | a✓ b✓ c✓ d✓ |
-| 3 | Card, figure | claim | £{profit} a unit | new | a✓ b✓ c✓ d✓ |
-| 4 | Card, basis | claim | sells at £{price}, lowest offer | new | a✓ b✓ c✓ d✓ |
-| 5 | Card, skipped reason | claim | Sells under £{floor} | new | a✓ b✓ c✓ d✓ |
-| 6 | Card copy control | chrome | Copy link | new | a✓ b✓ c✓ d✓ |
-| 7 | Toast after copying | claim | Copied a link to row {n} | new | a✓ b✓ c✓ d✓ |
-| 8 | Drawer answer | claim | Up to £{profit} a unit once at the warehouse. | new | a✓ b✓ c✓ d✓ |
-| 9 | Footer | claim | Prices as Keepa read them on {date}. | new | a✓ b✓ c✓ d✓ |
-| 10 | Table, column head over the figure | chrome | Most a unit | new | a✓ b✓ c✓ d✓ |
+| # | Where | Ships as | Source | Screen |
+|---|---|---|---|---|
+| 1 | Page answer | {n} of these {n} lines could make money once freight is priced; none is a buy yet. | new | a✓ b✓ c✓ d✓ |
+| 2 | Next action | Next: ask the supplier what freight to Leipzig costs. | new | a✓ b✓ c✓ d✓ |
+| 3 | Card, figure | £{profit} a unit | new | a✓ b✓ c✓ d✓ |
+| 4 | Card, basis | sells at £{price}, lowest offer | new | a✓ b✓ c✓ d✓ |
+| 5 | Card, skipped reason | Sells under £{floor} | new | a✓ b✓ c✓ d✓ |
+| 6 | Card copy control | Copy link | new | a✓ b✓ c✓ d✓ |
+| 7 | Toast after copying | Copied a link to row {n} | new | a✓ b✓ c✓ d✓ |
+| 8 | Drawer answer | Up to £{profit} a unit once at the warehouse. | new | a✓ b✓ c✓ d✓ |
+| 9 | Footer | Prices as Keepa read them on {date}. | new | a✓ b✓ c✓ d✓ |

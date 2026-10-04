@@ -1,4 +1,5 @@
 ---
+title: "STD-SKILLPROV-001 — Skill provenance & external discovery (DRAFT)"
 name: skill-provenance-standard
 description: "STD-SKILLPROV-001 (DRAFT) — discovery goes OUTWARD before any skill is built; adopt-over-build is the default; a skill without provenance frontmatter carrying ≥1 source_research URL is UNVERIFIED. Retrofit when touched."
 contract_version: 1

@@ -1,3 +1,7 @@
+---
+title: "Getting a bespoke UI page built for an existing app — what exists today"
+---
+
 # Getting a bespoke UI page built for an existing app — what exists today
 
 **This tracked file is the record.** A reading copy also sits at

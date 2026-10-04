@@ -1,3 +1,7 @@
+---
+title: "Synthetic Paperwork Image Generation — fork default"
+---
+
 # Synthetic Paperwork Image Generation — fork default
 
 **Status:** ratified 2026-07-20 (origin: cash-recovery clerk photo-guide work).

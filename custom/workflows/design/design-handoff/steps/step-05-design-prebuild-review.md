@@ -33,15 +33,20 @@ message; the build prompt waits for §3.
 Connect to {github_repo_url} and read `{output_path_relative_to_repo_root}` on main. Do NOT design
 anything yet.
 
-Review this brief against its own tests, as the person who has to build from it:
-- Part 2 (T0, T1…Tn, TD0–TD2, TC1, TC2, TA1, TA2, TF1) and Part 2b (P1–P9, §9 completeness, §10 sections below the first item and §11 label/value lists).
+Review this brief as the person who has to build from it:
+- The opening: is the job clear, can you open the reference screen, is the component vocabulary enough to
+  build from, does each item name the one value that leads, and is it clear which words are frozen?
+- Screen words: could you set every field from its value, qualifier and basis without rewriting it?
+- Part 2 (what must be true) and Part 2b (what is decided for you).
 - For each frame the brief asks for: could you draw it from this document alone?
 
 List every place you would have to GUESS, one numbered line each, saying what is missing and where:
 a state with no layout, a view referred to but not described, a string not in the Copy deck, a list
 whose order is not stated, a truncation with no rule for what survives, a width with no layout,
-feedback after an action with no position or duration, a word budget with no room left, a mark in
-the brief you are unsure whether to print, a sentence the Copy deck says twice, or anything else.
+feedback after an action with no position or duration, a mark in the brief you are unsure whether to
+print, a claim said twice, a field with no value, two states you could not tell apart, a place where
+you could not tell what good looks like, or anything else. Also say if any part of the opening reads
+as a rule only a checker could act on.
 
 If you find nothing, say "No gaps." Do not start the design until the brief has been revised.
 ```
@@ -58,8 +63,9 @@ For each numbered finding:
    brief). Re-run Gate 1 (step-03c) — both `check-copy-screen.js --deck --strict` and
    `check-rendered-page.js --validate-brief` must exit 0 — and re-deliver (step-04).
 3. **For a template finding, close the class in the same change, in the fork:**
-   - add the rule to `shared/presentation-floor.md` §8 and the matching item to Part 2b §9 of
-     `brief-template.md`;
+   - add the rule to `shared/presentation-floor.md` (§8 for completeness, §12 for what good looks like,
+     §13 for the words) and the matching item to `brief-template.md` — in the opening only if the
+     designer must act on it, in the checker appendix if only our gate reads it;
    - where a machine can see the gap, add a Gate 1 check to `tools/check-rendered-page.js` with a
      failing and a passing golden in `test/test-rendered-page-check.js`;
    - append one row to `shared/brief-gap-ledger.md`: date, the gap as the designer said it, the brief

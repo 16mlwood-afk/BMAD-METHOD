@@ -423,12 +423,15 @@ Delivery
 - Brief on main: {github_repo_url}/blob/main/{output_path_relative_to_repo_root}
 {If {has_analytics_band}:}
 - Rationale: {github_repo_url}/blob/main/{rationale_path_relative_to_repo_root} (read for context; do NOT hand to {consumer})
+{For each `! … REPORT` line Gate 1 recorded (step-03c §1): ONE plain sentence each, e.g. "This brief has no reference screen: <reason>." / "The reference screen was picked by the workflow and has not been accepted by you." / "No screen value could be derived for <field>: <why>." Never omitted, never a count.}
 {If Gate 1 ran: ONE line — the artifact path, plus "Gate 1: WARN-ONLY (Phase 1) — findings recorded, delivery not blocked". Do NOT list the findings, the fired-probe count, or the dispositions table; the owner gets decisions, not evidence of work. If Gate 1 was skipped, say which skip condition fired. Never hand this artifact to {consumer}.}
 {If {gate1_owner_decisions} is non-empty: this LEADS the whole close-out, above "Active artifact" — one sentence per decision, why the brief cannot answer it, what a generator will do unanswered, and the options where they exist. Say that delivery is PAUSED for this brief and that this is the route refusing to guess an owner decision, not the gate blocking on findings.}
 
 For {consumer}
 {If {consumer} is Claude Design: the FIRST paste is the pre-build review in `step-05-design-prebuild-review.md` §1, not the build. Give that paste here instead of the lines below; the lines below are the build paste, handed over after step-05 has folded the review back into the brief.}
 - Connect to {github_repo_url} and use `{output_path_filename}` on main as the SOLE active source brief for `{route}`.
+- Start with the brief's opening: the job, the picture of good and the five rules. {If the brief names a reference screen: "Open the reference screen it names before you draw anything; take its vocabulary and level of finish, not its layout." else: "The brief says there is no reference screen; work from its component vocabulary."} Everything after its *Reference* line is for looking things up, and its checker appendix is ours: do not design to it.
+- Before you deliver, do the self-review the brief asks for: render the draft, screenshot it, judge it against the five rules, read the visible words aloud, and ask "would this ship at a good product company?" Judge it as a product, not against the brief's checks. Then deliver, with one line on what the review changed.
 - Interpret it as a {page_mode} {scope: redesign | new} of `{route}`.
 {If scope is redesign / change_class material_revision:}
 - Do NOT treat the prior implementation or any superseded brief as binding layout precedent — recompose freely.

@@ -6,7 +6,7 @@
 **Why this file exists.** A rule nobody has tested against the case that produced it is not known to
 work. G1 is the owner's own words about a live page on 2026-09-26; the suite asserts it fails and its
 fixed form passes, so the matrix cannot drift from what the checker does. G2–G4 are the same page's
-neighbouring strings. G5 is the silence case: ordinary plain copy must cost nothing, or the screen is
+neighbouring strings. G6–G8 cover claims against chrome. G5 is the silence case: ordinary plain copy must cost nothing, or the screen is
 switched off within a week.
 
 | # | Current (fails) | What it means | Ships as (passes) | What fires on the current form |
@@ -16,6 +16,15 @@ switched off within a week.
 | G3 | `UK (matched; the verdict rests on no listing) · Oral-B iO3 · B0C6NBPWG5` | this is the listing we matched, but no listing passed, so the decision is not based on any listing's figures | `UK listing we matched, though no listing qualified · Oral-B iO3 · B0C6NBPWG5` | V1 (`verdict`, `rests on`) |
 | G4 | `B0C6MDD8V6 may be the supplier's product, but the identity test could not decide` | we could not tell whether this listing is the same product as the supplier's line | `This listing may be the supplier's product; we could not tell for sure (B0C6MDD8V6)` | V1 (`identity test`) · P1 (ID as the first word) |
 | G5 | `Show all 38 with their reasons` | — | unchanged | nothing: plain copy stays silent |
+| G6 | `Not counted` | chrome: a marker over the lines left out of the total | unchanged | nothing: a structural label the designer adds or rewords is free |
+| G7 | `Provenance` | chrome: the section holding where each figure came from | `Where this came from` | V1 (`provenance`): chrome is free in wording, not exempt from part (c) |
+| G8 | `13 not counted` | marked chrome, but it states how many lines are left out | `Not counted` as chrome, with the count shipped as its own claim | P4, a look: a figure inside a string marked chrome is a fact, and a fact is a claim |
+
+**Claims and chrome (G6–G8, added 2026-10-04, `on-screen-copy-screen.md` §1a).** G1–G5 are about what a
+string says. G6–G8 are about who owns its wording. A claim asserts a fact and ships word for word. Chrome
+is a column head, a section label, a group name or a marker, and the designer may word it, add it or
+drop it. G6 is the silence case for that freedom. G7 shows its limit: chrome is still screened for our
+own vocabulary. G8 shows the boundary between the two: a label that carries a count has become a claim.
 
 **The added-clause check on G1–G4 (part d).** Each replacement was read against *What it means*. G1
 says "one more thing to confirm" and not "the boxes match": a compared box can be UNCLEAR, so

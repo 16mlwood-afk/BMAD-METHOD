@@ -454,7 +454,7 @@ For each axis, classify the screen as `strong | adequate | weak`. The test cases
 
 **Axis 3 — Typography use**
 - *Strong* — passes ALL of:
-  - **T1**: Type scale used purposefully — body, secondary, labels, numbers all distinguishable by size AND weight (not just one).
+  - **T1**: Type scale used purposefully — size set by POSITION in the hierarchy (the page's lead line, a block's lead line, inside an item or row, secondary), never by kind of datum, and a line of text is one size; the value that leads is told apart by weight (`presentation-floor.md` §12 O4).
   - **T2**: Tabular numbers (`font-variant-numeric: tabular-nums`) in EVERY numeric column; numbers align on the decimal.
   - **T3**: Weight variation is deliberate and tied to information role (label vs value vs hint), not decorative.
 - *Adequate* — passes T1 AND T2; T3 may be marginal.
