@@ -12,6 +12,7 @@ description: 'Gather feature purpose, data model, API surface, and user context 
 ## RULES
 
 - **NEVER describe the current page layout, component structure, or information grouping.** The current UI was built by a developer. Describing it anchors the designer to implementation choices.
+- **The blank canvas covers the TARGET page's current layout, not the product's visual language (2026-10-04, `../../shared/presentation-floor.md` §12 O1).** Withholding the page must not strip the vocabulary a designer needs to aim at a mature product: step-02 §3a finds ONE accepted reference screen and a short component vocabulary, and the brief opens with them. The reference is another accepted surface of the same product family, or the latest ACCEPTED iteration of this design; it is never the developer-built current view of the target.
 - Read component files ONLY to extract data types, API calls, and route paths — NOT to summarize what sections the page shows.
 - Focus on WHAT DATA is available and WHO needs it — not HOW it is currently presented.
 - Present all data fields neutrally. Do NOT rank fields as "prominent" or "secondary."

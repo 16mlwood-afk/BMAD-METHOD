@@ -18,6 +18,8 @@
  *    R1  (deck mode) no Copy deck section, or a deck with no rows
  *    R2  (deck mode) a row whose Screen cell does not record all four parts a, b, c, d
  *    R3  (deck mode) a row whose Screen cell records a part as failed (✗)
+ *    K1  (deck mode, when the deck has a Kind column) a row that is neither claim nor chrome
+ *    P4  (proxy) a row marked chrome that carries a figure or a data value: a fact is a claim
  *    R4  (deck mode) a row with an empty Ships-as string
  *
  *  CHECKED, proxy (reported, never fails --strict — a guess must not block):
@@ -143,6 +145,19 @@ function screenString(raw) {
   return out;
 }
 
+/**
+ * Claims and chrome (STD-COPY-SCREEN-001 §1a, 2026-10-04). A CLAIM asserts a fact — a figure, a caveat,
+ * a status — and ships word for word. CHROME is a structural label — a column head, a section label, a
+ * group name, a marker such as "Not counted" — and is the designer's to word, add or drop. Chrome is
+ * still screened for internal vocabulary; what it may not do is carry a fact. A figure or a data
+ * variable inside a string marked chrome is the proxy for that: look, then re-mark it as a claim.
+ */
+function chromeCarriesFact(raw) {
+  const text = String(raw).replaceAll('`', '');
+  // search(), not test(): TEMPLATE_VAR is a global regex and test() would carry lastIndex between calls.
+  return /\d/.test(text) || text.search(TEMPLATE_VAR) !== -1 || /[£€$%]/.test(text);
+}
+
 /* ─────────────────────────────── deck mode ─────────────────────────────── */
 
 function splitRow(line) {
@@ -198,9 +213,24 @@ function checkDeck(markdown) {
     return { findings, rows: deck.rows.length };
   }
   if (deck.rows.length === 0) findings.push({ code: 'R1', severity: 'hard', detail: 'the Copy deck has no rows' });
+  // A deck written before 2026-10-04 has no Kind column and is screened as before. Gate 1 (B28 in
+  // check-rendered-page.js --validate-brief) is what requires the column of a NEW brief.
+  const kind = deck.header.findIndex((h) => h.trim().startsWith('kind'));
   for (const r of deck.rows) {
     const where = `line ${r.line}`;
     const s = r.cells[ships] ?? '';
+    if (kind !== -1) {
+      const k = (r.cells[kind] ?? '').trim().toLowerCase();
+      if (k !== 'claim' && k !== 'chrome')
+        findings.push({ code: 'K1', severity: 'hard', line: r.line, detail: `${where}: Kind is "${k}" — every row is a claim or chrome` });
+      else if (k === 'chrome' && chromeCarriesFact(s))
+        findings.push({
+          code: 'P4',
+          severity: 'proxy',
+          line: r.line,
+          detail: `${where}: marked chrome but carries a figure or a data value — a fact is a claim — "${s}"`,
+        });
+    }
     const mark = r.cells[screen] ?? '';
     if (!s.trim()) findings.push({ code: 'R4', severity: 'hard', line: r.line, detail: `${where}: empty Ships-as string` });
     for (const part of ['a', 'b', 'c', 'd']) {
@@ -266,4 +296,4 @@ function main(argvIn) {
 
 if (require.main === module) process.exit(main(process.argv.slice(2)));
 
-module.exports = { screenString, checkDeck, checkStrings, parseDeck, BANNED, main };
+module.exports = { screenString, checkDeck, checkStrings, parseDeck, chromeCarriesFact, BANNED, main };

@@ -33,10 +33,25 @@
     Also the always-on TV1 verification-pace test for any surface showing records that point outside
     the product. Both inside the existing binding class.
 
+  - 2026-10-04 — THE BRIEF SHOWS WHAT GOOD LOOKS LIKE, AND IS SHORT WHERE THE DESIGNER READS IT.
+    Owner, verbatim: "we've narrowed it down to the brief being the problem. Take this feedback and
+    solve the gap." Claude Design had said the brief "told me what was forbidden and what had to be
+    true, but never what good looks like". The brief now OPENS with the job, a picture of good (one
+    reference screen and a short component vocabulary), five rules (vocabulary · claims versus chrome ·
+    one value leads · type by position · absence is quiet), the words on screen, and a required
+    self-review. Everything else sits behind the `# Reference` divider, and what only our checker reads
+    (markers, policy sources, the machine copy, every count and budget, how each test is checked) sits in
+    the `# Checker appendix` at the end. The five-role type scale (which set size by kind of datum) is
+    replaced by four sizes set by position. Standard: shared/presentation-floor.md §12–§13; Gate 1
+    B25–B35. The prior text is archived verbatim in docs/decision-design-brief-picture-of-good-2026-10-04.md.
+
   How to render:
   - Substitute every {variable}; honour the conditional {if …} / {for …} blocks.
-  - Section order is intentional: the five parts (moment → what must be true → what must dominate
-    → data and its defects → open questions), THEN the advisory appendix. Existing section numbers
+  - Section order is intentional: THE OPENING (the job → picture of good → the five rules → the words
+    on screen → self-review), then `# Reference` (Screen words, how the brief binds, the five parts:
+    moment → what must be true → what must dominate → data and its defects → open questions, the Copy
+    deck, the advisory guidance), then `# Checker appendix`. The opening carries NO checker id, count
+    or machine block, and is at most 180 lines when rendered (Gate 1 B30). Existing section numbers
     (§1, §2, §2a–§2f, §3, §4–§4h, §5–§5b, §6, §7, §8) are KEPT because consumers cite them; the
     parts group them. §2e (blanks, refusals, both sides of a far-end figure) and §2f (which instance
     a figure is about) were added 2026-09-24 and are conditional, like §2a–§2d.
@@ -150,37 +165,132 @@ deferred_violations:
 
 ---
 
-## How this brief binds you — read this first
+## The job
+
+{page_moment — one paragraph. The operator, the event that sends them here, the question in their head when the page loads, and the action they take next. Written as a moment, never as a list of outputs. E.g. "You open this page because you suspect the prep is holding less than you paid for. You need to know how many purchases are missing and which ones to chase."}
+
+**Within five seconds the reader can say:** {page_answer}
+
+**The one thing that leads the page:** {dominant}
+
+You do the composition. This document opens with what good looks like and five rules: design to those. Everything after the line marked *Reference* is there to look things up in. The appendix at the very end is our own checker's copy, and you do not design to it.
+
+## Picture of good
+
+{if {picture_of_good.reference}}**Reference screen:** {picture_of_good.reference.surface} — `{picture_of_good.reference.where}`. Accepted by {picture_of_good.reference.accepted_by}.
+
+Open it before you draw anything. **Take from it:** {picture_of_good.reference.borrow}. **Do not copy:** {picture_of_good.reference.not_copy}. It sets the vocabulary and the level of finish, never the layout.{if {picture_of_good.reference.is_this_surface}} It is the latest accepted version of this same surface, so it is the one file about this surface you may open; the do-not-read list in §8 still covers the rest.{endif}{else}**There is no reference screen for this brief.** {picture_of_good.none_reason — why no accepted surface exists, in words, e.g. "This is the first designed surface in the product, so nothing has been accepted yet."} Work from the component vocabulary below and the product's design system, and say in your notes what you used as your bar.{endif}
+
+**Component vocabulary — build from these before inventing one:**
+
+{for c in {picture_of_good.vocabulary}}- **{c.component}**, for {c.use}
+{endfor}
+
+## The five rules
+
+1. **Use the product's vocabulary.** The reference and the components above are the product's visual language. The current layout of *this* page is still withheld, so you compose it fresh. You do not compose it from nothing.
+2. **Claims are word for word; chrome is yours.** A claim asserts a fact: a value, its qualifier, a figure, a state word. It ships as written. Chrome is structure: column headers, section labels, group names, row labels, markers such as *Not counted*. Add it, word it and drop it as a good interface needs. A label never carries a fact.
+3. **One value leads.** Each item names the one value that leads it. Everything else on the item is secondary. A caveat stays with its figure, at lower weight.
+
+   | Item | Leads | Secondary |
+   |---|---|---|
+{for f in {focal}}   | {f.item} | {f.leads} | {f.secondary joined ", "} |
+{endfor}
+4. **Type by position.** One typeface. Four sizes, set by where the text sits: {type_scale.answer.size}px for the page's lead line, {type_scale.sectionHeading.size}px for a block's lead line, {type_scale.body.size}px inside an item or row, {type_scale.caption.size}px for anything secondary. Size never follows what kind of thing the text is, and a line of text is never two sizes. The value that leads a row is heavier, not larger.
+5. **Absence is quiet.** A value that is not there (*{absence.example — a real one from this surface, e.g. "no figure in this sample"}*) is set at {type_scale.caption.size}px in {absence.colour}, never at full weight. It still says which kind of absence it is.
+
+## The words on screen
+
+You never write the words for a field. Each one arrives already split, for every state it can be in, in *Screen words* (the first section of the Reference): a **value** (what a buyer would say: one to four words, or a number with its unit), an optional **qualifier** (three words or fewer, set small and grey under the value, only where the value could be misread) and a **basis** (the full sentence, which appears only in the opened record). The value leads. If a field reaches you as one sentence, that is a defect in this brief: say so, do not split it yourself.
+
+- **Frozen, word for word:** every value and every qualifier.
+- **Must appear, placed and styled by you:** the basis, in the opened record.
+- **Yours:** section headings, column headers and row labels, starting from the label list in *Screen words*.
+- **Voice:** say *you*, never *the owner* · none of the system's own words · short dates on screen ({voice.short_date_example — e.g. "4 Oct"}) · one idea per line, no semicolon in a value · a missing value is one of the fixed grey words, never a sentence and never a dash · a bad state is one word plus its reason in grey · an action is an instruction (*{voice.action_example — one of this surface's own}*) and a question is a question.
+
+{for e in {screen_words.examples} — the first two only}> *"{e.raw}"* becomes **{e.value}**{if e.qualifier} with *{e.qualifier}* under it{endif}; on open: *{e.basis}*
+{endfor}
+
+## Before you deliver — self-review
+
+This is part of the job. Do it before you hand anything over.
+
+1. Render the draft and take a screenshot.
+2. Judge the screenshot against the five rules, one at a time.
+3. Read every row aloud, as if on the phone to a colleague. A row that sounds like a log entry, a sentence defending itself or a field name fails. If the words are yours (a label, a heading), rewrite them. If they are frozen (a value, a qualifier), flag the row instead of rewording it.
+4. Ask: **would this ship at a good product company?** Judge the draft as a product. If the answer is no, fix it and go back to step 1.
+5. Deliver, with one line saying what the review changed.
+
+The tests in Part 2 say what must be true of the finished design. Passing them is not the goal. A product someone would ship is.
+
+---
+
+# Reference — read as needed
+
+*Look things up here. Nothing below changes the job above. If anything below seems to hand the type sizes, the leading value or a frozen claim back to you, the opening wins.*
+
+## Screen words — every field, in every state, already split
+
+*Written by the producer of the data, from the real source: {screen_words.source — the export, table or sample the words were read from, with its date}. Nothing here is invented. Where a value could not be derived the row says so and why. The implementation supplies the same three parts per field and state; the page never derives a value from a basis sentence.*
+
+| Field | State | Value — frozen | Qualifier — frozen | Tone | Basis — appears in the opened record |
+|---|---|---|---|---|---|
+{for f in {screen_words.fields} — one row per field AND state}| {f.field} | {f.state} | {f.value — 1–4 words or a number with its unit, no semicolon; or "cannot derive: <why>"} | {f.qualifier or "—"} | {f.tone: ink | muted | warning | destructive} | {f.basis} |
+{endfor}
+
+**Tones:** {for t in {screen_words.tones}}{t.tone} is {t.colour}{endfor}. A bad state is one word in the destructive tone, with its reason as the grey qualifier.
+
+**Missing values — fixed words, in grey, never a sentence and never a dash:** {if {screen_words.missing}}{for m in {screen_words.missing}}*{m.word}* ({m.means}){endfor — one per kind that can occur here: nobody looked · we asked and there is nothing · does not apply · nothing set yet · any other kind this surface has}{else}no field on this surface can be missing: {screen_words.missing_none_reason}{endif}.
+
+**Your moves, and the phrase for each:**
+
+{if {screen_words.actions}}{for a in {screen_words.actions}}- {a.move}: **{a.phrase}**
+{endfor}{else}*The reader has no move on this surface: {screen_words.actions_none_reason}.*{endif}
+
+**Whose move it is, in one word each:** {screen_words.whose_move joined " · " — the reader, each other party, and nobody; only the reader's own is set in the warning tone. Or "nothing here waits on anybody: <why>"}
+
+**Labels for the opened record** (yours to change; written as the reader's questions, never as field names): {screen_words.opened_labels joined " · " — section names, then row labels; or "nothing opens on this surface: <why>"}
+
+**Never confuse these. The two strings differ at rest, in the value or the qualifier, never only in the basis:**
+
+{if {screen_words.distinctions}}| This | Is not this | What each tells the reader |
+|---|---|---|
+{for d in {screen_words.distinctions}}| {d.a} | {d.b} | {d.means} |
+{endfor}{else}*No look-alike states on this surface: {screen_words.distinctions_none_reason — how that was checked}.*{endif}
+
+**Worked examples, from the real data:**
+
+| The data sentence as it arrives | Value | Qualifier | Basis |
+|---|---|---|---|
+{for e in {screen_words.examples}}| {e.raw} | {e.value} | {e.qualifier or "—"} | {e.basis} |
+{endfor}
+
+## How this brief binds you
 
 > **"the biggest takeaway is claude design should do the heavy lifting everything else is mostly advisory"** — the product owner, 2026-09-19.
 
-You do the heavy lifting on composition and wording. This brief binds you in two places: **Part 2, "What must be true"** — a short list of tests your finished design either passes or fails — and **Part 2b, the presentation floor**, which fixes the type scale (one size per job), the spacing and colours, what sits at the top of the page, the summary-then-items layout, and a list of banned patterns. Those are decided for you, and a rendered-page check fails a design that departs from them. Everything from the **Advisory guidance** heading down (suggested frames, composition, visual direction, the style parts of the design policy Part 2b does not name) is advice: take it, trade it, or ignore it for a better idea, and say what you did in your notes. A rule kept only for consistency with the rest of the product is marked **[tradeable]**.
-
-> **Owner, 2026-09-27:** *"we've left basic gaps to Claude Design... no font size enforcement... that yellow thing at the top, the most AI pattern I've ever seen."* Part 2b closes those gaps. It is binding (`shared/presentation-floor.md`, STD-PRESENTATION-FLOOR-001).
+Three things bind you. **The opening**: the five rules and the frozen words. **Part 2, "What must be true"**: a short list of outcomes a finished design either meets or does not. **Part 2b, the presentation floor**: the four type sizes, the spacing and colours, what sits at the top, the summary-then-items layout and a list of banned patterns, all decided for you. Everything from the **Advisory guidance** heading down is advice: take it, trade it, or ignore it for a better idea, and say what you did in your notes. A rule kept only for consistency with the rest of the product is marked **[tradeable]**.
 
 ```
   answer:       {page_answer}              # T0 — a reader states this within 5 seconds of the page loading
   dominant:     {dominant}                 # the ONE thing that leads; everything else is available-on-demand
   binding:      {truth_test_ids}           # the Part 2 tests
-  floor:        Part 2b · P1–P9            # type scale, spacing, colours, attention plan, layout, banned patterns, sections below the fold, label/value row groups — binding, checked on the rendered page
   route:        {route}
   mutations:    {mutation_posture}         # none (read-only) | the jobs the operator must still be able to do (each is a Part 2 test)
   suggested:    frames {frames_list} · composition {composition} · page_mode {page_mode}   # ADVISORY — yours to change
 ```
 
-Contract: `shared/brief-binding-contract.md` (STD-BRIEF-BINDING-001, v2). Reviewers downstream (`design-review-pr`, the `design-implement` conformance gate and its rendered-page check) may fail your design on a Part 2 test or a Part 2b floor item; every other departure is reported as a note.
+**Five of the Part 2 tests are on every brief — TC1, TC2, TA1, TA2, TF1.** Every action control can say what its press tells the system that the system does not already know · no sentence instructs an action the page gives no way to perform · the most emphasised thing is the most consequential thing · no fact is said twice at rest · no system fault is rendered as a category of the operator's work.
 
-**Five of the Part 2 tests are on every brief and are worth reading first — TC1, TC2, TA1, TA2, TF1.** They govern whether a control exists, how loud anything is, and what the page treats as work: every action control can say what its press tells the system that the system does not already know · no sentence instructs an action the page gives no way to perform · the most emphasised thing is the most consequential thing and no consequential control is dressed as chrome · no fact is said twice at rest · no system fault is rendered as a category of the operator's work. Source: `shared/controls-and-attention.md` (STD-CONTROLS-ATTENTION-001), which holds **no** colour, shape, placement, spacing or wording rule — those are yours, as always. §4f-c carries the evidence they are judged against.
+{if {detail_surface_orders}}**Every drawer or panel answers its own question — TD0, TD1, TD2, once per detail surface.** Within five seconds of it opening a reader can say that item's answer and the one thing to do next; it reads answer → evidence → provenance and audit, the last collapsible or visibly secondary; and no fact appears on it twice unless the brief says why. The Part 2 "Detail surfaces" block names each surface's answer and order.{endif}
 
-{if {detail_surface_orders}}**And every drawer or panel answers its own question — TD0, TD1, TD2, once per detail surface.** A detail surface is judged when it opens, not only when the page loads: within five seconds a reader can say that item's answer and the one thing to do next; it reads answer → evidence (ranked by how much each would change the decision) → provenance and audit, the last collapsible or visibly secondary; and no fact appears on it twice unless the brief says why. The Part 2 "Detail surfaces" block names each surface's answer and order. How you make provenance secondary is yours.{endif}
+*How each test is checked, and by what, is in the checker appendix. Contract: `shared/brief-binding-contract.md` (STD-BRIEF-BINDING-001).*
 
 ---
 
 ## Part 1 · The moment
 
-**Who opens this page, after what, to decide what:** {page_moment — one paragraph. The operator, the event that sends them here, the question in their head when the page loads, and the action they take next. Written as a moment, never as a list of outputs. E.g. "The operator opens this page because they suspect the prep is holding less than they paid for. They need to know how many purchases are missing and which ones to chase."}
-
-**The page's answer (T0):** {page_answer} — if a first-time reader cannot say this within five seconds of the page loading, the design has failed, however complete it is.
+*Who opens this page, after what, to decide what, and the page's answer (T0), are stated once: in **The job**, at the top. If a first-time reader cannot say that answer within five seconds of the page loading, the design has failed, however complete it is.*
 
 ## 1. Feature Purpose
 
@@ -211,21 +321,21 @@ Contract: `shared/brief-binding-contract.md` (STD-BRIEF-BINDING-001, v2). Review
 
 ## Part 2 · What must be true — the binding tests
 
-These are the ONLY things in this brief that can fail your design. Each is a test a finished design passes or fails. None of them tells you how to pass it — that is yours. A test written as a mechanism ("annotate every figure inline", "a permanent band at the top") is a brief defect; say so.
+Each row is an outcome a finished design meets or does not. None of them tells you how to pass it — that is yours. A test written as a mechanism ("annotate every figure inline", "a permanent band at the top") is a brief defect; say so.
 
-| Id | A finished design passes if… | How a reviewer checks it | Why (source) |
-|---|---|---|---|
-| T0 | A reader who has not seen the page can state **{page_answer}** within five seconds of it loading. | Show the render to a fresh reader for five seconds; ask what the page is telling them. | Owner, 2026-09-19 — the page must answer something. |
-| TC1 | {tc1_statement — every action control on THIS surface can name what its press tells the system that the system does not already know. Name this surface's controls from §4f-c, and name the `{background_work}` the design must not turn into a control, e.g. "no control on this page re-runs the marketplace check — that runs on its own and the page says when it last ran".} | List every action control on the render. For each, say what the press tells the system. A control whose answer is "nothing — the system could run this itself" fails. | Owner, 2026-09-20 — `controls-and-attention.md` §1. |
-| TC2 | {tc2_statement — no sentence on THIS surface instructs an action the surface gives no way to perform. Name the instructions this surface's data forces it to write, e.g. "where a row says the price is below the floor, the row carries the control that changes it — or the sentence states the fact and stops".} | Read every instruction in the prose. For each, find the control that performs it on the same surface. No control and the sentence still instructs → fail. | Owner, 2026-09-20 — `controls-and-attention.md` §1. |
-| TA1 | {ta1_statement — the most emphasised thing on THIS surface is the most consequential thing on it, and no consequential control is dressed as an inconsequential one. Name the surface's single most consequential control (usually an irreversible one from §4f-c).} | Rank what the eye reaches first; rank what costs most if pressed or missed; compare the two orders. Then find the most consequential control and check it does not read as chrome. | Owner, 2026-09-20 — `controls-and-attention.md` §2. |
-| TA2 | {ta2_statement — no fact is stated twice on THIS surface at rest. Name the two or three facts this surface will be most tempted to repeat — a group's blocking reason restated per row, a two-authority disagreement said in two voices, a per-figure caveat that belongs to the page.} | Pick the page's three loudest facts. Count where each is said before anything is opened. Twice is a fail; a decomposition carrying a *different* fact is a pass. | Owner, 2026-09-20 — `controls-and-attention.md` §2. |
-{for d in {detail_surface_orders}}| TD0-{d.slug} | Within five seconds of **{d.surface}** opening, a reader who has not seen it can state **{d.answer}** and the next thing to do: **{d.next_action}**. Its opening line is true on its own for a reader who stops there, and reaches the answer or its deciding figure within about twelve words. | Open {d.surface} cold for five seconds; write down its answer and what it tells you to do; compare with the Detail surfaces block below. Count the words from the opening line's start to the answer. | `controls-and-attention.md` §2a — T0 per detail surface. |
-| TD1-{d.slug} | **{d.surface}** reads in the order the Detail surfaces block names for it: the answer and next action first, then the evidence in its stated rank, then provenance and audit — collapsed or visibly secondary. Every level (first line, group heading, item first line) is true on its own, and a caveat that changes what a figure means stays beside that figure. | Rank what the eye reaches first on the opened surface; compare with the named order. Evidence out of rank at the top, provenance as loud as the answer, a heading the detail below reverses, or a qualifying caveat collapsed away from its figure, fails. The mechanism is not judged. | `controls-and-attention.md` §2a — reading order. |
-| TD2-{d.slug} | No fact appears twice on **{d.surface}** when it opens{if d.justified_repeats}, except {d.justified_repeats_short}{endif}. Most tempting to repeat here: {d.repeat_risks}. | List every fact visible when it opens; any that appears twice and is not a justified repeat fails. A decomposition carrying a different fact passes. | `controls-and-attention.md` §2a — TA2 per detail surface. |
-{endfor}| TF1 | {tf1_statement — no system fault is presented as a category of the operator's work on THIS surface, and no control exists only to compensate for one. Name each `{fault_categories}` entry and its non-operator owner.} | For each category the page counts as work, ask who must act for it to stop recurring. An engineer, a rule or a producing system → it is a fault: named as one, owned elsewhere, counted separately. | Owner, 2026-09-20 — `controls-and-attention.md` §3. |
-{if {outward_links_present}}| TV1 | Every record or claim on this surface that points outside the product — {outward_link_kinds — name them for THIS surface, e.g. "each supplier's website, each quoted source page"} — opens its target in one action, in a new tab, visibly a link at rest; the list can be checked top to bottom without opening a detail surface. Full wording: the TV1 block below the table. | The reviewer check in the TV1 block below. | Owner, 2026-09-28 — verification pace (step-01 §3l). |
-{endif}{for t in {truth_tests}}| {t.id} | {t.statement — an outcome, e.g. "A reader can never mistake a stale or partial figure for a current one, including when they screenshot a single row."} | {t.check — what a reviewer looks at to decide pass/fail} | {t.source — the §2 / §2b / §2c / §4d / §4e / policy rule / capability it protects} |
+| Id | A finished design passes if… |
+| --- | --- |
+| T0 | A reader who has not seen the page can state **{page_answer}** within five seconds of it loading. |
+| TC1 | {tc1_statement — every action control on THIS surface can name what its press tells the system that the system does not already know. Name this surface's controls from §4f-c, and name the `{background_work}` the design must not turn into a control, e.g. "no control on this page re-runs the marketplace check — that runs on its own and the page says when it last ran".} |
+| TC2 | {tc2_statement — no sentence on THIS surface instructs an action the surface gives no way to perform. Name the instructions this surface's data forces it to write, e.g. "where a row says the price is below the floor, the row carries the control that changes it — or the sentence states the fact and stops".} |
+| TA1 | {ta1_statement — the most emphasised thing on THIS surface is the most consequential thing on it, and no consequential control is dressed as an inconsequential one. Name the surface's single most consequential control (usually an irreversible one from §4f-c).} |
+| TA2 | {ta2_statement — no fact is stated twice on THIS surface at rest. Name the two or three facts this surface will be most tempted to repeat — a group's blocking reason restated per row, a two-authority disagreement said in two voices, a per-figure caveat that belongs to the page.} |
+{for d in {detail_surface_orders}}| TD0-{d.slug} | Within five seconds of **{d.surface}** opening, a reader who has not seen it can state **{d.answer}** and the next thing to do: **{d.next_action}**. Its opening line is true on its own for a reader who stops there, and reaches the answer or its deciding figure within about twelve words. |
+| TD1-{d.slug} | **{d.surface}** reads in the order the Detail surfaces block names for it: the answer and next action first, then the evidence in its stated rank, then provenance and audit — collapsed or visibly secondary. Every level (first line, group heading, item first line) is true on its own, and a caveat that changes what a figure means stays beside that figure. |
+| TD2-{d.slug} | No fact appears twice on **{d.surface}** when it opens{if d.justified_repeats}, except {d.justified_repeats_short}{endif}. Most tempting to repeat here: {d.repeat_risks}. |
+{endfor}| TF1 | {tf1_statement — no system fault is presented as a category of the operator's work on THIS surface, and no control exists only to compensate for one. Name each `{fault_categories}` entry and its non-operator owner.} |
+{if {outward_links_present}}| TV1 | Every record or claim on this surface that points outside the product — {outward_link_kinds — name them for THIS surface, e.g. "each supplier's website, each quoted source page"} — opens its target in one action, in a new tab, visibly a link at rest; the list can be checked top to bottom without opening a detail surface. Full wording: the TV1 block below the table. |
+{endif}{for t in {truth_tests}}| {t.id} | {t.statement — an outcome, e.g. "A reader can never mistake a stale or partial figure for a current one, including when they screenshot a single row."} |
 {endfor}
 
 {if {outward_links_present}}
@@ -259,10 +369,9 @@ twelve-words-to-the-first-figure budget.*
 
 *Advisory, `[tradeable]`, and candidates for the owner's pending decision on binding style (none can
 fail your design): emphasis by weight or size rather than capitals, with capitals kept for a lead-in
-clause and for references; a type scale in which the answer is larger than the evidence and a label
-quieter than its value. Monospace is best kept for codes a reader compares character by character;
-money and counts in proportional type with tabular figures is a candidate, not a rule. Cited in
-`controls-and-attention.md` §2a.*
+clause and for references; a label quieter than its value. Type follows the opening's rule 4 here as
+everywhere: one typeface, size by position, so the answer leads by position and weight, and codes,
+money and counts sit in the same face with tabular figures. Cited in `controls-and-attention.md` §2a.*
 
 {#
   WORKED EXAMPLE — how a block reads when it is right. Kept in a template comment so it guides the
@@ -369,28 +478,29 @@ you said it is yours.
 
 ## Part 2b · The presentation floor — binding, and specified for you
 
-*Standard: `shared/presentation-floor.md` (STD-PRESENTATION-FLOOR-001, 2026-09-27). This part is not a
-suggestion and it is not yours to choose. The owner rejected a page in September 2026 because the brief
-left type, colour and the top of the page to the designer: three font sizes did nine jobs, the headline
-and every row's figure were the same size, provenance filled the top, and an amber notice box said the
-next action a third time. So this brief decides those things, and a rendered-page check fails any design
-that departs from them. Composition, wording and everything not named here are still yours.*
+*Standard: `shared/presentation-floor.md` (STD-PRESENTATION-FLOOR-001). These things are decided for
+you, because a page was rejected in September 2026 when they were not: the headline and every row's
+figure came out the same size, provenance filled the top, and an amber notice box said the next action
+a third time. Composition, chrome and everything not named here are still yours.*
 
 **Values from:** {floor_source — "project design policy §N" | "project tokens `{design_system_pointer}`, mapped role by role" | "fork default (the project declares no scale — see Part 5)"}
 
-### 1. Type scale — one size, one job
+### 1. Type — one typeface, four sizes, set by position
 
-| Role | Size | Weight | Used for | Never used for |
-|---|---|---|---|---|
-| answer | {type_scale.answer.size}px | {type_scale.answer.weight} | {type_scale.answer.use} | anything else — no figure, heading or label shares this size |
-| section heading | {type_scale.sectionHeading.size}px | {type_scale.sectionHeading.weight} | {type_scale.sectionHeading.use} | figures, the answer |
-| figure | {type_scale.figure.size}px | {type_scale.figure.weight}, tabular numerals | {type_scale.figure.use} | the answer; prose |
-| body | {type_scale.body.size}px | {type_scale.body.weight} | {type_scale.body.use} | provenance, which is caption |
-| caption / footnote | {type_scale.caption.size}px | {type_scale.caption.weight} | {type_scale.caption.use} | column headers that are sentences; methodology at the top |
+| Position | Size | Weight | What sits here |
+|---|---|---|---|
+| the page's lead line | {type_scale.answer.size}px | {type_scale.answer.weight} | {type_scale.answer.use} |
+| a block's lead line | {type_scale.sectionHeading.size}px | {type_scale.sectionHeading.weight} | {type_scale.sectionHeading.use — the name over a group, or the one value that leads an opened record or a block} |
+| inside an item or row | {type_scale.body.size}px | {type_scale.body.weight}; heavier for the value that leads the row | {type_scale.body.use — names, values, figures and sentences alike} |
+| secondary | {type_scale.caption.size}px | {type_scale.caption.weight} | {type_scale.caption.use — the basis under a value, an absent value, the footer} |
 
-No other size exists on this surface. **The answer is visually heavier than the evidence**: larger than
-every figure and heading, and never the size a row's figure is set at. Monospace only for codes, and a
-code is never a row's label.
+No other size exists on this surface, and no size is chosen by what kind of thing the text is: a
+figure, a code and a sentence on the same line are the same size. **A line of text is one size.** The
+page's lead line is used once. One typeface throughout; figures use its tabular numerals where they
+sit in a column.{if {type_policy_conflict}} *The project's design policy asks for a second face for {type_policy_conflict.what} ({type_policy_conflict.source}). That is the project's rule and it stands on this surface; it is listed in Part 5 as a conflict with type by position. Size still never changes within a line.*{endif}
+
+**An absent value** is set at the secondary size in {absence.colour}, and still says which kind of
+absence it is (§2e).
 
 ### 2. Spacing and colour
 
@@ -437,44 +547,12 @@ pattern this brief exists to replace.
 5. **The same fact twice** — a sentence repeated, a clause restated down every row, one question asked
    in three places. Most tempting here: {repeat_risks}.
 6. Also: a banner or hero strip above the items, a stat-card grid as the opener, an identifier as a row's
-   label or a sentence's subject.
-
-### 6. Markers the design must carry
-
-`data-answer` on the answer · `data-first-item` on the first actionable item · `data-item` on every item
-card or group · `data-page` on the surface root. The rendered-page check reads them; a page without them
-fails as unchecked.
-
-### 7. The policies behind this part — cited so a reviewer can check the source
-
-| Policy | Path | The rule you are held to |
-|---|---|---|
-{for p in {floor_citations}}| {p.id} | `{p.path}` | {p.rule} |
-{endfor}
-
-### 8. The machine copy — the checker reads this block; it must agree with the tables above
-
-```json presentation-floor
-{presentation_floor_json}
-```
-
-| Id | A finished design passes if… | How it is checked |
-|---|---|---|
-| P1 | Every text size is a role size above, and the answer size is used by the answer alone | `check-rendered-page.js` R1 |
-| P2 | The answer is the largest text on the surface | R2 |
-| P3 | No tinted callout, no edge stripe, bordered prose blocks within {bordered_allowed} | R3, R4, R5 |
-| P4 | The answer reaches a figure within 12 words, and ≤ {prose_above_first_item} words sit above the first item | R6, R7 |
-| P5 | Nothing is said twice | R8 |
-| P6 | Every text colour meets AA in both themes, and nothing is in capitals for emphasis | R9, R10 |
-| P7 | At 1440×900 the first item is fully visible in the top 40% | R11 |
-| P8 | Below the first item every section is in its declared form (§10): no more than 2 paragraphs in a row, none over 40 words; caveats as labelled rows; held, provenance, method, skipped and message sections collapsed; the footer 2 lines at rest | R12, R13, R14 |
-| P9 | Every label/value list is a grid (§11): one value and at most one badge per row, values right-aligned in tabular numerals on one edge, no sentence as a value, notes of 12 words or fewer, rows spaced apart, no internal words, a partial total labelled so | R15, R16, R17, R18 |
+   label or a sentence's subject, a size chosen by kind of datum, two sizes on one line, and an absent
+   value at full weight.
 
 ### 9. Completeness — what you would otherwise have to guess
 
-*Standard: `shared/presentation-floor.md` §8 (G1–G9). Each item below is a gap a designer found in an
-earlier brief that this template had let through (`shared/brief-gap-ledger.md`). The machine copy
-above carries each one; Gate 1 fails the brief without it (B12–B20).*
+*Each item below is something a designer once had to guess (`shared/presentation-floor.md` §8).*
 
 1. **Order of every ranked list** — evidence first, then size. {for o in {ordering}}**{o.list}:**
    {o.tiers joined " → "}; within a tier, {o.thenBy}.{endfor} {or "No list on this surface is ranked."}
@@ -492,59 +570,41 @@ above carries each one; Gate 1 fails the brief without it (B12–B20).*
    {r.drawer}s the page.{endif} {endfor}
 5. **Feedback after an action** — {feedback.position}; {feedback.look}; stays {feedback.duration};
    wording: {feedback.wording}. {or "Nothing on this surface is an action."}
-6. **Words above the first item** — this design puts **{words_above_first_item}** there, of a
-   budget of {prose_above_first_item}: at most 85%, so your heading or label has room.
-7. **This brief's notation is not the page's.** {notation.notLiteral}. On the page:
+6. **This brief's notation is not the page's.** {notation.notLiteral}. On the page:
    {notation.separators}.
 
-**The brief is self-contained (G4).** Every string you ship is in the Copy deck, and every view this
-brief mentions is described here. Nothing is "as it is" and nothing is "in the earlier brief": if you
-find a view or a string you cannot draw from this document alone, that is a brief defect — say so.
+**The brief is self-contained.** Every claim you ship is in *Screen words* or the Copy deck (chrome is
+yours to add), and every view this brief mentions is described here. Nothing is "as it is" and nothing is "in the earlier brief": if you
+find a view or a claim you cannot draw from this document alone, that is a brief defect — say so.
 
 ### 10. Below the first item — every section has a form, none is running prose
 
-*Standard: `shared/presentation-floor.md` §9 (G10). The owner, on a design that met every check above
-and still ended in six paragraphs of caveats, five open questions and a six-line footer: "looks like
-text printed on a screen with no thought." Gate 1 fails the brief without the `sections` entry (B21);
-the rendered page fails R12–R14.*
+*The owner, on a design that ended in six paragraphs of caveats, five open questions and a six-line
+footer: "looks like text printed on a screen with no thought."*
 
-| Section (`data-section`) | Kind | Form | Words at rest | What shows at rest |
-|---|---|---|---|---|
-{for s in {sections}}| {s.name} | {s.kind} | {s.form} | ≤ {s.wordBudget} | {s.at_rest — rows: "≤ {s.maxRows} rows, a label then ≤ {s.rowMaxWords} words, the why on open" · disclosure: "{s.summary}" · message-block: "{s.summary}, with {s.controls}" · footer: "{s.linesAtRest} lines, then {s.disclosure}"} |
+| Section (`data-section`) | Kind | Form | What shows at rest |
+|---|---|---|---|
+{for s in {sections}}| {s.name} | {s.kind} | {s.form} | {s.at_rest — rows: "a few short labelled rows, a label then a phrase; the why on open" · disclosure: "closed, showing: {s.summary}" · message-block: "closed, showing: {s.summary}, with {s.controls}" · footer: "a couple of lines, then {s.disclosure}"} |
 {endfor}
 
-Every section below the items also carries `sample` in the machine copy: its at-rest strings for this
-brief's worked instance, each written in this brief, whose words fit the budget (B24).
-{if exemptions}**Declared exemptions** (§11 of the presentation floor; each prints on the check report):
-{quoted_sources} are that source's own words, marked `data-source="<source>"` on the page and exempt from
-{their checks}; {exemptions}; {internal_word_exceptions}.{endif} No provenance caption in the body
-(*Named from…*, *Known because…*, *· the supplier's list*): the footer or a closed disclosure (R19).
-
-Never, anywhere on the page: more than two paragraphs in a row, or one paragraph over 40 words.
-Caveats are at most five labelled rows. Held questions, provenance, method notes and skipped lines are
-collapsed behind a one-line summary. A message to send is a collapsed message block with Copy and its
-channel. The footer is two lines at rest. A note about this brief (*sample*, *stand-in*) is never a
-section of the page. Markers: `data-section` on each section, `data-row` and `data-row-label` on each
-row, `data-footer` on the footer.
+No section is written as paragraphs. Caveats are short labelled rows. Held questions, provenance,
+method notes and skipped lines are closed behind a one-line summary. A message to send is a closed
+message block with Copy and its channel. The footer is a couple of lines at rest. A note about this
+brief (*sample*, *stand-in*) is never a section of the page, and provenance never sits in the body.
+{if exemptions}Another party's own words ({quoted_sources}) are kept exactly and marked as theirs.{endif}
 
 ### 11. Label/value lists — a grid, not text in rows
 
-*Standard: `shared/presentation-floor.md` §10 (G11). Gate 1 fails a `facts` section not specified this
-way (B22); the rendered page fails R15–R18.*
+{for g in {row_groups}}**{g.name}**{if g.view} (on `{g.view}`){endif}: columns {g.columns}. One value per
+row, right-aligned on one edge in tabular numerals: money, a count or a few words, never a sentence.
+{if note}A short explanation under the label, at the secondary size. {endif}{if status}At most one state word per row, from {g.statusValues}, never repeating the value. {endif}Rows sit {g.rowGap}px apart, lines inside a row {g.innerGap}px apart. Total: {g.total}.
 
-{for g in {row_groups}}**{g.name}** (`data-row-group="{g.name}"`{if g.view}, on `{g.view}`{endif}):
-columns {g.columns}; value right-aligned in tabular numerals, money, a count or at most
-{g.valueMaxWords} words; {if note}an explanation of at most {g.noteMaxWords} words in caption under the
-label; {endif}{if status}a status badge from {g.statusValues}, never the value's own words; {endif}rows
-{g.rowGap}px apart, lines inside a row {g.innerGap}px apart; total: {g.total}.
-
-| Label | Value | Status | Explanation |
+| Label | Value | State | Explanation |
 |---|---|---|---|
 {for r in {g.rows}}| {r.label} | {r.value} | {r.status or "—"} | {r.note} |
 {endfor}
 {endfor}
-Never in a row group: {internal_words}. Markers: `data-row`, `data-cell="label|value|status|note"`,
-`data-row-total` (and `data-total="partial"`).
+Never in a row group: {internal_words}.
 
 ---
 
@@ -1009,16 +1069,20 @@ If `{page_mode}` = **detail:**
 
 ## Copy deck — every string a person reads on this surface, screened
 
-**Use these words.** Every heading, group title, column head, label, status, empty state, refusal, button, link, tooltip, toast and caption on this surface, one row each, with the words it ships as. A string built from data is listed once as its template (`{n} lines need a look`); a family of sentences a producer system writes is listed once per shape. You may reword a string, but any string you add or change goes through the same screen, and design-implement screens every string again before merge (`shared/on-screen-copy-screen.md`, STD-COPY-SCREEN-001).
+**Two kinds of string, and they are owned differently.** A **claim** asserts a fact: a figure, a caveat, a status, an empty-state or refusal sentence. It ships as written, as do the values and qualifiers in *Screen words*. **Chrome** is structure: a section heading, a column header, a row label, a group name, a marker such as *Not counted*. The chrome rows below are a starting point: reword them, add ones this deck never listed and drop ones you do not need. A label that carries a figure or a status has become a claim.
+
+**What "word for word" covers:** every value and qualifier in *Screen words*, the action phrases there, and every row below marked *claim*. A basis sentence must appear in the opened record; where it sits and how it is styled are yours. Nothing else is frozen. If a claim cannot be set well as written, keep it and say so in your notes; do not reword it to fit a space or a count.
+
+A string built from data is listed once as its template (`{n} lines need a look`); a family of sentences a producer system writes is listed once per shape. Every string, claim or chrome, yours or ours, is screened again before merge (`shared/on-screen-copy-screen.md`, STD-COPY-SCREEN-001).
 
 **The screen, per row:** (a) humanized under the `writing:humanize-text` rules · (b) the owner, who was not in the build, can say what it means and what to do from the string alone · (c) none of: verdict, disposition, lane, gate, route, provenance, identity test, figure-listing, precondition, settle, rests on, `CHECK`/`SKIP` as bare codes, an ID as the subject · (d) the replacement adds no claim or cause that *What it means* does not carry.
 
-| # | Where | Current | What it means | Ships as | Screen |
-|---|---|---|---|---|---|
-{for s in {copy_deck}}| {s.n} | {s.where} | {s.current or "—"} | {s.means} | {s.ships_as} | {s.screen: e.g. "a✓ b✓ c✓ d✓"} |
+| # | Where | Kind | Current | What it means | Ships as | Screen |
+|---|---|---|---|---|---|---|
+{for s in {copy_deck}}| {s.n} | {s.where} | {s.kind: claim | chrome} | {s.current or "—"} | {s.means} | {s.ships_as} | {s.screen: e.g. "a✓ b✓ c✓ d✓"} |
 {endfor}
 
-{State the count: "{copy_deck_count} strings; {copy_deck_changed} reworded from the current surface." A surface with no text says so in a sentence; the section is never omitted.}
+{State the count: "{copy_deck_count} strings ({copy_deck_claims} claims, {copy_deck_chrome} chrome); {copy_deck_changed} reworded from the current surface." A surface with no text says so in a sentence; the section is never omitted.}
 
 ---
 
@@ -1549,9 +1613,9 @@ Restated from `shared/design-standards.md` § Quality Checklist — the designer
 - Every spacing value comes from one scale (multiples of 4 or 8). No ad-hoc values.
 - If rows, labels, or controls collide, or must be re-read to be told apart, density has passed its floor.
 
-**Typography** — *the size rules now bind in Part 2b §1 (five roles, one size per job), which supersedes "three sizes or fewer".*
+**Typography** — *the size rules bind in Part 2b §1 (one typeface, four sizes set by position), which supersedes "three sizes or fewer".*
 - Primary, secondary and tertiary content are identifiable in under 2 seconds.
-- Monospace only for codes and identifiers (binding, Part 2b §1).
+- One typeface; codes and identifiers sit in it at the size of their line (binding, Part 2b §1).
 
 **Accessibility**
 - WCAG AA contrast: 4.5:1 body text, 3:1 large text (binding, Part 2b §2 — checked on the rendered page in both themes).
@@ -1673,6 +1737,77 @@ Read token VALUES (colors, `--radius-md`) from `tokens.css` — anchor to those.
 - `{file path}` — {what it renders, e.g. "the current view markup" / "current state→DOM rendering"}
 
 If a fact you need lives only in a DO-NOT-READ file, STOP and report the gap as a brief defect — the fix is a brief revision, never reading the view.}
+
+---
+
+# Checker appendix — for our gate, not for you
+
+*This is our own checker's copy. **You do not design to it.** It holds how each test is checked, the markers the checker looks for, the policies behind the floor, the machine copy and the numbers the checker applies to the built page. Design to the opening. If one of these numbers would make you reword a claim, cramp a good layout or pad a short one, keep the design and tell us in your notes: the number is ours to fix or to exempt (`shared/presentation-floor.md` §11), never yours to work around.*
+
+### A. How each Part 2 test is checked, and where it came from
+
+| Id | How a reviewer checks it | Why (source) |
+| --- | --- | --- |
+| T0 | Show the render to a fresh reader for five seconds; ask what the page is telling them. | Owner, 2026-09-19 — the page must answer something. |
+| TC1 | List every action control on the render. For each, say what the press tells the system. A control whose answer is "nothing — the system could run this itself" fails. | Owner, 2026-09-20 — `controls-and-attention.md` §1. |
+| TC2 | Read every instruction in the prose. For each, find the control that performs it on the same surface. No control and the sentence still instructs → fail. | Owner, 2026-09-20 — `controls-and-attention.md` §1. |
+| TA1 | Rank what the eye reaches first; rank what costs most if pressed or missed; compare the two orders. Then find the most consequential control and check it does not read as chrome. | Owner, 2026-09-20 — `controls-and-attention.md` §2. |
+| TA2 | Pick the page's three loudest facts. Count where each is said before anything is opened. Twice is a fail; a decomposition carrying a *different* fact is a pass. | Owner, 2026-09-20 — `controls-and-attention.md` §2. |
+{for d in {detail_surface_orders}}| TD0-{d.slug} | Open {d.surface} cold for five seconds; write down its answer and what it tells you to do; compare with the Detail surfaces block below. Count the words from the opening line's start to the answer. | `controls-and-attention.md` §2a — T0 per detail surface. |
+| TD1-{d.slug} | Rank what the eye reaches first on the opened surface; compare with the named order. Evidence out of rank at the top, provenance as loud as the answer, a heading the detail below reverses, or a qualifying caveat collapsed away from its figure, fails. The mechanism is not judged. | `controls-and-attention.md` §2a — reading order. |
+| TD2-{d.slug} | List every fact visible when it opens; any that appears twice and is not a justified repeat fails. A decomposition carrying a different fact passes. | `controls-and-attention.md` §2a — TA2 per detail surface. |
+{endfor}| TF1 | For each category the page counts as work, ask who must act for it to stop recurring. An engineer, a rule or a producing system → it is a fault: named as one, owned elsewhere, counted separately. | Owner, 2026-09-20 — `controls-and-attention.md` §3. |
+{if {outward_links_present}}| TV1 | The reviewer check in the TV1 block in Part 2. | Owner, 2026-09-28 — verification pace (step-01 §3l). |
+{endif}{for t in {truth_tests}}| {t.id} | {t.check — what a reviewer looks at to decide pass/fail} | {t.source — the §2 / §2b / §2c / §4d / §4e / policy rule / capability it protects} |
+{endfor}
+
+### B. Part 2b §6 · Markers to add at hand-off
+
+`data-answer` on the answer · `data-first-item` on the first actionable item · `data-item` on every item
+card or group · `data-page` on the surface root. The rendered-page check reads them; a page without them
+fails as unchecked. Also: `data-section` on each section, `data-row` and `data-row-label` on each row, `data-footer` on the footer, `data-row-group`, `data-cell="label|value|status|note"` and `data-row-total` (with `data-total="partial"`) on a label/value list, and `data-source="<source>"` on another party's own words.
+
+### C. Part 2b §7 · The policies behind the floor — cited so a reviewer can check the source
+
+| Policy | Path | The rule you are held to |
+|---|---|---|
+{for p in {floor_citations}}| {p.id} | `{p.path}` | {p.rule} |
+{endfor}
+
+### D. Part 2b §8 · The machine copy — the checker reads this block; it must agree with the brief above
+
+```json presentation-floor
+{presentation_floor_json}
+```
+
+| Id | A finished design passes if… | How it is checked |
+|---|---|---|
+| P1 | Every text size is a role size above, and the answer size is used by the answer alone | `check-rendered-page.js` R1 |
+| P2 | The answer is the largest text on the surface | R2 |
+| P3 | No tinted callout, no edge stripe, bordered prose blocks within {bordered_allowed} | R3, R4, R5 |
+| P4 | The answer reaches a figure within 12 words, and ≤ {prose_above_first_item} words sit above the first item | R6, R7 |
+| P5 | Nothing is said twice | R8 |
+| P6 | Every text colour meets AA in both themes, and nothing is in capitals for emphasis | R9, R10 |
+| P7 | At 1440×900 the first item is fully visible in the top 40% | R11 |
+| P8 | Below the first item every section is in its declared form (§10): no more than 2 paragraphs in a row, none over 40 words; caveats as labelled rows; held, provenance, method, skipped and message sections collapsed; the footer 2 lines at rest | R12, R13, R14 |
+| P9 | Every label/value list is a grid (§11): one value and at most one badge per row, values right-aligned in tabular numerals on one edge, no sentence as a value, notes of 12 words or fewer, rows spaced apart, no internal words, a partial total labelled so | R15, R16, R17, R18 |
+
+### E. The numbers the checker applies to the built page
+
+| What | Number | Where the design-facing rule is |
+|---|---|---|
+| Words from the start of the lead line to its first figure | at most 12 | Part 2b §3 |
+| Words above the first item | at most {prose_above_first_item}; this brief's own design spends {words_above_first_item} (85% at most, so a heading has room) | Part 2b §3 |
+| Paragraphs in a row · words in one paragraph | at most 2 · at most 40 | Part 2b §10 |
+| A caveats section | at most 5 rows, a label then at most 12 words | Part 2b §10 |
+| A closed section's summary line · the footer at rest | at most 12 words · at most 2 lines | Part 2b §10 |
+| Words at rest, per section | {for s in {sections}}{s.name} ≤ {s.wordBudget}{endfor} | Part 2b §10 |
+| A value in a label/value list · its explanation | {for g in {row_groups}}{g.name}: at most {g.valueMaxWords} words · at most {g.noteMaxWords} words{endfor} | Part 2b §11 |
+| A sentence counted as a repeat | 25 characters or more, said twice | Part 2 TA2 |
+| Bordered prose blocks | at most {bordered_allowed} | Part 2b §5 |
+| A screen value · a qualifier · a missing-value word | 1 to 4 words, no semicolon · at most 3 words · at most 3 words, never a dash | The words on screen |
+
+{if exemptions}**Declared exemptions** (each prints on the check report): {quoted_sources} are that source's own words, marked `data-source="<source>"` on the page and exempt from {their checks}; {exemptions}; {internal_word_exceptions}.{endif}
 
 ---
 

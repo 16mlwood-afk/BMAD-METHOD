@@ -256,3 +256,32 @@ Set on EVERY run by `steps/step-01-domain-passes.md` §3j, immediately after §3
 Set by `steps/step-01c-topology.md` §5f-b, after §5f-a. Contract: `shared/controls-and-attention.md` §2a (TD0, TD1, TD2).
 
 - `{detail_surface_orders}` — one entry per detail surface (drawer, expanded row, record panel, side sheet, lookup drawer; frame #1 on a `detail` page): `slug · surface · kind · opened_from · answer · next_action · evidence[] {rank, fact, why_it_ranks_here} · provenance · justified_repeats · repeat_risks · source`. Derived from the data model, `{expected_controls}` and the Part 1 moment; where those cannot settle the answer, next action or top evidence, the user is asked one question per surface (autonomous mode included). `[]` only with a recorded reason. Rendered as the brief's Part 2 Detail surfaces block; each entry adds `TD0-{slug}`, `TD1-{slug}`, `TD2-{slug}` to `{truth_tests}`.
+
+## What good looks like — the opening's variables (2026-10-04)
+
+Standard: `../shared/presentation-floor.md` §12–§13. Each exists because Claude Design, given a brief
+that passed every check, said it *"told me what was forbidden and what had to be true, but never what
+good looks like"*.
+
+- `{picture_of_good}` — set in step-02 §3a. `reference` (`surface`, `where`, `accepted_by`, `borrow`,
+  `not_copy`, `is_this_surface`) or `none_reason`; and `vocabulary` (3–8 `{component, use}`). **Guards:**
+  the blank canvas stripping the product's visual language along with the target's layout. **Contract:**
+  acceptance is evidenced, never judged by the workflow; an unaccepted pick is written `unconfirmed` and
+  Gate 1 reports it; a missing reference is stated in words and reported, never passed in silence.
+- `{focal}` — set in step-03 §2. A list of `{item, leads, secondary[]}`: the page, each item at rest,
+  each detail surface and each block holding more than one value. **Guards:** fifteen facts rendered at
+  one weight. **Contract:** exactly one `leads` per item; an undecidable lead is an owner decision, not
+  a guess.
+- `{absence}` — `{role: caption, colour, example}`. **Guards:** *no figure in this sample* printed at
+  full weight.
+- `{screen_words}` — set in step-03 §2 from the real source data. `source`; `fields` (one per field and
+  state: `field, state, value, qualifier?, tone, basis`); `tones`; `missing`; `actions`; `whose_move`;
+  `opened_labels`; `distinctions`; `examples`. **Guards:** the designer splitting every audit sentence
+  by hand. **Contract:** the producer writes the split, the designer never derives it; value and
+  qualifier are frozen, the basis must appear in the opened record; nothing is invented, and a value
+  that cannot be derived reads `cannot derive: <why>`.
+- `{type_policy_conflict}` — `{what, source}`, set in step-02 §3a only when the project design policy
+  mandates a second typeface for a kind of datum. **Contract:** the policy is never edited from here;
+  the brief carries its rule and lists the conflict in Part 5.
+- `{voice.short_date_example}` / `{voice.action_example}` — one short date and one action phrase from
+  this surface, for the opening's voice line.

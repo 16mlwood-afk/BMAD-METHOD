@@ -316,8 +316,11 @@ const GOLDEN_BRIEF = fs.readFileSync(path.join(__dirname, 'fixtures', 'rendered-
 it('the golden brief validates clean', () => {
   assert.deepStrictEqual(validateBrief(GOLDEN_BRIEF).findings, []);
 });
-it('the golden brief floor is the fixture floor the page checks run against', () => {
-  const { floor } = floorFromBrief(GOLDEN_BRIEF);
+// The five-role scale every brief delivered before 2026-10-04 carries. Its pages are still checked
+// against the sizes it declared; as a NEW brief it fails Gate 1, because "figure" is a size by datum.
+const LEGACY_BRIEF = fs.readFileSync(path.join(__dirname, 'fixtures', 'rendered-page', 'brief-legacy-five-role.md'), 'utf8');
+it('a delivered five-role brief still drives the page checks (its declared sizes are honoured)', () => {
+  const { floor } = floorFromBrief(LEGACY_BRIEF);
   assert.deepStrictEqual(Object.keys(floor.typeScale).sort(), Object.keys(F.floor.typeScale).sort());
   assert.deepStrictEqual(failed(F.cleanPage(), floor), []);
   assert.ok(failed(F.livePriceList('light'), floor).includes('R3'));
@@ -327,7 +330,7 @@ it('a brief without Part 2b fails Gate 1', () => {
   assert.ok(codes.includes('B1') && codes.includes('B2'), codes.join(','));
 });
 it('a brief whose roles share a size fails (one size, two jobs)', () => {
-  const b = GOLDEN_BRIEF.replace('"figure": { "size": 16', '"figure": { "size": 18');
+  const b = GOLDEN_BRIEF.replace('"body": { "size": 14', '"body": { "size": 18');
   assert.ok(validateBrief(b).findings.some((f) => f.code === 'B3'));
 });
 it('a brief whose answer is not the largest role fails', () => {
@@ -367,8 +370,12 @@ const withFloor = (md, edit) =>
   });
 
 it('GOLDEN v4 — passes B1–B11, as the real brief did', () => {
-  const old = codesOf(V4).filter((c) => Number(c.slice(1)) <= 11);
-  assert.deepStrictEqual(old, []);
+  // …except the one B3 added on 2026-10-04: v4 carries the by-datum "figure" role.
+  const old = validateBrief(V4).findings.filter((f) => Number(f.code.slice(1)) <= 11);
+  assert.deepStrictEqual(
+    old.filter((f) => !f.detail.includes('kind of datum')).map((f) => f.code),
+    [],
+  );
 });
 it('GOLDEN v4 — fails every one of B12–B20', () => {
   const got = new Set(codesOf(V4));
@@ -960,6 +967,152 @@ it('brief-template.md carries Part 2b and a presentation-floor block', () => {
   const t = fs.readFileSync(path.join(__dirname, '..', 'custom', 'workflows', 'design', 'design-handoff', 'brief-template.md'), 'utf8');
   assert.match(t, /## Part 2b · The presentation floor/);
   assert.match(t, /```json presentation-floor/);
+});
+/* ── Gate 1: the picture of good and the five rules (B25–B30), the words on screen (B31–B35) ── */
+
+const reportsOf = (md) => validateBrief(md).reports || [];
+it('TYPE BY POSITION — a brief carrying the by-datum "figure" role fails B3; the legacy brief does', () => {
+  const b3 = detailsOf(LEGACY_BRIEF, 'B3');
+  assert.ok(
+    b3.some((d) => d.includes('"figure"') && d.includes('kind of datum')),
+    b3.join(' | '),
+  );
+  assert.ok(!codesOf(GOLDEN_BRIEF).includes('B3'));
+});
+it("TYPE BY POSITION — a page at a legacy brief's figure size is not failed for an undeclared size", () => {
+  const { floor } = floorFromBrief(LEGACY_BRIEF);
+  assert.ok(!failed(F.cleanPage(), floor).includes('R1'));
+});
+it('PICTURE OF GOOD — a brief with no section and no machine entry fails B25', () => {
+  const b = withFloor(GOLDEN_BRIEF.replace('## Picture of good', '## Good'), (f) => delete f.pictureOfGood);
+  assert.strictEqual(detailsOf(b, 'B25').length, 2);
+});
+it('PICTURE OF GOOD — "none: <why>" does not fail, and is REPORTED rather than passed in silence', () => {
+  const b = withFloor(GOLDEN_BRIEF, (f) => (f.pictureOfGood.reference = 'none: this is the first designed surface in the product'));
+  assert.ok(!codesOf(b).includes('B25'));
+  assert.ok(reportsOf(b).some((r) => r.code === 'B25' && r.detail.includes('NO reference screen')));
+  assert.deepStrictEqual(reportsOf(GOLDEN_BRIEF), []);
+});
+it('PICTURE OF GOOD — a bare "none" with no reason fails; an unaccepted reference is reported', () => {
+  assert.ok(codesOf(withFloor(GOLDEN_BRIEF, (f) => (f.pictureOfGood.reference = 'none'))).includes('B25'));
+  const u = withFloor(GOLDEN_BRIEF, (f) => (f.pictureOfGood.reference.acceptedBy = 'unconfirmed — picked by the workflow'));
+  assert.ok(!codesOf(u).includes('B25') && reportsOf(u).some((r) => r.detail.includes('no recorded acceptance')));
+});
+it('PICTURE OF GOOD — a vocabulary of two, or of nine, fails (short list, not a library)', () => {
+  assert.ok(codesOf(withFloor(GOLDEN_BRIEF, (f) => f.pictureOfGood.vocabulary.pop())).includes('B25'));
+  const many = withFloor(GOLDEN_BRIEF, (f) => {
+    while (f.pictureOfGood.vocabulary.length < 9) f.pictureOfGood.vocabulary.push({ component: 'x', use: 'y' });
+  });
+  assert.ok(codesOf(many).includes('B25'));
+});
+it('FOCAL — an item with two leading values, or one that also lists its lead as secondary, fails B26', () => {
+  assert.ok(codesOf(withFloor(GOLDEN_BRIEF, (f) => (f.focal[0].leads = ['a', 'b']))).includes('B26'));
+  assert.ok(codesOf(withFloor(GOLDEN_BRIEF, (f) => f.focal[0].secondary.push(f.focal[0].leads))).includes('B26'));
+  assert.ok(codesOf(withFloor(GOLDEN_BRIEF, (f) => delete f.focal)).includes('B26'));
+});
+it('ABSENCE — an absent value at full weight (body role, or the ink colour) fails B27', () => {
+  assert.ok(codesOf(withFloor(GOLDEN_BRIEF, (f) => (f.absence.role = 'body'))).includes('B27'));
+  assert.ok(codesOf(withFloor(GOLDEN_BRIEF, (f) => (f.absence.colour = 'ink'))).includes('B27'));
+  assert.ok(codesOf(withFloor(GOLDEN_BRIEF, (f) => (f.absence.colour = 'grey-ish'))).includes('B27'));
+});
+it('CLAIMS AND CHROME — a deck with no Kind column, or a row that is neither, fails B28', () => {
+  assert.ok(detailsOf(LEGACY_BRIEF, 'B28').length === 1);
+  assert.ok(codesOf(GOLDEN_BRIEF.replace('| chrome | Most a unit |', '| label | Most a unit |')).includes('B28'));
+});
+it('SELF-REVIEW and the SHORT OPENING — missing either fails B29 / B30', () => {
+  assert.ok(codesOf(GOLDEN_BRIEF.replace('## Before you deliver — self-review', '## Before you deliver')).includes('B29'));
+  assert.ok(codesOf(GOLDEN_BRIEF.replace('# Reference — read as needed', '## Notes')).includes('B30'));
+  const long = GOLDEN_BRIEF.replace('## The job', '## The job\n' + 'A line of prose.\n'.repeat(200));
+  assert.ok(detailsOf(long, 'B30').some((d) => d.includes('at most 180')));
+  const leak = GOLDEN_BRIEF.replace('## The job', '## The job\n\nYou are checked by R8 and B14.');
+  assert.ok(detailsOf(leak, 'B30').some((d) => d.includes('checker matter')));
+});
+it('SCREEN WORDS — a field that arrives as ONE SENTENCE fails B31: the producer writes the split', () => {
+  const sentence = 'Nobody has read the selling price for this line yet.';
+  const d = detailsOf(
+    withFloor(GOLDEN_BRIEF, (f) => (f.screenWords.fields[2].value = sentence)),
+    'B31',
+  );
+  assert.ok(d.some((x) => x.includes('arrived as a sentence')) && d.some((x) => x.includes('same string')), d.join(' | '));
+});
+it('SCREEN WORDS — a four-word qualifier, a semicolon or a dash as the value, a fragment as the basis fail B31', () => {
+  assert.ok(codesOf(withFloor(GOLDEN_BRIEF, (f) => (f.screenWords.fields[0].qualifier = 'before any freight cost'))).includes('B31'));
+  assert.ok(
+    detailsOf(
+      withFloor(GOLDEN_BRIEF, (f) => (f.screenWords.fields[1].value = 'Matched; read')),
+      'B31',
+    ).some((x) => x.includes('semicolon')),
+  );
+  assert.ok(
+    detailsOf(
+      withFloor(GOLDEN_BRIEF, (f) => (f.screenWords.fields[2].value = '—')),
+      'B31',
+    ).some((x) => x.includes('dash')),
+  );
+  assert.ok(codesOf(withFloor(GOLDEN_BRIEF, (f) => (f.screenWords.fields[0].basis = 'Lowest offer'))).includes('B31'));
+  assert.ok(codesOf(withFloor(GOLDEN_BRIEF, (f) => delete f.screenWords.fields[0].state)).includes('B31'));
+  assert.ok(codesOf(withFloor(GOLDEN_BRIEF, (f) => delete f.screenWords)).includes('B31'));
+});
+it('SCREEN WORDS — a value that could not be derived is REPORTED, never invented and never silent', () => {
+  const b = withFloor(GOLDEN_BRIEF, (f) => (f.screenWords.fields[0].value = 'cannot derive: the sample holds no priced line'));
+  assert.ok(!codesOf(b).includes('B31'));
+  assert.ok(reportsOf(b).some((r) => r.code === 'B31' && r.detail.includes('no value could be derived')));
+});
+it('STATE TONES — a tone outside the closed four, or one mapped to no declared colour, fails B32', () => {
+  assert.ok(codesOf(withFloor(GOLDEN_BRIEF, (f) => (f.screenWords.fields[1].tone = 'green'))).includes('B32'));
+  const d = detailsOf(
+    withFloor(GOLDEN_BRIEF, (f) => (f.screenWords.fields[1].tone = 'destructive')),
+    'B32',
+  );
+  assert.ok(
+    d.some((x) => x.includes('tones.destructive')),
+    d.join(' | '),
+  );
+});
+it('MISSING VALUES — a dash, a sentence, a shared word or no list fails B32; "none: <why>" passes', () => {
+  assert.ok(codesOf(withFloor(GOLDEN_BRIEF, (f) => (f.screenWords.missing[1].word = '—'))).includes('B32'));
+  assert.ok(codesOf(withFloor(GOLDEN_BRIEF, (f) => (f.screenWords.missing[0].word = 'nobody has looked at this'))).includes('B32'));
+  assert.ok(codesOf(withFloor(GOLDEN_BRIEF, (f) => (f.screenWords.missing[1].word = 'Not checked'))).includes('B32'));
+  assert.ok(codesOf(withFloor(GOLDEN_BRIEF, (f) => delete f.screenWords.missing)).includes('B32'));
+  assert.ok(
+    !codesOf(
+      withFloor(GOLDEN_BRIEF, (f) => (f.screenWords.missing = 'none: every field on this surface is always present in the data')),
+    ).includes('B32'),
+  );
+});
+it('SCREEN WORDS — no action phrases, whose-move words or opened labels fail B33; "none: <why>" passes', () => {
+  assert.ok(codesOf(withFloor(GOLDEN_BRIEF, (f) => (f.screenWords.actions = []))).includes('B33'));
+  assert.ok(codesOf(withFloor(GOLDEN_BRIEF, (f) => delete f.screenWords.openedLabels)).includes('B33'));
+  assert.ok(codesOf(withFloor(GOLDEN_BRIEF, (f) => delete f.screenWords.whoseMove)).includes('B33'));
+  const ro = withFloor(GOLDEN_BRIEF, (f) => {
+    f.screenWords.actions = 'none: the page is read-only and nothing is sent from it';
+    f.screenWords.whoseMove = 'none: nothing on this page waits on anybody';
+  });
+  assert.ok(!codesOf(ro).includes('B33'));
+});
+it('DISTINCTION — a look-alike pair that reads the same at rest fails B34', () => {
+  assert.ok(codesOf(withFloor(GOLDEN_BRIEF, (f) => (f.screenWords.distinctions[0].b = 'not checked'))).includes('B34'));
+  assert.ok(codesOf(withFloor(GOLDEN_BRIEF, (f) => delete f.screenWords.distinctions)).includes('B34'));
+  const none = withFloor(GOLDEN_BRIEF, (f) => (f.screenWords.distinctions = 'none: every state word was compared pairwise'));
+  assert.ok(!codesOf(none).includes('B34'));
+});
+it('WORKED EXAMPLES — fewer than two fails B35', () => {
+  assert.ok(codesOf(withFloor(GOLDEN_BRIEF, (f) => f.screenWords.examples.pop())).includes('B35'));
+});
+it('the brief template carries the opening, the divider and the appendix the checks look for', () => {
+  const t = fs.readFileSync(path.join(__dirname, '..', 'custom', 'workflows', 'design', 'design-handoff', 'brief-template.md'), 'utf8');
+  for (const re of [
+    /^## The job/m,
+    /^## Picture of good/m,
+    /^## The five rules/m,
+    /self-review/i,
+    /^# Reference\b/m,
+    /^## Screen words/m,
+    /^# Checker appendix/m,
+  ])
+    assert.match(t, re);
+  assert.ok(t.indexOf('# Reference') < t.indexOf('## Part 2b'), 'Part 2b sits behind the divider');
+  assert.ok(t.indexOf('# Checker appendix') < t.indexOf('```json presentation-floor'), 'the machine copy sits in the appendix');
 });
 it('the probe serialises to a self-contained function', () => {
   const src = `(${probe.toString()})`;

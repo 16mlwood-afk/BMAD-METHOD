@@ -2,9 +2,9 @@
 name: presentation-floor
 description: 'The binding presentation floor every design brief SPECIFIES and every rendered page is CHECKED against: a named type scale (one size, one job), spacing tokens, a colour set with meanings, a where-the-user-looks plan, the summary-then-items layout, a banned-patterns list, and "the answer is heavier than the evidence". Replaces the advisory style floor for these seven things.'
 standard: STD-PRESENTATION-FLOOR-001
-version: 5
+version: 6
 ratified: 2026-09-27
-amended: 2026-09-28 (v2 — §8 brief completeness, B12–B20, from Claude Design's pre-build review of the price-list v4 brief); 2026-09-28 (v3 — §9 below the fold, B21 and R12–R14, from the price-list v6 design's prose wall); 2026-09-28 (v4 — §10 label/value row groups, B22 and R15–R18, from the bundle 6 drawer's journey section); 2026-09-28 (v5 — §11 declared exemptions, the brief's own budgets and inline provenance, B23, B24 and R19, from the live build)
+amended: 2026-09-28 (v2 — §8 brief completeness, B12–B20, from Claude Design's pre-build review of the price-list v4 brief); 2026-09-28 (v3 — §9 below the fold, B21 and R12–R14, from the price-list v6 design's prose wall); 2026-09-28 (v4 — §10 label/value row groups, B22 and R15–R18, from the bundle 6 drawer's journey section); 2026-09-28 (v5 — §11 declared exemptions, the brief's own budgets and inline provenance, B23, B24 and R19, from the live build); 2026-10-04 (v6 — §12 the picture of good and the five rules, §13 the words on screen, B25–B35; F1 becomes four sizes set by position; from Claude Design's two notes on a brief that had passed B1–B24)
 ---
 
 # The presentation floor — what a brief specifies, and what a rendered page must pass
@@ -41,13 +41,13 @@ deliverable (Gate 1, `tools/check-rendered-page.js --validate-brief`).
 
 | # | Part | What the brief must say | Checked by |
 |---|---|---|---|
-| F1 | **Type scale, one size one job** | Five named roles — `answer`, `sectionHeading`, `figure`, `body`, `caption` — each with ONE size, ONE weight and a sentence of what it is for. Five distinct sizes. The answer size is used by the answer alone. No other size exists on the surface. | R1, R2 · B3 |
+| F1 | **Type by position: one typeface, four sizes** | Four named positions — `answer` (the page's lead line), `sectionHeading` (a block's lead line), `body` (inside an item or row), `caption` (secondary) — each with ONE size, ONE weight and a sentence of what sits there. Four distinct sizes. Size is set by where the text sits, never by what kind of datum it is, and a line of text is one size. The answer size is used by the answer alone. No other size exists on the surface. *(v6, §12 O4. Before 2026-10-04 this was five roles including `figure`, a size set by datum; a brief delivered then still has its page checked against the sizes it declared.)* | R1, R2 · B3 |
 | F2 | **Spacing tokens** | One scale of even pixel values. Every margin, padding and gap comes from it; the gap between groups is visibly larger than the gap inside one. | B4 (review for use) |
 | F3 | **Colour set, each with a meaning** | A short list of named colours, each with the one thing it means and nothing else. One secondary grey, not six. An accent means *someone must act and nobody is acting yet* — never "important". | B5, R9 (contrast) |
 | F4 | **Where the user looks** | The top holds the answer (`[data-answer]`), and the first actionable item (`[data-first-item]`) is fully visible at 1440×900 with the header taking no more than 40% of the height. A word budget above the first item (default 60). Provenance and audit text — FX rate, data dates, import stamps, file names, run ids, "figures before freight"-type bookkeeping — is named in a list and goes to the **footer or behind a disclosure**, never at the top. | R6, R7, R11 · B6 |
 | F5 | **Layout pattern** | A summary first, then the items as scannable **cards or groups** (`[data-item]`), each showing a small declared number of fields at rest, with the detail on open. Not a ledger of every field. | B7 (review for the rest) |
 | F6 | **Banned patterns** | The list in §3, verbatim, at minimum. | R3, R4, R5, R8, R10 · B8 |
-| F7 | **The answer is heavier than the evidence** | The answer is set larger than every figure and every heading on the surface; a figure never shares the answer's size. | R1, R2 · B3 |
+| F7 | **The answer is heavier than the evidence** | The answer is set larger than everything else on the surface; nothing else shares its size. | R1, R2 · B3 |
 
 **Markers the page must carry.** `[data-answer]` on the element holding the page's answer,
 `[data-first-item]` on the first actionable item, `[data-item]` on each item card or group, and
@@ -61,21 +61,20 @@ Step-03 fills Part 2b in this order, and records which source it used:
 
 1. **The project's design policy / brand identity**, where it declares a scale, spacing and colours.
 2. **The project's token file** (`{design_system_pointer}`), mapping each role to an existing token —
-   e.g. brand-source-finder's `--font-size-3xl` 24 → answer, `xl` 18 → section heading, `lg` 16 →
-   figure, `base` 14 → body, `xs` 12 → caption. Roles that share a token are a defect to resolve in the
-   brief, not to hand the designer.
+   e.g. brand-source-finder's `--font-size-3xl` 24 → answer, `xl` 18 → section heading, `base` 14 →
+   body, `xs` 12 → caption. Positions that share a token are a defect to resolve in the brief, not to
+   hand the designer.
 3. **The fork default below**, stated in the brief as the default and flagged in Part 5 as "the project
    should adopt or replace this".
 
 **Fork default** (used only when the project declares nothing):
 
-| Role | Size | Weight | For |
-|---|---|---|---|
-| answer | 28px | 600 | the one sentence that answers the page, carrying its deciding figure |
-| sectionHeading | 18px | 600 | the name of a group of items |
-| figure | 16px | 500, tabular numerals | the deciding figure on each item |
-| body | 14px | 400 | item names and sentences |
-| caption | 12px | 400 | the basis beside a figure, and the footer |
+| Position | Key | Size | Weight | What sits here |
+|---|---|---|---|---|
+| the page's lead line | `answer` | 28px | 600 | the one sentence that answers the page, carrying its deciding figure |
+| a block's lead line | `sectionHeading` | 18px | 600 | the name of a group of items, or the one value that leads an opened record |
+| inside an item or row | `body` | 14px | 400; 600 for the value that leads the row | names, values, figures and sentences alike |
+| secondary | `caption` | 12px | 400 | the basis under a value, an absent value, and the footer |
 
 Spacing `4 8 12 16 24 32 48`. Colours: `ink` (text and figures) · `muted` (captions and footer — the one
 secondary grey, ≥ 4.5:1 on the ground in both themes) · `ground` · `rule` (hairlines between items) ·
@@ -84,7 +83,8 @@ wrong or refused on this surface.
 
 **This supersedes "three font sizes or fewer"** (`design-standards.md` quality checklist and the brief's
 §5a comfort floor) for any surface with a Part 2b. The audit's page obeyed the three-size rule and failed
-because three sizes carried nine jobs; five named roles with one job each is the stricter rule.
+because three sizes carried nine jobs. Four sizes, each tied to a position, is the rule (§12 O4); the
+five-role scale that stood here from 2026-09-27 to 2026-10-04 tied one of its sizes to a kind of datum.
 
 **The shape borrowed from `document-design-format.md`**, which does not transfer its print sizes: one
 module owns every size and colour, and no literal `font-size` or colour exists outside it. The brief says
@@ -101,8 +101,10 @@ so to the implementation; the rendered check enforces the outcome (R1).
 | `repeated-fact` | The same fact said twice at rest | A sentence repeated anywhere on the surface; a clause restated down every row (*"£N over the £30 floor"* ×17); one question said three ways (the freight question in the headline, the box and the side panel) | Say it once where it governs; per row, only what differs |
 
 Also banned, carried from the fork's existing floor and now binding for a Part 2b surface: a hero strip
-or banner above working content; a separate summary card or stat-card grid as the opener; monospace for
-anything but codes; an identifier as the label of a row or the subject of a sentence.
+or banner above working content; a separate summary card or stat-card grid as the opener; a second
+typeface, or a size chosen by kind of datum (§12 O4; a project policy that mandates a data face is the
+project's rule and is carried as a stated conflict); two sizes on one line; an absent value at full
+weight (§12 O5); an identifier as the label of a row or the subject of a sentence.
 
 ## 4. The policies the brief carries — cited by path, with the rule stated
 
@@ -113,7 +115,7 @@ fails a brief missing any of them. Paths are relative to amazon-removal-assistan
 | id | Path | The rule the brief carries |
 |---|---|---|
 | `artifact-policy` | `docs/artifact-policy.md` §3–§5 | A border or accent means someone must act and nobody is acting yet; bordered blocks 0 on a clean page, ≤ 1 on a breach; a filename, code, box id or SKU goes to the footer or is cut; headline to first figure ≤ 12 words. |
-| `artifact-brief-policy` | `docs/artifact-brief-policy.md` rules 10–15 | The first line and every heading stay true alone; a caveat stays beside the figure it qualifies; no identifier as a subject or a row label; nothing added; no chart where a number was given; colour never means "important". |
+| `artifact-brief-policy` | `docs/artifact-brief-policy.md` rules 10–15 | The first line and every heading stay true alone; a caveat stays beside the figure it qualifies; no identifier as a subject or a row label; no claim added (rule 13 there reads *no content may be added, not a heading, not a caption*; the fork carries its claims half and leaves structural labels to the designer, §12 O2, a conflict recorded for the owner in the decision record of 2026-10-04); no chart where a number was given; colour never means "important". |
 | `document-design-format` | `docs/document-design-format.md` | One module owns every size and colour; no literal size or colour outside it (the shape transfers; the print sizes do not). |
 | `anti-ai-research` | `~/.claude/docs/research/anti-ai-ui-patterns-2026-09-26.md` | The template-look catalogue: tinted callouts, edge stripes, icon chips, middle-dot meta strings, monospace micro-labels, warm cream with amber, low-contrast grey. |
 | `copy-screen` | fork `custom/workflows/design/shared/on-screen-copy-screen.md` (STD-COPY-SCREEN-001) | Every on-screen string is plain English a stranger understands; no internal vocabulary or codes as labels. |
@@ -134,7 +136,7 @@ B9 1440×900 · B10 all ten citations by path with their rule · B11 no unrender
 field names what must survive and the near-duplicates · B14 the Copy deck says nothing twice · B15 the
 brief is self-contained · B16 a states × views matrix · B17 1440, 1280 and a narrow width · B18
 feedback after an action · B19 15% headroom under the word budget · B20 the brief's notation is not
-rendering. **B21 (§9)** every section of the page declares its form and word budget. **B22 (§10)** every label/value row group is specified as one. **B23 (§11)** every exemption is declared, narrow and argued. **B24 (§11)** each section's own worked words fit its budget.
+rendering. **B21 (§9)** every section of the page declares its form and word budget. **B22 (§10)** every label/value row group is specified as one. **B23 (§11)** every exemption is declared, narrow and argued. **B24 (§11)** each section's own worked words fit its budget. **B25–B30 (§12)** the picture of good (a missing reference is *reported*, never passed in silence), the focal list, the absence rule, claims told from chrome in the Copy deck, the self-review, and a short opening free of checker matter; **B3** now requires four sizes by position and fails a by-datum role. **B31–B35 (§13)** every field split into value, qualifier and basis, state words with declared colours, action phrases and opened-record labels, each look-alike pair told apart, and two worked examples; a value that could not be derived is *reported*.
 
 **design-implement, the rendered page** — `steps/step-04b-rendered-page-checks.md`, running
 `check-rendered-page.js --snapshot|--url … --brief <brief.md>` on the rendered DOM, both themes:
@@ -175,7 +177,7 @@ page rebuilt from the audit's measurements.
 
 ## 7. Enforcement, honestly
 
-**DETERMINISTIC:** Gate 1's brief check (B1–B24) and the nineteen rendered checks, each with goldens that fail the
+**DETERMINISTIC:** Gate 1's brief check (B1–B35) and the nineteen rendered checks, each with goldens that fail the
 audit's live examples. **PROBABILISTIC:** whether the answer is the right answer, whether the page reads
 well, whether items are genuinely scannable (F5 beyond its declared count), and whether spacing tokens are
 used (F2 is declared and checked in the brief, not on the page). A page can pass every check and still bury
@@ -278,7 +280,7 @@ named form `value-rows`, section kind `facts`. Its rules:
 |---|---|
 | One value cell per row, and at most one status badge | a badge that restates the value is the same fact twice (§3 `repeated-fact`) |
 | A fixed column grid: every value ends on one right edge, every badge starts on one left edge | amazon-removal-assistant `docs/decision-document-policy.md` §2a: *"the figure (tabular, in a table)"* is its own register |
-| Values right-aligned, in tabular numerals, at the `figure` role | §1 F1; the figure role already says tabular |
+| Values right-aligned, in tabular numerals, at the size of their row (`body`) | §1 F1 and §12 O4: a value is not a size of its own; the value that leads is heavier |
 | A value is money, a count, or at most 4 words — never a sentence | `docs/artifact-policy.md` §4: *"a figure goes in a sentence when it is the point, and in a table when it is one of several being compared. Not both."* |
 | An explanation is at most 12 words, in the `caption` role, under the label | a longer reason goes behind the section's disclosure |
 | Rows sit further apart than the lines inside a row (`rowGap` > `innerGap`, both from the spacing scale) | §1 F2: the gap between groups is larger than the gap inside one |
@@ -336,6 +338,87 @@ R17 because R17 reads only label/value row groups, and these captions sit in ord
 **Markers:** `data-source="<source>"` on quoted text; `data-footer` or `<footer>` and `<details open>`
 are read by R19 as the places provenance may live.
 
+## 12. The picture of good and the five rules — what a brief opens with (v6, 2026-10-04)
+
+> **Owner, 2026-10-04, verbatim:** *"we've narrowed it down to the brief being the problem. Take this
+> feedback and solve the gap."*
+>
+> **Claude Design, the same day, on a brief that had passed B1–B24:** *"The brief told me what was
+> forbidden and what had to be true, but never what good looks like, and I aimed at passing its checks
+> rather than at a mature product."* Both of its notes are filed verbatim in the fork at
+> `docs/decision-design-brief-picture-of-good-2026-10-04.md`, with every passage this version replaced.
+
+§1–§11 say what is banned and what is counted. A designer given only those produces the safest thing
+that passes: a stack of compliant text. So the brief now **opens** with six short sections, in this
+order, before anything else, and they bind as the floor does. Gaps G14–G20 in `brief-gap-ledger.md`.
+
+| # | Section | The rule | Machine block | Gate 1 |
+|---|---|---|---|---|
+| O1 | **Picture of good** | ONE reference screen and a vocabulary of 3–8 components (*a grouped table with aligned columns; an expandable record sheet of label and value rows; a status dot with the stage in text*). The reference is the latest **accepted** iteration of this design, or an already-accepted surface from the same product family. It is offered as vocabulary and maturity bar, never as the layout to copy. The blank-canvas rule still withholds the TARGET page's current layout; it no longer withholds the product's visual language. Where no accepted surface exists the brief says so in words. | `pictureOfGood: { reference: { surface, where, acceptedBy, borrow, notCopy } \| "none: <why>", vocabulary: [{ component, use }] }` | B25. `none: <why>` and an `acceptedBy` that begins `unconfirmed` do not fail and are **reported**: Gate 1 carries the line to its close-out. Never a silent pass. |
+| O2 | **Claims versus chrome** | A claim asserts a fact (a field's value and qualifier, a figure, a caveat, a state word) and ships word for word. Chrome is structure (a section heading, a column header, a row label, a group name, a marker such as *Not counted*) and is the designer's to word, add or drop. A label never carries a fact. Detail: `on-screen-copy-screen.md` §1a. | the Copy deck's `Kind` column | B28; `check-copy-screen.js` K1, P4 |
+| O3 | **The focal rule** | The brief ranks facts. Each item (the page, an item at rest, an opened record, a block inside it) names the ONE value that leads; everything else on it is declared secondary. A caveat stays with its figure and does not get equal weight. | `focal: [{ item, leads, secondary[] }]` | B26 |
+| O4 | **Type by position** | One typeface, four sizes, each set by where the text sits: the page's lead line, a block's lead line, inside an item or row, secondary. Never by what kind of datum the text is, and never two sizes on one line. The value that leads a row is heavier, not larger. This replaces the five-role scale of §1 F1 as first written, whose `figure` role set a size by datum (*"figure 16, body 14, mono for codes"* put three styles on one line). | `typeScale: { answer, sectionHeading, body, caption }` and no other key | B3 |
+| O5 | **The absence rule** | An absent value (*no figure in this sample* and its kin) is set at the secondary size in the one secondary grey, never at full weight. It still says which kind of absence it is (the brief's §2e). | `absence: { role: "caption", colour }` | B27 |
+| O6 | **A required self-review** | Before delivering, the designer renders the draft, screenshots it, judges it against the five rules, reads the visible words aloud, and asks *would this ship at a good product company?* The designer judges the draft as a product, not against the brief's checks. | — (fixed text in the template and in `claude-design-prompt.md`) | B29 |
+| O7 | **A short opening; the checker's matter behind it** | The designer-facing brief is the opening: the job, O1–O6 and the words on screen (§13), at most 180 lines. Reference material follows a `# Reference` divider. What only our checker reads goes to a `# Checker appendix` at the end: how each test is checked, the markers, the policy citations, the machine copy, and every count and budget. **The split is decided by what a rule is for:** a rule the designer must act on stays in the designer's copy, in words; a number only our checker reads leaves it. | — | B30: the opening exists, is within 180 lines, and carries no check id, checker name or machine block |
+
+**Where a project's design policy mandates type by datum.** Some project policies require a data face
+for codes or amounts (inbound-flow, cash-recovery and accounting-tools did on 2026-10-04). The policy is
+the project's and is not edited from here. The brief carries the project's rule for that surface, says
+so beside the type table, and lists it in Part 5 as a conflict with O4 for the owner. Size still never
+changes within a line.
+
+**The counts stay, and they stop steering the design.** §8–§11's numbers are still applied to the built
+page. The appendix says so in one paragraph: if a number would make the designer reword a claim, cramp
+a good layout or pad a short one, the designer keeps the design and says so, and the number is ours to
+fix or exempt under §11. A designer rewording sentences to stay under a character count is the failure
+this section exists to stop.
+
+**What these checks cannot do.** B25 proves a reference is named and argued, never that it is the right
+one or that the designer opened it. B26 proves each item names one lead, never that it is the right
+lead. B29 proves the self-review was asked for, never that it happened. *Never two sizes on one line*
+and *an absent value set small and grey* are not checked on the rendered page yet: no rendered check
+reads lines or knows which text is an absence. Both rest on the designer's self-review and on review.
+
+## 13. The words on screen — every field arrives split; the designer never derives it (v6, 2026-10-04)
+
+> **Claude Design, 2026-10-04:** *"Each data string held three things in one sentence: the value, a
+> caveat, and the evidence behind them. I split them apart and rewrote each part by fixed rules."* And
+> on what the brief must cover: *"Every field the page shows carries `value`, an optional `qualifier`
+> and `basis`. The producer writes them. The designer never derives them."* Its whole write-up is filed
+> word for word at `docs/design-brief-screen-values-evidence-2026-10-04.md`. Its method and checklist
+> are adopted here; its words belong to one project and are examples only.
+
+The designer did that split by hand, for every field, across several rejected rounds. It is now the
+brief's job, and upstream of the brief the data's: the **Screen words** section (first after the
+`# Reference` divider, with a short version in the opening) carries the split for every field in every
+state, and tells the implementation to supply the same three parts. This is how the focal rule (§12 O3)
+is delivered for a field: the value leads, the basis is secondary. Gaps G21–G28 in `brief-gap-ledger.md`.
+
+| # | What the brief carries | The rule | Machine block (`screenWords`) | Gate 1 |
+|---|---|---|---|---|
+| W1 | **The data contract: value / qualifier / basis for every field and state** | **Value:** what a buyer would say, 1–4 words or a number with its unit, no semicolon; it goes in the row. **Qualifier:** at most 3 words, only where the value could be misread; small and grey under the value. **Basis:** the original sentence (source, date, what was or was not checked); it appears only in the opened record. The producer writes all three. A field that arrives as one sentence is a brief defect. | `fields: [{ field, state, value, qualifier?, tone, basis }]`, one entry per field and state | B31: fails a value over 4 words, a value equal to its basis, a semicolon or a dash as a value |
+| W2 | **A closed list of state words per field, each with a tone** | Name the state, not the evidence. Every state a field can be in has its exact value and qualifier and one tone from four: `ink`, `muted`, `warning`, `destructive`. A bad state is one word in the destructive tone, with its reason as the grey qualifier. | `fields[].tone`; `tones: { <tone>: <declared colour> }` | B32 |
+| W2a | **Fixed words for missing values** | One fixed word per KIND of missing, in grey: nobody looked · we asked and there is nothing · does not apply · nothing set yet · any further kind the surface has. Never a sentence, never a dash, and no two kinds share a word. | `missing: [{ means, word }] \| "none: <why>"` | B32 |
+| W3 | **An action phrase for each state where the move is the reader's** | Written as an instruction; a question is written as a question. | `actions: [{ move, phrase }] \| "none: <why>"` | B33 |
+| W3a | **Whose move it is** | One word for each party who can hold the next move: the reader, each other party, and nobody. Only the reader's own is in the warning tone. | `whoseMove: [] \| "none: <why>"` | B33 |
+| W4 | **The labels of the opened record** | Section names and row labels, written as the reader's questions and never as field names. Supplied as chrome: the designer works within the list and may change it. | `openedLabels: [] \| "none: <why>"` | B33 |
+| W5 | **Voice rules** | Second person (*you*, never *the owner*). Short dates on screen; ISO dates stay in the basis and in exports. None of the system's own words; where the plumbing is the real cause, say it in the reader's terms. One idea per line. | — (fixed text in the template; part (c) of the copy screen) | — |
+| W6 | **What "word for word" covers** | **Value and qualifier are verbatim.** The basis must appear in the opened record; its placement and styling are the designer's. Section headings, column headers and row labels are the designer's, within the label list of W4. | — | — |
+| W7 | **A distinction check for each must-never-confuse pair** | The two strings shown at rest (value, with its qualifier) are given side by side and differ. The distinguishing words stay in the value or the qualifier, never only in the basis. | `distinctions: [{ a, b, means }] \| "none: <how checked>"` | B34 |
+| W8 | **Worked examples from the real data** | A raw data sentence turned into value, qualifier and basis; at least two, and the field table itself is one row per field and state. | `examples: [{ raw, value, qualifier?, basis }]` | B35 |
+| W9 | **The read-aloud check** | Part of the required self-review (§12 O6): read every row aloud as if on the phone to a colleague. A row that sounds like a log entry, a sentence defending itself or a field name fails. | — | B29 (with O6) |
+
+**Nothing is invented.** The generator derives every value, qualifier, state and example from the real
+source data and names that source in the section. A state that does not occur in the data is not added
+to round a list out. Where a value cannot be derived, the cell reads `cannot derive: <why>`: B31 does
+not fail that row and **reports** it, so the close-out says which fields went out without a value.
+
+**What these checks cannot do.** They count words, look for a semicolon or a dash, and check that a
+tone maps to a declared colour. They cannot tell whether a value is what a buyer would say, whether a
+basis is true, whether a label reads as a question, or whether two strings that differ mean different
+things. Those stay with the Gate 1 reviewer and the designer's read-aloud.
+
 ## Prose consumers
 
 | Consumer | Bound how |
@@ -348,3 +431,7 @@ are read by R19 as the places provenance may live.
 | `design-handoff` step-05 | The designer's pre-build review of the brief; template gaps it finds are appended to the ledger (§8) |
 | `design-handoff/brief-template.md` Part 2b §10 | Renders the sections table of §9 and the `sections` machine entry (B21) |
 | `design-handoff/brief-template.md` Part 2b §11 | Renders each label/value row group of §10 and its machine entry (B22) |
+| `design-handoff/brief-template.md` opening | Renders §12 O1–O6 and the short version of §13 before the `# Reference` divider (B25–B30) |
+| `design-handoff/brief-template.md` *Screen words* | Renders §13 W1–W8 from the real data (B31–B35) |
+| `design-handoff` step-02 §3a / step-03 | Finds the accepted reference and the vocabulary; derives the focal list and the screen words; never invents one |
+| `shared/on-screen-copy-screen.md` §1a | Owns claims versus chrome (§12 O2) |

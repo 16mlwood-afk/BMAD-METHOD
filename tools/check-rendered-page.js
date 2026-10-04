@@ -65,6 +65,19 @@
  *           gap Claude Design found in a brief that had passed B1–B11 (shared/brief-gap-ledger.md).
  *   B21     every section of the page has a declared visual form and word budget (presentation-floor.md
  *           §9, gap G10): the below-the-fold prose wall of the price-list v6 design.
+ *   B25–B30 the picture of good and the five rules (presentation-floor.md §12, gaps G14–G20, 2026-10-04):
+ *           B25 one reference screen (or "none: <why>", which is REPORTED, never a silent pass) and a
+ *           3–8 component vocabulary · B26 each item names the ONE value that leads · B27 an absent value
+ *           is caption-size and grey · B28 the Copy deck marks every row claim or chrome · B29 the
+ *           designer's self-review is asked for · B30 the designer-facing opening is short and carries
+ *           no checker matter. B3 also changed: four sizes set by POSITION, never by kind of datum.
+ *   B31–B35 the words on screen (presentation-floor.md §13, gaps G21–G28): B31 every field, in every
+ *           state, arrives split into a value (1–4 words, no semicolon), an optional qualifier (≤ 3 words)
+ *           and a basis sentence — a field that arrives as one sentence fails; a value that could not be
+ *           derived is REPORTED · B32 a tone per state (ink, muted, warning, destructive) mapped to a
+ *           declared colour, and a fixed word for each kind of missing value (never a dash, never a
+ *           sentence) · B33 an action phrase per move, the whose-move words and the opened record's
+ *           labels · B34 each look-alike pair differs at rest · B35 two or more worked examples.
  *   B23     every exemption is declared, narrow and argued: known checks only, a reason, a view or a cap
  *   B24     the brief keeps its own budgets: each section's `sample` (its at-rest strings, found verbatim in
  *           the brief) fits its wordBudget (gap G13: the journey's own content was 96 words against 90)
@@ -113,7 +126,18 @@ const fs = require('node:fs');
 /* ─────────────────────────── contract constants ─────────────────────────── */
 
 const STANDARD = 'STD-PRESENTATION-FLOOR-001';
-const ROLES = ['answer', 'sectionHeading', 'body', 'figure', 'caption'];
+/**
+ * Type by POSITION (2026-10-04, presentation-floor.md §12): one typeface, four sizes, each set by where
+ * the text sits — the page's lead line, a block's lead line, everything inside an item or row, and
+ * anything secondary. A size is never chosen by what kind of datum the text is.
+ */
+const ROLES = ['answer', 'sectionHeading', 'body', 'caption'];
+/** The by-datum role of the 2026-09-27 scale. A delivered brief may still carry it; a new brief may not. */
+const LEGACY_DATUM_ROLES = ['figure'];
+const MIN_VOCABULARY = 3;
+const MAX_VOCABULARY = 8;
+/** The designer-facing opening of a brief: everything above the "# Reference" divider. */
+const OPENING_MAX_LINES = 180;
 const BANNED_KEYS = ['tinted-callout', 'edge-stripe', 'stacked-badges', 'all-caps-labels', 'repeated-fact'];
 /** The ten policies the audit's §7 table found absent or second-hand. Gate 1 requires every one, by path. */
 const REQUIRED_CITATIONS = [
@@ -352,7 +376,12 @@ function validateBrief(markdown) {
   }
   if (ts.answer && sizes.length === ROLES.length && sizes.some(([r, s]) => r !== 'answer' && s >= ts.answer.size))
     add('B3', 'the answer size must be larger than every other role size');
-  if (ts.answer && ts.figure && ts.answer.weight < ts.figure.weight) add('B3', 'the answer must be at least as heavy as a figure');
+  for (const extra of Object.keys(ts).filter((k) => !ROLES.includes(k)))
+    add(
+      'B3',
+      `type role "${extra}" sets a size by what kind of datum the text is — size is set by position: ${ROLES.join(', ')} (four sizes, one typeface)`,
+    );
+  if (ts.answer && ts.body && ts.answer.weight < ts.body.weight) add('B3', 'the answer must be at least as heavy as body text');
   const sp = floor.spacing;
   if (!Array.isArray(sp) || sp.length < 3 || sp.some((v) => typeof v !== 'number' || v % 2 !== 0))
     add('B4', 'spacing must be a scale of at least three even pixel values');
@@ -385,7 +414,252 @@ function validateBrief(markdown) {
   if (part && /\{[a-z_]+[^}]*\}/i.test(part[0].replaceAll(/```json[\s\S]*?```/g, '')))
     add('B11', 'Part 2b still carries an unrendered {placeholder}');
   for (const f of completenessFindings(markdown, floor)) add(f.code, f.detail);
-  return { findings, floor };
+  const good = pictureOfGoodFindings(markdown, floor);
+  for (const f of good.findings) add(f.code, f.detail);
+  return { findings, floor, reports: good.reports };
+}
+
+/* ───────────── the picture of good and the five rules (B25–B30, presentation-floor.md §12) ───────────── */
+/*
+ * Claude Design, 2026-10-04, on a brief that had passed B1–B24: "The brief told me what was forbidden
+ * and what had to be true, but never what good looks like, and I aimed at passing its checks rather
+ * than at a mature product." Each check below is one of the things it said was missing. They prove a
+ * section is PRESENT and well-formed, never that the reference is the right one or the ranking is right.
+ * A brief with no reference screen is never a silent pass: it is a REPORT the gate must surface.
+ */
+function pictureOfGoodFindings(markdown, floor) {
+  const findings = [];
+  const reports = [];
+  const add = (code, detail) => findings.push({ code, detail });
+  const text = (v) => typeof v === 'string' && v.trim().length > 0;
+  const f = floor || {};
+  const md = markdown || '';
+  const heading = (re) => new RegExp(String.raw`^#{1,3}\s.*${re}`, 'im').test(md);
+
+  // B25 — the picture of good: one reference screen (or a stated absence) and a component vocabulary.
+  const pg = f.pictureOfGood;
+  if (!heading('picture of good')) add('B25', 'no "Picture of good" section in the brief');
+  if (!pg || typeof pg !== 'object') add('B25', 'the machine block has no "pictureOfGood" ({ reference, vocabulary })');
+  else {
+    const ref = pg.reference;
+    if (typeof ref === 'string') {
+      if (/^none\b\s*[:—-]\s*.{10,}/i.test(ref.trim()))
+        reports.push({ code: 'B25', detail: `this brief goes out with NO reference screen — ${ref.trim()}` });
+      else add('B25', 'pictureOfGood.reference is a string but not "none: <why no accepted surface exists>"');
+    } else if (!ref || !text(ref.surface) || !text(ref.where) || !text(ref.acceptedBy) || !text(ref.borrow) || !text(ref.notCopy))
+      add(
+        'B25',
+        'pictureOfGood.reference needs "surface", "where" (a path or URL the designer can open), "acceptedBy" (who accepted it and when), "borrow" (the vocabulary and maturity bar) and "notCopy" (what is not to be copied) — or "none: <why>"',
+      );
+    else if (/^unconfirmed\b/i.test(ref.acceptedBy.trim()))
+      reports.push({
+        code: 'B25',
+        detail: `the reference screen "${ref.surface}" was picked by the workflow and has no recorded acceptance — ${ref.acceptedBy.trim()}`,
+      });
+    const v = pg.vocabulary;
+    if (
+      !Array.isArray(v) ||
+      v.length < MIN_VOCABULARY ||
+      v.length > MAX_VOCABULARY ||
+      !v.every((c) => c && text(c.component) && text(c.use))
+    )
+      add(
+        'B25',
+        `pictureOfGood.vocabulary needs ${MIN_VOCABULARY}–${MAX_VOCABULARY} components, each { component, use } — a short vocabulary, not a component library`,
+      );
+  }
+
+  // B26 — the focal rule: every item names the ONE value that leads; the rest is declared secondary.
+  const fo = f.focal;
+  if (!Array.isArray(fo) || fo.length === 0) add('B26', 'the machine block has no "focal" list ({ item, leads, secondary[] })');
+  else
+    for (const e of fo) {
+      if (!e || !text(e.item) || !text(e.leads) || !Array.isArray(e.secondary) || !e.secondary.every(text))
+        add('B26', `focal "${(e && e.item) || '?'}" needs "item", ONE "leads" value (a string) and a "secondary" list`);
+      else if (e.secondary.some((x) => normalise(x) === normalise(e.leads)))
+        add('B26', `focal "${e.item}": "${e.leads}" both leads and is listed as secondary`);
+    }
+
+  // B27 — the absence rule: an absent value is set at the smallest size, in the grey.
+  const ab = f.absence;
+  const colourNames = Array.isArray(f.colours) ? f.colours.map((c) => c && c.name) : [];
+  if (!ab || ab.role !== 'caption' || !text(ab.colour))
+    add('B27', 'the machine block needs "absence": { "role": "caption", "colour": "<the one secondary grey>" }');
+  else if (!colourNames.includes(ab.colour)) add('B27', `absence.colour "${ab.colour}" is not one of the declared colours`);
+  else if (colourNames[0] === ab.colour)
+    add('B27', `absence.colour "${ab.colour}" is the primary text colour — an absent value is set in the secondary grey`);
+
+  // B28 — claims and chrome are told apart in the Copy deck.
+  const deck = (() => {
+    try {
+      return require('./check-copy-screen.js').parseDeck(md);
+    } catch {
+      return null;
+    }
+  })();
+  if (deck && deck.header) {
+    const kind = deck.header.findIndex((h) => h.trim() === 'kind' || h.startsWith('kind'));
+    if (kind === -1) add('B28', 'the Copy deck has no "Kind" column — every row is a claim (verbatim) or chrome (the designer\'s call)');
+    else
+      for (const r of deck.rows)
+        if (!/^(claim|chrome)$/i.test((r.cells[kind] || '').trim()))
+          add('B28', `Copy deck row ${r.cells[0]}: Kind is "${r.cells[kind] || ''}" — it must be claim or chrome`);
+  }
+
+  // B29 — the designer is told to review its own draft as a product before delivering.
+  if (!heading('self-review'))
+    add('B29', 'no self-review section: the designer is not told to render, screenshot and critique before delivering');
+
+  // B30 — the designer-facing opening is short, and the checker's matter sits behind it.
+  const lines = md.split('\n');
+  const title = lines.findIndex((l) => /^#\s+\S/.test(l));
+  const divider = lines.findIndex((l) => /^#\s+Reference\b/i.test(l));
+  if (divider === -1)
+    add('B30', 'no "# Reference" divider — the designer-facing opening is not separated from the reference and the checker appendix');
+  else {
+    const opening = lines.slice(Math.max(title, 0), divider);
+    if (opening.length > OPENING_MAX_LINES)
+      add(
+        'B30',
+        `the designer-facing opening is ${opening.length} lines; it may be at most ${OPENING_MAX_LINES} — move reference and checker matter behind the divider`,
+      );
+    // (kept last in this block: the screen-words checks follow)
+    const leak = opening.find((l) => /\b[BR]\d{1,2}\b|check-rendered-page|check-copy-screen|```json/.test(l));
+    if (leak) add('B30', `the designer-facing opening carries checker matter: "${leak.trim().slice(0, 80)}"`);
+  }
+  for (const x of screenWordsFindings(md, f, colourNames)) (x.report ? reports : findings).push({ code: x.code, detail: x.detail });
+  return { findings, reports };
+}
+
+/* ───────────── the words on screen (B31–B35, presentation-floor.md §13, gaps G21–G28) ───────────── */
+/*
+ * Claude Design, 2026-10-04, second note: every data sentence was split into a VALUE a buyer would say
+ * (1–4 words), an optional QUALIFIER (three words or fewer, only where the value could be misread) and
+ * the BASIS sentence shown when the record is opened. The brief now does that split, from the real
+ * data, so the designer does not have to. A value the generator could not derive is written
+ * "cannot derive: <why>" and REPORTED — never invented, and never a silent pass.
+ */
+const VALUE_MAX_WORDS = 4;
+const QUALIFIER_MAX_WORDS = 3;
+const MIN_EXAMPLES = 2;
+const TONES = ['ink', 'muted', 'warning', 'destructive'];
+/** A missing value is a fixed grey word, never a dash and never a sentence. */
+const DASH_ONLY = /^[\s—–\-·.]*$/;
+function screenWordsFindings(markdown, floor, colourNames) {
+  const out = [];
+  const add = (code, detail) => out.push({ code, detail });
+  const report = (code, detail) => out.push({ code, detail, report: true });
+  const text = (v) => typeof v === 'string' && v.trim().length > 0;
+  const noneWhy = (v) => typeof v === 'string' && /^none\b\s*[:—-]\s*.{10,}/i.test(v.trim());
+  const underived = (v) => typeof v === 'string' && /^cannot derive\b\s*[:—-]\s*.{10,}/i.test(v.trim());
+  const count = (v) => words(String(v).replaceAll(/\{[^}]*\}/g, 'x')).length;
+  if (!/^#{1,3}\s.*screen words/im.test(markdown)) add('B31', 'no "Screen words" section in the brief');
+  const sw = floor.screenWords;
+  if (!sw || typeof sw !== 'object') {
+    add(
+      'B31',
+      'the machine block has no "screenWords" ({ fields, tones, missing, actions, whoseMove, openedLabels, distinctions, examples })',
+    );
+    return out;
+  }
+  // B31 — the PRODUCER writes the split: every field, in every state, arrives as a value, an optional
+  // qualifier and a basis. A field that arrives as one sentence fails; the designer never derives it.
+  const usedTones = new Set();
+  if (!Array.isArray(sw.fields) || sw.fields.length === 0)
+    add('B31', 'screenWords.fields is empty — every field, in every state, needs a value, an optional qualifier and a basis');
+  else
+    for (const fd of sw.fields) {
+      const name = `${(fd && fd.field) || '?'}${fd && fd.state ? ` / ${fd.state}` : ''}`;
+      if (!fd || !text(fd.field) || !text(fd.state) || !text(fd.value) || !text(fd.basis)) {
+        add('B31', `field "${name}" needs "field", "state", "value" and "basis"`);
+        continue;
+      }
+      if (underived(fd.value)) report('B31', `field "${name}": no value could be derived from the source data — ${fd.value.trim()}`);
+      else {
+        if (count(fd.value) > VALUE_MAX_WORDS)
+          add(
+            'B31',
+            `field "${name}": the value "${fd.value}" is over ${VALUE_MAX_WORDS} words — the field has arrived as a sentence; split it into value, qualifier and basis`,
+          );
+        if (fd.value.includes(';'))
+          add('B31', `field "${name}": a semicolon in the value "${fd.value}" — one idea per line; make it separate rows`);
+        if (normalise(fd.value) === normalise(fd.basis))
+          add('B31', `field "${name}": the value and the basis are the same string — the field has not been split`);
+        if (DASH_ONLY.test(fd.value)) add('B31', `field "${name}": a dash is not a value — use the fixed word for that kind of missing`);
+      }
+      if (text(fd.qualifier) && count(fd.qualifier) > QUALIFIER_MAX_WORDS)
+        add('B31', `field "${name}": the qualifier "${fd.qualifier}" is over ${QUALIFIER_MAX_WORDS} words`);
+      if (!underived(fd.basis) && count(fd.basis) < 3)
+        add('B31', `field "${name}": the basis is the full sentence shown when the record is opened, not a fragment`);
+      // B32 — each state carries a tone from the closed list.
+      if (TONES.includes(fd.tone)) {
+        usedTones.add(fd.tone);
+      } else {
+        add('B32', `field "${name}": tone "${fd.tone}" is not one of ${TONES.join(', ')}`);
+      }
+    }
+  // B32 — every tone used maps to a declared colour; missing values have fixed words, never a dash or a sentence.
+  const tones = sw.tones || {};
+  for (const t of usedTones)
+    if (!text(tones[t]) || !colourNames.includes(tones[t]))
+      add('B32', `tone "${t}" is used but "tones.${t}" does not name a declared colour`);
+  if (noneWhy(sw.missing)) {
+    /* no field on this surface can be missing, and the brief says how that is known */
+  } else if (!Array.isArray(sw.missing) || sw.missing.length === 0)
+    add(
+      'B32',
+      'screenWords.missing needs the fixed word for each kind of missing value ({ means, word }), or "none: <why no value can be missing>"',
+    );
+  else {
+    for (const m of sw.missing) {
+      if (!m || !text(m.means) || !text(m.word)) add('B32', 'a missing-value entry needs "means" (which kind of missing) and "word"');
+      else if (DASH_ONLY.test(m.word) || count(m.word) > QUALIFIER_MAX_WORDS)
+        add(
+          'B32',
+          `missing-value word "${m.word}" must be a fixed word of ${QUALIFIER_MAX_WORDS} words or fewer — never a dash, never a sentence`,
+        );
+    }
+    const seen = sw.missing.map((m) => normalise(String((m && m.word) || '')));
+    if (new Set(seen).size !== seen.length) add('B32', 'two kinds of missing value share one word — each kind needs its own');
+  }
+  // B33 — an action phrase per move, the whose-move words, and the labels of the opened record.
+  if (noneWhy(sw.actions)) {
+    /* a read-only surface says so */
+  } else if (!Array.isArray(sw.actions) || sw.actions.length === 0 || !sw.actions.every((a) => a && text(a.move) && text(a.phrase)))
+    add('B33', 'screenWords.actions needs { move, phrase } for each of the reader\'s moves, or "none: <why the reader has no move here>"');
+  if (!noneWhy(sw.whoseMove) && (!Array.isArray(sw.whoseMove) || sw.whoseMove.length < 2 || !sw.whoseMove.every(text)))
+    add('B33', 'screenWords.whoseMove needs the words that name whose move it is (the reader, each other party, nobody), or "none: <why>"');
+  if (!noneWhy(sw.openedLabels) && (!Array.isArray(sw.openedLabels) || sw.openedLabels.length === 0 || !sw.openedLabels.every(text)))
+    add('B33', 'screenWords.openedLabels needs the labels of the opened record, or "none: <why nothing opens>"');
+  // B34 — a distinction check for each pair of look-alike states: the two values differ at rest.
+  if (noneWhy(sw.distinctions)) {
+    /* checked, and none found */
+  } else if (!Array.isArray(sw.distinctions) || sw.distinctions.length === 0)
+    add('B34', 'screenWords.distinctions needs each pair of look-alike states, or "none: <how that was checked>"');
+  else
+    for (const d of sw.distinctions) {
+      if (!d || !text(d.a) || !text(d.b) || !text(d.means))
+        add(
+          'B34',
+          'a distinction needs "a", "b" (the two strings shown at rest: value, with its qualifier) and "means" (what each one tells the reader)',
+        );
+      else if (normalise(d.a) === normalise(d.b))
+        add(
+          'B34',
+          `the pair "${d.a}" / "${d.b}" reads the same at rest — the distinguishing words must be in the value or the qualifier, not the basis`,
+        );
+    }
+  // B35 — worked examples from the real data.
+  if (!Array.isArray(sw.examples) || sw.examples.length < MIN_EXAMPLES)
+    add(
+      'B35',
+      `screenWords.examples needs at least ${MIN_EXAMPLES} worked examples: a raw data sentence turned into value, qualifier and basis`,
+    );
+  else
+    for (const e of sw.examples)
+      if (!e || !text(e.raw) || !text(e.value) || !text(e.basis) || count(e.value) > VALUE_MAX_WORDS)
+        add('B35', 'a worked example needs "raw" (the data sentence as it arrives), a "value" of 1–4 words and its "basis"');
+  return out;
 }
 
 /* ───────────────────── brief completeness (B12–B20, the gap ledger) ───────────────────── */
@@ -866,7 +1140,9 @@ function checkSnapshot(snapshot, floor) {
 
   // R1 — type tokens, one size one job
   if (visible.length > 0) {
-    const declared = ROLES.map((r) => ts[r]?.size).filter((x) => typeof x === 'number');
+    // A delivered brief written before 2026-10-04 may still declare the by-datum "figure" role; its
+    // page is checked against the sizes that brief declared, not against a scale it never saw.
+    const declared = [...ROLES, ...LEGACY_DATUM_ROLES].map((r) => ts[r]?.size).filter((x) => typeof x === 'number');
     if (declared.length === 0) put('R1', 'type-tokens', 'unchecked', 'the floor declares no type scale');
     else {
       const off = visible.filter((t) => !declared.some((d) => Math.abs(d - t.fontSize) <= SIZE_TOLERANCE_PX));
@@ -1790,11 +2066,13 @@ async function main(argv) {
     return 0;
   }
   if (arg('--validate-brief')) {
-    const { findings } = validateBrief(fs.readFileSync(arg('--validate-brief'), 'utf8'));
-    if (json) console.log(JSON.stringify({ hard: findings.length, findings }, null, 2));
+    const { findings, reports = [] } = validateBrief(fs.readFileSync(arg('--validate-brief'), 'utf8'));
+    if (json) console.log(JSON.stringify({ hard: findings.length, findings, reports }, null, 2));
     else {
-      console.log(`presentation-floor brief check: ${findings.length} hard finding(s).`);
+      console.log(`presentation-floor brief check: ${findings.length} hard finding(s), ${reports.length} to report.`);
       for (const f of findings) console.log(`  ✗ ${f.code} ${f.detail}`);
+      // A report does not fail the brief and is never silent: Gate 1 carries each one to its close-out.
+      for (const r of reports) console.log(`  ! ${r.code} REPORT ${r.detail}`);
     }
     return findings.length > 0 ? 1 : 0;
   }
@@ -1866,6 +2144,9 @@ module.exports = {
   probe,
   STANDARD,
   ROLES,
+  LEGACY_DATUM_ROLES,
+  pictureOfGoodFindings,
+  screenWordsFindings,
   BANNED_KEYS,
   REQUIRED_CITATIONS,
   DEFAULT_BUDGETS,
