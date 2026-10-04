@@ -1,4 +1,5 @@
 ---
+title: "operator-domain-pass — Spec (design-only, stable-for-wiring)"
 type: workflow-spec
 status: draft-stable-for-wiring
 name: operator-domain-pass

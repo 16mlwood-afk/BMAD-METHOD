@@ -1,3 +1,7 @@
+---
+title: "Sync plan — depth-pass provenance gates (c7a6917e)"
+---
+
 # Sync plan — depth-pass provenance gates (`c7a6917e`)
 
 **Status: PLAN ONLY. No sync has been run. Do not run one from this document.**

@@ -1,3 +1,7 @@
+---
+title: "Evidence — Claude Design's write-up on screen values (2026-10-04)"
+---
+
 # Evidence — Claude Design's write-up on screen values (2026-10-04)
 
 **What this is.** Claude Design's own account of how it turned one project's audit sentences into

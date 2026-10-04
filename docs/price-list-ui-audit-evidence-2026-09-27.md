@@ -1,3 +1,7 @@
+---
+title: "Price-list page UI audit — Media Electrónics, price list of 23 Sep 2026"
+---
+
 # Price-list page UI audit — Media Electrónics, price list of 23 Sep 2026
 
 **Surface:** brand-source-finder, hosted page `/product/190` (Media Electrónics' Oral-B list, check SR-20260926-005) and its line drawer (Row 24, the iO9 Magnetic white).

@@ -1,4 +1,5 @@
 ---
+title: "docs/<operator>-operational-profile.md — Schema + Example (stable-for-wiring)"
 type: schema-spec
 status: draft-stable-for-wiring
 name: operator-operational-profile

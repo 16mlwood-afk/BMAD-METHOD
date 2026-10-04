@@ -1,3 +1,7 @@
+---
+title: "Decision — the design brief shows what good looks like (2026-10-04)"
+---
+
 # Decision — the design brief shows what good looks like (2026-10-04)
 
 **Owner instruction, 2026-10-04, verbatim:** *"we've narrowed it down to the brief being the problem. Take

@@ -1,3 +1,7 @@
+---
+title: "Fork Gaps — RESOLVED archive"
+---
+
 # Fork Gaps — RESOLVED archive
 
 Resolved/closed entries moved out of [`fork-gaps.md`](./fork-gaps.md) so the live file reads in one pass. History is deliberately kept — the record of what got rediscovered and how it was fixed is the point. Newest-open work lives in the live file; this is the closed record, appended to as gaps resolve.

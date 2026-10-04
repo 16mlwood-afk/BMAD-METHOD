@@ -1,4 +1,5 @@
 ---
+title: "Proposal — create-agent must perform outward discovery before authoring"
 name: create-agent-outward-discovery-gate
 description: "Option C APPROVED 2026-07-31 (owner) — outward discovery gates create-agent with a logged override. Implementation waits on the STD-SKILLPROV-001 DRAFT pilot. A workflow-contract change affecting 13 projects, deliberately separated from the maintenance retrofit that already shipped."
 status: IMPLEMENTED 2026-07-31

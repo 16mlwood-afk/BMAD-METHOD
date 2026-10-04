@@ -1,3 +1,7 @@
+---
+title: "Human-Writing Capability Ledger"
+---
+
 # Human-Writing Capability Ledger
 
 **Scope:** humanizer / human-writing / plain-English / voice / tone / cold-email capabilities — which are already covered by installed skills, which are redundant to add, and where a genuine gap remains.

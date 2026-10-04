@@ -1,3 +1,7 @@
+---
+title: "AI-Media Spend Controls — fork default"
+---
+
 # AI-Media Spend Controls — fork default
 
 **Status:** ratified 2026-07-20 (origin: cash-recovery clerk photo-step video programme).

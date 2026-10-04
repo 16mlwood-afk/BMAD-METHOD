@@ -1,3 +1,7 @@
+---
+title: "Humanizer bake-off — writing:humanize-text vs humanize-research"
+---
+
 # Humanizer bake-off — `writing:humanize-text` vs `humanize-research`
 
 **Date:** 2026-07-24 · **Session:** claude-session-20260724-195406
