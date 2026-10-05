@@ -146,17 +146,18 @@ def wiring() -> None:
         # Fail-open: a missing or crashing script must never cost the prompt.
         check('fail-open on a missing script', '[ -f "$S" ] || exit 0' in cmd, True)
         check('fail-open on a crash', '|| true; exit 0' in cmd, True)
-        # RESOLVES A CHECKOUT FROM ANYWHERE, and the PROPERTY is what is asserted
-        # rather than one spelling of it. This used to demand the literal string
-        # `/.claude/worktrees/`, which pinned the old idiom: strip $PWD back to the
-        # main checkout. The fork standardised on walking UP from $PWD instead
-        # (docs/hooks-registry.md), which finds the worktree's own copy first and falls
-        # through to the main checkout — and reaches a hook that has not been merged
-        # yet. Neither $PWD nor $CLAUDE_PROJECT_DIR identifies the checkout on its
-        # own: the docs say CLAUDE_PROJECT_DIR stays where the SESSION started, so it
-        # is the main checkout for a worktree entered mid-session and the worktree
-        # for a session spawned into one. Hence walk, then fall back.
-        check('walks up from $PWD to find a checkout', 'while [ -n "$D" ]' in cmd, True)
+        # RESOLVES A CHECKOUT FROM A TRUSTED ROOT, and the PROPERTY is what is asserted
+        # rather than one spelling of it. Neither $PWD nor $CLAUDE_PROJECT_DIR identifies
+        # the checkout on its own: CLAUDE_PROJECT_DIR stays where the SESSION started, so
+        # it is the main checkout for a worktree entered mid-session and the worktree for
+        # a session spawned into one. The fork first stripped $PWD back to the main
+        # checkout, then walked UP from $PWD — and the walk ran whatever script sat in
+        # ANY ancestor's .claude/hooks/, so a planted copy replaced the real hook. Since
+        # 2026-10-05 every wrapper asks git for the toplevel and prefers that copy only
+        # when it is the project or one of its own worktrees; the behaviour is proved for
+        # the whole set in test_hook_wrapper_resolution.py.
+        check('does not walk up from $PWD', 'while [ -n "$D" ]' in cmd, False)
+        check('asks git for the checkout', 'rev-parse --show-toplevel' in cmd, True)
         check('falls back to $CLAUDE_PROJECT_DIR', 'CLAUDE_PROJECT_DIR' in cmd, True)
         check('runs the script rather than inlining the logic',
               '/.claude/hooks/$N' in cmd and 'python3 "$S"' in cmd, True)
