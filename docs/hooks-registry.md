@@ -111,15 +111,50 @@ from `custom/hooks/`. Source of truth for every row: `~/bmad-method-v6/custom/ho
 | owner-step-handback-warn | Stop | A step handed to the owner must name why it needs him | warn |
 | stash-untracked-guard | PreToolUse(Bash) | The stash stack is shared across worktrees — refuse `stash -u` | enforce (gate) |
 
-**A tenth script, added 2026-10-05: `worktree-edit-guard.py`** — PreToolUse(Edit\|Write),
+**A tenth script, added 2026-10-05: `worktree-edit-guard.py`** — PreToolUse(Edit\|Write\|NotebookEdit),
 enforce (gate). It is the `bmad-worktree-guard` decision table that used to be a 2,900-character
 inline shell command in the template, moved into a script so it can be read and tested: an edit
 to the project's shared tree from the wrong worktree is refused, and a cross-repo edit is
-auto-approved only where the path really lands under `~/code` and is not a secret, git internals
-or another project's `.claude/`. Exemptions are anchored to the session's project and decided on
-the resolved path; an unresolvable path never gets an approval. The wrapper in the template
-follows the `bash_edit_guard.py` shape — a missing or crashing script is announced as UNCHECKED
-and decides nothing. Golden suite: `python3 custom/hooks/test_worktree_edit_guard.py`.
+auto-approved only where the path really lands under `~/code` and is not a secret, git internals,
+a file that executes or instructs (git hooks, CI workflows, `.mcp.json`, `CLAUDE.md`,
+`AGENTS.md`) or another project's `.claude/`. Golden suite:
+`python3 custom/hooks/test_worktree_edit_guard.py`.
+
+Hardened the same day against ten findings an independent review reproduced, each pinned by
+golden cases named by number. The project is `$CLAUDE_PROJECT_DIR`, or what git says owns the
+working directory — never the text before the last `/.claude/worktrees/`, and an unconfirmed
+project can refuse but never approve. The path is judged as the tool writes it (whitespace
+stripped, `~/` expanded) and matched as the filesystem folds it (NFKC, casefold). An approval
+is never given for a non-ASCII name, a name that changes when stripped, a hard-linked file, a
+file in the working directory's own repository, or when git does not answer within 2 seconds.
+`BMAD_ALLOW_MAIN_EDIT=1` never approves a sensitive path and never approves without its log
+line, which is written with every field sanitised and JSON-quoted to a file opened without
+following a symlink. `NotebookEdit` is covered, the `CLAUDE_TOOL_INPUT_FILE_PATH` fallback is
+gone, and parallel sessions are counted by the basename of the command.
+
+**The owner's switch:** `AUTO_APPROVE_CROSS_REPO` at the top of the script. Set it to `False`
+and the guard never approves a path outside the project; both settings have golden cases.
+
+**What it does not cover, stated rather than implied.** It judges Edit, Write and NotebookEdit
+only: a file written by a shell command is `bash_edit_guard.py`'s job. With
+`CLAUDE_PROJECT_DIR` unset AND the working directory outside any git repository it withholds
+every approval, so a non-git project gets prompts where it used to get approvals. A worktree
+kept outside its checkout is compared with the working directory's repository, not with the
+project's, so it is covered only while the session is working in that repository.
+
+**How every wrapper in the template finds its script (2026-10-05).** All thirteen hook
+commands that run a file from `.claude/hooks/` carry the same resolution, identical apart from
+the script's name. The trusted root is `$CLAUDE_PROJECT_DIR`. The copy in the git toplevel of
+`$PWD` is preferred only when that toplevel is the project or one of its own worktrees — the
+same git common dir, and listed by `git worktree list` — so a session in a worktree runs the
+hook it has checked out. With `CLAUDE_PROJECT_DIR` unset it is the git toplevel of `$PWD`.
+Nothing walks up from `$PWD` any more: eleven wrappers did, two cut `$PWD` at
+`/.claude/worktrees/`, and in all thirteen a file at `<somewhere under the cwd>/.claude/hooks/<name>`
+ran in place of the real hook. What each wrapper does when its script is missing or crashes is
+unchanged. `python3 custom/hooks/test_hook_wrapper_resolution.py` asserts it over every
+command in the template that mentions `.claude/hooks/`, not over a list of names, so a new
+wrapper written any other way fails it. Project-local hooks in a project's own
+`.claude/settings.json` are not covered by this and have not been swept.
 
 **Two were deliberately NOT moved** and stay project-local until their partner names and
 persona come from configuration rather than being hard-coded: `working-week-pointer.py` and
