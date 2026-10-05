@@ -9,6 +9,17 @@ throwaway tree with its own HOME, its own project, its own worktree and a stand-
 that reports however many claude processes the case wants. Nothing here reads or writes
 the real home directory.
 
+THE SCRIPT SHIPS WITH CROSS-REPO APPROVAL OFF (owner decision, 2026-10-05: "off."), so the
+whole suite runs TWICE, each in its own throwaway tree:
+
+  * `shipped ·`      — the script exactly as it is in this directory. Every out-of-project
+                       target gets no decision, and one set-wide assertion at the end checks
+                       that NO run of the shipped script anywhere in the suite produced an
+                       `allow` for a path outside the session's project.
+  * `switched on ·`  — a generated copy with AUTO_APPROVE_CROSS_REPO set True. Same cases,
+                       and here they show WHICH paths the approval is withheld from, so
+                       that logic stays covered for the day the switch is turned back on.
+
 Cases that start with a number (`1 ·` … `10 ·`), `lower ·` or `switch ·` pin the ten findings
 an independent review reproduced on 2026-10-05, and the owner's switch added with them.
 
@@ -21,6 +32,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -42,21 +54,40 @@ SETTINGS = _INSTALLED if _INSTALLED.exists() else _TEMPLATE
 FAILURES: list[str] = []
 RAN = 0
 SKIPPED: list[str] = []
+MODE = ''  # 'shipped' or 'switched on' — prefixed to every case name
+# Every run of the SHIPPED script anywhere in the suite, and every `allow` it gave:
+# (path(s), cwd, did every path really land inside the session's project?)
+SHIPPED_RUNS = 0
+SHIPPED_ALLOWS: list = []
+SWITCH_LINE = re.compile(r'^AUTO_APPROVE_CROSS_REPO = .*$', re.M)
 
 
 def check(name: str, actual, expected) -> None:
     global RAN
     RAN += 1
     if actual != expected:
-        FAILURES.append(f'{name}\n    expected: {expected!r}\n    actual:   {actual!r}')
+        FAILURES.append(f'{MODE} · {name}\n    expected: {expected!r}\n    actual:   {actual!r}')
+
+
+def check_reason(w, name: str, reason: str, expected: str) -> None:
+    """The cross-repo reason text — which exists only when the approval is switched on."""
+    check(name, reason, expected if w.approving else '')
 
 
 # --- the throwaway world -------------------------------------------------------------
 
 
 class World:
-    def __init__(self, base: Path) -> None:
+    def __init__(self, base: Path, approving: bool) -> None:
         self.base = base
+        base.mkdir(parents=True, exist_ok=True)
+        # The script under test in this world, and what it answers for an approvable
+        # cross-repo edit: the shipped script says nothing, the switched-on copy allows.
+        self.approving = approving
+        self.on = base / 'guard-switched-on.py'
+        self.on.write_text(SWITCH_LINE.sub('AUTO_APPROVE_CROSS_REPO = True', HOOK.read_text()))
+        self.hook = self.on if approving else HOOK
+        self.X = 'allow' if approving else 'none'
         self.home = base / 'home'
         self.code = self.home / 'code'
         self.proj = self.code / 'proj'
@@ -163,8 +194,9 @@ class World:
                     or {'file_path': path, 'old_string': 'a', 'new_string': 'b'},
                 }
             )
+        hook = hook or self.hook
         result = subprocess.run(
-            [sys.executable, str(hook or HOOK)],
+            [sys.executable, str(hook)],
             input=stdin,
             capture_output=True,
             text=True,
@@ -173,6 +205,8 @@ class World:
             env=self.env(count, PWD=str(cwd), **extra),
         )
         out = result.stdout
+        if hook == HOOK:
+            self.note_shipped(out, stdin, cwd)
         if result.returncode != 0:
             return (f'EXIT {result.returncode}', result.stderr[-300:], out)
         if not out.strip():
@@ -183,6 +217,28 @@ class World:
             return (body['permissionDecision'], body['permissionDecisionReason'], out)
         except Exception:
             return ('INVALID', out[:300], out)
+
+    def note_shipped(self, out: str, stdin: str, cwd: Path) -> None:
+        """Record a run of the SHIPPED script, and any `allow` it gave, for the set-wide check."""
+        global SHIPPED_RUNS
+        SHIPPED_RUNS += 1
+        if '"allow"' not in out.replace(' ', ''):
+            return
+        try:
+            paths = [v for v in json.loads(stdin)['tool_input'].values() if isinstance(v, str)]
+        except Exception:
+            paths = []
+        paths = [p for p in paths if p not in ('a', 'b')]  # old_string / new_string
+        inside = bool(paths) and all(self.in_a_project(p, cwd) for p in paths)
+        SHIPPED_ALLOWS.append((' + '.join(repr(p) for p in paths) or '(no path found)', str(cwd), inside))
+
+    def in_a_project(self, path: str, cwd: Path) -> bool:
+        """Does `path`, as the tool would write it, really land inside proj or plain?"""
+        tidy = path.strip()
+        if tidy == '~' or tidy.startswith('~/'):
+            tidy = str(self.home) + tidy[1:]
+        real = os.path.realpath(os.path.join(str(cwd), tidy))
+        return any(real == str(root) or real.startswith(str(root) + '/') for root in (self.proj, self.plain))
 
     def kind(self, path, cwd: Path, count=1, **extra: str) -> str:
         return self.run(path, cwd, count, **extra)[0]
@@ -311,7 +367,7 @@ NOT_SENSITIVE = [
 def outside_the_project(w: World) -> None:
     for label, cwd in (('worktree', w.wt / 'src'), ('main checkout', w.proj)):
         for rel in NOT_SENSITIVE:
-            check(f'{label} · cross-repo allow · {rel}', w.kind(f'{w.other}/{rel}', cwd), 'allow')
+            check(f'{label} · cross-repo, approved only when switched on · {rel}', w.kind(f'{w.other}/{rel}', cwd), w.X)
         for rel in SENSITIVE:
             check(f'{label} · sensitive, no decision · {rel}', w.kind(f'{w.other}/{rel}', cwd), 'none')
         for name, path in [
@@ -335,8 +391,9 @@ def outside_the_project(w: World) -> None:
 
     other = str(w.other)
     kind, reason, _ = w.run(f'{other}/src/a.ts', w.wt / 'src')
-    check(
-        'worktree · cross-repo reason is the existing text',
+    check_reason(
+        w,
+        'worktree · cross-repo reason is the existing text (and there is none as shipped)',
         reason,
         f'Cross-repo edit: {other}/src/a.ts is outside this session project (worktree of '
         f'{w.proj}). A worktree of THIS project cannot isolate a different repo, so the '
@@ -344,8 +401,9 @@ def outside_the_project(w: World) -> None:
         'parallel session is editing that repo.',
     )
     kind, reason, _ = w.run(f'{other}/src/a.ts', w.proj)
-    check(
-        'main checkout · cross-repo reason is the existing text',
+    check_reason(
+        w,
+        'main checkout · cross-repo reason is the existing text (and there is none as shipped)',
         reason,
         f'Cross-repo edit: {other}/src/a.ts is outside this session project {w.proj}. A '
         'worktree of THIS project cannot isolate a different repo, so the worktree rule does '
@@ -356,10 +414,10 @@ def outside_the_project(w: World) -> None:
     check(
         'symlink in P that lands in another repo under ~/code',
         w.kind(f'{w.proj}/src/to-other-src/a.ts', w.wt / 'src'),
-        'allow',
+        w.X,
     )
     # Many parallel sessions do not change the cross-repo answer, and neither does the override.
-    check('main checkout · cross-repo, 3 sessions', w.kind(f'{other}/src/a.ts', w.proj, 3), 'allow')
+    check('main checkout · cross-repo, 3 sessions', w.kind(f'{other}/src/a.ts', w.proj, 3), w.X)
     check(
         'main checkout · sensitive cross-repo stays a prompt even with the override set',
         w.kind(f'{other}/.env', w.proj, 3, BMAD_ALLOW_MAIN_EDIT='1'),
@@ -367,7 +425,7 @@ def outside_the_project(w: World) -> None:
     )
     # No HOME -> there is no ~/code to anchor an allow to.
     result = subprocess.run(
-        [sys.executable, str(HOOK)],
+        [sys.executable, str(w.hook)],
         input=json.dumps({'tool_input': {'file_path': f'{other}/src/a.ts'}}),
         capture_output=True,
         text=True,
@@ -462,7 +520,7 @@ def in_the_main_checkout(w: World) -> None:
 
     # ps cannot be run -> the count is 0, as it was for the one-liner.
     result = subprocess.run(
-        [sys.executable, str(HOOK)],
+        [sys.executable, str(w.hook)],
         input=json.dumps({'tool_input': {'file_path': f'{p}/src/a.ts'}}),
         capture_output=True,
         text=True,
@@ -479,7 +537,7 @@ def in_the_main_checkout(w: World) -> None:
     check(
         'non-git project · cross-repo allow (the harness names the project)',
         w.kind(f'{w.other}/src/a.ts', w.plain, 3, CLAUDE_PROJECT_DIR=plain),
-        'allow',
+        w.X,
     )
     check(
         '1 · non-git project, nothing confirms what the project is -> never an allow',
@@ -524,7 +582,7 @@ def reviewed_findings(w: World) -> None:
         nested = w.proj / 'sub' / '.claude' / 'worktrees' / 'x'
         check(f'1 · cwd P/sub/.claude/worktrees/x: P is still the project, 3 sessions · {label}', w.kind(f'{p}/src/a.ts', nested, 3, **extra), 'deny')
         check(f'1 · cwd P/sub/.claude/worktrees/x: P is still the project, alone · {label}', w.kind(f'{p}/src/a.ts', nested, 1, **extra), 'none')
-        check(f'1 · cwd P/sub/.claude/worktrees/x: a real cross-repo edit is still approved · {label}', w.kind(f'{other}/src/a.ts', nested, 1, **extra), 'allow')
+        check(f'1 · cwd P/sub/.claude/worktrees/x: a real cross-repo edit is still approved · {label}', w.kind(f'{other}/src/a.ts', nested, 1, **extra), w.X)
     # A session started IN a worktree: CLAUDE_PROJECT_DIR is the worktree, P is its owner.
     check('1 · CLAUDE_PROJECT_DIR is the worktree itself: main-checkout file refused', w.kind(f'{p}/src/a.ts', in_wt, CLAUDE_PROJECT_DIR=wt), 'deny')
     check('1 · CLAUDE_PROJECT_DIR is the worktree itself: worktree file is fine', w.kind(f'{wt}/src/a.ts', in_wt, CLAUDE_PROJECT_DIR=wt), 'none')
@@ -543,7 +601,7 @@ def reviewed_findings(w: World) -> None:
     check('3 · subdirectory of a non-git project: a project file, 3 sessions, is refused', w.kind(f'{w.plain}/a.ts', w.plain / 'src', 3, CLAUDE_PROJECT_DIR=str(w.plain)), 'deny')
     check('3 · subdirectory of a non-git project, no CLAUDE_PROJECT_DIR: never an allow', w.kind(f'{w.plain}/a.ts', w.plain / 'src', 3), 'none')
     check('3 · target and cwd in the same repository, project elsewhere: never an allow', w.kind(f'{w.repo2}/a.ts', w.repo2 / 'src', 1, CLAUDE_PROJECT_DIR=p), 'none')
-    check('3 · a different repository from there is still approved', w.kind(f'{other}/src/a.ts', w.repo2 / 'src', 1, CLAUDE_PROJECT_DIR=p), 'allow')
+    check('3 · a different repository from there is still approved', w.kind(f'{other}/src/a.ts', w.repo2 / 'src', 1, CLAUDE_PROJECT_DIR=p), w.X)
 
     # 4 · The path is judged as the tool will write it: stripped, `~/` expanded.
     for label, cwd in (('worktree', in_wt), ('main checkout', w.proj)):
@@ -558,8 +616,8 @@ def reviewed_findings(w: World) -> None:
             ('~/code/other/.env', '~/code/other/.env'),
         ]:
             check(f'4 · {label} · no decision · {name}', w.kind(path, cwd), 'none')
-        check(f'4 · {label} · ~/code/other/src/a.ts is the cross-repo file', w.kind('~/code/other/src/a.ts', cwd), 'allow')
-        check(f'4 · {label} · a leading space does not change which file it is', w.kind(f' {other}/src/a.ts', cwd), 'allow')
+        check(f'4 · {label} · ~/code/other/src/a.ts is the cross-repo file', w.kind('~/code/other/src/a.ts', cwd), w.X)
+        check(f'4 · {label} · a leading space does not change which file it is', w.kind(f' {other}/src/a.ts', cwd), w.X)
     check('4 · worktree · ~/code/proj/src/a.ts is the main checkout', w.kind('~/code/proj/src/a.ts', in_wt), 'deny')
     check('4 · worktree · a leading space does not hide an absolute path', w.kind(f' {p}/src/a.ts', in_wt), 'deny')
     check('4 · worktree · nor a leading newline', w.kind(f'\n{p}/src/a.ts', in_wt), 'deny')
@@ -635,7 +693,7 @@ def reviewed_findings(w: World) -> None:
     check('8 · NotebookEdit · a notebook in the main checkout, from a worktree, is refused', notebook(in_wt, notebook_path=f'{p}/src/n.ipynb'), 'deny')
     check('8 · NotebookEdit · a notebook in the main checkout, 3 sessions, is refused', notebook(w.proj, 3, notebook_path=f'{p}/src/n.ipynb'), 'deny')
     check('8 · NotebookEdit · a notebook in the worktree: no decision', notebook(in_wt, notebook_path=f'{wt}/src/n.ipynb'), 'none')
-    check('8 · NotebookEdit · a cross-repo notebook is approved like any file', notebook(in_wt, notebook_path=f'{other}/src/n.ipynb'), 'allow')
+    check('8 · NotebookEdit · a cross-repo notebook is approved like any file', notebook(in_wt, notebook_path=f'{other}/src/n.ipynb'), w.X)
     check('8 · NotebookEdit · a sensitive notebook path: no decision', notebook(in_wt, notebook_path=f'{other}/.ssh/n.ipynb'), 'none')
     check('8 · two paths in one input: a refusal for either refuses', notebook(in_wt, file_path=f'{other}/src/a.ts', notebook_path=f'{p}/src/n.ipynb'), 'deny')
     check('8 · two paths in one input: no decision for either withholds the allow', notebook(in_wt, file_path=f'{other}/src/a.ts', notebook_path=f'{home}/.zshrc'), 'none')
@@ -678,6 +736,7 @@ def reviewed_findings(w: World) -> None:
 
 
 def owners_switch(w: World) -> None:
+    """Run once, in the shipped world: the constant, and the one-directional env rule."""
     p, other = str(w.proj), str(w.other)
     source = HOOK.read_text()
     check(
@@ -685,14 +744,15 @@ def owners_switch(w: World) -> None:
         sum(1 for line in source.splitlines() if line.startswith('AUTO_APPROVE_CROSS_REPO = ')),
         1,
     )
-    check('switch · and it ships True', 'AUTO_APPROVE_CROSS_REPO = True\n' in source, True)
+    check('switch · and it ships False', 'AUTO_APPROVE_CROSS_REPO = False\n' in source, True)
+    check('switch · the header records the decision, its date and the word', '2026-10-05, in his word: "off."' in source, True)
 
-    off = w.base / 'guard-switched-off.py'
-    off.write_text(source.replace('AUTO_APPROVE_CROSS_REPO = True\n', 'AUTO_APPROVE_CROSS_REPO = False\n'))
     settings = [
-        ('env BMAD_GUARD_AUTO_APPROVE=0', None, {'BMAD_GUARD_AUTO_APPROVE': '0'}),
-        ('constant False', off, {}),
-        ('constant False, env says 1 (it cannot switch it back on)', off, {'BMAD_GUARD_AUTO_APPROVE': '1'}),
+        ('shipped', HOOK, {}),
+        ('shipped, env BMAD_GUARD_AUTO_APPROVE=1 (it cannot switch it on)', HOOK, {'BMAD_GUARD_AUTO_APPROVE': '1'}),
+        ('shipped, env BMAD_GUARD_AUTO_APPROVE=true', HOOK, {'BMAD_GUARD_AUTO_APPROVE': 'true'}),
+        ('shipped, env AUTO_APPROVE_CROSS_REPO=True', HOOK, {'AUTO_APPROVE_CROSS_REPO': 'True'}),
+        ('constant True, env BMAD_GUARD_AUTO_APPROVE=0 (it can switch it off)', w.on, {'BMAD_GUARD_AUTO_APPROVE': '0'}),
     ]
     for setting, hook, env in settings:
         for label, cwd in (('worktree', w.wt / 'src'), ('main checkout', w.proj)):
@@ -712,9 +772,23 @@ def owners_switch(w: World) -> None:
     for value in ('1', 'true', ''):
         check(
             f'switch ON (constant True, BMAD_GUARD_AUTO_APPROVE={value!r}) · cross-repo is approved',
-            w.kind(f'{other}/src/a.ts', w.proj, CLAUDE_PROJECT_DIR=p, BMAD_GUARD_AUTO_APPROVE=value),
+            w.run(f'{other}/src/a.ts', w.proj, hook=w.on, CLAUDE_PROJECT_DIR=p, BMAD_GUARD_AUTO_APPROVE=value)[0],
             'allow',
         )
+
+
+def shipped_script_approves_nothing_outside_the_project() -> None:
+    """SET-WIDE. Over every run of the shipped script in this whole suite — not a list of
+    cases — no `allow` was given for a path that lands outside the session's project. The
+    only `allow` the shipped script can give is the BMAD_ALLOW_MAIN_EDIT override, and that
+    is always for a file inside the project."""
+    check('the shipped script was actually exercised', SHIPPED_RUNS > 300, True)
+    check(
+        f'NO run of the shipped script ({SHIPPED_RUNS} of them) allowed an out-of-project path',
+        sorted({f'{path} (cwd {cwd})' for path, cwd, inside in SHIPPED_ALLOWS if not inside})[:12],
+        [],
+    )
+    check('and the override allows it did give were all inside the project', all(i for _, _, i in SHIPPED_ALLOWS), True)
 
 
 # --- (d) the answer is always valid JSON ---------------------------------------------
@@ -739,8 +813,8 @@ def awkward_names(w: World) -> None:
         shown = ''.join(ch if ch.isprintable() else '?' for ch in name)
         kind, reason, _ = w.run(f'{w.other}/src/{name}', w.wt / 'src')
         if name.isascii():
-            check(f'(d) cross-repo allow parses · {name!r}', kind, 'allow')
-            check(f'(d) and echoes the name, control characters replaced · {name!r}', f'{w.other}/src/{shown} is outside' in reason, True)
+            check(f'(d) cross-repo answer parses · {name!r}', kind, w.X)
+            check(f'(d) and echoes the name, control characters replaced · {name!r}', f'{w.other}/src/{shown} is outside' in reason, w.approving)
         else:
             check(f'5 · a non-ASCII name is never auto-approved · {name!r}', kind, 'none')
         kind, reason, _ = w.run(f'{w.proj}/src/{name}', w.wt / 'src')
@@ -838,6 +912,8 @@ def wiring(w: World) -> None:
             cwd=str(cwd),
             env=env,
         )
+        if not w.approving and installed.exists() and installed.read_bytes() == HOOK.read_bytes():
+            w.note_shipped(result.stdout, json.dumps({'tool_input': {'file_path': path}}), cwd)
         return result.returncode, result.stdout
 
     def decision_of(out: str) -> str:
@@ -853,13 +929,13 @@ def wiring(w: World) -> None:
     check('wired · script not delivered -> says so, decides nothing', decision_of(out), 'context-only')
     check('wired · script not delivered -> names the missing file', 'GUARD IS MISSING' in out, True)
 
-    shutil.copy(HOOK, installed)
+    shutil.copy(w.hook, installed)
     for name, path, cwd, count, expected in [
         ('refuses a main-checkout edit from a worktree', f'{w.proj}/src/a.ts', w.wt / 'src', 1, 'deny'),
         ('is silent for an edit inside the worktree', f'{w.wt}/src/a.ts', w.wt / 'src', 1, 'none'),
         ('refuses in the main checkout with 3 sessions', f'{w.proj}/src/a.ts', w.proj, 3, 'deny'),
         ('is silent in the main checkout alone', f'{w.proj}/src/a.ts', w.proj, 1, 'none'),
-        ('allows the cross-repo edit', f'{w.other}/src/a.ts', w.proj, 1, 'allow'),
+        ('answers the cross-repo edit as this script is switched', f'{w.other}/src/a.ts', w.proj, 1, w.X),
         ('is silent for ~/.zshrc', f'{w.home}/.zshrc', w.proj, 1, 'none'),
     ]:
         code, out = wired(path, cwd, count)
@@ -898,18 +974,23 @@ def wiring(w: World) -> None:
 def main() -> int:
     for key in [k for k in os.environ if k.startswith('GIT_')]:
         os.environ.pop(key)  # a pre-commit hook exports these; they would redirect `git init`
+    global MODE
     base = Path(os.path.realpath(tempfile.mkdtemp(prefix='worktree-edit-guard-')))
     try:
-        world = World(base)
-        in_a_worktree(world)
-        outside_the_project(world)
-        in_the_main_checkout(world)
-        another_spelling(world)
-        reviewed_findings(world)
-        owners_switch(world)
-        awkward_names(world)
-        malformed_input(world)
-        wiring(world)
+        for MODE, approving in (('shipped', False), ('switched on', True)):
+            world = World(base / ('on' if approving else 'shipped'), approving)
+            in_a_worktree(world)
+            outside_the_project(world)
+            in_the_main_checkout(world)
+            another_spelling(world)
+            reviewed_findings(world)
+            awkward_names(world)
+            malformed_input(world)
+            wiring(world)
+            if not approving:
+                owners_switch(world)
+        MODE = 'shipped'
+        shipped_script_approves_nothing_outside_the_project()
     finally:
         shutil.rmtree(base, ignore_errors=True)
     for skipped in SKIPPED:
@@ -919,7 +1000,7 @@ def main() -> int:
         for failure in FAILURES:
             print(f'  {failure}\n')
         return 1
-    print(f'all {RAN} worktree-edit-guard cases pass')
+    print(f'all {RAN} worktree-edit-guard cases pass ({SHIPPED_RUNS} runs of the shipped script, none approving an out-of-project path)')
     return 0
 
 

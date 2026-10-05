@@ -33,12 +33,16 @@ decided on where the target REALLY is — symlinks, `..`, `.` and stray slashes 
        main checkout, more than one claude process running  -> DENY
        main checkout, otherwise                             -> no decision
   4. The target is outside P:
+       AUTO_APPROVE_CROSS_REPO is False (as shipped)        -> no decision, always
        under ~/code, not sensitive, not a tool-config path  -> allow (cross-repo edit)
        anything else                                        -> no decision
 
-THE OWNER'S SWITCH. The rule-4 approval sits behind AUTO_APPROVE_CROSS_REPO below. Set it
-to False and this guard never approves a path outside the project again; everything else is
-unchanged.
+THE OWNER'S SWITCH IS OFF. The rule-4 approval sits behind AUTO_APPROVE_CROSS_REPO below.
+Owner decision, 2026-10-05, in his word: "off." So, as shipped, this script never emits
+`allow` for a path outside the project: an edit to another repository gets no decision and
+the normal permission flow applies. The approval logic described in rule 4 is kept, and
+kept tested against a copy with the constant set True, for the day it is switched back on.
+The BMAD_ALLOW_MAIN_EDIT override is unchanged.
 
 AN ALLOW IS NEVER EMITTED, by either rule, when any of these holds:
   * the path is sensitive (see SENSITIVE_NAMES), matched on the casefolded, NFKC-normalised
@@ -90,16 +94,16 @@ import unicodedata
 
 WORKTREE_MARKER = '/.claude/worktrees/'
 
-# THE OWNER'S SWITCH. True: an edit to another repository under ~/code is approved without
-# a prompt (rule 4). False: this guard never emits `allow` for a path outside the project,
-# and such an edit meets the normal permission prompt. Nothing else changes either way, and
-# the BMAD_ALLOW_MAIN_EDIT override is not affected. One line to change; both settings are
+# THE OWNER'S SWITCH — OFF. Owner decision, 2026-10-05, in his word: "off."
+# False: this guard never emits `allow` for a path outside the project; such an edit gets no
+# decision and the normal permission flow applies. True: an edit to another repository under
+# ~/code is approved without a prompt (rule 4). Nothing else changes either way, and the
+# BMAD_ALLOW_MAIN_EDIT override is not affected. One line to change; both settings are
 # covered by golden cases.
-AUTO_APPROVE_CROSS_REPO = True
+AUTO_APPROVE_CROSS_REPO = False
 
-# The golden suite drives the False setting through this variable. It is read once, here,
-# and it can only switch the approval OFF — a session's environment can never turn back on
-# what the constant above turned off.
+# One-directional: BMAD_GUARD_AUTO_APPROVE=0 can switch the approval OFF and nothing in the
+# environment can switch it ON — only the constant above does that. Read once, here.
 CROSS_REPO_APPROVAL = AUTO_APPROVE_CROSS_REPO and os.environ.get('BMAD_GUARD_AUTO_APPROVE') != '0'
 
 # Each child process gets this long. The wrapper allows 5s in all and the slowest route
