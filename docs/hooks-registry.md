@@ -111,6 +111,16 @@ from `custom/hooks/`. Source of truth for every row: `~/bmad-method-v6/custom/ho
 | owner-step-handback-warn | Stop | A step handed to the owner must name why it needs him | warn |
 | stash-untracked-guard | PreToolUse(Bash) | The stash stack is shared across worktrees — refuse `stash -u` | enforce (gate) |
 
+**A tenth script, added 2026-10-05: `worktree-edit-guard.py`** — PreToolUse(Edit\|Write),
+enforce (gate). It is the `bmad-worktree-guard` decision table that used to be a 2,900-character
+inline shell command in the template, moved into a script so it can be read and tested: an edit
+to the project's shared tree from the wrong worktree is refused, and a cross-repo edit is
+auto-approved only where the path really lands under `~/code` and is not a secret, git internals
+or another project's `.claude/`. Exemptions are anchored to the session's project and decided on
+the resolved path; an unresolvable path never gets an approval. The wrapper in the template
+follows the `bash_edit_guard.py` shape — a missing or crashing script is announced as UNCHECKED
+and decides nothing. Golden suite: `python3 custom/hooks/test_worktree_edit_guard.py`.
+
 **Two were deliberately NOT moved** and stay project-local until their partner names and
 persona come from configuration rather than being hard-coded: `working-week-pointer.py` and
 `transcript-attribution-pointer.py`. Nineteen others in that project name pallets, Leipzig,
