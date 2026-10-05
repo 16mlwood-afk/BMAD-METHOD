@@ -153,11 +153,13 @@ def wiring() -> None:
         # a session spawned into one. The fork first stripped $PWD back to the main
         # checkout, then walked UP from $PWD — and the walk ran whatever script sat in
         # ANY ancestor's .claude/hooks/, so a planted copy replaced the real hook. Since
-        # 2026-10-05 every wrapper asks git for the toplevel and prefers that copy only
-        # when it is the project or one of its own worktrees; the behaviour is proved for
-        # the whole set in test_hook_wrapper_resolution.py.
+        # 2026-10-05 every wrapper runs the copy in $CLAUDE_PROJECT_DIR, and asks git for
+        # the toplevel only when that is unset — never a worktree's own copy picked by the
+        # working directory, because a guard loaded from the workspace it governs can be
+        # rewritten by the session it constrains. Proved for the whole set in
+        # test_hook_wrapper_resolution.py.
         check('does not walk up from $PWD', 'while [ -n "$D" ]' in cmd, False)
-        check('asks git for the checkout', 'rev-parse --show-toplevel' in cmd, True)
+        check('asks git for the checkout when the harness names none', 'rev-parse --show-toplevel' in cmd, True)
         check('falls back to $CLAUDE_PROJECT_DIR', 'CLAUDE_PROJECT_DIR' in cmd, True)
         check('runs the script rather than inlining the logic',
               '/.claude/hooks/$N' in cmd and 'python3 "$S"' in cmd, True)

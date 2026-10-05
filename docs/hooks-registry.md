@@ -144,17 +144,35 @@ project's, so it is covered only while the session is working in that repository
 
 **How every wrapper in the template finds its script (2026-10-05).** All thirteen hook
 commands that run a file from `.claude/hooks/` carry the same resolution, identical apart from
-the script's name. The trusted root is `$CLAUDE_PROJECT_DIR`. The copy in the git toplevel of
-`$PWD` is preferred only when that toplevel is the project or one of its own worktrees — the
-same git common dir, and listed by `git worktree list` — so a session in a worktree runs the
-hook it has checked out. With `CLAUDE_PROJECT_DIR` unset it is the git toplevel of `$PWD`.
-Nothing walks up from `$PWD` any more: eleven wrappers did, two cut `$PWD` at
-`/.claude/worktrees/`, and in all thirteen a file at `<somewhere under the cwd>/.claude/hooks/<name>`
-ran in place of the real hook. What each wrapper does when its script is missing or crashes is
-unchanged. `python3 custom/hooks/test_hook_wrapper_resolution.py` asserts it over every
-command in the template that mentions `.claude/hooks/`, not over a list of names, so a new
-wrapper written any other way fails it. Project-local hooks in a project's own
+the script's name:
+
+```sh
+N=<name>; P="${CLAUDE_PROJECT_DIR:-}"; [ -n "$P" ] || P=$(git -C "$PWD" rev-parse --show-toplevel 2>/dev/null); S=""; [ -n "$P" ] && S="$P/.claude/hooks/$N";
+```
+
+The script is the project root's copy: `$CLAUDE_PROJECT_DIR/.claude/hooks/<name>`, or the git
+toplevel of `$PWD` when that variable is unset. Never an ancestor found by walking up, and
+never a worktree's own copy chosen by the working directory — a worktree is the workspace the
+guard governs, and a guard loaded from it can be rewritten by the session it constrains.
+Eleven wrappers used to walk up from `$PWD` and two cut `$PWD` at `/.claude/worktrees/`; in
+all thirteen a file at `<somewhere under the cwd>/.claude/hooks/<name>` ran in place of the
+real hook. What each wrapper does when its script is missing or crashes is unchanged.
+`python3 custom/hooks/test_hook_wrapper_resolution.py` asserts it over every command in the
+template that mentions `.claude/hooks/`, not over a list of names, so a new wrapper written
+any other way fails it.
+
+Two limits, stated: a session STARTED inside a worktree has `CLAUDE_PROJECT_DIR` set to that
+worktree, and with the variable unset the git toplevel of a worktree is the worktree — in
+both the worktree's copy is what runs. And a hook that has not been merged yet no longer
+fires from the worktree that carries it. Project-local hooks in a project's own
 `.claude/settings.json` are not covered by this and have not been swept.
+
+**The missing-guard detector reads the same set.** `hook-resolve-check.py` collects a script
+name from a literal `.claude/hooks/<name>` and from the wrapper's `N=<name>`; before
+2026-10-05 it read only the literal form and could see 2 of the 13 scripts the template
+wires. A hook command that mentions `.claude/hooks/` and names no script either way is
+reported as its own finding rather than passed. The wrapper test compares the names the
+detector extracts with the scripts the wrappers run, as sets.
 
 **Two were deliberately NOT moved** and stay project-local until their partner names and
 persona come from configuration rather than being hard-coded: `working-week-pointer.py` and

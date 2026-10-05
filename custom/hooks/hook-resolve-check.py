@@ -58,14 +58,20 @@ SILENT WHEN CLEAN — non-negotiable. A banner that prints on every healthy sess
 wallpaper, and wallpaper is how the real warning gets skipped. It speaks only when something
 is actually wrong.
 
-RESOLUTION IS BY BASENAME, DELIBERATELY. Eight distinct path prefixes are in live use across the
-two settings files — `$CLAUDE_PROJECT_DIR/`, `$D/`, `$R/`, `${CLAUDE_PROJECT_DIR:-$PWD}/`,
-`${PWD%%/.claude/worktrees/*}/`, `$HOME/code/cash-recovery/`, a bare relative path, and one
-inside a subshell. Every one of them denotes this project's `.claude/hooks/`. Rather than
-expand shell variables — the guesswork that produced four separate false-positive classes in
-the Bash edit-guard — this keys on the `.claude/hooks/<basename>` fragment and resolves it
-against the MAIN checkout. A hook deliberately wired to some other directory would be a false
-negative; none exists, and inventing a shell parser to cover a hypothetical is the wrong trade.
+RESOLUTION IS BY BASENAME, DELIBERATELY — AND A NAME IS READ TWO WAYS. A command names its
+script either literally, as `.claude/hooks/<basename>` (whatever prefix stands in front:
+`$CLAUDE_PROJECT_DIR/`, `$HOME/code/cash-recovery/`, a bare relative path), or through the
+fork's wrapper shape, `N=<basename>; … "$P/.claude/hooks/$N"`, where the path holds only the
+variable. Both are collected. Until 2026-10-05 only the literal form was, so this check could
+see 2 of the 13 scripts the template wires — the other 11 could go missing in silence, which
+is the one thing it exists to report. Rather than expand shell variables — the guesswork that
+produced four separate false-positive classes in the Bash edit-guard — it keys on those two
+fragments and resolves the basename against the MAIN checkout.
+
+A COMMAND IT CANNOT READ IS A FINDING, NEVER A PASS. A hook command that mentions
+`.claude/hooks/` and yields no script name by either route is reported on its own, with the
+settings file and event that wire it. A wrapper this check cannot read is a guard it cannot
+vouch for, and saying nothing about it would read as "checked and present".
 
 REPORTS, NEVER BLOCKS. SessionStart cannot block anyway, and this is an awareness tier by
 design: it names the file, the settings file that wires it, the event, and the recovery route
@@ -74,7 +80,7 @@ that actually worked twice today (`git log --all -- <path>`, then `git show <sha
 FAIL OPEN. Unreadable settings, malformed JSON, missing hooks dir, no VCS, no `git` on PATH →
 exit 0 in silence. A check that cannot look says nothing rather than something reassuring.
 
-Golden cases: `python3 test_hook_resolve_check.py` (21, most asserting SILENCE).
+Golden cases: `python3 test_hook_resolve_check.py` (most asserting SILENCE).
 """
 import json
 import os
@@ -82,7 +88,12 @@ import re
 import subprocess
 import sys
 
+HOOKS_DIR_FRAGMENT = ".claude/hooks/"
+# A script named literally: `<anything>/.claude/hooks/<basename>`.
 HOOK_REF = re.compile(r"\.claude/hooks/([A-Za-z0-9_.-]+\.(?:py|sh))")
+# A script named through the wrapper variable: `N=<basename>; … "$P/.claude/hooks/$N"`.
+# Only an assignment to N at the start of a shell word counts, optionally quoted.
+N_REF = re.compile(r"""(?:^|[\s;&|(])N=["']?([A-Za-z0-9_.-]+\.(?:py|sh))["']?(?=$|[\s;&|)])""")
 SETTINGS = ("settings.json", "settings.local.json")
 # Only settings.json is expected to survive a clone. settings.local.json is
 # gitignored on purpose — see the module docstring.
@@ -96,9 +107,35 @@ def main_checkout(cwd):
     return d.split("/.claude/worktrees/")[0] if "/.claude/worktrees/" in d else d
 
 
+def script_names(command):
+    """Every hook script basename `command` names, in order of first appearance.
+
+    [] for a command that does not mention `.claude/hooks/` at all (it is not a hook-script
+    wrapper), and ALSO for one that mentions it but names no script either way — the caller
+    tells those apart with `is_unreadable`.
+    """
+    command = str(command)
+    if HOOKS_DIR_FRAGMENT not in command:
+        return []
+    names = [m.group(1) for m in HOOK_REF.finditer(command)]
+    names += [m.group(1) for m in N_REF.finditer(command)]
+    return list(dict.fromkeys(names))
+
+
+def is_unreadable(command):
+    """The command reaches into `.claude/hooks/` and no script name can be read from it."""
+    command = str(command)
+    return HOOKS_DIR_FRAGMENT in command and not script_names(command)
+
+
 def wired(root):
-    """{basename: [(settings_file, event), ...]} for every hook script referenced."""
+    """-> ({basename: [(settings_file, event), ...]}, [(settings_file, event, command), ...]).
+
+    The first is every hook script referenced; the second is every hook command that
+    reaches into `.claude/hooks/` without a script name this check can read.
+    """
     found = {}
+    unreadable = []
     for name in SETTINGS:
         p = os.path.join(root, ".claude", name)
         if not os.path.exists(p):
@@ -108,14 +145,23 @@ def wired(root):
                 data = json.load(fh)
         except (OSError, ValueError):
             continue                       # malformed settings is not this check's job
+        if not isinstance(data, dict):
+            continue
         for event, groups in (data.get("hooks") or {}).items():
             if not isinstance(groups, list):
                 continue
             for g in groups:
-                for h in (g or {}).get("hooks", []) or []:
-                    for m in HOOK_REF.finditer(str(h.get("command", ""))):
-                        found.setdefault(m.group(1), []).append((name, event))
-    return found
+                if not isinstance(g, dict):
+                    continue
+                for h in g.get("hooks", []) or []:
+                    if not isinstance(h, dict):
+                        continue
+                    command = str(h.get("command", ""))
+                    for script in script_names(command):
+                        found.setdefault(script, []).append((name, event))
+                    if is_unreadable(command):
+                        unreadable.append((name, event, command))
+    return found, unreadable
 
 
 def _git(root, *args):
@@ -192,12 +238,31 @@ def main():
     if not os.path.isdir(hooks_dir):
         return 0
 
-    refs = wired(root)
+    refs, unreadable = wired(root)
     out = []
+
+    # --- FINDING 0: a wrapper this check cannot read -------------------------
+    if unreadable:
+        out += [f"⚠ {len(unreadable)} HOOK COMMAND(S) THIS CHECK CANNOT READ — not verified, not a pass"]
+        for settings_file, event, command in unreadable[:MAX_LISTED]:
+            shown = "".join(ch if ch.isprintable() else "?" for ch in command)
+            out.append(f"    · {settings_file}:{event}")
+            out.append(f"        {shown[:110]}{'…' if len(shown) > 110 else ''}")
+        if len(unreadable) > MAX_LISTED:
+            out.append(f"    · … and {len(unreadable) - MAX_LISTED} more")
+        out += [
+            "",
+            "  Each of these runs something from .claude/hooks/ without naming it in a form",
+            "  this check reads: a literal .claude/hooks/<name>.py|.sh, or N=<name>.py|.sh.",
+            "  Whether that script exists is therefore UNKNOWN. Name the script one of those",
+            "  two ways so a missing guard can be reported.",
+        ]
 
     # --- FINDING 1: wired, and the file is not there ------------------------
     missing = {n: w for n, w in refs.items() if not os.path.exists(os.path.join(hooks_dir, n))}
     if missing:
+        if out:
+            out.append("")
         out += [f"⚠ {len(missing)} WIRED HOOK(S) MISSING — the guard is configured and NOT running"]
         for name in sorted(missing):
             where = ", ".join(sorted({f"{f}:{e}" for f, e in missing[name]}))

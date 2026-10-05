@@ -236,5 +236,70 @@ with tempfile.TemporaryDirectory() as td:
     commit(w4, ".claude/hooks/guard.py")
     check("W4  malformed settings is survived in silence", run(w4), "")
 
+    # === THE WRAPPER SHAPE: a script named only through N= ================
+    # The fork's wrappers never spell `.claude/hooks/<name>`: they set N=<name> and run
+    # "$P/.claude/hooks/$N". Until 2026-10-05 the check read only the literal form, so it
+    # could see 2 of the 13 scripts the template wires.
+    WRAPPER = ('N={n}; P="${{CLAUDE_PROJECT_DIR:-}}"; [ -n "$P" ] || P=$(git -C "$PWD" rev-parse '
+               '--show-toplevel 2>/dev/null); S=""; [ -n "$P" ] && S="$P/.claude/hooks/$N"; '
+               '[ -f "$S" ] || exit 0; python3 "$S"; exit $?')
+
+    def wire_commands(root, commands, event="PreToolUse"):
+        cfg = {"hooks": {event: [{"hooks": [{"type": "command", "command": c} for c in commands]}]}}
+        (root / ".claude" / "settings.json").write_text(json.dumps(cfg, indent=2))
+
+    # V1 — N= wrapper, script absent: reported as MISSING, by name.
+    v1 = repo(td / "v1")
+    put(v1, "present.py")
+    wire_commands(v1, [WRAPPER.format(n="vanished-guard.py")])
+    commit(v1, ".claude/hooks/present.py", ".claude/settings.json")
+    ov1 = run(v1)
+    check("V1  an N= wrapper whose script is absent is REPORTED", "vanished-guard.py" in ov1, True)
+    check("V1b and named as MISSING", "MISSING" in ov1, True)
+    check("V1c and not as a command the check cannot read", "CANNOT READ" in ov1, False)
+
+    # V2 — N= wrapper, script present and tracked: silent.
+    v2 = repo(td / "v2")
+    put(v2, "guard.py")
+    put(v2, "format-on-edit.sh")
+    wire_commands(v2, [WRAPPER.format(n="guard.py"), WRAPPER.format(n="format-on-edit.sh")])
+    commit(v2, ".claude/hooks/guard.py", ".claude/hooks/format-on-edit.sh", ".claude/settings.json")
+    check("V2  an N= wrapper whose script is present is silent", run(v2), "")
+
+    # V3 — N= in quotes, and after another statement: still read.
+    v3 = repo(td / "v3")
+    put(v3, "present.py")
+    wire_commands(v3, ['set -e; N="quoted-guard.py"; python3 "$CLAUDE_PROJECT_DIR/.claude/hooks/$N"'])
+    commit(v3, ".claude/hooks/present.py", ".claude/settings.json")
+    check("V3  a quoted N= after another statement is read", "quoted-guard.py" in run(v3), True)
+
+    # V4 — a wrapper that names its script in NEITHER form: its own finding, never a pass.
+    v4 = repo(td / "v4")
+    put(v4, "guard.py")
+    wire_commands(v4, ['SCRIPT=guard; python3 "$CLAUDE_PROJECT_DIR/.claude/hooks/$SCRIPT.py"'])
+    commit(v4, ".claude/hooks/guard.py", ".claude/settings.json")
+    ov4 = run(v4)
+    check("V4  a wrapper the check cannot read is REPORTED", "CANNOT READ" in ov4, True)
+    check("V4b with the settings file and event that wire it", "settings.json:PreToolUse" in ov4, True)
+    check("V4c and it is not described as a missing script", "MISSING" in ov4, False)
+
+    # V5 — unreadable AND missing together render both.
+    v5 = repo(td / "v5")
+    put(v5, "present.py")
+    wire_commands(v5, ['python3 "$R/.claude/hooks/$X"', WRAPPER.format(n="gone.py")])
+    commit(v5, ".claude/hooks/present.py", ".claude/settings.json")
+    ov5 = run(v5)
+    check("V5  unreadable and missing render together",
+          ("CANNOT READ" in ov5, "gone.py" in ov5 and "MISSING" in ov5), (True, True))
+
+    # V6 — SILENCE: a command that never mentions .claude/hooks/ is not a wrapper, and an
+    #      N= that is not a script name is not a script.
+    v6 = repo(td / "v6")
+    put(v6, "guard.py")
+    wire_commands(v6, ['N=3; echo "$N"', 'jq -r .tool_input.command', 'XN=other.py; true',
+                       WRAPPER.format(n="guard.py")])
+    commit(v6, ".claude/hooks/guard.py", ".claude/settings.json")
+    check("V6  commands that are not hook-script wrappers are silent", run(v6), "")
+
 print(f"\n{len(PASS)} passed, {len(FAIL)} failed")
 sys.exit(1 if FAIL else 0)

@@ -12,12 +12,13 @@ file at <somewhere under the cwd>/.claude/hooks/<name> ran in place of the real 
 switches a guard off or lets it approve anything.
 
 THE RULE, the same text in every wrapper apart from the script's name:
-  * the trusted root is $CLAUDE_PROJECT_DIR when the harness sets it;
-  * the copy in the git toplevel of $PWD is preferred ONLY when that toplevel is the
-    project or one of its own worktrees — same git common dir AND listed by
-    `git worktree list` — so a session in a worktree runs the hook it has checked out;
+  * the script is $CLAUDE_PROJECT_DIR/.claude/hooks/<name> when the harness sets that;
   * with CLAUDE_PROJECT_DIR unset, the git toplevel of $PWD, never an ancestor found by
-    walking up.
+    walking up;
+  * NEVER a worktree's own copy chosen by the working directory. A worktree is the
+    workspace the guard governs: a guard loaded from it can be rewritten by the very
+    session it constrains. (For a few hours on 2026-10-05 a registered worktree's copy was
+    preferred; a security review reversed that the same day.)
 
 IT IS ASSERTED OVER THE SET, NOT A LIST OF NAMES. A "wrapper" is every command in the
 settings file that mentions `.claude/hooks/`. Add one that resolves its script any other
@@ -26,6 +27,7 @@ way and this fails, with nothing here to update first.
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 import re
@@ -43,14 +45,8 @@ SETTINGS = _INSTALLED if _INSTALLED.exists() else _TEMPLATE
 
 # The one resolution every wrapper carries, after `N=<script name>; `.
 RESOLVER = (
-    'P="${CLAUDE_PROJECT_DIR:-}"; T=$(git -C "$PWD" rev-parse --show-toplevel 2>/dev/null); S=""; '
-    'if [ -n "$P" ]; then S="$P/.claude/hooks/$N"; '
-    'if [ -n "$T" ] && [ "$T" != "$P" ] && [ -f "$T/.claude/hooks/$N" ]; then '
-    'A=$(git -C "$T" rev-parse --path-format=absolute --git-common-dir 2>/dev/null); '
-    'B=$(git -C "$P" rev-parse --path-format=absolute --git-common-dir 2>/dev/null); '
-    'if [ -n "$A" ] && [ "$A" = "$B" ] && git -C "$P" worktree list --porcelain 2>/dev/null '
-    '| grep -qxF "worktree $T"; then S="$T/.claude/hooks/$N"; fi; fi; '
-    'elif [ -n "$T" ]; then S="$T/.claude/hooks/$N"; fi; '
+    'P="${CLAUDE_PROJECT_DIR:-}"; [ -n "$P" ] || P=$(git -C "$PWD" rev-parse --show-toplevel 2>/dev/null); '
+    'S=""; [ -n "$P" ] && S="$P/.claude/hooks/$N"; '
 )
 SHAPE = re.compile(r'^N=([A-Za-z0-9_.-]+\.(?:py|sh)); ' + re.escape(RESOLVER))
 
@@ -172,6 +168,7 @@ def main() -> int:
         match = SHAPE.match(command)
         check(f'{event} · {label} · resolves its script by the shared rule', bool(match), True)
         check(f'{event} · {label} · does not walk up from $PWD', 'D="${D%/*}"' in command, False)
+        check(f'{event} · {label} · never asks which worktrees exist', 'worktree list' in command, False)
         check(f'{event} · {label} · does not derive a path by trimming $PWD', '${PWD%' in command, False)
         # Whatever the text looks like, the behaviour below is what decides.
         name = match.group(1) if match else None
@@ -181,6 +178,30 @@ def main() -> int:
         if name:
             names.add(name)
             shaped.append((event, label, command, name))
+
+    # THE MISSING-GUARD DETECTOR READS THE SAME SET. hook-resolve-check.py reports a wired
+    # script that is not on disk; it can only do that for a script whose name it can read
+    # out of the command. The two are compared as sets so they cannot drift apart again
+    # (on 2026-10-05 the detector could see 2 of the 13).
+    detector_path = Path(__file__).resolve().parent / 'hook-resolve-check.py'
+    spec = importlib.util.spec_from_file_location('hook_resolve_check', detector_path)
+    detector = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(detector)
+    read_names = getattr(detector, 'script_names', None) or (
+        lambda command: detector.HOOK_REF.findall(command)  # the detector before 2026-10-05
+    )
+    cannot_read = getattr(detector, 'is_unreadable', None) or (lambda command: not read_names(command))
+    seen = {name for _, _, command in found for name in read_names(command)}
+    check(
+        f'the detector reads every script the wrappers run ({len(seen & names)} of {len(names)})',
+        sorted(seen),
+        sorted(names),
+    )
+    check(
+        'and no wrapper is one the detector cannot read',
+        [label for _, label, command in found if cannot_read(command)],
+        [],
+    )
 
     base = Path(os.path.realpath(tempfile.mkdtemp(prefix='hook-wrapper-resolution-')))
     try:
@@ -196,16 +217,20 @@ def main() -> int:
             check(
                 f'{tag} · (a) a planted copy inside a worktree does not run',
                 world.run(command, world.wt / 'sub' / 'deeper', world.proj),
-                'worktree',
+                'project',
             )
-            check(f"{tag} · (b) a real worktree runs the worktree's own copy", world.run(command, world.wt, world.proj), 'worktree')
             check(
-                f'{tag} · (b) a worktree with no copy falls back to the project',
+                f"{tag} · (b) a registered worktree holding its OWN different copy: the PROJECT's copy runs",
+                world.run(command, world.wt, world.proj),
+                'project',
+            )
+            check(
+                f'{tag} · (b) a worktree with no copy runs the project copy',
                 world.run(command, world.bare_wt / 'src', world.proj),
                 'project',
             )
             check(
-                f'{tag} · (b) a session started IN the worktree runs its copy',
+                f'{tag} · CLAUDE_PROJECT_DIR is followed to the letter, even when it is a worktree',
                 world.run(command, world.wt, world.wt),
                 'worktree',
             )
@@ -214,6 +239,11 @@ def main() -> int:
                 f'{tag} · no CLAUDE_PROJECT_DIR: the git toplevel, never an ancestor',
                 world.run(command, world.sub / 'deeper', None),
                 'project',
+            )
+            check(
+                f'{tag} · no CLAUDE_PROJECT_DIR, in a worktree: its git toplevel, never the planted copy below it',
+                world.run(command, world.wt / 'sub' / 'deeper', None),
+                'worktree',
             )
             check(
                 f'{tag} · no CLAUDE_PROJECT_DIR, not in a repository: nothing runs',

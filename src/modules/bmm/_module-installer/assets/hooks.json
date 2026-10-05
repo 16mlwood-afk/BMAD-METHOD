@@ -67,7 +67,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "N=claude-md-drift.py; P=\"${CLAUDE_PROJECT_DIR:-}\"; T=$(git -C \"$PWD\" rev-parse --show-toplevel 2>/dev/null); S=\"\"; if [ -n \"$P\" ]; then S=\"$P/.claude/hooks/$N\"; if [ -n \"$T\" ] && [ \"$T\" != \"$P\" ] && [ -f \"$T/.claude/hooks/$N\" ]; then A=$(git -C \"$T\" rev-parse --path-format=absolute --git-common-dir 2>/dev/null); B=$(git -C \"$P\" rev-parse --path-format=absolute --git-common-dir 2>/dev/null); if [ -n \"$A\" ] && [ \"$A\" = \"$B\" ] && git -C \"$P\" worktree list --porcelain 2>/dev/null | grep -qxF \"worktree $T\"; then S=\"$T/.claude/hooks/$N\"; fi; fi; elif [ -n \"$T\" ]; then S=\"$T/.claude/hooks/$N\"; fi; _in=$(cat 2>/dev/null); [ -f \"$S\" ] || exit 0; printf '%s' \"$_in\" | python3 \"$S\" 2>/dev/null || true; exit 0",
+            "command": "N=claude-md-drift.py; P=\"${CLAUDE_PROJECT_DIR:-}\"; [ -n \"$P\" ] || P=$(git -C \"$PWD\" rev-parse --show-toplevel 2>/dev/null); S=\"\"; [ -n \"$P\" ] && S=\"$P/.claude/hooks/$N\"; _in=$(cat 2>/dev/null); [ -f \"$S\" ] || exit 0; printf '%s' \"$_in\" | python3 \"$S\" 2>/dev/null || true; exit 0",
             "timeout": 5
           }
         ]
@@ -78,7 +78,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "N=main-thread-open-pointer.py; P=\"${CLAUDE_PROJECT_DIR:-}\"; T=$(git -C \"$PWD\" rev-parse --show-toplevel 2>/dev/null); S=\"\"; if [ -n \"$P\" ]; then S=\"$P/.claude/hooks/$N\"; if [ -n \"$T\" ] && [ \"$T\" != \"$P\" ] && [ -f \"$T/.claude/hooks/$N\" ]; then A=$(git -C \"$T\" rev-parse --path-format=absolute --git-common-dir 2>/dev/null); B=$(git -C \"$P\" rev-parse --path-format=absolute --git-common-dir 2>/dev/null); if [ -n \"$A\" ] && [ \"$A\" = \"$B\" ] && git -C \"$P\" worktree list --porcelain 2>/dev/null | grep -qxF \"worktree $T\"; then S=\"$T/.claude/hooks/$N\"; fi; fi; elif [ -n \"$T\" ]; then S=\"$T/.claude/hooks/$N\"; fi; _in=$(cat 2>/dev/null); [ -f \"$S\" ] || exit 0; printf '%s' \"$_in\" | python3 \"$S\" 2>/dev/null || true; exit 0",
+            "command": "N=main-thread-open-pointer.py; P=\"${CLAUDE_PROJECT_DIR:-}\"; [ -n \"$P\" ] || P=$(git -C \"$PWD\" rev-parse --show-toplevel 2>/dev/null); S=\"\"; [ -n \"$P\" ] && S=\"$P/.claude/hooks/$N\"; _in=$(cat 2>/dev/null); [ -f \"$S\" ] || exit 0; printf '%s' \"$_in\" | python3 \"$S\" 2>/dev/null || true; exit 0",
             "timeout": 5
           }
         ]
@@ -115,7 +115,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "N=worktree-edit-guard.py; P=\"${CLAUDE_PROJECT_DIR:-}\"; T=$(git -C \"$PWD\" rev-parse --show-toplevel 2>/dev/null); S=\"\"; if [ -n \"$P\" ]; then S=\"$P/.claude/hooks/$N\"; if [ -n \"$T\" ] && [ \"$T\" != \"$P\" ] && [ -f \"$T/.claude/hooks/$N\" ]; then A=$(git -C \"$T\" rev-parse --path-format=absolute --git-common-dir 2>/dev/null); B=$(git -C \"$P\" rev-parse --path-format=absolute --git-common-dir 2>/dev/null); if [ -n \"$A\" ] && [ \"$A\" = \"$B\" ] && git -C \"$P\" worktree list --porcelain 2>/dev/null | grep -qxF \"worktree $T\"; then S=\"$T/.claude/hooks/$N\"; fi; fi; elif [ -n \"$T\" ]; then S=\"$T/.claude/hooks/$N\"; fi; _in=$(cat 2>/dev/null); if [ -f \"$S\" ]; then printf '%s' \"$_in\" | python3 \"$S\" || printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"additionalContext\":\"worktree-edit-guard ERRORED (non-zero exit), so the worktree check did not complete for this edit. Treat it as unchecked.\"}}\\n'; exit 0; fi; printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"additionalContext\":\"WORKTREE EDIT GUARD IS MISSING (.claude/hooks/worktree-edit-guard.py not found). The worktree check is UNCHECKED for this edit. This project has not yet received custom/hooks/ from the fork - run sync-bmad-workflows.sh.\"}}\\n'; exit 0",
+            "command": "N=worktree-edit-guard.py; P=\"${CLAUDE_PROJECT_DIR:-}\"; [ -n \"$P\" ] || P=$(git -C \"$PWD\" rev-parse --show-toplevel 2>/dev/null); S=\"\"; [ -n \"$P\" ] && S=\"$P/.claude/hooks/$N\"; _in=$(cat 2>/dev/null); if [ -f \"$S\" ]; then printf '%s' \"$_in\" | python3 \"$S\" || printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"additionalContext\":\"worktree-edit-guard ERRORED (non-zero exit), so the worktree check did not complete for this edit. Treat it as unchecked.\"}}\\n'; exit 0; fi; printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"additionalContext\":\"WORKTREE EDIT GUARD IS MISSING (.claude/hooks/worktree-edit-guard.py not found). The worktree check is UNCHECKED for this edit. This project has not yet received custom/hooks/ from the fork - run sync-bmad-workflows.sh.\"}}\\n'; exit 0",
             "timeout": 5,
             "statusMessage": "Worktree guard..."
           }
@@ -127,7 +127,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "N=bash_edit_guard.py; P=\"${CLAUDE_PROJECT_DIR:-}\"; T=$(git -C \"$PWD\" rev-parse --show-toplevel 2>/dev/null); S=\"\"; if [ -n \"$P\" ]; then S=\"$P/.claude/hooks/$N\"; if [ -n \"$T\" ] && [ \"$T\" != \"$P\" ] && [ -f \"$T/.claude/hooks/$N\" ]; then A=$(git -C \"$T\" rev-parse --path-format=absolute --git-common-dir 2>/dev/null); B=$(git -C \"$P\" rev-parse --path-format=absolute --git-common-dir 2>/dev/null); if [ -n \"$A\" ] && [ \"$A\" = \"$B\" ] && git -C \"$P\" worktree list --porcelain 2>/dev/null | grep -qxF \"worktree $T\"; then S=\"$T/.claude/hooks/$N\"; fi; fi; elif [ -n \"$T\" ]; then S=\"$T/.claude/hooks/$N\"; fi; _in=$(cat 2>/dev/null); if [ -f \"$S\" ]; then printf '%s' \"$_in\" | python3 \"$S\" || printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"additionalContext\":\"bash_edit_guard ERRORED (non-zero exit), so the write-target check did not complete for this command. Treat it as unchecked.\"}}\\n'; exit 0; fi; printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"additionalContext\":\"BASH EDIT GUARD IS MISSING (.claude/hooks/bash_edit_guard.py not found). Write-target classification is UNCHECKED for this command. This project has not yet received custom/hooks/ from the fork - run sync-bmad-workflows.sh.\"}}\\n'; exit 0",
+            "command": "N=bash_edit_guard.py; P=\"${CLAUDE_PROJECT_DIR:-}\"; [ -n \"$P\" ] || P=$(git -C \"$PWD\" rev-parse --show-toplevel 2>/dev/null); S=\"\"; [ -n \"$P\" ] && S=\"$P/.claude/hooks/$N\"; _in=$(cat 2>/dev/null); if [ -f \"$S\" ]; then printf '%s' \"$_in\" | python3 \"$S\" || printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"additionalContext\":\"bash_edit_guard ERRORED (non-zero exit), so the write-target check did not complete for this command. Treat it as unchecked.\"}}\\n'; exit 0; fi; printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"additionalContext\":\"BASH EDIT GUARD IS MISSING (.claude/hooks/bash_edit_guard.py not found). Write-target classification is UNCHECKED for this command. This project has not yet received custom/hooks/ from the fork - run sync-bmad-workflows.sh.\"}}\\n'; exit 0",
             "timeout": 5,
             "statusMessage": "Bash write-target guard..."
           }
@@ -187,7 +187,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "N=stash-untracked-guard.py; P=\"${CLAUDE_PROJECT_DIR:-}\"; T=$(git -C \"$PWD\" rev-parse --show-toplevel 2>/dev/null); S=\"\"; if [ -n \"$P\" ]; then S=\"$P/.claude/hooks/$N\"; if [ -n \"$T\" ] && [ \"$T\" != \"$P\" ] && [ -f \"$T/.claude/hooks/$N\" ]; then A=$(git -C \"$T\" rev-parse --path-format=absolute --git-common-dir 2>/dev/null); B=$(git -C \"$P\" rev-parse --path-format=absolute --git-common-dir 2>/dev/null); if [ -n \"$A\" ] && [ \"$A\" = \"$B\" ] && git -C \"$P\" worktree list --porcelain 2>/dev/null | grep -qxF \"worktree $T\"; then S=\"$T/.claude/hooks/$N\"; fi; fi; elif [ -n \"$T\" ]; then S=\"$T/.claude/hooks/$N\"; fi; [ -f \"$S\" ] || exit 0; python3 \"$S\"; exit $?",
+            "command": "N=stash-untracked-guard.py; P=\"${CLAUDE_PROJECT_DIR:-}\"; [ -n \"$P\" ] || P=$(git -C \"$PWD\" rev-parse --show-toplevel 2>/dev/null); S=\"\"; [ -n \"$P\" ] && S=\"$P/.claude/hooks/$N\"; [ -f \"$S\" ] || exit 0; python3 \"$S\"; exit $?",
             "timeout": 5
           }
         ]
@@ -198,7 +198,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "N=branch-switch-removal-guard.py; P=\"${CLAUDE_PROJECT_DIR:-}\"; T=$(git -C \"$PWD\" rev-parse --show-toplevel 2>/dev/null); S=\"\"; if [ -n \"$P\" ]; then S=\"$P/.claude/hooks/$N\"; if [ -n \"$T\" ] && [ \"$T\" != \"$P\" ] && [ -f \"$T/.claude/hooks/$N\" ]; then A=$(git -C \"$T\" rev-parse --path-format=absolute --git-common-dir 2>/dev/null); B=$(git -C \"$P\" rev-parse --path-format=absolute --git-common-dir 2>/dev/null); if [ -n \"$A\" ] && [ \"$A\" = \"$B\" ] && git -C \"$P\" worktree list --porcelain 2>/dev/null | grep -qxF \"worktree $T\"; then S=\"$T/.claude/hooks/$N\"; fi; fi; elif [ -n \"$T\" ]; then S=\"$T/.claude/hooks/$N\"; fi; [ -f \"$S\" ] || exit 0; python3 \"$S\"; exit $?",
+            "command": "N=branch-switch-removal-guard.py; P=\"${CLAUDE_PROJECT_DIR:-}\"; [ -n \"$P\" ] || P=$(git -C \"$PWD\" rev-parse --show-toplevel 2>/dev/null); S=\"\"; [ -n \"$P\" ] && S=\"$P/.claude/hooks/$N\"; [ -f \"$S\" ] || exit 0; python3 \"$S\"; exit $?",
             "timeout": 5
           }
         ]
@@ -209,7 +209,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "N=agent-isolation-gate.py; P=\"${CLAUDE_PROJECT_DIR:-}\"; T=$(git -C \"$PWD\" rev-parse --show-toplevel 2>/dev/null); S=\"\"; if [ -n \"$P\" ]; then S=\"$P/.claude/hooks/$N\"; if [ -n \"$T\" ] && [ \"$T\" != \"$P\" ] && [ -f \"$T/.claude/hooks/$N\" ]; then A=$(git -C \"$T\" rev-parse --path-format=absolute --git-common-dir 2>/dev/null); B=$(git -C \"$P\" rev-parse --path-format=absolute --git-common-dir 2>/dev/null); if [ -n \"$A\" ] && [ \"$A\" = \"$B\" ] && git -C \"$P\" worktree list --porcelain 2>/dev/null | grep -qxF \"worktree $T\"; then S=\"$T/.claude/hooks/$N\"; fi; fi; elif [ -n \"$T\" ]; then S=\"$T/.claude/hooks/$N\"; fi; [ -f \"$S\" ] || exit 0; python3 \"$S\"; exit $?",
+            "command": "N=agent-isolation-gate.py; P=\"${CLAUDE_PROJECT_DIR:-}\"; [ -n \"$P\" ] || P=$(git -C \"$PWD\" rev-parse --show-toplevel 2>/dev/null); S=\"\"; [ -n \"$P\" ] && S=\"$P/.claude/hooks/$N\"; [ -f \"$S\" ] || exit 0; python3 \"$S\"; exit $?",
             "timeout": 5
           }
         ]
@@ -220,7 +220,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "N=claude-md-admission-gate.py; P=\"${CLAUDE_PROJECT_DIR:-}\"; T=$(git -C \"$PWD\" rev-parse --show-toplevel 2>/dev/null); S=\"\"; if [ -n \"$P\" ]; then S=\"$P/.claude/hooks/$N\"; if [ -n \"$T\" ] && [ \"$T\" != \"$P\" ] && [ -f \"$T/.claude/hooks/$N\" ]; then A=$(git -C \"$T\" rev-parse --path-format=absolute --git-common-dir 2>/dev/null); B=$(git -C \"$P\" rev-parse --path-format=absolute --git-common-dir 2>/dev/null); if [ -n \"$A\" ] && [ \"$A\" = \"$B\" ] && git -C \"$P\" worktree list --porcelain 2>/dev/null | grep -qxF \"worktree $T\"; then S=\"$T/.claude/hooks/$N\"; fi; fi; elif [ -n \"$T\" ]; then S=\"$T/.claude/hooks/$N\"; fi; [ -f \"$S\" ] || exit 0; python3 \"$S\"; exit $?",
+            "command": "N=claude-md-admission-gate.py; P=\"${CLAUDE_PROJECT_DIR:-}\"; [ -n \"$P\" ] || P=$(git -C \"$PWD\" rev-parse --show-toplevel 2>/dev/null); S=\"\"; [ -n \"$P\" ] && S=\"$P/.claude/hooks/$N\"; [ -f \"$S\" ] || exit 0; python3 \"$S\"; exit $?",
             "timeout": 5
           }
         ]
@@ -320,7 +320,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "N=orphaned-chrome-sweep.py; P=\"${CLAUDE_PROJECT_DIR:-}\"; T=$(git -C \"$PWD\" rev-parse --show-toplevel 2>/dev/null); S=\"\"; if [ -n \"$P\" ]; then S=\"$P/.claude/hooks/$N\"; if [ -n \"$T\" ] && [ \"$T\" != \"$P\" ] && [ -f \"$T/.claude/hooks/$N\" ]; then A=$(git -C \"$T\" rev-parse --path-format=absolute --git-common-dir 2>/dev/null); B=$(git -C \"$P\" rev-parse --path-format=absolute --git-common-dir 2>/dev/null); if [ -n \"$A\" ] && [ \"$A\" = \"$B\" ] && git -C \"$P\" worktree list --porcelain 2>/dev/null | grep -qxF \"worktree $T\"; then S=\"$T/.claude/hooks/$N\"; fi; fi; elif [ -n \"$T\" ]; then S=\"$T/.claude/hooks/$N\"; fi; [ -f \"$S\" ] || exit 0; CLAUDE_PROJECT_DIR=\"${S%/.claude/hooks/*}\" python3 \"$S\" 2>/dev/null || true; exit 0",
+            "command": "N=orphaned-chrome-sweep.py; P=\"${CLAUDE_PROJECT_DIR:-}\"; [ -n \"$P\" ] || P=$(git -C \"$PWD\" rev-parse --show-toplevel 2>/dev/null); S=\"\"; [ -n \"$P\" ] && S=\"$P/.claude/hooks/$N\"; [ -f \"$S\" ] || exit 0; CLAUDE_PROJECT_DIR=\"${S%/.claude/hooks/*}\" python3 \"$S\" 2>/dev/null || true; exit 0",
             "timeout": 15
           }
         ]
@@ -330,7 +330,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "N=hook-resolve-check.py; P=\"${CLAUDE_PROJECT_DIR:-}\"; T=$(git -C \"$PWD\" rev-parse --show-toplevel 2>/dev/null); S=\"\"; if [ -n \"$P\" ]; then S=\"$P/.claude/hooks/$N\"; if [ -n \"$T\" ] && [ \"$T\" != \"$P\" ] && [ -f \"$T/.claude/hooks/$N\" ]; then A=$(git -C \"$T\" rev-parse --path-format=absolute --git-common-dir 2>/dev/null); B=$(git -C \"$P\" rev-parse --path-format=absolute --git-common-dir 2>/dev/null); if [ -n \"$A\" ] && [ \"$A\" = \"$B\" ] && git -C \"$P\" worktree list --porcelain 2>/dev/null | grep -qxF \"worktree $T\"; then S=\"$T/.claude/hooks/$N\"; fi; fi; elif [ -n \"$T\" ]; then S=\"$T/.claude/hooks/$N\"; fi; [ -f \"$S\" ] || exit 0; CLAUDE_PROJECT_DIR=\"${S%/.claude/hooks/*}\" python3 \"$S\" 2>/dev/null || true; exit 0",
+            "command": "N=hook-resolve-check.py; P=\"${CLAUDE_PROJECT_DIR:-}\"; [ -n \"$P\" ] || P=$(git -C \"$PWD\" rev-parse --show-toplevel 2>/dev/null); S=\"\"; [ -n \"$P\" ] && S=\"$P/.claude/hooks/$N\"; [ -f \"$S\" ] || exit 0; CLAUDE_PROJECT_DIR=\"${S%/.claude/hooks/*}\" python3 \"$S\" 2>/dev/null || true; exit 0",
             "timeout": 15
           }
         ]
@@ -379,7 +379,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "N=format-on-edit.sh; P=\"${CLAUDE_PROJECT_DIR:-}\"; T=$(git -C \"$PWD\" rev-parse --show-toplevel 2>/dev/null); S=\"\"; if [ -n \"$P\" ]; then S=\"$P/.claude/hooks/$N\"; if [ -n \"$T\" ] && [ \"$T\" != \"$P\" ] && [ -f \"$T/.claude/hooks/$N\" ]; then A=$(git -C \"$T\" rev-parse --path-format=absolute --git-common-dir 2>/dev/null); B=$(git -C \"$P\" rev-parse --path-format=absolute --git-common-dir 2>/dev/null); if [ -n \"$A\" ] && [ \"$A\" = \"$B\" ] && git -C \"$P\" worktree list --porcelain 2>/dev/null | grep -qxF \"worktree $T\"; then S=\"$T/.claude/hooks/$N\"; fi; fi; elif [ -n \"$T\" ]; then S=\"$T/.claude/hooks/$N\"; fi; _in=$(cat 2>/dev/null); [ -f \"$S\" ] || exit 0; printf '%s' \"$_in\" | bash \"$S\"; exit 0",
+            "command": "N=format-on-edit.sh; P=\"${CLAUDE_PROJECT_DIR:-}\"; [ -n \"$P\" ] || P=$(git -C \"$PWD\" rev-parse --show-toplevel 2>/dev/null); S=\"\"; [ -n \"$P\" ] && S=\"$P/.claude/hooks/$N\"; _in=$(cat 2>/dev/null); [ -f \"$S\" ] || exit 0; printf '%s' \"$_in\" | bash \"$S\"; exit 0",
             "timeout": 10,
             "statusMessage": "Auto-formatting..."
           }
@@ -402,7 +402,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "N=owned-decision-guard.py; P=\"${CLAUDE_PROJECT_DIR:-}\"; T=$(git -C \"$PWD\" rev-parse --show-toplevel 2>/dev/null); S=\"\"; if [ -n \"$P\" ]; then S=\"$P/.claude/hooks/$N\"; if [ -n \"$T\" ] && [ \"$T\" != \"$P\" ] && [ -f \"$T/.claude/hooks/$N\" ]; then A=$(git -C \"$T\" rev-parse --path-format=absolute --git-common-dir 2>/dev/null); B=$(git -C \"$P\" rev-parse --path-format=absolute --git-common-dir 2>/dev/null); if [ -n \"$A\" ] && [ \"$A\" = \"$B\" ] && git -C \"$P\" worktree list --porcelain 2>/dev/null | grep -qxF \"worktree $T\"; then S=\"$T/.claude/hooks/$N\"; fi; fi; elif [ -n \"$T\" ]; then S=\"$T/.claude/hooks/$N\"; fi; [ -f \"$S\" ] || exit 0; python3 \"$S\"; exit $?",
+            "command": "N=owned-decision-guard.py; P=\"${CLAUDE_PROJECT_DIR:-}\"; [ -n \"$P\" ] || P=$(git -C \"$PWD\" rev-parse --show-toplevel 2>/dev/null); S=\"\"; [ -n \"$P\" ] && S=\"$P/.claude/hooks/$N\"; [ -f \"$S\" ] || exit 0; python3 \"$S\"; exit $?",
             "timeout": 10
           }
         ]
@@ -413,7 +413,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "N=owner-step-handback-warn.py; P=\"${CLAUDE_PROJECT_DIR:-}\"; T=$(git -C \"$PWD\" rev-parse --show-toplevel 2>/dev/null); S=\"\"; if [ -n \"$P\" ]; then S=\"$P/.claude/hooks/$N\"; if [ -n \"$T\" ] && [ \"$T\" != \"$P\" ] && [ -f \"$T/.claude/hooks/$N\" ]; then A=$(git -C \"$T\" rev-parse --path-format=absolute --git-common-dir 2>/dev/null); B=$(git -C \"$P\" rev-parse --path-format=absolute --git-common-dir 2>/dev/null); if [ -n \"$A\" ] && [ \"$A\" = \"$B\" ] && git -C \"$P\" worktree list --porcelain 2>/dev/null | grep -qxF \"worktree $T\"; then S=\"$T/.claude/hooks/$N\"; fi; fi; elif [ -n \"$T\" ]; then S=\"$T/.claude/hooks/$N\"; fi; [ -f \"$S\" ] || exit 0; python3 \"$S\" || true; exit 0",
+            "command": "N=owner-step-handback-warn.py; P=\"${CLAUDE_PROJECT_DIR:-}\"; [ -n \"$P\" ] || P=$(git -C \"$PWD\" rev-parse --show-toplevel 2>/dev/null); S=\"\"; [ -n \"$P\" ] && S=\"$P/.claude/hooks/$N\"; [ -f \"$S\" ] || exit 0; python3 \"$S\" || true; exit 0",
             "timeout": 10
           }
         ]
