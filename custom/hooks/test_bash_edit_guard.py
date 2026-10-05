@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Golden cases for bash_edit_guard.py.
 
-Run: python3 .claude/hooks/test_bash_edit_guard.py
+Run: python3 .claude/hooks/test_bash_edit_guard.py   (from a project's installed copy only —
+     it refuses to run from the fork's custom/hooks/ and from a worktree)
 
 The suite this replaces claimed "6/6 pass, Bash allowlist ALIGNED with Edit|Write"
 (fork-gaps 2026-07-19). It was wrong on both counts:
@@ -206,6 +207,16 @@ def main():
     # allows and the suite reports a meaningless green.
     if "/.claude/worktrees/" in PROJECT:
         print("REFUSING TO RUN: suite must execute from the main checkout, not a worktree.")
+        return 1
+    # Precondition: the suite must run from a PROJECT's installed copy. PROJECT is derived
+    # from this file's own location (<project>/.claude/hooks/). Run from the fork's
+    # custom/hooks/ it becomes <fork>/custom — inside the fork path the guard exempts — and
+    # 25 cases fail for a reason that has nothing to do with the guard.
+    if os.path.basename(os.path.dirname(HERE)) != ".claude" or os.path.basename(HERE) != "hooks":
+        print("REFUSING TO RUN: this copy is at " + HERE + ", which is not a project's "
+              ".claude/hooks/ directory (the fork's custom/hooks/ is the source, and the guard "
+              "exempts the fork). Run the installed copy instead: "
+              "python3 <project>/.claude/hooks/test_bash_edit_guard.py")
         return 1
 
     failed = []

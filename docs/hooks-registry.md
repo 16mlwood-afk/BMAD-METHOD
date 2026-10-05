@@ -132,8 +132,14 @@ line, which is written with every field sanitised and JSON-quoted to a file open
 following a symlink. `NotebookEdit` is covered, the `CLAUDE_TOOL_INPUT_FILE_PATH` fallback is
 gone, and parallel sessions are counted by the basename of the command.
 
-**The owner's switch:** `AUTO_APPROVE_CROSS_REPO` at the top of the script. Set it to `False`
-and the guard never approves a path outside the project; both settings have golden cases.
+**The owner's switch is OFF.** `AUTO_APPROVE_CROSS_REPO = False` at the top of the script —
+owner decision, 2026-10-05, in his word: "off." As shipped the guard never approves a path
+outside the project: an edit to another repository gets no decision and the normal permission
+flow applies. The refusals and the `BMAD_ALLOW_MAIN_EDIT` override are unchanged, and nothing
+in the environment can switch the approval on. The golden suite runs twice — the script as
+shipped, with a set-wide assertion that no run of it approved an out-of-project path, and a
+generated copy with the constant set True, so the approval logic described above stays tested
+for the day it is switched back on.
 
 **What it does not cover, stated rather than implied.** It judges Edit, Write and NotebookEdit
 only: a file written by a shell command is `bash_edit_guard.py`'s job. With

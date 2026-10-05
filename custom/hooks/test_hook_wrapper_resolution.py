@@ -50,6 +50,12 @@ RESOLVER = (
 )
 SHAPE = re.compile(r'^N=([A-Za-z0-9_.-]+\.(?:py|sh)); ' + re.escape(RESOLVER))
 
+# What every wrapper is fed on stdin. Some wrappers pre-filter their input in shell and exit
+# before reaching their script; on a bare `{}` such a wrapper runs nothing, and a case that
+# passes because nothing ran has not passed. This payload carries the tool name and the word
+# those filters look for, so each wrapper actually reaches its script.
+PAYLOAD = '{"tool_name":"Bash","tool_response":"UNKNOWN"}'
+
 FAILURES: list[str] = []
 RAN = 0
 
@@ -103,6 +109,9 @@ class World:
         self.sub = self.proj / 'sub'
         self.nested = self.proj / 'nested-repo'
         self.forged = self.proj / 'forged'
+        # Looks like a worktree path to anything that reads $PWD as text; git has never
+        # heard of it. `sub` carries a planted copy, so cutting $PWD at the marker lands on it.
+        self.fake_wt = self.sub / '.claude' / 'worktrees' / 'fake'
         self.log = base / 'ran.log'
         self.proj.mkdir(parents=True)
         git(self.proj, 'init', '-q')
@@ -117,6 +126,7 @@ class World:
             self.nested / 'src',
             self.forged / 'src',
             self.bare_wt / 'src',
+            self.fake_wt,
         ):
             directory.mkdir(parents=True, exist_ok=True)
         git(self.nested, 'init', '-q')
@@ -146,7 +156,7 @@ class World:
             env['CLAUDE_PROJECT_DIR'] = str(project_dir)
         subprocess.run(
             ['bash', '-c', command],
-            input='{}',
+            input=PAYLOAD,
             capture_output=True,
             text=True,
             timeout=60,
@@ -192,15 +202,26 @@ def main() -> int:
     )
     cannot_read = getattr(detector, 'is_unreadable', None) or (lambda command: not read_names(command))
     seen = {name for _, _, command in found for name in read_names(command)}
+    # The direction that matters: a script that is RUN and not READ could go missing in
+    # silence, so it fails. The other direction is allowed for one reason only — a wrapper
+    # that merely PRINTS a literal .claude/hooks/<name> (a restore hint in its missing-guard
+    # notice) hands the detector a name no wrapper runs. Anything else it reads is a defect.
     check(
         f'the detector reads every script the wrappers run ({len(seen & names)} of {len(names)})',
-        sorted(seen),
-        sorted(names),
+        sorted(names - seen),
+        [],
     )
+    literal = {name for _, _, command in found for name in detector.HOOK_REF.findall(command)}
+    check('anything more the detector reads is a literal path a wrapper prints', sorted(seen - names - literal), [])
     check(
         'and no wrapper is one the detector cannot read',
         [label for _, label, command in found if cannot_read(command)],
         [],
+    )
+    detector_line = (
+        f'the missing-hook detector reads {len(seen & names)} of the {len(names)} scripts the wrappers run'
+        f' and {len(seen)} names in all'
+        + (f' (also named, never run: {", ".join(sorted(seen - names))})' if seen - names else '')
     )
 
     base = Path(os.path.realpath(tempfile.mkdtemp(prefix='hook-wrapper-resolution-')))
@@ -212,6 +233,7 @@ def main() -> int:
                 ('a planted copy in an ancestor of the cwd', world.sub / 'deeper'),
                 ('a planted copy in a nested git repository', world.nested / 'src'),
                 ('a planted copy behind a forged .git file', world.forged / 'src'),
+                ('a planted copy above a path that only LOOKS like a worktree', world.fake_wt),
             ]:
                 check(f'{tag} · (a) {where} does not run', world.run(command, cwd, world.proj), 'project')
             check(
@@ -258,7 +280,7 @@ def main() -> int:
         for failure in FAILURES:
             print(f'  {failure}\n')
         return 1
-    print(f'all {RAN} hook-wrapper-resolution cases pass ({len(found)} wrappers in {SETTINGS.name})')
+    print(f'all {RAN} hook-wrapper-resolution cases pass ({len(found)} wrappers in {SETTINGS.name}); {detector_line}')
     return 0
 
 
