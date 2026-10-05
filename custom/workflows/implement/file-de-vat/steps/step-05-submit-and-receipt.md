@@ -32,7 +32,7 @@ Call the approved submission action — `mcp__avask-filing__avask_submit`, or `m
     --last-action "filed {period} — confirmation {confirmation_ref}"
   ```
 - **CONTRADICTED** — the reconcile shows the `{period}` row still reads `Provide Data`: the submit did NOT land, whatever it returned. BLOCKED box in owner terms ("submit returned OK but the DE {period} row still reads Provide Data — the return is NOT filed"). Do NOT mark `sent`, do NOT mint a `filed` receipt, do NOT auto-re-submit (an ambiguous submit is NEVER retried — double-filing is the failure mode). The next move is the owner's: re-file deliberately, or eyeball the portal row.
-- **UNCONFIRMED** — the reconcile is unavailable or ambiguous, so portal-truth can't be seen. Do NOT mark the case `sent`. The receipt is minted `status: unconfirmed`, never `filed` (phase 7). Surface a decision-line: portal-truth of {period} is unconfirmed; the canonical "did it file?" is the human-set marker (`scripts/set-filing-status.sh`) — ask the owner to confirm at the portal rather than inferring filed from the tool's OK.
+- **UNCONFIRMED** — the reconcile is unavailable or ambiguous, so portal-truth can't be seen. Do NOT mark the case `sent`. The receipt is minted `status: unconfirmed`, never `filed` (phase 7). Re-read the dashboard row with `mcp__avask-filing__avask_read_period_status` (it records the portal-truth marker itself) and branch on that. Only if the read fails, surface a decision-line naming what failed — never ask the owner to look at the portal, and never infer filed from the submit tool's OK.
 
 Never mark `sent` or write a `filed` receipt on the submit tool's return alone — only on a portal-truth reconcile that returns CONFIRMED.
 
