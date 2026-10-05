@@ -44,13 +44,23 @@ ENFORCEMENT, split honestly.
   mid-task information with SendMessage, is the model's choice. No hook can read that,
   and building one keyed on counts is the thing the owner has ruled out.
 
+SWITCHED OFF BY DEFAULT since 2026-10-05. Owner, that day: "modify the function that
+is causing a lot of subagents to be spawned... it's basically rinsing my usage and so I
+need to deprecate this feature for now." The reminder was in front of every main-thread
+turn of every session in every project, and each one it persuaded cost a whole agent's
+context. It is kept, not deleted: set MAIN_THREAD_OPEN_POINTER=1 in the environment to
+bring it back. Any other value, or none, is silence.
+
 Golden cases: python3 .claude/hooks/test_main_thread_open_pointer.py
 """
 
 from __future__ import annotations
 
 import json
+import os
 import sys
+
+ENABLE_ENV = 'MAIN_THREAD_OPEN_POINTER'
 
 REMINDER = (
     'KEEP THIS CONVERSATION OPEN (owner rule, 2026-09-19). Mason wants to keep talking '
@@ -85,7 +95,16 @@ def reminder_for(payload: object) -> str | None:
     return REMINDER
 
 
+def enabled(env: dict | None = None) -> bool:
+    """Off unless the owner has switched it back on. See the module docstring."""
+    source = os.environ if env is None else env
+    return source.get(ENABLE_ENV) == '1'
+
+
 def main() -> int:
+    if not enabled():
+        return 0
+
     try:
         payload = json.load(sys.stdin)
     except Exception:
