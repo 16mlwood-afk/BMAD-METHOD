@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import importlib.util
 import json
-import os
 import re
 import subprocess
 import sys
@@ -55,25 +54,10 @@ def check(name: str, actual, expected) -> None:
         FAILURES.append(f'{name}\n    expected: {expected!r}\n    actual:   {actual!r}')
 
 
-def run(stdin: str, switched_on: bool = True) -> subprocess.CompletedProcess:
-    env = {k: v for k, v in os.environ.items() if k != hook.ENABLE_ENV}
-    if switched_on:
-        env[hook.ENABLE_ENV] = '1'
+def run(stdin: str) -> subprocess.CompletedProcess:
     return subprocess.run(
-        [sys.executable, str(HOOK)], input=stdin, capture_output=True, text=True, timeout=30, env=env
+        [sys.executable, str(HOOK)], input=stdin, capture_output=True, text=True, timeout=30
     )
-
-
-def off_by_default() -> None:
-    # Deprecated 2026-10-05: with nothing set, a main-thread turn gets nothing at all.
-    done = run(json.dumps(MAIN), switched_on=False)
-    check('off: exit', done.returncode, 0)
-    check('off: stdout empty', done.stdout.strip(), '')
-    check('off: quiet stderr', done.stderr.strip(), '')
-    check('unset is off', hook.enabled({}), False)
-    check('1 is on', hook.enabled({hook.ENABLE_ENV: '1'}), True)
-    for value in ('0', '', 'true', 'yes', ' 1'):
-        check(f'only 1 switches it on: {value!r}', hook.enabled({hook.ENABLE_ENV: value}), False)
 
 
 def content() -> None:
@@ -193,7 +177,6 @@ def main() -> int:
     content()
     silence_inside_a_subagent()
     end_to_end()
-    off_by_default()
     wiring()
     if FAILURES:
         print(f'{len(FAILURES)} FAILED\n')
