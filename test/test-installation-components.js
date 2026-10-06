@@ -447,6 +447,41 @@ async function runTests() {
   // Test 12: Removed — ancestor conflict check no longer applies (no IDE inherits skills from parent dirs)
 
   // ============================================================
+  // Test 12b: CodeWhale Native Skills Install
+  // ============================================================
+  console.log(`${colors.yellow}Test Suite 12b: CodeWhale Native Skills${colors.reset}\n`);
+
+  try {
+    clearCache();
+    const platformCodes12b = await loadPlatformCodes();
+    const codewhaleInstaller = platformCodes12b.platforms.codewhale?.installer;
+
+    assert(codewhaleInstaller?.target_dir === '.codewhale/skills', 'CodeWhale target_dir uses native skills path');
+
+    const tempProjectDir12b = await fs.mkdtemp(path.join(os.tmpdir(), 'bmad-codewhale-test-'));
+    const installedBmadDir12b = await createTestBmadFixture();
+
+    const ideManager12b = new IdeManager();
+    await ideManager12b.ensureInitialized();
+    const result12b = await ideManager12b.setup('codewhale', tempProjectDir12b, installedBmadDir12b, {
+      silent: true,
+      selectedModules: ['bmm'],
+    });
+
+    assert(result12b.success === true, 'CodeWhale setup succeeds against temp project');
+
+    const skillFile12b = path.join(tempProjectDir12b, '.codewhale', 'skills', 'bmad-master', 'SKILL.md');
+    assert(await fs.pathExists(skillFile12b), 'CodeWhale install writes SKILL.md directory output');
+
+    await fs.remove(tempProjectDir12b);
+    await fs.remove(path.dirname(installedBmadDir12b));
+  } catch (error) {
+    assert(false, 'CodeWhale native skills migration test succeeds', error.message);
+  }
+
+  console.log('');
+
+  // ============================================================
   // Test 13: Cursor Native Skills Install
   // ============================================================
   console.log(`${colors.yellow}Test Suite 13: Cursor Native Skills${colors.reset}\n`);
@@ -1666,9 +1701,9 @@ async function runTests() {
   console.log('');
 
   // ============================================================
-  // Test Suite 33: Community & Custom Module Managers
+  // Test Suite 33: Custom Module Managers
   // ============================================================
-  console.log(`${colors.yellow}Test Suite 33: Community & Custom Module Managers${colors.reset}\n`);
+  console.log(`${colors.yellow}Test Suite 33: Custom Module Managers${colors.reset}\n`);
 
   // --- CustomModuleManager._normalizeCustomModule ---
   {
@@ -1688,288 +1723,6 @@ async function runTests() {
     const pluginNoAuthor = { name: 'x', description: '', version: null };
     const result2 = mgr._normalizeCustomModule(pluginNoAuthor, 'https://github.com/o/r', data);
     assert(result2.author === 'Fallback Owner', 'normalizeCustomModule falls back to data.owner');
-  }
-
-  // --- CommunityModuleManager._normalizeCommunityModule ---
-  {
-    const { CommunityModuleManager } = require('../tools/installer/modules/community-manager');
-    const mgr = new CommunityModuleManager();
-
-    const mod = {
-      name: 'test-mod',
-      display_name: 'Test Module',
-      code: 'tm',
-      description: 'desc',
-      repository: 'https://github.com/o/r',
-      module_definition: 'src/module.yaml',
-      category: 'software-development',
-      subcategory: 'dev-tools',
-      trust_tier: 'bmad-certified',
-      version: '2.0.0',
-      approved_sha: 'abc123',
-      promoted: true,
-      promoted_rank: 1,
-      keywords: ['test', 'module'],
-    };
-    const result = mgr._normalizeCommunityModule(mod);
-
-    assert(result.code === 'tm', 'normalizeCommunityModule sets code');
-    assert(result.displayName === 'Test Module', 'normalizeCommunityModule sets displayName from display_name');
-    assert(result.type === 'community', 'normalizeCommunityModule sets type to community');
-    assert(result.category === 'software-development', 'normalizeCommunityModule preserves category');
-    assert(result.trustTier === 'bmad-certified', 'normalizeCommunityModule maps trust_tier');
-    assert(result.approvedSha === 'abc123', 'normalizeCommunityModule maps approved_sha');
-    assert(result.promoted === true, 'normalizeCommunityModule maps promoted');
-    assert(result.promotedRank === 1, 'normalizeCommunityModule maps promoted_rank');
-    assert(result.builtIn === false, 'normalizeCommunityModule sets builtIn false');
-  }
-
-  // --- CommunityModuleManager.searchByKeyword (with injected cache) ---
-  {
-    const { CommunityModuleManager } = require('../tools/installer/modules/community-manager');
-    const mgr = new CommunityModuleManager();
-
-    // Inject cached index to avoid network call
-    mgr._cachedIndex = {
-      modules: [
-        { name: 'mod-a', display_name: 'Alpha', code: 'a', description: 'testing tools', category: 'dev', keywords: ['test'] },
-        { name: 'mod-b', display_name: 'Beta', code: 'b', description: 'design suite', category: 'design', keywords: ['ux'] },
-        { name: 'mod-c', display_name: 'Gamma', code: 'c', description: 'game engine', category: 'game', keywords: ['unity'] },
-      ],
-    };
-
-    const r1 = await mgr.searchByKeyword('test');
-    assert(r1.length === 1 && r1[0].code === 'a', 'searchByKeyword matches keyword');
-
-    const r2 = await mgr.searchByKeyword('design');
-    assert(r2.length === 1 && r2[0].code === 'b', 'searchByKeyword matches description');
-
-    const r3 = await mgr.searchByKeyword('alpha');
-    assert(r3.length === 1 && r3[0].code === 'a', 'searchByKeyword matches display name');
-
-    const r4 = await mgr.searchByKeyword('xyz');
-    assert(r4.length === 0, 'searchByKeyword returns empty for no match');
-
-    const r5 = await mgr.searchByKeyword('UNITY');
-    assert(r5.length === 1 && r5[0].code === 'c', 'searchByKeyword is case-insensitive');
-  }
-
-  // --- CommunityModuleManager.listFeatured (with injected cache) ---
-  {
-    const { CommunityModuleManager } = require('../tools/installer/modules/community-manager');
-    const mgr = new CommunityModuleManager();
-
-    mgr._cachedIndex = {
-      modules: [
-        { name: 'a', code: 'a', promoted: true, promoted_rank: 3 },
-        { name: 'b', code: 'b', promoted: false },
-        { name: 'c', code: 'c', promoted: true, promoted_rank: 1 },
-      ],
-    };
-
-    const featured = await mgr.listFeatured();
-    assert(featured.length === 2, 'listFeatured returns only promoted modules');
-    assert(featured[0].code === 'c' && featured[1].code === 'a', 'listFeatured sorts by promoted_rank ascending');
-  }
-
-  // --- CommunityModuleManager.getCategoryList (with injected cache) ---
-  {
-    const { CommunityModuleManager } = require('../tools/installer/modules/community-manager');
-    const mgr = new CommunityModuleManager();
-
-    mgr._cachedIndex = {
-      modules: [
-        { name: 'a', code: 'a', category: 'software-development' },
-        { name: 'b', code: 'b', category: 'design-and-creative' },
-        { name: 'c', code: 'c', category: 'software-development' },
-      ],
-    };
-    mgr._cachedCategories = {
-      categories: {
-        'software-development': { name: 'Software Development' },
-        'design-and-creative': { name: 'Design & Creative' },
-      },
-    };
-
-    const cats = await mgr.getCategoryList();
-    assert(cats.length === 2, 'getCategoryList returns categories with modules');
-    const swDev = cats.find((c) => c.slug === 'software-development');
-    assert(swDev && swDev.moduleCount === 2, 'getCategoryList counts modules per category');
-    assert(cats[0].name === 'Design & Creative', 'getCategoryList sorts alphabetically');
-  }
-
-  // --- CommunityModuleManager SHA pinning normalization ---
-  {
-    const { CommunityModuleManager } = require('../tools/installer/modules/community-manager');
-    const mgr = new CommunityModuleManager();
-
-    // Module with SHA set
-    const withSha = mgr._normalizeCommunityModule({
-      name: 'pinned-mod',
-      code: 'pm',
-      approved_sha: 'abc123def456',
-      approved_tag: 'v1.0.0',
-    });
-    assert(withSha.approvedSha === 'abc123def456', 'SHA is preserved when set');
-    assert(withSha.approvedTag === 'v1.0.0', 'Tag is preserved as metadata');
-
-    // Module with null SHA (trusted contributor)
-    const noSha = mgr._normalizeCommunityModule({
-      name: 'trusted-mod',
-      code: 'tm',
-      approved_sha: null,
-    });
-    assert(noSha.approvedSha === null, 'Null SHA means no pinning (trusted contributor)');
-  }
-
-  // --- CommunityModuleManager.listByCategory (with injected cache) ---
-  {
-    const { CommunityModuleManager } = require('../tools/installer/modules/community-manager');
-    const mgr = new CommunityModuleManager();
-
-    mgr._cachedIndex = {
-      modules: [
-        { name: 'a', code: 'a', category: 'design-and-creative' },
-        { name: 'b', code: 'b', category: 'software-development' },
-        { name: 'c', code: 'c', category: 'design-and-creative' },
-        { name: 'd', code: 'd', category: 'game-development' },
-      ],
-    };
-
-    const design = await mgr.listByCategory('design-and-creative');
-    assert(design.length === 2, 'listByCategory filters to matching category');
-    assert(
-      design.every((m) => m.category === 'design-and-creative'),
-      'listByCategory returns only matching modules',
-    );
-
-    const empty = await mgr.listByCategory('nonexistent');
-    assert(empty.length === 0, 'listByCategory returns empty for unknown category');
-  }
-
-  // --- CommunityModuleManager.getModuleByCode (with injected cache) ---
-  {
-    const { CommunityModuleManager } = require('../tools/installer/modules/community-manager');
-    const mgr = new CommunityModuleManager();
-
-    mgr._cachedIndex = {
-      modules: [
-        { name: 'test-mod', code: 'tm', display_name: 'Test Module' },
-        { name: 'other-mod', code: 'om', display_name: 'Other Module' },
-      ],
-    };
-
-    const found = await mgr.getModuleByCode('tm');
-    assert(found !== null && found.code === 'tm', 'getModuleByCode finds existing module');
-
-    const notFound = await mgr.getModuleByCode('xyz');
-    assert(notFound === null, 'getModuleByCode returns null for unknown code');
-  }
-
-  console.log('');
-
-  // ============================================================
-  // Test Suite 34: RegistryClient GitHub API Cascade
-  // ============================================================
-  console.log(`${colors.yellow}Test Suite 34: RegistryClient GitHub API Cascade${colors.reset}\n`);
-
-  {
-    const { RegistryClient } = require('../tools/installer/modules/registry-client');
-
-    // Build a RegistryClient with stubbed fetch paths so we can assert on cascade behavior
-    // without making real network calls.
-    function createStubbedClient({ apiResult, rawResult }) {
-      const client = new RegistryClient();
-      const calls = [];
-
-      // Stub _fetchWithHeaders (GitHub API path)
-      client._fetchWithHeaders = async (url) => {
-        calls.push(`api:${url}`);
-        if (apiResult instanceof Error) throw apiResult;
-        return apiResult;
-      };
-
-      // Stub fetch (raw CDN path) — only intercept raw.githubusercontent.com calls
-      const originalFetch = client.fetch.bind(client);
-      client.fetch = async (url, timeout) => {
-        if (url.includes('raw.githubusercontent.com')) {
-          calls.push(`raw:${url}`);
-          if (rawResult instanceof Error) throw rawResult;
-          return rawResult;
-        }
-        return originalFetch(url, timeout);
-      };
-
-      return { client, calls };
-    }
-
-    // --- API success skips raw CDN ---
-    {
-      const { client, calls } = createStubbedClient({ apiResult: 'api-content', rawResult: 'raw-content' });
-      const result = await client.fetchGitHubFile('owner', 'repo', 'path/file.txt', 'main');
-
-      assert(result === 'api-content', 'RegistryClient API success returns API content');
-      assert(calls.length === 1, 'RegistryClient API success makes exactly one call');
-      assert(calls[0].startsWith('api:'), 'RegistryClient API success calls API endpoint');
-    }
-
-    // --- API failure falls back to raw CDN ---
-    {
-      const { client, calls } = createStubbedClient({ apiResult: new Error('HTTP 403'), rawResult: 'raw-content' });
-      const result = await client.fetchGitHubFile('owner', 'repo', 'path/file.txt', 'main');
-
-      assert(result === 'raw-content', 'RegistryClient API failure returns raw CDN content');
-      assert(calls.length === 2, 'RegistryClient API failure makes two calls');
-      assert(calls[0].startsWith('api:'), 'RegistryClient first call is to API');
-      assert(calls[1].startsWith('raw:'), 'RegistryClient second call is to raw CDN');
-    }
-
-    // --- Both endpoints failing throws ---
-    {
-      const { client } = createStubbedClient({ apiResult: new Error('HTTP 403'), rawResult: new Error('HTTP 404') });
-      let threw = false;
-      try {
-        await client.fetchGitHubFile('owner', 'repo', 'path/file.txt', 'main');
-      } catch {
-        threw = true;
-      }
-      assert(threw, 'RegistryClient both endpoints failing throws an error');
-    }
-
-    // --- API URL construction ---
-    {
-      const { client, calls } = createStubbedClient({ apiResult: 'content', rawResult: 'content' });
-      await client.fetchGitHubFile('bmad-code-org', 'bmad-plugins-marketplace', 'registry/official.yaml', 'main');
-
-      const apiCall = calls[0];
-      assert(
-        apiCall.includes('api.github.com/repos/bmad-code-org/bmad-plugins-marketplace/contents/registry/official.yaml'),
-        'RegistryClient API URL contains correct path',
-      );
-      assert(apiCall.includes('ref=main'), 'RegistryClient API URL contains ref parameter');
-    }
-
-    // --- Raw CDN URL construction ---
-    {
-      const { client, calls } = createStubbedClient({ apiResult: new Error('fail'), rawResult: 'content' });
-      await client.fetchGitHubFile('bmad-code-org', 'bmad-plugins-marketplace', 'registry/official.yaml', 'main');
-
-      const rawCall = calls[1];
-      assert(
-        rawCall.includes('raw.githubusercontent.com/bmad-code-org/bmad-plugins-marketplace/main/registry/official.yaml'),
-        'RegistryClient raw CDN URL contains correct path',
-      );
-    }
-
-    // --- fetchGitHubYaml parses YAML ---
-    {
-      const yamlContent = 'modules:\n  - name: test\n    description: A test module\n';
-      const { client } = createStubbedClient({ apiResult: yamlContent, rawResult: yamlContent });
-      const result = await client.fetchGitHubYaml('owner', 'repo', 'file.yaml', 'main');
-
-      assert(Array.isArray(result.modules), 'fetchGitHubYaml parses YAML correctly');
-      assert(result.modules[0].name === 'test', 'fetchGitHubYaml preserves YAML values');
-    }
   }
 
   console.log('');
@@ -3514,6 +3267,237 @@ async function runTests() {
     }
   } catch (error) {
     console.log(`${colors.red}Test Suite 44 setup failed: ${error.message}${colors.reset}`);
+    console.log(error.stack);
+    failed++;
+  }
+
+  console.log('');
+
+  // ============================================================
+  // Test Suite 45: _cleanupSkillDirs prunes empty parent dirs (#empty-bmm-folders)
+  // ============================================================
+  console.log(`${colors.yellow}Test Suite 45: cleanup prunes empty skill-group dirs${colors.reset}\n`);
+
+  let root45;
+  try {
+    root45 = await fs.mkdtemp(path.join(os.tmpdir(), 'bmad-cleanup-test-'));
+    const bmadDir45 = path.join(root45, '_bmad');
+    await fs.ensureDir(path.join(bmadDir45, '_config'));
+
+    // Two skills nested under the same grouping dir (1-analysis), plus a
+    // module-level file that must survive the cleanup.
+    await fs.writeFile(
+      path.join(bmadDir45, '_config', 'skill-manifest.csv'),
+      [
+        'canonicalId,name,description,module,path',
+        '"bmad-agent-analyst","bmad-agent-analyst","fixture","bmm","_bmad/bmm/1-analysis/bmad-agent-analyst/SKILL.md"',
+        '"bmad-research","bmad-research","fixture","bmm","_bmad/bmm/1-analysis/research/bmad-research/SKILL.md"',
+        '',
+      ].join('\n'),
+    );
+    await fs.ensureDir(path.join(bmadDir45, 'bmm', '1-analysis', 'bmad-agent-analyst'));
+    await fs.writeFile(path.join(bmadDir45, 'bmm', '1-analysis', 'bmad-agent-analyst', 'SKILL.md'), 'x');
+    await fs.ensureDir(path.join(bmadDir45, 'bmm', '1-analysis', 'research', 'bmad-research'));
+    await fs.writeFile(path.join(bmadDir45, 'bmm', '1-analysis', 'research', 'bmad-research', 'SKILL.md'), 'x');
+    await fs.writeFile(path.join(bmadDir45, 'bmm', 'config.yaml'), 'module: bmm\n');
+
+    const installer45 = new Installer();
+    await installer45._cleanupSkillDirs(bmadDir45);
+
+    assert(!(await fs.pathExists(path.join(bmadDir45, 'bmm', '1-analysis'))), 'empty skill-group dir is pruned after cleanup');
+    assert(!(await fs.pathExists(path.join(bmadDir45, 'bmm', '1-analysis', 'research'))), 'empty nested skill-group dir is pruned');
+    assert(await fs.pathExists(path.join(bmadDir45, 'bmm', 'config.yaml')), 'module-level files are preserved');
+    assert(await fs.pathExists(bmadDir45), 'bmad root is never removed');
+  } catch (error) {
+    console.log(`${colors.red}Test Suite 45 setup failed: ${error.message}${colors.reset}`);
+    console.log(error.stack);
+    failed++;
+  } finally {
+    if (root45) await fs.remove(root45).catch(() => {});
+  }
+
+  console.log('');
+
+  // ============================================================
+  // Test Suite 46: uv environment check (version parsing + messaging)
+  // ============================================================
+  console.log(`${colors.yellow}Test Suite 46: uv-check version parsing and messaging${colors.reset}\n`);
+
+  try {
+    const { parseUvVersion, detectUv } = require('../tools/installer/core/uv-check');
+
+    // Version parsing
+    const plain = parseUvVersion('uv 0.5.31');
+    assert(plain && plain.major === 0 && plain.minor === 5 && plain.patch === 31, 'parses "uv 0.5.31"');
+    const brew = parseUvVersion('uv 0.5.31 (Homebrew 2025-02-12)');
+    assert(brew && brew.raw === '0.5.31', 'parses uv version with build suffix');
+    const noPatch = parseUvVersion('uv 1.2');
+    assert(noPatch && noPatch.patch === 0, 'missing patch defaults to 0');
+    assert(parseUvVersion('') === null, 'empty output returns null');
+    assert(parseUvVersion('command not found: uv') === null, 'non-version output returns null');
+    assert(parseUvVersion(null) === null, 'null output returns null');
+
+    // Detection smoke test — must not throw; result is null or well-formed.
+    const detectedUv = detectUv();
+    assert(detectedUv === null || typeof detectedUv.version.raw === 'string', 'detectUv returns null or a well-formed result');
+
+    // checkUvEnvironment branch coverage — stub detection + prompts so the
+    // assertions are deterministic regardless of whether uv is installed.
+    const uvCheck = require('../tools/installer/core/uv-check');
+    const promptsModule = require('../tools/installer/prompts');
+    const realUv = { detectUv: uvCheck.detectUv, log: promptsModule.log, note: promptsModule.note };
+    const stubUv = (detectResult) => {
+      const seen = { success: [], warn: [], note: [] };
+      uvCheck.detectUv = () => detectResult;
+      promptsModule.log = {
+        success: async (m) => void seen.success.push(m),
+        warn: async (m) => void seen.warn.push(m),
+        info: async () => {},
+        error: async () => {},
+      };
+      promptsModule.note = async (m, t) => void seen.note.push(t || m);
+      return seen;
+    };
+
+    try {
+      // Branch: uv present — success, no warning.
+      let seen = stubUv({ version: { major: 0, minor: 5, patch: 31, raw: '0.5.31' } });
+      let result = await uvCheck.checkUvEnvironment();
+      assert(result.status === 'found' && seen.success.length === 1, 'uv present logs success');
+      assert(seen.success[0].includes('uv run') && seen.warn.length === 0, 'uv present mentions uv run, no warning');
+
+      // Branch: uv missing — warn + setup note, never blocks (no prompt).
+      seen = stubUv(null);
+      result = await uvCheck.checkUvEnvironment();
+      assert(result.status === 'missing' && seen.warn.length === 1, 'uv missing warns');
+      assert(seen.warn[0].includes('de facto standard'), 'uv-missing warning frames uv as the de facto standard');
+      assert(seen.note.length === 1 && seen.note[0].includes('uv'), 'uv missing shows a setup note');
+    } finally {
+      uvCheck.detectUv = realUv.detectUv;
+      promptsModule.log = realUv.log;
+      promptsModule.note = realUv.note;
+    }
+  } catch (error) {
+    console.log(`${colors.red}Test Suite 46 setup failed: ${error.message}${colors.reset}`);
+    console.log(error.stack);
+    failed++;
+  }
+
+  console.log('');
+
+  // ============================================================
+  // Test Suite 47: WSL shell using Windows Node guard
+  // ============================================================
+  console.log(`${colors.yellow}Test Suite 47: WSL Windows Node guard${colors.reset}\n`);
+
+  try {
+    const wslNodeCheck = require('../tools/installer/core/wsl-node-check');
+
+    let detection = wslNodeCheck.detectWindowsNodeFromWsl({
+      platform: 'win32',
+      env: { WSL_DISTRO_NAME: 'Ubuntu-26.04' },
+      cwd: String.raw`C:\Windows`,
+      execPath: String.raw`C:\Program Files\nodejs\node.exe`,
+    });
+    assert(detection.isMismatch === true, 'detects Windows Node launched from WSL via WSL_DISTRO_NAME');
+
+    detection = wslNodeCheck.detectWindowsNodeFromWsl({
+      platform: 'win32',
+      env: { PWD: '/home/devuser/projects/md2pdf' },
+      cwd: String.raw`\\wsl.localhost\Ubuntu-26.04\home\devuser\projects\md2pdf`,
+      execPath: String.raw`C:\Program Files\nodejs\node.exe`,
+    });
+    assert(detection.isMismatch === true, 'detects Windows Node launched from WSL via Linux PWD / WSL UNC cwd');
+
+    detection = wslNodeCheck.detectWindowsNodeFromWsl({
+      platform: 'win32',
+      env: {},
+      cwd: String.raw`\\wsl$\Ubuntu-26.04\home\devuser\projects\md2pdf`,
+      execPath: String.raw`C:\Program Files\nodejs\node.exe`,
+    });
+    assert(detection.isMismatch === true, 'detects Windows Node launched from WSL via legacy WSL UNC cwd');
+
+    detection = wslNodeCheck.detectWindowsNodeFromWsl({
+      platform: 'linux',
+      env: { WSL_DISTRO_NAME: 'Ubuntu-26.04', PWD: '/home/devuser/projects/md2pdf' },
+      cwd: '/home/devuser/projects/md2pdf',
+      execPath: '/usr/bin/node',
+    });
+    assert(detection.isMismatch === false, 'allows native Linux Node inside WSL');
+
+    detection = wslNodeCheck.detectWindowsNodeFromWsl({
+      platform: 'win32',
+      env: { PWD: String.raw`C:\Users\devuser\project` },
+      cwd: String.raw`C:\Users\devuser\project`,
+      execPath: String.raw`C:\Program Files\nodejs\node.exe`,
+    });
+    assert(detection.isMismatch === false, 'allows normal Windows Node outside WSL');
+
+    detection = wslNodeCheck.detectWindowsNodeFromWsl({
+      platform: 'win32',
+      env: { PWD: '/c/Users/devuser/project' },
+      cwd: String.raw`C:\Users\devuser\project`,
+      execPath: String.raw`C:\Program Files\nodejs\node.exe`,
+    });
+    assert(detection.isMismatch === false, 'allows Git Bash Windows-drive PWD outside WSL');
+
+    detection = wslNodeCheck.detectWindowsNodeFromWsl({
+      platform: 'win32',
+      env: { PWD: '/cygdrive/c/Users/devuser/project' },
+      cwd: String.raw`C:\Users\devuser\project`,
+      execPath: String.raw`C:\Program Files\nodejs\node.exe`,
+    });
+    assert(detection.isMismatch === false, 'allows Cygwin Windows-drive PWD outside WSL');
+
+    const message = wslNodeCheck.formatWindowsNodeFromWslMessage({
+      isMismatch: true,
+      reason: 'WSL_DISTRO_NAME is set',
+      execPath: String.raw`C:\Program Files\nodejs\node.exe`,
+    });
+    assert(message.includes('Install Node.js inside WSL'), 'guard message tells user to install Node.js inside WSL');
+    assert(message.includes(String.raw`C:\Program Files\nodejs\node.exe`), 'guard message includes detected Windows Node path');
+
+    const promptsModule = require('../tools/installer/prompts');
+    const real = {
+      detectWindowsNodeFromWsl: wslNodeCheck.detectWindowsNodeFromWsl,
+      log: promptsModule.log,
+      exit: process.exit,
+    };
+    const seen = { errors: [], exit: [] };
+    wslNodeCheck.detectWindowsNodeFromWsl = () => ({
+      isMismatch: true,
+      reason: 'WSL_INTEROP is set',
+      execPath: String.raw`C:\Program Files\nodejs\node.exe`,
+    });
+    promptsModule.log = {
+      error: async (m) => void seen.errors.push(m),
+      info: async () => {},
+      success: async () => {},
+      warn: async () => {},
+      message: async () => {},
+      step: async () => {},
+    };
+    process.exit = (code) => {
+      seen.exit.push(code);
+      throw new Error('__stub_exit__');
+    };
+
+    try {
+      let threw = false;
+      try {
+        await wslNodeCheck.checkWindowsNodeFromWsl();
+      } catch (error) {
+        threw = error.message === '__stub_exit__';
+      }
+      assert(threw && seen.exit[0] === 1, 'guard exits with code 1 when Windows Node is launched from WSL');
+      assert(seen.errors[0].includes('Windows Node.js was launched from a WSL shell'), 'guard logs the mismatch explanation');
+    } finally {
+      wslNodeCheck.detectWindowsNodeFromWsl = real.detectWindowsNodeFromWsl;
+      promptsModule.log = real.log;
+      process.exit = real.exit;
+    }
+  } catch (error) {
+    console.log(`${colors.red}Test Suite 47 setup failed: ${error.message}${colors.reset}`);
     console.log(error.stack);
     failed++;
   }

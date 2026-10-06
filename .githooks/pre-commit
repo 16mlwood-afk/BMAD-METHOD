@@ -1,0 +1,128 @@
+#!/usr/bin/env sh
+# Fork pre-commit — migrated from .husky/pre-commit to .githooks/ as the canonical,
+# worktree-safe hook mechanism (STD-HOOKACTIVATE-001; husky retired here so the fork
+# dogfoods the same core.hooksPath=.githooks activation it distributes to projects).
+# This is the FORK's own bespoke hook — NOT the generic dispatcher in custom/githooks/.
+
+# Stash preflight — MUST run BEFORE lint-staged, which backs up the working state with a stash.
+# A corrupt existing stash makes that backup fail as an opaque "invalid object … Error building
+# trees" naming an unrelated path, while HEAD/index/fsck all look clean — a repo-wide commit
+# outage whose only working escape is --no-verify. Fails closed only on a proven-missing object.
+# (fork-gap 2026-07-20)
+if [ -x "$(git rev-parse --show-toplevel)/tools/check-stash-health.sh" ]; then
+  "$(git rev-parse --show-toplevel)/tools/check-stash-health.sh" || exit 1
+fi
+
+# Foreign-dirty preflight (WARN-only, never blocks) — this checkout is shared by many
+# concurrent sessions, and a commit here is never only about this commit's files.
+# Two hazards it surfaces, both logged as fork-gaps (2026-07-25):
+#   - the shared INDEX: a bare `git commit` sweeps whatever else is staged;
+#   - the shared TREE: anything dirty outside the staged set is another session's live work.
+# It only prints. The commit is legitimate; the point is that the operator knows.
+_top="$(git rev-parse --show-toplevel)"
+_staged="$(git diff --cached --name-only)"
+_foreign="$(git status --porcelain | awk '{ $1=""; sub(/^ +/,""); print }' | while IFS= read -r f; do
+  [ -n "$f" ] || continue
+  printf '%s\n' "$_staged" | grep -qxF "$f" || printf '%s\n' "$f"
+done)"
+_foreign_n="$(printf '%s' "$_foreign" | grep -c . || true)"
+if [ "${_foreign_n:-0}" -gt 0 ]; then
+  echo "foreign-dirty: ${_foreign_n} path(s) dirty OUTSIDE this commit's staged set."
+  echo "  A parallel session may be mid-edit. Do NOT diagnose from those paths while this"
+  echo "  commit runs, and prefer 'git commit <path>' over a bare commit over a shared index."
+  printf '%s\n' "$_foreign" | sed 's/^/    /' | head -10
+fi
+
+# Auto-fix changed files and stage them.
+# --no-stash is DELIBERATE (fork-gap 2026-07-25). lint-staged's default flow backs up the whole
+# working tree and hides unstaged changes by checking out the staged state — which reverts and
+# replays EVERY dirty file in this shared checkout, not just the ones being committed. Three
+# separate failures came out of that window: a corrupt stash blocking all commits (2026-07-20),
+# a foreign commit sweeping a staged set (2026-07-25), and a parallel session's files reading as
+# reverted mid-commit so a verification run returned confident FALSE state (2026-07-25).
+# --no-stash leaves the tree alone. The cost it buys back: tasks see unstaged content in a
+# partially-staged file, and a failing task is not auto-reverted — acceptable here, because
+# every configured task is an idempotent lint/format fix.
+npx --no-install lint-staged --no-stash
+
+# Validate.
+# Fast path for fork-tooling-only commits (custom/, docs/, *.md, *.sh, the onboarding/global-asset
+# tooling): run the fork-relevant validators (refs + lint + budget) and SKIP the upstream product
+# suites (test:install / test:urls / test:channels) that such a diff can't affect. Any change that
+# touches an upstream/product path falls back to the full suite. See fork-gaps "Full upstream test
+# suite on every fork push".
+# SCRUB THE INHERITED GIT ENVIRONMENT BEFORE RUNNING ANY SUITE (2026-09-03).
+# git runs a pre-commit hook with GIT_INDEX_FILE / GIT_DIR / GIT_WORK_TREE / GIT_PREFIX
+# EXPORTED and pointing at THIS repository. Several fork suites build a throwaway fixture
+# repo and shell out to `git add` inside it; those inherit the variables and write into
+# the FORK'S index instead of the fixture's. The fixture directory is then deleted,
+# leaving an index entry whose blob no longer exists, and EVERY later commit dies with
+#   error: invalid object 100644 <sha> for '<fixture path>' / error: Error building trees
+# The suite reports green while leaving the repository uncommittable, and the only escape
+# is --no-verify. Observed twice in one session, on two different suites and two different
+# fixture paths (`f.txt`, then a fixture project's .claude/commands/... file) -- so this is
+# a property of the hook environment, not of any one test.
+#
+# This is the SAME SYMPTOM as the 2026-07-20 corrupt-stash outage guarded above, and a
+# DIFFERENT root cause. check-stash-health.sh cannot see it: the stash is fine, the index
+# is the thing that was poisoned. Scrubbing here fixes every suite at once rather than
+# per-test. Unsetting is safe for the hook's own git calls -- with no GIT_DIR/GIT_INDEX_FILE
+# set, git resolves from the working directory to the very same repository and index.
+unset GIT_INDEX_FILE GIT_DIR GIT_WORK_TREE GIT_PREFIX GIT_OBJECT_DIRECTORY
+unset GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_COMMON_DIR GIT_AUTHOR_DATE GIT_EDITOR
+
+changed="$(git diff --cached --name-only)"
+non_fork="$(printf '%s\n' "$changed" | grep -cvE '^(custom/|docs/|\.githooks/|\.husky/|\.gitignore$|STATUS\.md$|STATUS-archive\.md$|onboarding-playbook\.version$|install-global-assets\.sh$|onboard-project\.sh$|check-[a-z-]*\.sh$|standards-drift-report\.sh$|.*\.md$)')"
+if [ -z "$changed" ] || [ "$non_fork" -gt 0 ]; then
+  npm test && npm run check:skillprov -- --added --strict
+else
+  echo "pre-commit: fork-tooling-only diff → fast validators (skipping upstream install/urls/channels suites)"
+  npm run test:refs && npm run lint && npm run lint:md && npm run format:check && npm run validate:budget && npm run validate:prose-consumers && npm run validate:close-out && npm run check:completion -- --strict && npm run check:skillprov -- --added --strict
+fi
+
+# STD-SKILLPROV-001 gate (ARMED 2026-07-24, new-skills-only): the `check:skillprov -- --added --strict`
+# above scopes to SKILL.md files this commit ADDS (git --diff-filter=A) — a no-op unless a new skill is
+# being committed, so blast radius is the skill layer only. A newly-added skill without valid provenance
+# (or a logged origin_type: original + exemption_reason) BLOCKS the commit. Existing skills stay warn-only
+# (full-corpus `check:skillprov` in `npm test` is non-blocking) until the fork-wide hard gate + CI is a
+# separate, explicit decision. Escape hatch: add provenance, add a logged exemption, or --no-verify.
+
+# Validate hooks actually function (exit 0 + correct stdin contract) so a broken
+# hook can't ship silently — see docs/hooks-registry.md + fork-gaps "Hooks ship unvalidated".
+bash ./check-hooks-smoke.sh
+
+# Githook DISTRIBUTION legibility (WARN-only, never blocks) — FG-2026-07-25-09.
+# A staged custom/githooks/ change fires in ZERO projects until sync. `sync --check`
+# already detects the drift, but only if you think to ask — and the dangerous moment is
+# the one where you just authored the hook, measured it, and are about to call it a live
+# deterministic tier. This says so at the moment the claim gets made.
+bash tools/warn-githook-distribution.sh
+
+# Validate docs (links + sidebar) only when docs change.
+# NOTE (fork-gap #94): the full astro site build (npm run docs:build) is intentionally
+# NOT in the commit gate. It is heavyweight + stateful and fails on astro build-cache
+# artifacts (e.g. a stale build/site/pages/404.astro.mjs) INDEPENDENT of the diff — so a
+# markdown-only / docs/fork-gaps.md edit that touches no site logic was blocked, and the
+# only escape (--no-verify) also discarded the cheap content validators that ARE the point
+# of the gate. Links + sidebar are diff-relevant and fast; keep them here. The full SSG
+# build runs at deploy/CI where a clean environment exists.
+if git diff --cached --name-only | grep -Eq '^docs/'; then
+  npm run docs:validate-links
+  npm run docs:validate-sidebar
+fi
+
+# Register gate — fires ONLY when the typed ledger itself is staged, so an unrelated docs/
+# edit pays nothing. fork-gaps.md is a database (46 typed entries, a state machine, two
+# queries); the schema is only real if it is checked at write time rather than on a manual
+# sweep nobody schedules. Schema v1: docs/proposals/fork-gaps-schema-v1.md.
+if git diff --cached --name-only | grep -qx 'docs/fork-gaps.md'; then
+  bash tools/check-fork-gap-schema.sh                     || exit 1
+  bash tools/check-fork-gap-targets.sh                    || exit 1
+  bash tools/check-fork-gap-stale-open.sh --creation-mode || exit 1
+  # Orphan-annotation: an annotation of an EXISTING entry that the entry does not point back
+  # at. Orphaning is the DEFAULT in a 5,000-line append-only log, not the exception — see the
+  # script header. WARN-only by construction (the check returns 0), so no `|| exit 1`: the
+  # remedy is additive (`see_also`) and a blocked commit would push authors toward editing
+  # prior claims instead, which is the history-rewrite the append-only rule forbids.
+  bash tools/check-fork-gap-orphan-annotation.sh
+fi
