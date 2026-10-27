@@ -48,6 +48,7 @@ This is why the best-sourced skill did not win the email route. `humanize-resear
 - `harshaneel/humanize` — `humanize-research` (vendored 2026-07-24 to `~/.claude/vendor/harshaneel-humanize`, installed to `~/.claude/skills/humanize-research`)
 - House skills — `outreach-email` (the only in-house *writing* skill), `amazon-md-escalation-email` (one narrow escalation format), `cold-dev` (dev-handoff stance, not email tone)
 - Global doctrine — jargon-translated-once, no-AI-tells answer shape, `feedback-no-emojis`
+- House rules on top of the humanizer (added 2026-10-27, owner) — `~/.claude/docs/humanizer-house-rules.md`: HR-1 company and place names in normal case, never all capitals (checked by `ai_tells` in the Gmail gate); HR-2 a long read (over 150 words or 4+ paragraphs) bolds one to three phrases the reader must not miss, a short email none (advisory in `gmail-draft-html.py`). The vendored humanizer is not edited; the rules ride the email reminder hook.
 
 ## Provenance register
 
