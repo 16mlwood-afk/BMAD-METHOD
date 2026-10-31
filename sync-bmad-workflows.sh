@@ -458,9 +458,104 @@ ensure_claude_paths_trackable() {
 # Called from every sync path, so the three can never drift apart.
 # Args: $1 = project root, $2 = mode (check|sync). Prints its own lines.
 # check: exits 1 when a real sync would change something. sync: exits 0.
+# Guards a repo-held opt-out can never switch off (space separated template group names).
+NONEXCLUDABLE_HOOK_GROUPS="bmad-worktree-guard bmad-bash-edit-guard bmad-stash-untracked-guard bmad-branch-switch-removal-guard bmad-agent-isolation-gate bmad-claude-md-admission-gate bmad-credential-scan"
 write_claude_settings() {
   local root="$1" mode="$2"
   [[ -f "$HOOKS_SRC" ]] || return 0
+  local dir="$root/.claude"
+  local tracked="$dir/settings.json"
+  local localf="$dir/settings.local.json"
+
+  # PER-PROJECT OPT-OUT, read from the TARGET repo (same idea as the CLAUDE.md
+  # opt-out). A project that curates its own hook wiring commits
+  # .claude/bmad-sync-optout.json and the sync stops re-adding what it dropped:
+  #   {"ownsSettings": true}                       write nothing to settings at all
+  #   {"excludeHookGroups": ["bmad-delivery-check", "PostToolUse:Skill"]}
+  #        template groups the sync must not write. An entry is a group name, or
+  #        "<Event>:<matcher>" for a template group that has no name.
+  # No file means no filtering: HOOKS_SRC is used untouched, so a target without
+  # the file gets exactly what it got before this existed.
+  #
+  # SAFEGUARDS (security review of the opt-out, 2026-10-31):
+  #   1. NONEXCLUDABLE_HOOK_GROUPS below can never be switched off by a repo-held file:
+  #      naming one warns and is ignored, and ownsSettings warns when one is unwired.
+  #   2. Every run (sync AND --check) prints which groups were skipped.
+  #   3. The file is honoured only when it is TRACKED in the target and UNCHANGED from
+  #      HEAD, so an uncommitted or untracked edit cannot quietly disable a guard.
+  local src="$HOOKS_SRC" optout="$dir/bmad-sync-optout.json" filtered=""
+  if [[ -f "$optout" ]]; then
+    local optout_rel=".claude/bmad-sync-optout.json" honoured=true
+    if ! git -C "$root" ls-files --error-unmatch -- "$optout_rel" >/dev/null 2>&1; then
+      echo "  WARN  hooks opt-out IGNORED: $optout_rel is not tracked in this repo (commit it to honour it)"
+      honoured=false
+    elif ! git -C "$root" diff --quiet HEAD -- "$optout_rel" >/dev/null 2>&1; then
+      echo "  WARN  hooks opt-out IGNORED: $optout_rel differs from HEAD (commit or revert it to honour it)"
+      honoured=false
+    elif ! jq -e 'type == "object"' "$optout" >/dev/null 2>&1; then
+      echo "  WARN  hooks NOT written: $optout is not a JSON object (fix or remove it)"
+      return 1
+    fi
+    if $honoured; then
+      local ex_json owns
+      ex_json="$(jq -c '(.excludeHookGroups // []) | map(select(type == "string"))' "$optout")"
+      owns="$(jq -r '.ownsSettings // false' "$optout")"
+      local g
+      for g in $NONEXCLUDABLE_HOOK_GROUPS; do
+        if jq -e --arg g "$g" 'index($g)' <<<"$ex_json" >/dev/null 2>&1; then
+          echo "  WARN  hooks opt-out names protected group $g: ignored, it is still written"
+          ex_json="$(jq -c --arg g "$g" 'map(select(. != $g))' <<<"$ex_json")"
+        fi
+      done
+      if [[ "$owns" == "true" ]]; then
+        local sj="" tcmd
+        [[ -f "$tracked" ]] && sj+="$(cat "$tracked")"
+        [[ -f "$localf" ]] && sj+="$(cat "$localf")"
+        for g in $NONEXCLUDABLE_HOOK_GROUPS; do
+          # A group counts as wired when its script name, group name or exact command is in the settings.
+          tcmd="$(jq -r --arg g "$g" '[.hooks[][] | select(.name == $g) | .hooks[].command][0] // ""' "$HOOKS_SRC")"
+          local key
+          key="$(sed -n 's/^N=\([A-Za-z0-9_.-]*\);.*/\1/p' <<<"$tcmd")"
+          if [[ -n "$key" ]]; then
+            grep -qF "$key" <<<"$sj" || echo "  WARN  hooks (ownsSettings): protected guard $g ($key) is not wired in this project"
+          else
+            # No script name to look for: fall back to the group name (a false warning is the safe direction).
+            grep -qF "\"name\": \"$g\"" <<<"$sj" || echo "  WARN  hooks (ownsSettings): protected guard $g is not wired in this project"
+          fi
+        done
+        echo "  SKIP  hooks: project owns its settings (.claude/bmad-sync-optout.json) — nothing written"
+        return 0
+      fi
+      if [[ "$(jq 'length' <<<"$ex_json")" -gt 0 ]]; then
+        filtered="$(mktemp "${TMPDIR:-/tmp}/bmad-hooks-filtered.XXXXXX")"
+        # Drop the excluded groups (and events left empty), and stop claiming the
+        # scripts they ran, otherwise the merge would strip the project's own copy.
+        if ! jq --argjson ex "$ex_json" '
+            def gid($ev): (.name // "") as $n | if $n != "" then $n else ($ev + ":" + (.matcher // "")) end;
+            def scripts: [.hooks[]? | (.command // "") | capture("N=(?<s>[A-Za-z0-9_.-]+);").s?] | map(select(. != null));
+            ([.hooks | to_entries[] | .key as $ev | .value[] | select(gid($ev) as $g | $ex | index($g)) | scripts[]]) as $dropped
+            | .hooks |= (with_entries(.key as $ev | .value |= map(select(gid($ev) as $g | ($ex | index($g)) | not))) | with_entries(select((.value | length) > 0)))
+            | if has("bmadTrackedHookScripts") then .bmadTrackedHookScripts |= map(select(. as $s | $dropped | index($s) | not)) else . end
+          ' "$HOOKS_SRC" > "$filtered" 2>/dev/null; then
+          rm -f "$filtered"
+          echo "  WARN  hooks NOT written: could not apply $optout"
+          return 1
+        fi
+        src="$filtered"
+        echo "  SKIP  hooks: $(jq -r 'join(", ")' <<<"$ex_json") (excluded by .claude/bmad-sync-optout.json)"
+      fi
+    fi
+  fi
+  local rc=0
+  _write_claude_settings_from "$root" "$mode" "$src" || rc=$?
+  [[ -n "$filtered" ]] && rm -f "$filtered"
+  return "$rc"
+}
+
+# The writer proper. $3 is the template to merge: HOOKS_SRC, or a copy of it with the
+# project's excluded groups removed.
+_write_claude_settings_from() {
+  local root="$1" mode="$2" HOOKS_SRC="$3"
   local dir="$root/.claude"
   local tracked="$dir/settings.json"
   local localf="$dir/settings.local.json"
@@ -2072,13 +2167,18 @@ while IFS= read -r target || [[ -n "$target" ]]; do
     # Hook wiring — the SAME writer the sync path uses, in check mode, so --check can
     # never disagree with what a real sync would do. Its output is
     # captured rather than streamed so the STALE header still comes first.
-    hooks_check_out="$(write_claude_settings "$project_root" "check")" || {
+    hooks_check_rc=0
+    hooks_check_out="$(write_claude_settings "$project_root" "check")" || hooks_check_rc=$?
+    if [[ "$hooks_check_rc" -ne 0 ]]; then
       if ! $dirty; then
         echo "STALE $project"
         dirty=true
       fi
       [[ -n "$hooks_check_out" ]] && echo "$hooks_check_out"
-    }
+    else
+      # Opt-out skips and warnings are printed even when nothing is stale.
+      printf '%s\n' "$hooks_check_out" | grep -E '^  (SKIP|WARN) ' | sed "s|^|$project: |" || true
+    fi
 
     # Check auto-generated command files (custom + upstream workflow dirs)
     commands_target="$project_root/.claude/commands/bmad/bmm/workflows"
