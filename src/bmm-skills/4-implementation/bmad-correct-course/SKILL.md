@@ -62,7 +62,7 @@ Greet `{user_name}`, speaking in `{communication_language}`.
 
 Execute each entry in `{workflow.activation_steps_append}` in order.
 
-Activation is complete. Begin the workflow below.
+Activation is complete. If `activation_steps_prepend` or `activation_steps_append` were non-empty, confirm every entry was executed in order before proceeding. Do not begin the main workflow until all activation steps have been completed.
 
 ## Paths
 
@@ -231,6 +231,26 @@ Activation is complete. Begin the workflow below.
 - Specify handoff recipients and their responsibilities
 - Define success criteria for implementation
 
+<action>Section 6: Executor Manifest (machine-readable footer — REQUIRED)</action>
+
+> **This workflow is READ-ONLY on canonical tracker state.** It writes ONLY this proposal document and hands
+> off; it must never edit `sprint-status.yaml`, story files, or `epics.md` itself. The *executor* (a separate,
+> later invocation) applies the change — and it must touch NOTHING outside the `files_to_change` list below.
+
+Append this exact YAML block to the end of the proposal document so the downstream executor gate can bound the
+apply to a known file set:
+
+```yaml
+proposal_id: {date}-{short-slug}-v1   # stable id; the approval token references this verbatim
+files_to_change:                       # EXACT tracker paths the executor may write — nothing else
+  - <e.g. {implementation_artifacts}/sprint-status.yaml>
+  - <e.g. {implementation_artifacts}/stories/2.10.md>
+```
+
+- `proposal_id` MUST be unique and is what the user echoes in `APPROVE: APPLY_SPRINT_PROPOSAL::<proposal_id>`.
+- `files_to_change` MUST list every tracker file the executor will modify and NO others. An omitted file cannot
+  be applied without re-approval; an extra file widens the blast radius — keep it minimal and exact.
+
 <action>Present complete Sprint Change Proposal to user</action>
 <action>Write Sprint Change Proposal document to {default_output_file}</action>
 <ask>Review complete proposal. Continue [c] or Edit [e]?</ask>
@@ -255,6 +275,8 @@ Activation is complete. Begin the workflow below.
 - **Minor**: Can be implemented directly by Developer agent
 - **Moderate**: Requires backlog reorganization and PO/DEV coordination
 - **Major**: Needs fundamental replan with PM/Architect involvement
+
+> **Conforms to `{project-root}/_bmad/custom/workflows/shared/escalation-on-class-change.md` (STD-ESCALATE-001).** correct-course IS the canonical class-change gateway: it classifies the scope delta and proposes-and-routes (Minor → Developer, Moderate → PO/DEV, Major → PM/Architect) after an explicit approval, rather than handing back a numbered menu. Named here so the standard has a real caller; this routing is unchanged — it is what other workflows escalate *into* when their tripwire fires.
 
 <action>Provide appropriate handoff based on scope:</action>
 
@@ -292,6 +314,19 @@ Activation is complete. Begin the workflow below.
 - Sprint Change Proposal document
 - Specific edit proposals with before/after
 - Implementation handoff plan
+
+<action>Drop the executor-gate pending marker (PROOF tier — declares exactly which tracker files this proposal freezes for the downstream executor gate):</action>
+
+Write `{project-root}/_bmad/.sprint-apply-pending.json` with the proposal's manifest:
+
+```json
+{ "proposal_id": "<proposal_id>", "files_to_change": ["<path>", "..."], "created_at": "{date}" }
+```
+
+This marker is read by the `sprint-apply-gate` PreToolUse hook (separate distribution track — ships with the
+hooks, not this skill). It bounds any later apply to the exact `files_to_change` set; an
+`APPROVE: APPLY_SPRINT_PROPOSAL::<proposal_id>` from the user clears the gate for those files only. If the hook
+is not installed, this marker is inert (no effect on the workflow).
 
 <action>Report workflow completion to user with personalized message: "Correct Course workflow complete, {user_name}!"</action>
 <action>Remind user of success criteria and next steps for Developer agent</action>

@@ -1,0 +1,251 @@
+# Migration plan — custom corpus → v6.8.0 skills-native layout
+
+**Status:** MACHINERY COMPLETE + proven end-to-end (`c589223c`) — Phases 0–4 + Phase-5 pilot done
+(port engine, 28-workflow corpus 0-dangling, sync delivery via `deliver_skills_layout_project`,
+real-install proof, guarded `bmad-quick-dev` override). **Pilot cutover LIVE on `cash-recovery`** —
+the sole skills-layout project: clean v6.8 install → sync → 72 skills (28 fork ports + 44 base BMAD),
+15 `bmad-shared` policies, design-handoff refs all resolve, 0 stale refs; reversible backup at
+`/tmp/cash-recovery-bmad-bak`. **What remains is DECISION, not engineering:** the other 13 projects'
+cutover (owner go/no-go — dual-layout, no rush; cash-recovery proves it works), Phase 6 (retarget
+`onboard-project.sh`'s default to skills-layout), and the orchestrate/dispatch Mode-1 review.
+Authored 2026-06-19; status corrected 2026-06-19 from the cash-recovery slash-command-parity
+investigation. See `STATUS.md` `## Now` (the "Owed / in-flight" line) for the authoritative volatile state.
+**Per-project cutover is multi-session and touches the provenance layer — execute deliberately, not ad hoc.**
+
+---
+
+## Problem
+
+Upstream BMAD moved to a **skills-based architecture** (v6.8.0). A fresh `bmad-cli install`
+emits `.claude/skills/bmad-<name>/` dirs (hand-authored, copied verbatim — there is **no
+workflow→skill compiler**), discovered by walking the local `core`/`bmm` module trees for
+`SKILL.md`. Refs: `tools/installer/core/manifest-generator.js:110-184`,
+`tools/installer/ide/_config-driven.js:408-468`, `tools/installer/project-root.js:64-72`.
+
+The fork's entire custom layer still lives in the **old layout** (`custom/workflows/<group>/<wf>/`,
+distributed by `sync-bmad-workflows.sh` into each project's `_bmad/bmm/workflows/`). None of it is
+in the skills trees the installer ships from. So every new project installed on v6.8.0 gets vanilla
+upstream skills with **none** of the fork's safety layer (grounding gate, brief provenance,
+hardened quick-dev, design-*). Confirmed during cash-recovery onboarding. cash-recovery was worked
+around by installing on the 6.0.4 base layout + sync overlay (same as all 14 projects).
+
+## Goal
+
+A fresh install + sync produces a project with the **full fork custom layer** as skills, with the
+grounding gate / brief-provenance contract intact, fork-hardened workflows winning over upstream
+namesakes, and all 14 projects migrated (or running a documented dual-layout transition).
+
+---
+
+## KEY DECISION: deliver via the sync, NOT the installer
+
+The sync already copies `custom/skills/*` → a project's `.claude/skills/` (`sync_skills_for_project`,
+`sync-bmad-workflows.sh:263`) — that is how the 4 existing custom skills land. We extend THAT path
+rather than building an installer module. Why this beats the installer-module route:
+
+| | Sync-delivered (CHOSEN) | Installer local module (`src/modules/mason/`) |
+|---|---|---|
+| Code change | 1 small sync edit | patch `findModuleSource` (official-modules.js) + module.yaml + picker |
+| Rebase surface | none — all in `custom/` | new code in `tools/installer/` = upstream conflict risk |
+| Runs relative to install | AFTER → overwrites upstream skills (last-writer-wins, `rsync -a --delete`) | positional precedence, fragile, duplicate CSV rows |
+| Collision resolution | free (last-writer-wins on same dir name) | depends on `--modules` ordering; under-counts skills |
+| Proven | yes (4 custom skills today) | no |
+
+**The one required sync change:** `sync-bmad-workflows.sh:822` skips any target whose
+`_bmad/bmm/workflows` dir is absent (`SKIP <target> (not found)`) — which gates skills, hooks, AND
+CLAUDE.md. Decouple skills/hooks/CLAUDE.md delivery from that check: key per-project work off the
+**project root** (derivable from the target path) and only gate the *workflow-overlay* step on the
+old dir's existence. After this, a skills-layout project (no old workflows dir) still receives
+skills + hooks + CLAUDE.md.
+
+**Bootstrap gap to fix too:** CLAUDE.md section-sync requires the file to already exist
+(`:908`, `:1130`). A fresh project has none. The sync (or a bootstrap step) must create CLAUDE.md
+from `CLAUDE.md.template` before managing its sections.
+
+---
+
+## Phase 0 — Wire the delivery path (SMALL, do first)
+
+1. Edit `sync-bmad-workflows.sh:822` per above so skills/hooks/CLAUDE.md deliver regardless of layout.
+2. Add CLAUDE.md create-from-template when absent.
+3. Verify on a throwaway v6.8.0 install: sync delivers the 4 existing custom skills + hooks + CLAUDE.md
+   into a project that has NO `_bmad/bmm/workflows`. No corpus work yet — just prove the pipe.
+
+## Phase 1 — Shared-policy home (HIGHEST RISK)
+
+The 12 policies in `custom/workflows/shared/` (5) + `custom/workflows/design/shared/` (7) — incl.
+`brief-revision-policy.md` (the provenance contract), `design-standards.md`, `analytics-archetypes.md`
+— are referenced by many workflows via relative `shared/...` and old `{project-root}/_bmad/bmm/
+workflows/.../shared/` paths.
+
+**DECISION:** deliver them to a fork-owned **`{project-root}/_bmad/bmad-shared/`** dir via the sync
+(NOT a fake "skill" — skills must be invocable; a policy bundle isn't). This follows the existing
+`{project-root}/_bmad/style-guides/company-voice.md` precedent (already referenced by upstream skills).
+Add a sync step that copies `custom/.../shared/*` → `_bmad/bmad-shared/`. All workflow refs rewrite to
+`{project-root}/_bmad/bmad-shared/<policy>.md`.
+**Gate:** after rewrite, re-verify the 6 intake checks resolve from a consumer skill (Mode-1 review).
+
+## Phase 2 — Path-rewrite rules (mechanical, corpus-wide)
+
+| Old-layout reference | Skills-native target |
+|---|---|
+| `{project-root}/_bmad/bmm/workflows/<wf>/steps/step-XX.md` (self) | `./step-XX.md` (skill-root relative) |
+| `{project-root}/_bmad/bmm/workflows/<group>/<other-wf>/workflow.md` (cross) | sibling skill `bmad-<other-wf>` |
+| `{project-root}/_bmad/core/workflows/party-mode/workflow.md` | `bmad-party-mode` skill |
+| `{project-root}/_bmad/core/workflows/advanced-elicitation/workflow.xml` | `bmad-advanced-elicitation` skill |
+| relative `shared/<policy>.md` | `{project-root}/_bmad/bmad-shared/<policy>.md` |
+
+Genuine project paths stay literal: `{project-root}/_bmad/bmm/config.yaml`, `{implementation_artifacts}`,
+`{project-root}/_bmad/scripts/resolve_customization.py` (installer leaves `{project-root}` unexpanded
+for runtime — `_config-driven.js:94`). Build the rewrite as a script; don't hand-edit 28 workflows.
+
+## Phase 3 — Port fork-only workflows (LOW RISK, do early)
+
+No upstream name collision → net-new skills, unique names, safe first. Port each into
+`custom/skills/bmad-<name>/` (workflow.md → SKILL.md with `name: bmad-<name>` matching the dir;
+steps copied; Phase-2 rewrite applied):
+- `design/*` (12), `verify/*` (7), `meta/*` (5), `implement/maintenance-triage`, `implement/quick-spec`.
+
+Each: name==dir gate satisfied, Mode-1 self-review against durable principles.
+
+## Phase 4 — Collisions: fork must beat upstream (MEDIUM RISK)
+
+6 fork workflows share a name with an upstream skill: `quick-dev`, `code-review`, `spec`,
+`review-adversarial-general`, `review-edge-case-hunter` (+ confirm any others after Phase-3 inventory).
+
+**DECISION — two-tier, prefer the override seam:**
+- **Additive hardening** (guardrail `persistent_facts`, pre-flight `activation_steps_prepend`,
+  reminders) → ship `{project-root}/_bmad/custom/bmad-<name>.toml` via the sync. This is the
+  architecture's intended override seam (`resolve_customization.py`, customize.toml shape) and
+  survives upstream skill updates cleanly. Use it wherever the hardening is expressible this way.
+- **Deep mid-step logic** the toml can't express (e.g. quick-dev's gated provenance PRE-FLIGHT
+  inside step-03) → ship the full `custom/skills/bmad-<name>/` dir; the sync overwrites upstream's
+  copy after install (last-writer-wins). **Keep the same dir name** (`bmad-quick-dev`) so it stays
+  manifest-tracked by `bmm` and is NOT orphan-removed by installer cleanup (`installed-skills.js`).
+- Per collision, pick the lighter tier. Do NOT use unique IDs (`mason-quick-dev`) for collisions —
+  users invoke `bmad-quick-dev`; we want to replace it, not run a parallel one. (Unique IDs are only
+  for net-new skills, which already have unique names.) Do NOT edit upstream `src/` skills in place.
+
+### Tracked patches to bake in at port time (deep-logic tier)
+
+Defects found while RUNNING the upstream skills-layout copy on the pilot. Each must be applied to the
+fork-owned `custom/skills/bmad-<name>/` override when the collision is ported — NOT to `src/bmm-skills/`
+(upstream-vendored; revert-exposed). Until then, the pilot's installed `.claude/skills/` copy carries
+the fix locally (revert-exposed on re-install — this list is the durable record).
+
+- **`bmad-code-review` — step-02-review.md §2: skill-vs-subagent conflation (found 2026-06-22, cash-recovery pilot).**
+  The step says "Launch parallel subagents … Blind Hunter — Invoke via the `bmad-review-adversarial-general`
+  skill; Edge Case Hunter — Invoke via the `bmad-review-edge-case-hunter` skill." The Agent tool takes a
+  `subagent_type` from the AGENT registry, not a skill name — there is no agent type named after those
+  skills, so the launch errors ("Agent type not found"). The file is also internally inconsistent: the
+  Acceptance Auditor prompt is fully inlined while the other two are left as "invoke via skill." Fix =
+  remove the conflation, name real `subagent_type`s, and make INLINING the default mechanism for all three
+  (consistent with the Acceptance Auditor). Exact replacement for §2:
+
+  > 2. Launch each review layer as a SEPARATE subagent via the Agent tool. Run them in parallel (one
+  >    message, multiple Agent calls) without conversation context.
+  >
+  >    **Mechanism — read before launching.** A subagent is launched with a `subagent_type` drawn from
+  >    the AGENT registry (e.g. `general-purpose`, or `Explore` for read-access layers). A SKILL name is
+  >    NOT an agent type — never pass `bmad-review-*` (or any skill name) as `subagent_type`; the launch
+  >    errors with "Agent type not found". Deliver each layer's review method by INLINING its instructions
+  >    into the subagent's prompt — this is the default, reliable mechanism, and the Acceptance Auditor
+  >    prompt below is the template for the shape. (Only if the named review skill is verified available
+  >    to subagents may the prompt instead instruct the subagent to invoke it via its Skill tool; when in
+  >    doubt, inline.)
+  >
+  >    If subagents are not available at all, generate prompt files in `{implementation_artifacts}` — one
+  >    per reviewer role below — and HALT. [keep existing fallback sentence]
+  >
+  >    - **Blind Hunter** — `subagent_type: general-purpose`. Receives inline `{diff_output}` only: no
+  >      spec, no context docs, and the prompt MUST forbid reading any other project file (diff-only
+  >      judgment). Inline the `bmad-review-adversarial-general` adversarial-review method into the prompt.
+  >    - **Edge Case Hunter** — `subagent_type: general-purpose` (it needs project read access to
+  >      confirm/refute edge cases). Receives `{diff_output}` and read access to the project. Inline the
+  >      `bmad-review-edge-case-hunter` exhaustive boundary-condition method into the prompt.
+  >    - **Acceptance Auditor** (only if `{review_mode}` = `"full"`) — `subagent_type: general-purpose`.
+  >      Receives `{diff_output}`, the spec, and context docs. Its prompt: [unchanged]
+
+  Recurrence audit: the sibling collisions `bmad-review-adversarial-general` and
+  `bmad-review-edge-case-hunter`, plus any other upstream v6.8 skill whose steps say "launch subagents /
+  invoke via the X skill," share this conflation shape. The Phase-4 / Verification Mode-1 self-review
+  should add a check: every "subagent" instruction names a real `subagent_type` AND states whether the
+  method is inlined or Skill-tool-invoked.
+
+- **`bmad-code-review` — step-02-review.md Acceptance Auditor: diff-scoped, blind to omitted ACs (found 2026-06-22, cash-recovery pilot).**
+  The skills-layout Acceptance Auditor prompt said *"Review this DIFF against the spec"* — structurally blind to an AC
+  that was never implemented (an un-built AC produces no diff). Concrete incident: Story 1-4 was marked `done` with
+  its AC4 (persist reimbursements by reimbursement-id) and AC1 (persist Customer-Return `status`) never delivered —
+  no reimbursements table, no `units.status` column — and the Epic 1 batch review never caught it (it reviewed the
+  changes made, never "is each AC present in the current code?"). A green build + ticked tasks passed because no test
+  asserted the table exists. **The fork's XML overlay (`custom/workflows/4-implementation/code-review/instructions.xml`)
+  ALREADY has the correct check** ("AC Validation: for EACH AC → search implementation files for evidence →
+  IMPLEMENTED/PARTIAL/MISSING → MISSING/PARTIAL = HIGH") — the v6.8 skills-layout PORT silently dropped it. So this is
+  a **carry-over, not a new invention**: the port must preserve the XML's current-state AC validation. Fix applied to
+  the in-project pilot copy (`.claude/skills/bmad-code-review/steps/step-02-review.md`): the Acceptance Auditor now
+  (a) gets project read access, (b) verifies EACH AC against the CURRENT codebase state (grep the table/column/route/
+  function the AC demands), not just the diff, (c) marks IMPLEMENTED/PARTIAL/MISSING with MISSING/PARTIAL = HIGH even
+  when the diff is clean and the build green, and (d) prefers a TEST as the per-AC verifiable artifact, flagging an
+  untested AC as unverified. The XML overlay was also strengthened with (d) (the test-artifact discipline) so the
+  owned source carries the full fix. Recurrence audit: the **dev-story "done" gate** has the same too-weak signal
+  (tasks ticked + build green ≠ ACs verified) — its done-check should require a per-load-bearing-AC verifiable
+  artifact; flagged for the dev-story promote/port. Root-cause class: `contract-dimension-gap` (acceptance review's
+  evidence source missing the current-state axis) on the skills-layout copy = `upstream-fork-mismatch`.
+
+## Phase 5 — Migrate the 14 projects (dual-layout, pilot-first)
+
+**DECISION:** dual-layout transition, not a big-bang re-install. The sync can populate BOTH the old
+`_bmad/bmm/workflows/` overlay AND `.claude/skills/` during transition, so no project is ever broken
+mid-migration.
+1. Pilot on ONE low-stakes project: sync delivers skills-native layer alongside the existing overlay.
+2. Validate: invoke `bmad-quick-dev` + `bmad-design-handoff`, confirm grounding gate + provenance
+   frontmatter fire, shared policies resolve.
+3. Roll the rest via a bash-driven multi-repo pass (per CLAUDE.md cross-repo-edits guidance).
+4. Keep the old overlay until every project is validated on skills; remove it only after cutover.
+
+## Phase 6 — Retarget the onboarding tooling (do NOT forget)
+
+Onboarding is now real tooling built for the CURRENT old layout. When this migration lands it must
+be retargeted, or new projects will keep being created in the old layout:
+
+- `onboard-project.sh` — today it clones the reference project's old-layout `_bmad/` base. Under the
+  skills layout, replace the reference-clone path with: run `bmad-cli install` (or the skills-native
+  successor), then have the sync overlay the fork's custom skills. Drop the `1-analysis` old-layout
+  guard / `~/.bmad-reference` dependency once the base no longer comes from a reference clone.
+- `bmad-onboard` skill (`custom/claude-global/skills/bmad-onboard/`) — rewrite the "do NOT run
+  bmad-cli install" guidance, since under the migrated layout the installer becomes correct again.
+- Global `CLAUDE.md` "New project bootstrap" section + `new-project-bootstrap.snippet.md` — update to
+  match.
+- `~/.bmad-reference` header + the reference-health guard — remove or repurpose.
+
+Until then, the old-layout onboarding is the supported path and these guards are load-bearing.
+
+---
+
+## Verification (every phase)
+
+- Mode-1 self-review of each ported skill (provenance, grounding gate, autonomy scoping).
+- Smoke test on a throwaway install (invoke quick-dev + design-handoff; gate + provenance fire).
+- `STATUS.md` Now-block + dated Changelog entry; bump skill `last_verified_against_fork_commit`.
+
+## Rollback
+
+Old-layout `custom/workflows/` + sync overlay stay intact until Phase-5 cutover completes. If
+skills-native validation fails, projects remain on the working 6.0.4-base + overlay. Nothing is
+removed until the replacement is proven.
+
+## Effort
+
+Phase 0 (sync wiring): tiny, ~½ session. Phase 1 (shared rehome + ref rewrite, the careful part) +
+Phase 2 (rewrite script): ~1 session. Phase 3 (port 25 fork-only via the script): mechanical,
+parallelizable. Phase 4 (6 collisions): small, fiddly. Phase 5 (14 projects): scripted, gated by
+pilot. Realistically **3–5 sessions**, front-loaded on the provenance-safe shared rehome.
+
+## Decisions log (was: open questions)
+
+1. **Delivery home** → extend the sync's `custom/skills/` path (NOT an installer module). One edit at
+   `sync-bmad-workflows.sh:822` + CLAUDE.md create-from-template. Rebase-clean, proven, collisions free.
+2. **Shared policies** → `{project-root}/_bmad/bmad-shared/` via sync (style-guides precedent), not a skill.
+3. **Collisions** → customize.toml override seam for additive hardening; same-named full skill dir
+   (sync last-writer-wins, stays manifest-tracked) for deep changes. Never edit upstream `src/`.
+4. **14-project cutover** → dual-layout, pilot one then scripted rollout; old overlay stays until proven.

@@ -1,0 +1,58 @@
+# DO NOT EDIT -- overwritten on every update.
+#
+# Default customization values for bmad-dev-auto (Mason-BMAD fork, hardened port).
+# Override in _bmad/custom/bmad-dev-auto.toml or _bmad/custom/bmad-dev-auto.user.toml.
+#
+# Merge rules:
+# - Strings replace the default.
+# - Lists append to the default list.
+# - Tables merge key by key.
+#
+# FORK HARDENING (light override tier). This file carries the additive part of the safety
+# layer — the always-on posture facts (grounding, autonomy scoping, brownfield) and the
+# on_complete distribution policy. The HARD gates live mid-step where they must HALT:
+#   - grounding gate           -> steps/step-01-clarify-and-route.md
+#   - autonomy scoping (halts) -> steps/step-01 + step-02
+#   - existing-code provenance -> steps/step-03-implement.md
+#   - brownfield regression +  -> steps/step-04-review.md (COMMIT GATE)
+#     gated commit
+# These facts REINFORCE those gates; they do not replace them. Do not move a gate into a fact.
+
+[workflow]
+
+# Extra instructions to run before config is loaded.
+# Re-anchor the safety layer at the top of the run (lost-in-the-middle mitigation): an unattended
+# loop must carry these from the first token, not discover them mid-step.
+
+activation_steps_prepend = [
+  "Re-read the `## CRITICAL RULES — the safety layer` section of this workflow's workflow.md and treat its five rules as overriding every 'no human interaction / complete the loop end-to-end' instruction in the step files. This loop is unattended; the gates are what make that safe.",
+]
+
+# Extra instructions to run after config is loaded and before step 01.
+
+activation_steps_append = []
+
+# Facts kept in context for the whole run.
+# Entries are literal text or file references prefixed with "file:".
+# File entries may use globs and are loaded during activation.
+
+persistent_facts = [
+  "WORKTREE: I edit + commit inside an isolated worktree from local main (parallel-sessions.md A1), never a shared checkout; a non-auto-resolvable integration conflict HALTs blocked (no human to merge).",
+  "file:{project-root}/**/project-context.md",
+  "GROUNDING: I must be able to state the verb (what) and target (where in the code) from the invocation input alone before planning. If I cannot, I HALT blocked with 'unclear intent' — I do not fabricate a task to keep the loop moving. Being unattended tightens this rule, it does not unlock it.",
+  "AUTONOMY SCOPING: I have decision autonomy (which file, which pattern, which library, how to structure the change) but NOT intent autonomy (inferring what the user 'meant', expanding scope 'while I'm here', or choosing between two reasonable readings of an ambiguous request). An ambiguous 'what' is an intent gap -> HALT, never guess.",
+  "BROWNFIELD POSTURE: if project_phase is brownfield or mixed (or absent -> default mixed), the step-04 regression-surface check is a REQUIRED gate on the commit, not advisory. A change that breaks an existing caller is failure, not 'needs follow-up'.",
+  "PROVENANCE: before I modify or remove any existing line, I trace its originating commit (git log -S / git blame). A deliberate guard is load-bearing until proven otherwise; I only remove it if the protected case stays covered by a passing test, and I record the SHA + invariant.",
+  "GATED COMMIT: the step-04 commit is conditional on the COMMIT GATE (grounding held, provenance respected, regression surface clean, diagnostics proven green). on_complete distribution (push/PR/deploy) is reserved for a 'done' status that cleared that gate.",
+]
+
+# Instruction run by HALT after writing the terminal result.
+# Empty means no extra terminal behavior.
+#
+# SAFETY (distribution gate): any on_complete that PUSHES, opens a PR, deploys, or otherwise
+# distributes the change beyond the local commit MUST only run on a `done` status that cleared
+# the step-04 COMMIT GATE. The HALT procedure in workflow.md enforces this — a non-`done`
+# (blocked) HALT must skip the distribution portion of on_complete and record that it skipped it.
+# Keep distribution-class on_complete values aware that they will not fire on a blocked run.
+
+on_complete = ""

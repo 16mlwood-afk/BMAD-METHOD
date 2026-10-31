@@ -79,11 +79,14 @@ function escapeTableCell(str) {
   return String(str).replaceAll('|', String.raw`\|`);
 }
 
-// Path prefixes/patterns that only exist in installed structure, not in source
-const INSTALL_ONLY_PATHS = ['_config/', 'custom/'];
+// Path prefixes/patterns that only exist in installed structure, not in source.
+// bmad-shared/ is the porter's consolidated shared-policy home: the sync delivers
+// custom/skills-native/_shared/ -> {project-root}/_bmad/bmad-shared/, so a
+// {project-root}/_bmad/bmad-shared/<policy>.md ref resolves at runtime but has no src/ twin.
+const INSTALL_ONLY_PATHS = ['_config/', 'custom/', 'bmad-shared/'];
 
 // Files that are generated at install time and don't exist in the source tree
-const INSTALL_GENERATED_FILES = ['config.yaml', 'config.user.yaml'];
+const INSTALL_GENERATED_FILES = ['config.yaml', 'config.user.yaml', '.sprint-apply-pending.json'];
 
 // Variables that indicate a path is not statically resolvable
 const UNRESOLVABLE_VARS = [

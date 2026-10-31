@@ -39,6 +39,15 @@ const LLM_EXCLUDE_PATTERNS = [
   'reference/glossary/',
   'explanation/game-dev/',
   'bmgd/',
+  // The fork's own operational records live in docs/ but are not documentation of the method:
+  // the fork-gap register and its archive (1.4M chars between them), and dated decision and
+  // evidence records. An AI reader of the public docs gains nothing from them, and together they
+  // put llms-full.txt at more than three times its limit. They stay in docs/ and in git; they are
+  // only left out of this bundle. Genuine docs (how-to, reference, explanation, tutorials, the
+  // workflow docs) are never excluded to make room.
+  'fork-gaps',
+  'decision-',
+  '-evidence-',
   // Note: Files/dirs starting with _ (like _STYLE_GUIDE.md, _archive/) are excluded in shouldExcludeFromLlm()
 ];
 
@@ -313,7 +322,7 @@ function validateLlmSize(content) {
   const charCount = content.length;
 
   if (charCount > LLM_MAX_CHARS) {
-    console.error(`    ERROR: Exceeds ${LLM_MAX_CHARS.toLocaleString()} char limit`);
+    console.error(`    ERROR: ${charCount.toLocaleString()} chars exceeds ${LLM_MAX_CHARS.toLocaleString()} char limit`);
     process.exit(1);
   } else if (charCount > LLM_WARN_CHARS) {
     console.warn(`    \u001B[33mWARNING: Approaching ${LLM_WARN_CHARS.toLocaleString()} char limit\u001B[0m`);
@@ -421,6 +430,15 @@ function cleanBuildDirectory() {
     fs.rmSync(BUILD_DIR, { recursive: true });
   }
   fs.mkdirSync(BUILD_DIR, { recursive: true });
+
+  // Also clear Astro's own content-layer/build cache (fork-gap #94). The astro build
+  // crashes with "Cannot find module .../build/site/pages/404.astro.mjs" when this cache
+  // is stale — wiping build/ alone does not clear it, so the failure recurred independent
+  // of the diff. Removing website/.astro forces a clean SSG compile.
+  const astroCache = path.join(PROJECT_ROOT, 'website', '.astro');
+  if (fs.existsSync(astroCache)) {
+    fs.rmSync(astroCache, { recursive: true });
+  }
 }
 
 // =============================================================================

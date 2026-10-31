@@ -22,15 +22,31 @@
 #   - review: Implementation complete, ready for review
 #   - done: Story completed
 #
+# Parallel-session CLAIM TOKEN (see _bmad/bmad-shared/parallel-sessions.md §C):
+#   When sessions run dev-story in parallel, an `in-progress` story carries an inline
+#   claim token as a trailing comment on its key, so another session can see it is held:
+#     2-8-resolve-by-lpn: in-progress  # claim: owner=<name> session=<branch-slug|pid> at=<iso8601> baseline=<sha>
+#   The VALUE stays a clean `in-progress` (existing readers are unaffected); the token lives
+#   only in the comment. dev-story Step 1 claims atomically and REFUSES a story held by a live
+#   session; Step 9 removes the token when the story reaches `review`. A token whose session is
+#   dead (worktree branch gone + pid not running) over a story with baseline==HEAD and no commits
+#   is a ZOMBIE claim — dev-story resets it to ready-for-dev on entry.
+#
 # Retrospective Status:
 #   - optional: Can be completed but not required
 #   - done: Retrospective has been completed
+#
+# Action Item Status:
+#   - open: Committed during a retrospective, not yet addressed
+#   - in-progress: Actively being worked on
+#   - done: Completed
 #
 # WORKFLOW NOTES:
 # ===============
 # - Mark epic as 'in-progress' when starting work on its first story
 # - Developer typically creates next story ONLY after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then Dev runs code-review (fresh context, ideally different LLM)
+# - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 # EXAMPLE STRUCTURE (your actual epics/stories will replace these):
 
@@ -54,3 +70,10 @@ development_status:
   2-2-chat-interface: backlog
   2-3-llm-integration: backlog
   epic-2-retrospective: optional
+
+# Action items committed during retrospectives (section created by the retrospective workflow)
+action_items:
+  - epic: 1
+    action: "Add error-handling review to the code review checklist"
+    owner: "Charlie"
+    status: open
