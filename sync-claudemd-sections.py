@@ -39,6 +39,27 @@ duplicate. Markers are invisible in rendered Markdown.
 import re
 import sys
 
+# Opt-out. A project CLAUDE.md that has been deliberately compacted must not have
+# template sections written back into it: the sync used to regrow it as
+# uncommitted edits (amazon-removal-assistant, 2026-10-31, 44 lines) where the
+# project's CI size check cannot see them. Two signals, either one skips the file:
+#   1. an explicit marker:  <!-- bmad:claudemd-sync off -->
+#   2. the compaction convention: the file points at a claude-md-archive/
+#      directory (the context-compaction skill's archive home).
+# Skipped means --check reports nothing missing (exit 0) and --sync writes nothing.
+OPT_OUT_RE = re.compile(r'<!--\s*bmad:claudemd-sync\s+off\s*-->')
+COMPACTION_ARCHIVE_RE = re.compile(r'claude-md-archive/')
+
+
+def opt_out_reason(project_text):
+    """Why this project's CLAUDE.md must be left alone, or None to sync normally."""
+    if OPT_OUT_RE.search(project_text):
+        return 'explicit marker <!-- bmad:claudemd-sync off -->'
+    if COMPACTION_ARCHIVE_RE.search(project_text):
+        return 'file is compacted (points at claude-md-archive/)'
+    return None
+
+
 # A section-identity marker: <!-- bmad:some-stable-id -->
 MARKER_RE = re.compile(r'<!--\s*bmad:([a-z0-9][a-z0-9-]*)\s*-->')
 
@@ -167,6 +188,12 @@ def main():
         template_text = f.read()
     with open(project_path) as f:
         project_text = f.read()
+
+    reason = opt_out_reason(project_text)
+    if reason:
+        # stderr only: the shell counts stdout lines as "sections added".
+        print(f'claudemd-sync skipped: {reason}', file=sys.stderr)
+        sys.exit(0)
 
     template_sections = extract_sections(template_text)
 
