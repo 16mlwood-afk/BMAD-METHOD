@@ -56,7 +56,7 @@ FR_TR="$(mktemp -t frictionsmoke).jsonl"
 printf '%s\n' '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","name":"Read","input":{"file_path":"/x/src/app.ts"}}]}}' > "$FR_TR"
 run check-friction-reflect.sh "{\"session_id\":\"smoke-b$$\",\"stop_hook_active\":false,\"transcript_path\":\"$FR_TR\"}" empty "friction-reflect/read-only-silent"
 printf '%s\n' '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","name":"Write","input":{"file_path":"/x/.claude/hooks/z.py"}}]}}' > "$FR_TR"
-run check-friction-reflect.sh "{\"session_id\":\"smoke-c$$\",\"stop_hook_active\":false,\"transcript_path\":\"$FR_TR\"}" json  "friction-reflect/infra-write-warns"
+DEFERRED_NOTES_DIR=/dev/null/none run check-friction-reflect.sh "{\"session_id\":\"smoke-c$$\",\"stop_hook_active\":false,\"transcript_path\":\"$FR_TR\"}" json  "friction-reflect/infra-write-warns"
 rm -f "$FR_TR"
 for s in "smoke-a$$" "smoke-b$$" "smoke-c$$"; do
   rm -f "/tmp/claude-fork-reflect-$(printf '%s' "$s" | python3 -c 'import hashlib,sys; print(hashlib.sha1(sys.stdin.read().encode()).hexdigest()[:16])' 2>/dev/null)" 2>/dev/null

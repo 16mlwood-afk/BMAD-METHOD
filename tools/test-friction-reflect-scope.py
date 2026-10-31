@@ -58,7 +58,7 @@ def run(entries, session_id):
     tf.close()
     payload = json.dumps({"session_id": session_id, "stop_hook_active": False,
                           "transcript_path": tf.name})
-    p = subprocess.run(["bash", HOOK], input=payload, capture_output=True, text=True)
+    p = subprocess.run(["bash", HOOK], input=payload, capture_output=True, text=True, env={**os.environ, "DEFERRED_NOTES_DIR": "/dev/null/none"})
     os.unlink(tf.name)
     out = p.stdout.strip()
     if not out:
