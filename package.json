@@ -72,7 +72,7 @@
     "test:release": "python3 test/test-bmad-release.py",
     "test:rendered-page": "node test/test-rendered-page-check.js && node test/test-rendered-page-auth.js",
     "test:representation": "python3 test/test-representation.py",
-    "test:settings-merge": "bash tools/verify-settings-merge.sh",
+    "test:settings-merge": "bash tools/verify-settings-merge.sh && bash tools/verify-sync-hook-optout.sh",
     "test:standards-corpus": "node test/test-standards-corpus.js",
     "test:stash-health": "node test/test-stash-health.js",
     "test:sync-execution": "python3 test/test-sync-execution-smoke.py",

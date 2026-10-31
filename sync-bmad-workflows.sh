@@ -465,6 +465,58 @@ write_claude_settings() {
   local tracked="$dir/settings.json"
   local localf="$dir/settings.local.json"
 
+  # PER-PROJECT OPT-OUT, read from the TARGET repo (same idea as the CLAUDE.md
+  # opt-out). A project that curates its own hook wiring commits
+  # .claude/bmad-sync-optout.json and the sync stops re-adding what it dropped:
+  #   {"ownsSettings": true}                       write nothing to settings at all
+  #   {"excludeHookGroups": ["bmad-delivery-check", "PostToolUse:Skill"]}
+  #        template groups the sync must not write. An entry is a group name, or
+  #        "<Event>:<matcher>" for a template group that has no name.
+  # No file means no filtering: HOOKS_SRC is used untouched, so a target without
+  # the file gets exactly what it got before this existed.
+  local src="$HOOKS_SRC" optout="$dir/bmad-sync-optout.json" filtered=""
+  if [[ -f "$optout" ]]; then
+    if ! jq -e 'type == "object"' "$optout" >/dev/null 2>&1; then
+      echo "  WARN  hooks NOT written: $optout is not a JSON object (fix or remove it)"
+      return 1
+    fi
+    if [[ "$(jq -r '.ownsSettings // false' "$optout")" == "true" ]]; then
+      echo "  OK    hooks (project owns its settings: .claude/bmad-sync-optout.json — not written)"
+      return 0
+    fi
+    if [[ "$(jq -r '(.excludeHookGroups // []) | length' "$optout")" -gt 0 ]]; then
+      filtered="$(mktemp "${TMPDIR:-/tmp}/bmad-hooks-filtered.XXXXXX")"
+      # Drop the excluded groups (and events left empty), and stop claiming the
+      # scripts they ran, otherwise the merge would strip the project's own copy.
+      if ! jq --slurpfile o "$optout" '
+          ($o[0].excludeHookGroups // []) as $ex
+          | def gid($ev): (.name // "") as $n | if $n != "" then $n else ($ev + ":" + (.matcher // "")) end;
+            def scripts: [.hooks[]? | (.command // "") | capture("N=(?<s>[A-Za-z0-9_.-]+);").s?] | map(select(. != null));
+          ([.hooks | to_entries[] | .key as $ev | .value[] | select(gid($ev) as $g | $ex | index($g)) | scripts[]]) as $dropped
+          | .hooks |= (with_entries(.key as $ev | .value |= map(select(gid($ev) as $g | ($ex | index($g)) | not))) | with_entries(select((.value | length) > 0)))
+          | if has("bmadTrackedHookScripts") then .bmadTrackedHookScripts |= map(select(. as $s | $dropped | index($s) | not)) else . end
+        ' "$HOOKS_SRC" > "$filtered" 2>/dev/null; then
+        rm -f "$filtered"
+        echo "  WARN  hooks NOT written: could not apply $optout"
+        return 1
+      fi
+      src="$filtered"
+    fi
+  fi
+  local rc=0
+  _write_claude_settings_from "$root" "$mode" "$src" || rc=$?
+  [[ -n "$filtered" ]] && rm -f "$filtered"
+  return "$rc"
+}
+
+# The writer proper. $3 is the template to merge: HOOKS_SRC, or a copy of it with the
+# project's excluded groups removed.
+_write_claude_settings_from() {
+  local root="$1" mode="$2" HOOKS_SRC="$3"
+  local dir="$root/.claude"
+  local tracked="$dir/settings.json"
+  local localf="$dir/settings.local.json"
+
   local gi_rc=0
   ensure_claude_paths_trackable "$root" "$mode" || gi_rc=$?
   if [[ "$gi_rc" -eq 3 ]]; then
