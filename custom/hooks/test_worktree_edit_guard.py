@@ -262,7 +262,7 @@ def in_a_worktree(w: World) -> None:
         ('P/_bmad/.sprint-apply-*', f'{p}/_bmad/.sprint-apply-1/x.yaml'),
         ('P/_bmad/.sprint-apply-* as a file', f'{p}/_bmad/.sprint-apply-9.lock'),
         ('the fork checkout', f'{w.fork}/custom/x.md'),
-        ('another worktree of P (it is under P/.claude — unchanged)', f'{p}/.claude/worktrees/second/src/a.ts'),
+        ('the session\'s own worktree, spelled through P/.claude', f'{wt}/src/b.ts'),
         ('symlink in P that lands in P/.claude', f'{p}/src/to-dot-claude/x.json'),
     ]:
         check(f'worktree · no decision · {name}', w.kind(path, cwd), 'none')
@@ -293,8 +293,16 @@ def in_a_worktree(w: World) -> None:
         ('(a) _bmad-output nested inside P/vendor', f'{p}/vendor/_bmad-output/z.md'),
         ('(a) _bmad/.sprint-apply nested inside P/vendor', f'{p}/vendor/_bmad/.sprint-apply-1/x'),
         ('(a) a bmad-method-v6 directory inside P', f'{p}/vendor/Users/x/bmad-method-v6/f.md'),
+        # review 2026-10-31 (1): a SIBLING worktree is under P/.claude but is not shared.
+        ('(R1) a sibling worktree of P', f'{p}/.claude/worktrees/second/src/a.ts'),
+        ('(R1) a sibling worktree, relative', '../../second/src/a.ts'),
+        ('(R1) a sibling worktree, dressed up', f'{wt}/../second/src/./a.ts'),
+        ('(R1) the worktrees directory itself', f'{p}/.claude/worktrees/new-file.txt'),
+        ('(R1) a sibling worktree, spelled in capitals', f'{p}/.claude/WORKTREES/second/src/a.ts'),
     ]:
         check(f'worktree · DENY · {name}', w.kind(path, cwd), 'deny')
+    check('(R1) worktree · a sibling worktree is refused with the outside-worktree reason', 'outside the active worktree' in w.run(f'{p}/.claude/worktrees/second/src/a.ts', cwd)[1], True)
+    check('(R1) worktree · P/.claude/settings.json is still shared', w.kind(f'{p}/.claude/settings.json', cwd), 'none')
 
 
 # --- rule 3 and 4: outside the project -----------------------------------------------
@@ -528,7 +536,52 @@ def in_the_main_checkout(w: World) -> None:
         cwd=p,
         env={'PATH': f'{w.base}/bin-broken{os.pathsep}{os.environ.get("PATH", "")}', 'HOME': str(w.home)},
     )
-    check('main · ps fails -> no decision (unchanged)', (result.returncode, result.stdout), (0, ''))
+    # review 2026-10-31 (2): a count that cannot be taken is UNKNOWN, not 0 -> ask.
+    ask = json.loads(result.stdout)['hookSpecificOutput'] if result.stdout.strip() else {}
+    check('(R2) main · ps exits non-zero -> ask, not silence', (result.returncode, ask.get('permissionDecision')), (0, 'ask'))
+    check('(R2) main · the question says the sessions could not be counted', 'could not be counted' in ask.get('permissionDecisionReason', ''), True)
+    check('(R2) main · ps fails and 3 sessions cannot be shown -> never a bare allow', ask.get('permissionDecision') != 'allow', True)
+    check('(R2) main · ps fails, an exempt path still gets no decision', w.kind(f'{p}/.claude/settings.json', w.proj, 1, PATH=f'{w.base}/bin-broken{os.pathsep}{os.environ.get("PATH", "")}'), 'none')
+    check('(R2) main · ps fails, the logged override still allows', w.kind(f'{p}/src/c.ts', w.proj, 1, BMAD_ALLOW_MAIN_EDIT='1', PATH=f'{w.base}/bin-broken{os.pathsep}{os.environ.get("PATH", "")}'), 'allow')
+    # a ps that prints an undecodable byte is still counted
+    badbyte = w.base / 'bin-badbyte'
+    badbyte.mkdir(exist_ok=True)
+    (badbyte / 'ps').write_bytes(b'#!/bin/sh\nprintf "node \\377\\376 x\\n"\nprintf "claude a\\n"\nprintf "claude b\\n"\n')
+    (badbyte / 'ps').chmod(0o755)
+    check('(R2) main · an undecodable byte in ps output does not hide the count', w.kind(f'{p}/src/a.ts', w.proj, 1, PATH=f'{badbyte}{os.pathsep}{os.environ.get("PATH", "")}'), 'deny')
+    slowps = w.base / 'bin-slowps'
+    slowps.mkdir(exist_ok=True)
+    (slowps / 'ps').write_text('#!/bin/sh\nexec sleep 20\n')
+    (slowps / 'ps').chmod(0o755)
+    check('(R2) main · a ps that times out -> ask', w.kind(f'{p}/src/a.ts', w.proj, 1, PATH=f'{slowps}{os.pathsep}{os.environ.get("PATH", "")}'), 'ask')
+
+    # review 2026-10-31 (3): a path whose first or last character the parsers may read
+    # differently is unresolved: refused when any reading is inside P, otherwise no decision.
+    for name, path in [
+        ('a leading U+FEFF (JS trims it, Python does not)', f'﻿{p}/src/a.ts'),
+        ('a trailing U+FEFF', f'{p}/src/a.ts﻿'),
+        ('a leading U+00A0', f' {p}/src/a.ts'),
+        ('a trailing U+2003', f'{p}/src/a.ts '),
+        ('a leading \\x1f (Python strips it, JS does not)', f'\x1f{p}/src/a.ts'),
+        ('a trailing \\x1c', f'{p}/src/a.ts\x1c'),
+        ('a leading U+0085', f'\u0085{p}/src/a.ts'),
+        ('a leading zero-width space', f'​{p}/src/a.ts'),
+        ('a relative path with a trailing BOM', 'src/a.ts﻿'),
+    ]:
+        check(f'(R3) main alone · DENY · {name}', w.kind(path, w.proj, 1), 'deny')
+        check(f'(R3) worktree · DENY · {name}', w.kind(path, w.wt / 'src', 1), 'deny')
+        check(f'(R3) main alone · the override does not allow · {name}', w.kind(path, w.proj, 1, BMAD_ALLOW_MAIN_EDIT='1'), 'deny')
+    for name, path in [
+        ('outside P, trailing BOM', f'{w.other}/src/a.ts﻿'),
+        ('outside P, trailing NBSP', f'{w.other}/src/a.ts '),
+        ('outside P, trailing \\x1f', f'{w.other}/src/a.ts\x1f'),
+    ]:
+        check(f'(R3) no decision, never an allow · {name}', w.kind(path, w.proj, 1), 'none')
+    # A leading BOM may or may not be trimmed by the tool; if it is not, the path is RELATIVE
+    # to the working directory, which is inside P. So even an "outside" spelling is refused.
+    check('(R3) a leading BOM before an outside path could be relative to cwd -> DENY', w.kind(f'﻿{w.other}/src/a.ts', w.proj, 1), 'deny')
+    check('(R3) ordinary ASCII whitespace at the edge is still tidied, not refused', w.kind(f'{w.other}/src/a.ts\t', w.proj, 1), 'none')
+    check('(R3) a vertical tab / form feed edge is agreed by both parsers', w.kind(f'{p}/src/a.ts\x0b', w.proj, 1), 'none')
 
     # A project that is not a git repository: P is the working directory.
     plain = str(w.plain)
