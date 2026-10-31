@@ -157,23 +157,25 @@ if known is not None:
             % (len(uncommitted), ", ".join(uncommitted))
         )
 
+MAX_LISTED = 5
+FULL_LIST = "grep '^## ' ~/bmad-method-v6/docs/fork-gaps.md"
+
 if investigations:
-    listed = " · ".join(short(t) for t, _ in investigations)
+    # Owner, 2026-10-31: a hook clips its own output, whole entries, and says what it left out.
+    # Routing wording lives in global-bmad-workflow.md § Autonomous maintenance.
+    listed = " · ".join(short(t) for t, _ in investigations[:MAX_LISTED])
+    if len(investigations) > MAX_LISTED:
+        listed += " · and %d more: %s" % (len(investigations) - MAX_LISTED, FULL_LIST)
     parts.append(
         "⚠ %d open fork-gap(s) in ~/bmad-method-v6/docs/fork-gaps.md "
         "(open-only file; resolved history in fork-gaps-archive.md). "
-        "Open: %s. If the user asks what to work on, or you're doing fork maintenance, "
-        "surface these. ROUTING (owner-ratified 2026-07-26, global-bmad-workflow.md "
-        "§ Autonomous maintenance): a clear owner maintenance instruction — \"fix the "
-        "fork gaps\", \"do the fork maintenance\" — IS routing for MAINTENANCE-lane work "
-        "(execution defects, safety + coherence), so log AND fix in the same pass. A "
-        "per-entry routing marker is still required for NEW DESIGN / DOCTRINE / POLICY "
-        "changes (changing what a rule IS) — propose those, don't ship them."
+        "Open: %s. Fixing them on an owner maintenance instruction, and when a design change "
+        "needs proposing instead: global-bmad-workflow.md § Autonomous maintenance."
         % (len(investigations), listed)
     )
 if owed:
     rows = []
-    for t, b in owed:
+    for t, b in owed[:MAX_LISTED]:
         gid = field(b, "id") or short(t)
         act = field(b, "distribution") or "distribution action NOT RECORDED — add a `distribution:` field"
         rows.append("%s → %s" % (gid, act[:120]))
@@ -181,9 +183,9 @@ if owed:
         "📦 %d fork-gap(s) are FORK-FIXED, DISTRIBUTION OWED — the code is written and "
         "pushed to myfork/custom, and it fires in ZERO projects until a sync runs. This is "
         "a DELIVERY obligation, not an open investigation: it needs the owed command, not an "
-        "investment decision. %s. Distribution is a Tier-3 blast-radius action (cross-project "
-        "rsync --delete over possibly-dirty trees) — surface it and get an explicit go; never "
-        "fan out unasked." % (len(owed), " · ".join(rows))
+        "investment decision. %s%s. Distribution reaches every project: get an explicit go, "
+        "never fan out unasked." % (len(owed), " · ".join(rows),
+        " · and %d more: %s" % (len(owed) - MAX_LISTED, FULL_LIST) if len(owed) > MAX_LISTED else "")
     )
 
 THIRTY_DAYS = 30 * 24 * 3600
