@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-worktree-edit-guard — PreToolUse (Edit|Write|NotebookEdit): keep a session's edits inside its own worktree.
+worktree-edit-guard — PreToolUse (Edit|Write|MultiEdit|NotebookEdit): keep a session's edits inside its own worktree.
 
 WHAT IT IS FOR. Several Claude sessions share one checkout of a project. Two of them
 editing the same working tree overwrite each other silently, so each session works in its
@@ -270,12 +270,17 @@ def has_ambiguous_edge(raw: str) -> bool:
     Non-ASCII whitespace, a BOM and control or format characters qualify. Ordinary ASCII
     whitespace does not: both parsers strip it, and the golden cases pin that.
     """
-    for ch in (raw[:1], raw[-1:]):
-        if not ch or ch in AGREED_EDGE_CHARACTERS:
-            continue
-        if is_edge_space(ch) or unicodedata.category(ch) in ('Cc', 'Cf'):
-            return True
-    return False
+    core = strip_both(raw)
+    at = raw.find(core) if core else 0
+    # EVERY character in the whole leading and trailing run that strip_both removes must be
+    # one both parsers agree on: an ambiguous character hidden behind an ordinary space
+    # (' ﻿/path') is in that run and must not be skipped.
+    run = raw[:at] + raw[at + len(core) :]
+    if any(ch not in AGREED_EDGE_CHARACTERS for ch in run):
+        return True
+    # What is left starts and ends with a non-space; a control or format character there
+    # (a zero-width space) is not trimmed by either parser but is not a plain name either.
+    return any(unicodedata.category(ch) in ('Cc', 'Cf') for ch in (core[:1], core[-1:]) if ch)
 
 
 def collapse_leading_slashes(path: str) -> str:
@@ -683,13 +688,29 @@ def decide_ambiguous_edge(raw: str, tidy: str, session: Session) -> dict | None:
     roots = [session.project.rstrip('/')]
     if session.declared:
         roots.append(session.declared.rstrip('/'))
-    for reading in (raw, tidy, raw.strip()):
+    for reading in (raw, tidy, raw.strip(), raw.strip(AGREED_EDGE_CHARACTERS)):
         expanded = os.path.expanduser(reading) if reading == '~' or reading.startswith('~/') else reading
         if '\0' in expanded:
             lexical = expanded
+            resolved = None
         else:
             lexical = lexical_path(expanded, session.cwd)
-        if any(lexical == root or lexical.startswith(root + '/') for root in roots):
+            try:
+                resolved = resolve(expanded, session.cwd)
+            except (OSError, ValueError):
+                resolved = None  # unresolvable: judged on its lexical form alone, which refuses
+        # Containment is tested the way every other rule tests it: on the resolved location
+        # with parts_below (which also asks the filesystem whether an ancestor IS the root, so
+        # a symlink into the project or a case variant on a case-folding volume is caught).
+        # The lexical form is tested too, so a path that will not resolve still refuses.
+        inside = any(
+            lexical == root
+            or lexical.startswith(root + '/')
+            or parts_below(lexical, root) is not None
+            or (resolved is not None and parts_below(resolved, root) is not None)
+            for root in roots
+        )
+        if inside:
             return decision(
                 'deny',
                 DENY_AMBIGUOUS_EDGE.format(target=printable(raw), project=session.project),

@@ -577,6 +577,26 @@ def in_the_main_checkout(w: World) -> None:
         ('outside P, trailing \\x1f', f'{w.other}/src/a.ts\x1f'),
     ]:
         check(f'(R3) no decision, never an allow · {name}', w.kind(path, w.proj, 1), 'none')
+    # review 2026-10-31 (R4): the whole run at the edge is examined, not just its first and
+    # last character. An ambiguous character behind (or between) agreed spaces is still ambiguous.
+    for name, path in [
+        ('a BOM behind a leading space', f' ﻿{p}/src/a.ts'),
+        ('a BOM between spaces, leading', f'  ﻿ {p}/src/a.ts'),
+        ('a \\x1f behind a trailing newline', f'{p}/src/a.ts\x1f\n'),
+        ('a trailing NBSP then a space', f'{p}/src/a.ts  '),
+        ('a mixed run both ends', f'  \t{p}/src/a.ts\n﻿ '),
+    ]:
+        check(f'(R4) main alone · DENY · {name}', w.kind(path, w.proj, 1), 'deny')
+        check(f'(R4) worktree · DENY · {name}', w.kind(path, w.wt / 'src', 1), 'deny')
+    check('(R4) a run of only agreed spaces and tabs is still just tidied', w.kind(f' \t{p}/src/a.ts\n ', w.proj, 1), 'none')
+    # (R6) a symlink into the main checkout: the lexical path is outside P, the resolved one is not.
+    for name, path in [
+        ('symlink into P/src, trailing BOM', f'{w.other}/to-proj-src/a.ts﻿'),
+        ('symlink into P/src, mixed run', f' ﻿{w.other}/to-proj-src/a.ts'),
+    ]:
+        check(f'(R6) outside cwd · DENY · {name}', w.kind(path, w.other / 'src', 1, CLAUDE_PROJECT_DIR=p), 'deny')
+        check(f'(R6) worktree · DENY · {name}', w.kind(path, w.wt / 'src', 1), 'deny')
+    check('(R6) a symlink that stays outside P is not refused', w.kind(f'{w.other}/to-ssh/x﻿', w.other / 'src', 1, CLAUDE_PROJECT_DIR=p), 'none')
     # A leading BOM may or may not be trimmed by the tool; if it is not, the path is RELATIVE
     # to the working directory, which is inside P. So even an "outside" spelling is refused.
     check('(R3) a leading BOM before an outside path could be relative to cwd -> DENY', w.kind(f'﻿{w.other}/src/a.ts', w.proj, 1), 'deny')
@@ -609,6 +629,9 @@ def another_spelling(w: World) -> None:
         return
     check('case variant of P from a worktree is still P', w.kind(f'{shouted}/src/a.ts', w.wt / 'src'), 'deny')
     check('case variant of P, 3 sessions, main checkout', w.kind(f'{shouted}/src/a.ts', w.proj, 3), 'deny')
+    # review 2026-10-31 (R5): an ambiguous edge on a case-variant path is still inside P.
+    check('(R5) case variant of P with a trailing BOM from an outside cwd', w.kind(f'{shouted}/src/a.ts﻿', w.other / 'src', 1, CLAUDE_PROJECT_DIR=str(w.proj)), 'deny')
+    check('(R5) case variant of P behind a mixed run', w.kind(f'{shouted}/src/a.ts ﻿ ', w.other / 'src', 1, CLAUDE_PROJECT_DIR=str(w.proj)), 'deny')
     check('case variant of the worktree is still the worktree', w.kind(f'{shouted}/.claude/worktrees/WT/src/a.ts', w.wt / 'src'), 'none')
     check('case variant of ~/code/other/.Claude stays a prompt', w.kind(f'{w.other}/.Claude/settings.json', w.proj), 'none')
 
@@ -935,7 +958,7 @@ def wiring(w: World) -> None:
     if len(groups) != 1:
         return
     group = groups[0]
-    check('8 · wired on Edit|Write|NotebookEdit', group.get('matcher'), 'Edit|Write|NotebookEdit')
+    check('8 · wired on Edit|Write|MultiEdit|NotebookEdit', group.get('matcher'), 'Edit|Write|MultiEdit|NotebookEdit')
     command = group['hooks'][0]['command']
     # The decisions live in the script. If the wrapper could answer allow or deny by
     # itself, the one-liner would be growing back.

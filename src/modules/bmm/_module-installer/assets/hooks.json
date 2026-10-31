@@ -110,7 +110,7 @@
         ]
       },
       {
-        "matcher": "Edit|Write|NotebookEdit",
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit",
         "name": "bmad-worktree-guard",
         "hooks": [
           {
