@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-worktree-edit-guard — PreToolUse (Edit|Write|NotebookEdit): keep a session's edits inside its own worktree.
+worktree-edit-guard — PreToolUse (Edit|Write|MultiEdit|NotebookEdit): keep a session's edits inside its own worktree.
 
 WHAT IT IS FOR. Several Claude sessions share one checkout of a project. Two of them
 editing the same working tree overwrite each other silently, so each session works in its
@@ -25,6 +25,8 @@ decided on where the target REALLY is — symlinks, `..`, `.` and stray slashes 
 
   1. The target is in one of the shared directories        -> no decision
        P/.claude/   P/_bmad-output/   P/_bmad/.sprint-apply-*   ~/bmad-method-v6/
+       (from inside a worktree, P/.claude/worktrees/ is NOT shared: a sibling worktree
+       falls through to rule 3 and is refused; the session's own worktree is rule 2)
   2. In a worktree, and the target is inside that worktree  -> no decision
   3. The target is inside P (and not covered by 1 or 2):
        in a worktree                                        -> DENY
@@ -171,6 +173,18 @@ DENY_PARALLEL_SESSIONS = (
     'BMAD_ALLOW_MAIN_EDIT=1 for a LOGGED main-checkout maintenance edit, call EnterWorktree, '
     'or use the bash cross-repo route. See CLAUDE.md.'
 )
+ASK_SESSIONS_UNKNOWN = (
+    'The running claude sessions could not be counted (ps did not run, timed out or failed), '
+    'and you are NOT in a worktree. Refusing to assume nobody else is editing this checkout: '
+    'confirm no parallel session is, call EnterWorktree, or set BMAD_ALLOW_MAIN_EDIT=1 for a '
+    'LOGGED maintenance edit.'
+)
+DENY_AMBIGUOUS_EDGE = (
+    'BLOCKED: target {target} begins or ends with a whitespace, byte-order-mark or control '
+    'character that the editing tool and this guard may read differently, so which file it '
+    'would write cannot be established, and it may be inside THIS project ({project}). Use a '
+    'plain path with no invisible characters at either end.'
+)
 ALLOW_MAIN_OVERRIDE = (
     'Main-checkout maintenance edit override (BMAD_ALLOW_MAIN_EDIT=1) — LOGGED to '
     '.claude/main-edit-overrides.log. Confirm no parallel session is editing {target}.'
@@ -222,10 +236,51 @@ def as_the_tool_writes_it(raw: str) -> str:
     `.env` once written) and gave ` /abs/path` and `~/code/proj/src/a.ts` no decision from
     a worktree, because neither looks absolute until it is tidied.
     """
-    path = raw.strip()
+    path = strip_both(raw)
     if path == '~' or path.startswith('~/'):
         path = os.path.expanduser(path)
     return path
+
+
+# Whitespace that BOTH str.strip() and the tool's own trim agree on is stripped without
+# comment. Anything else at the edge of a path is a place the two parsers can disagree
+# (Python strips \x1c-\x1f and \x85 and keeps U+FEFF; JavaScript trim() does the opposite),
+# so the guard cannot say which file the tool will open.
+AGREED_EDGE_CHARACTERS = ' \t\n\r\x0b\x0c'
+
+
+def is_edge_space(ch: str) -> bool:
+    """Whitespace in either parser's sense: Python's isspace() plus the BOM."""
+    return ch.isspace() or ch == '﻿'
+
+
+def strip_both(text: str) -> str:
+    """`text` with the UNION of what Python and JavaScript strip taken off both ends."""
+    start, end = 0, len(text)
+    while start < end and is_edge_space(text[start]):
+        start += 1
+    while end > start and is_edge_space(text[end - 1]):
+        end -= 1
+    return text[start:end]
+
+
+def has_ambiguous_edge(raw: str) -> bool:
+    """The path starts or ends with a character the two parsers may treat differently.
+
+    Non-ASCII whitespace, a BOM and control or format characters qualify. Ordinary ASCII
+    whitespace does not: both parsers strip it, and the golden cases pin that.
+    """
+    core = strip_both(raw)
+    at = raw.find(core) if core else 0
+    # EVERY character in the whole leading and trailing run that strip_both removes must be
+    # one both parsers agree on: an ambiguous character hidden behind an ordinary space
+    # (' ﻿/path') is in that run and must not be skipped.
+    run = raw[:at] + raw[at + len(core) :]
+    if any(ch not in AGREED_EDGE_CHARACTERS for ch in run):
+        return True
+    # What is left starts and ends with a non-space; a control or format character there
+    # (a zero-width space) is not trimmed by either parser but is not a plain name either.
+    return any(unicodedata.category(ch) in ('Cc', 'Cf') for ch in (core[:1], core[-1:]) if ch)
 
 
 def collapse_leading_slashes(path: str) -> str:
@@ -404,22 +459,25 @@ def nearest_directory(path: str) -> str:
     return probe
 
 
-def running_claude_processes() -> int:
+def running_claude_processes() -> int | None:
     """How many claude CLI processes are running, by the basename of the first word.
 
     The one-liner counted lines STARTING `claude`, which misses a session launched by its
     full path (/Users/x/.local/bin/claude …) — 4 of 15 on the machine this was measured on.
-    If ps cannot be run the count is 0 and the main-checkout refusal does not fire — the
-    one-liner behaved the same way, and that is unchanged here.
+    None means "could not tell": ps did not run, timed out, exited non-zero, or produced
+    output that could not be read. It is not 0. A count that fails open to 0 switched the
+    main-checkout refusal off in exactly the situation where nobody could see the sessions;
+    decide_main_checkout now asks instead. Output is decoded with errors='replace' so one
+    odd byte in a command line cannot discard the whole count.
     """
     try:
-        result = subprocess.run(
-            ['ps', '-eo', 'command'], capture_output=True, text=True, timeout=CHILD_TIMEOUT_SECONDS
-        )
+        result = subprocess.run(['ps', '-eo', 'command'], capture_output=True, timeout=CHILD_TIMEOUT_SECONDS)
     except (OSError, ValueError, subprocess.SubprocessError):
-        return 0
+        return None
+    if result.returncode != 0:
+        return None
     count = 0
-    for line in result.stdout.splitlines():
+    for line in result.stdout.decode('utf-8', errors='replace').splitlines():
         words = line.split()
         if words and os.path.basename(words[0]) == 'claude':
             count += 1
@@ -482,7 +540,15 @@ class Session:
 
     def shared_directory(self, target: str, fork: str | None) -> bool:
         """Rule 1 — anchored to this project and to the fork checkout, nowhere else."""
-        if parts_below(target, os.path.join(self.project, '.claude')) is not None:
+        under_claude = parts_below(target, os.path.join(self.project, '.claude'))
+        if under_claude is not None:
+            # Another worktree of this project lives under P/.claude/worktrees/. From inside a
+            # worktree it is NOT a shared directory: exempting it let one worktree write into
+            # a sibling unchecked. Falling through lets the own-worktree rule accept the
+            # session's own tree and rule 3 refuse every other one. From the main checkout
+            # the exemption is unchanged (the lead edits agent worktrees from there).
+            if self.worktree and under_claude and unicodedata.normalize('NFKC', under_claude[0]).casefold() == 'worktrees':
+                return False
             return True
         if parts_below(target, os.path.join(self.project, '_bmad-output')) is not None:
             return True
@@ -555,6 +621,8 @@ def decide(raw: str, session: Session, home: str | None) -> dict | None:
     tidy = as_the_tool_writes_it(raw)
     if not tidy:
         return None
+    if has_ambiguous_edge(raw):
+        return decide_ambiguous_edge(raw, tidy, session)
     lexical = lexical_path(tidy, session.cwd)
 
     try:
@@ -603,8 +671,50 @@ def decide_main_checkout(target: str, session: Session, may_override: bool) -> d
         if log_main_override(session.project, target):
             return decision('allow', ALLOW_MAIN_OVERRIDE.format(target=printable(target)))
     count = running_claude_processes()
+    if count is None:
+        return decision('ask', ASK_SESSIONS_UNKNOWN)
     if count > 1:
         return decision('deny', DENY_PARALLEL_SESSIONS.format(count=count))
+    return None
+
+
+def decide_ambiguous_edge(raw: str, tidy: str, session: Session) -> dict | None:
+    """The path's first or last character is one the tool and this guard may read differently.
+
+    Which file the tool will open is unknown, so nothing is approved and nothing is judged
+    on a guess. If ANY reading (as given, or stripped of both parsers' whitespace) lands
+    inside the project, refuse; otherwise there is nothing here to protect: no decision.
+    """
+    roots = [session.project.rstrip('/')]
+    if session.declared:
+        roots.append(session.declared.rstrip('/'))
+    for reading in (raw, tidy, raw.strip(), raw.strip(AGREED_EDGE_CHARACTERS)):
+        expanded = os.path.expanduser(reading) if reading == '~' or reading.startswith('~/') else reading
+        if '\0' in expanded:
+            lexical = expanded
+            resolved = None
+        else:
+            lexical = lexical_path(expanded, session.cwd)
+            try:
+                resolved = resolve(expanded, session.cwd)
+            except (OSError, ValueError):
+                resolved = None  # unresolvable: judged on its lexical form alone, which refuses
+        # Containment is tested the way every other rule tests it: on the resolved location
+        # with parts_below (which also asks the filesystem whether an ancestor IS the root, so
+        # a symlink into the project or a case variant on a case-folding volume is caught).
+        # The lexical form is tested too, so a path that will not resolve still refuses.
+        inside = any(
+            lexical == root
+            or lexical.startswith(root + '/')
+            or parts_below(lexical, root) is not None
+            or (resolved is not None and parts_below(resolved, root) is not None)
+            for root in roots
+        )
+        if inside:
+            return decision(
+                'deny',
+                DENY_AMBIGUOUS_EDGE.format(target=printable(raw), project=session.project),
+            )
     return None
 
 
@@ -629,10 +739,12 @@ def decide_unresolved(lexical: str, session: Session, error: str) -> dict | None
 
 
 def strictest(answers: list) -> dict | None:
-    """One answer for several paths: a refusal wins, then no decision, then an allow."""
+    """One answer for several paths: a refusal wins, then a question, then no decision, then an allow."""
     kinds = [a['hookSpecificOutput']['permissionDecision'] if a else None for a in answers]
     if 'deny' in kinds:
         return answers[kinds.index('deny')]
+    if 'ask' in kinds:
+        return answers[kinds.index('ask')]
     if None in kinds:
         return None
     return answers[0]
