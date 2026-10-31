@@ -143,6 +143,17 @@ if logged_today:
     lines.append("NOTE: an entry dated today already exists - check before adding another.")
 lines.append("If nothing structural fought you, say nothing and finish. Silence is correct.")
 
-print(json.dumps({"systemMessage": "\n".join(lines)}))
+# Owner, 2026-10-31: "i don't want anymore jargon printing in transcript". Handed to the
+# next turn for the model to read, as the other warn-only Stop hooks do since 2026-10-15;
+# printed only if the store cannot be reached, so a broken store is never silence.
+text = "\n".join(lines)
+try:
+    sys.path.insert(0, os.path.expanduser("~/.claude/hooks"))
+    import deferred_notes
+    if deferred_notes.defer("check-friction-reflect", text, data):
+        sys.exit(0)
+except Exception:
+    pass
+print(json.dumps({"systemMessage": text}))
 PY
 exit 0
