@@ -139,8 +139,16 @@ check("L5 legacy does NOT relax the marker length rule",
       any("marker must be" in e for e in errs), True)
 
 # L6 — the live register must be clean, which is the whole point of the migration.
-live = fgl.parse()
-errs_live = lint(Path(FORK / "docs" / "fork-gaps.md").read_text())
+#
+# Scoped to the COMMITTED register (HEAD), not the working tree. fork-gaps.md is a shared
+# multi-writer append target; another session's half-written, uncommitted entry used to fail
+# this case and block every unrelated commit (WF-20260926-028/-072). The working-tree copy is
+# still linted by the touched-entry check on the commit that stages it. If HEAD cannot be
+# read the case FAILS rather than passing over nothing.
+import subprocess
+_head = subprocess.run(["git", "show", "HEAD:docs/fork-gaps.md"], cwd=FORK,
+                       capture_output=True, text=True)
+errs_live = lint(_head.stdout) if _head.returncode == 0 and _head.stdout else ["could not read HEAD:docs/fork-gaps.md"]
 check("L6 the live register lints clean (no routine --no-verify)", errs_live, [])
 
 print(f"\n{len(PASS)} passed, {len(FAIL)} failed")

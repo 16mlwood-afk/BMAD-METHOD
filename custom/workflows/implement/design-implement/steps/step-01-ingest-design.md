@@ -135,13 +135,13 @@ Skip on the manifest path — `{handoff_supersede_status}` is already set from t
 Resolve exactly as `design-ingest` step-01 §5 (same contract — do not duplicate the logic):
 
 1. Derive `{target_slug}` from the primary frame (`{design_frame_inventory}` entry 0). Prefer an exact match to an existing brief's `target_slug`.
-2. Match it against the briefs in `{implementation_artifacts}`, read `brief_status`, and set `{handoff_supersede_status}` to `active` | `superseded` | `no_brief` | `ambiguous` (`no_brief` when the surface doesn't confidently correspond to any brief — do NOT force a match or infer `active`; capture `{superseded_by}` when `superseded`).
+2. Match it against the briefs in `{implementation_artifacts}`, read `brief_status`, and set `{handoff_supersede_status}` to `active` | `superseded` | `no_brief` | `ambiguous` (`no_brief` when the surface doesn't confidently correspond to any brief — do NOT force a match or infer `active`; capture `{superseded_by}` when `superseded`). **Near-slug rule:** if no exact `target_slug` matches but a brief's `target_slug` is a hyphen-token prefix or superset of `{target_slug}` (e.g. brief `mapping-queue` vs run `mapping-queue-cockpit`), do NOT answer `no_brief` — set `ambiguous`, name the near brief and its `brief_status`, and let SHARED.1a's `ambiguous` handling ask which governs. A silent `no_brief` here skips the conformance gate against a brief that probably is this surface's contract (WF-20260926-026).
 
 Then gate — symmetric with the manifest path, but a direct URL/bundle run has no prior dispositions, so it is effectively the "there is work to apply" case:
 
 - **`active` / `no_brief`** → continue normally.
 - **`superseded`** → SURFACE it now ("this handoff is superseded by `{superseded_by}`; that newer brief is the current truth") and **HALT before the apply pipeline (steps 2–4) for explicit confirmation** — proceeding would build the surface toward the superseded design, which is intent, not decision autonomy, so autonomous mode does NOT proceed unasked. Halting here (before the grid) also avoids wasting the mapping/grid work. On explicit confirmation — or after the user re-points at `{superseded_by}` — continue. **Never** silently apply a superseded handoff.
-- **`ambiguous`** → warn (two briefs claim `active` for this slug; `brief-revision-policy.md` §2.6) and continue — the design source itself is fine.
+- **`ambiguous`** → warn (two briefs claim `active` for this slug; `brief-revision-policy.md` §2.6) and continue — the design source itself is fine. For a near-slug `ambiguous`, name the near brief and treat it as the brief the conformance gate reads (advisory notes only if it turns out to be another surface).
 
 ### SHARED.1a-ii. Concurrent-run check on `{target_slug}` (same key, same moment)
 
