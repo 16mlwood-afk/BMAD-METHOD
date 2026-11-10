@@ -10983,6 +10983,21 @@ that the same discipline is not applied to the fork's own tree between edits. No
 as a blocking gate here: the shape wants care, because a gate that fires on every
 in-progress edit is one that gets switched off within a day.
 
+### Evidence added 2026-11-10 — the same boundary, one hop further out (project origin)
+
+The same gap sat between the release tool and each PROJECT's origin. `bmad-release.py
+publish` committed `chore(bmad): distribute release <id>` in the target's main checkout and
+nothing pushed it; `deliver-fork-work.sh`'s fan-out pushed only when main was
+fast-forwardable and discarded the failure (`2>/dev/null`). Measured 10 Nov 2026: 11 of 14
+projects carried 6-13 such commits (25 Sep - 4 Oct), `git cherry origin/main` showed 0
+equivalents, and the 5 Oct sync's uncommitted output made the sync SKIP every target.
+Nobody observed it: the tool believed the commit was delivery, the project's origin was
+never read. Fix on this boundary: `publish --via-pr` (branch from origin/main, release-owned
+paths only, push, PR; every refusal named and ledgered) and `align-main` (backup branch
+pushed and read back before local main moves). Golden cases: `test/test-release-by-pr.py`.
+Pilot: image-pipeline PR #58. The fork-side half of this gap (working tree vs branch
+between edits) is unchanged and still open.
+
 ## FG-2026-08-31-06 — image-pipeline carries a partial `_bmad/bmad-shared/` beside a live `workflows/shared/`
 
 ```yaml
