@@ -70,7 +70,7 @@
     "test:ingest-manifest": "node test/test-ingest-manifest-check.js",
     "test:install": "node test/test-installation-components.js",
     "test:refs": "node test/test-file-refs-csv.js",
-    "test:release": "python3 test/test-bmad-release.py",
+    "test:release": "python3 test/test-bmad-release.py && python3 test/test-release-by-pr.py",
     "test:rendered-page": "node test/test-rendered-page-check.js && node test/test-rendered-page-auth.js",
     "test:representation": "python3 test/test-representation.py",
     "test:settings-merge": "bash tools/verify-settings-merge.sh && bash tools/verify-sync-hook-optout.sh",

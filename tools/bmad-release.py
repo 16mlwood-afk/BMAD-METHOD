@@ -409,6 +409,223 @@ def commit_release_paths(real, paths, message):
     return c.returncode == 0, n
 
 
+# ------------------------------------------------- delivery by pull request
+#
+# FG-2026-08-31-05 ("nothing observes the gap between done and pushed"), applied to the
+# last mile. `publish` commits the release in the target's MAIN checkout and nothing
+# pushes it: eleven projects carried 6-13 `chore(bmad): distribute release` commits for
+# five weeks, absent from origin/main, and the next sync then skipped every one of them.
+# A project change lands as branch -> PR -> merge (every project's CLAUDE.md), so the
+# release does the same: a fresh branch from origin/main in a throwaway worktree of the
+# target (its main checkout is never switched), the release-owned paths only, a push, a
+# PR. Every refusal is NAMED, printed and ledgered -- never swallowed.
+PR_BRANCH_PREFIX = "bmad/release-"
+BACKUP_PREFIX = "bmad-backup/local-main-"
+RELEASE_SUBJECT = "chore(bmad):"
+
+
+def gh_run(args, cwd=None):
+    """The one place `gh` is called, so a test can stand in for GitHub."""
+    return sh(["gh", *args], cwd=cwd)
+
+
+def repo_slug(real):
+    url = out(["git", "remote", "get-url", "origin"], cwd=real)
+    for pre in ("https://github.com/", "git@github.com:", "ssh://git@github.com/"):
+        if url.startswith(pre):
+            return url[len(pre):].removesuffix(".git").strip("/")
+    return ""
+
+
+def default_branch(real):
+    ref = out(["git", "symbolic-ref", "--short", "refs/remotes/origin/HEAD"], cwd=real)
+    return ref.split("/", 1)[1] if "/" in ref else "main"
+
+
+def _refuse(code, why):
+    return ("refused", f"{code}: {why}")
+
+
+def deliver_by_pr(t, real, wt, release_sha, release_tree, tmp):
+    """Deliver the release to ONE target as a pull request.
+    -> (status, detail): 'pr' (detail = PR url), 'current' (origin/main already carries
+    the release), or 'refused' (detail = '<NAMED CODE>: why')."""
+    tid = t["id"]
+    mroot = t.get("managed_root", "_bmad")
+    if sh(["git", "fetch", "origin", "--quiet"], cwd=real).returncode != 0:
+        return _refuse("FETCH REFUSED", "cannot fetch origin, so origin/main cannot be read")
+    base = default_branch(real)
+    if not out(["git", "rev-parse", "--verify", "--quiet", f"refs/remotes/origin/{base}"], cwd=real):
+        return _refuse("NO BASE", f"origin/{base} does not resolve")
+    slug = repo_slug(real)
+    branch = f"{PR_BRANCH_PREFIX}{release_sha[:12]}"
+    if out(["git", "ls-remote", "--heads", "origin", branch], cwd=real):
+        return _refuse("BRANCH EXISTS", f"{branch} is already on origin; a PR for this release "
+                       "is probably open -- look at it rather than pushing again")
+    if out(["git", "rev-parse", "--verify", "--quiet", f"refs/heads/{branch}"], cwd=real):
+        return _refuse("BRANCH EXISTS", f"{branch} already exists locally (an earlier attempt)")
+
+    pwt = tmp / f"proj-{tid}"
+    if sh(["git", "worktree", "add", "-q", "-b", branch, str(pwt), f"origin/{base}"],
+          cwd=real).returncode != 0:
+        return _refuse("WORKTREE REFUSED", f"could not make a worktree of origin/{base}")
+    try:
+        have = (read_receipt(pwt, t) or {}).get("delivered_digest")
+        if have and have == delivered_digest(release_sha):
+            return ("current", f"origin/{base} already carries this release's delivered content")
+
+        targets = tmp / f"targets-{tid}"
+        targets.write_text(str(pwt) + "\n")
+        env = dict(_ENV, BMAD_TARGETS_FILE=str(targets))
+        pre = porcelain(pwt)
+        r = subprocess.run([str(wt / "sync-bmad-workflows.sh"), "--only", str(pwt),
+                            "--allow-unclean-source"], cwd=wt, capture_output=True,
+                           text=True, env=env)
+        if r.returncode != 0:
+            return _refuse("SYNC FAILED", " | ".join(r.stdout.strip().splitlines()[-2:])[:160])
+        blocked = [l for l in r.stdout.splitlines()
+                   if l.startswith(("BLOCK ", "SKIP ")) or "would SKIP this target" in l]
+        if blocked:
+            return _refuse("DISTRIBUTOR REFUSED", blocked[0].strip()[:140])
+
+        import importlib.util as _ilu
+        _vs = _ilu.spec_from_file_location("vi", FORK / "tools" / "verify-installed.py")
+        _vi = _ilu.module_from_spec(_vs)
+        _vs.loader.exec_module(_vi)
+        ok, rep = _vi.verify(pwt, wt, quiet=True)
+        if not ok:
+            bad = "; ".join(f"{k}: {v['missing']} missing, {v['differing']} differing"
+                            for k, v in rep.items() if v["ok"] is False)
+            return _refuse("NOT VERIFIED", bad)
+        write_receipt(pwt, t, release_sha, release_tree)
+
+        to_commit, held = release_commit_set(pwt, wt, mroot, pre)
+        msg = (f"chore(bmad): distribute release {release_sha[:12]}\n\n"
+               f"Generated replica, synced from {REMOTE}/{CHANNEL}@{release_sha[:12]}.\n"
+               f"Receipt: {mroot}/{RECEIPT}. Do not edit these paths by hand.\n")
+        ok_c, n_c = commit_release_paths(pwt, to_commit, msg)
+        if not ok_c or n_c == 0:
+            return _refuse("COMMIT REFUSED", "nothing release-owned could be committed")
+
+        p = sh(["git", "push", "-u", "origin", branch], cwd=pwt)
+        if p.returncode != 0:
+            lines =p.stderr.strip().splitlines() or ["push failed"]
+            why = next((l for l in lines if l.startswith(("fatal:", "error:", "remote: error"))), lines[-1])
+            return _refuse("PUSH REFUSED", why[:160])
+        if not slug:
+            return _refuse("PR REFUSED", f"branch {branch} is pushed but origin is not a GitHub remote")
+        body = tmp / f"pr-body-{tid}.md"
+        body.write_text(
+            f"Distributes fork release `{release_sha[:12]}` (tree `{release_tree[:12]}`) to this "
+            f"project.\n\nOnly release-owned paths change ({n_c} file(s)): `{mroot}/`, "
+            "`.claude/skills`, `.claude/commands/bmad`, and the fork's delivered guard scripts. "
+            "Built from a fresh branch on origin, so nothing from this project's local main "
+            "is carried.\n"
+            + ("\nHeld back, not committed: "
+               + "; ".join(f"{h} ({why})" for h, why in held[:5]) + "\n" if held else "")
+            + "\nGenerated by `tools/bmad-release.py publish --via-pr`.\n")
+        c = gh_run(["pr", "create", "--repo", slug, "--base", base, "--head", branch,
+                    "--title", f"chore(bmad): distribute release {release_sha[:12]}",
+                    "--body-file", str(body)], cwd=pwt)
+        url = c.stdout.strip().splitlines()[-1] if c.returncode == 0 and c.stdout.strip() else ""
+        if not url:
+            return _refuse("PR REFUSED", f"branch {branch} is pushed, no PR opened: "
+                           + ((c.stderr.strip().splitlines() or ["gh failed"])[-1][:120]))
+        return ("pr", url)
+    finally:
+        sh(["git", "worktree", "remove", "--force", str(pwt)], cwd=real)
+
+
+def record_pr_delivery(t, real, wt, release_sha, release_tree, tmp, results, proposed, exceptions):
+    """Run deliver_by_pr and sort the outcome into the run's three lists. A refusal is
+    printed under its NAMED code and appended to `exceptions`, which publish writes to the
+    release ledger and turns into a non-zero exit -- there is no path that drops it."""
+    status, detail = deliver_by_pr(t, real, wt, release_sha, release_tree, tmp)
+    if status == "pr":
+        proposed.append({"target": t["id"], "pr": detail})
+        print(f"    PR OPENED {detail}")
+    elif status == "current":
+        results.append((t["id"], None))
+        print(f"    ok -- {detail}")
+    else:
+        exceptions.append((t["id"], detail))
+        print(f"    {detail.split(':', 1)[0]} -- {detail}")
+    return status
+
+
+def write_ledger(release_sha, release_tree, results, proposed, exceptions):
+    LEDGER.parent.mkdir(parents=True, exist_ok=True)
+    with LEDGER.open("a") as fh:
+        fh.write(json.dumps({
+            "at": now(), "release_commit": release_sha, "release_tree": release_tree,
+            "channel": CHANNEL, "tool_version": TOOL_VERSION,
+            "delivered": [t for t, _ in results],
+            "proposed": proposed,
+            "exceptions": [{"target": t, "reason": r} for t, r in exceptions],
+        }) + "\n")
+
+
+def align_main(t, real, release_sha, today=None):
+    """After the release PR has merged: bring the target's MAIN checkout level with
+    origin/main without losing the stranded commits. -> (status, detail).
+    Order matters and every step names its refusal: (1) every local-only commit must be a
+    `chore(bmad):` release commit (anything else is project work: stop); (2) origin/main
+    must already carry the release; (3) the commits are pushed to a backup branch and read
+    back from the remote; only then (4) HEAD is moved. Working-tree files OUTSIDE the
+    replica scopes (_bmad, .claude/skills, .claude/commands/bmad) are never touched; dirty
+    files INSIDE them are saved as a patch under .git/ and restored from origin/main."""
+    mroot = t.get("managed_root", "_bmad")
+    if sh(["git", "fetch", "origin", "--quiet"], cwd=real).returncode != 0:
+        return _refuse("FETCH REFUSED", "cannot fetch origin")
+    base = default_branch(real)
+    if out(["git", "branch", "--show-current"], cwd=real) != base:
+        return _refuse("NOT ON BASE", f"main checkout is not on {base}; left alone")
+    ahead = [l for l in out(["git", "log", "--format=%h %s", f"origin/{base}..HEAD"],
+                            cwd=real).splitlines() if l]
+    foreign = [l for l in ahead if not l.split(" ", 1)[1].startswith(RELEASE_SUBJECT)]
+    if foreign:
+        return _refuse("PROJECT WORK ON LOCAL MAIN",
+                       f"{len(foreign)} local commit(s) are not release commits, e.g. {foreign[0][:80]}")
+    receipt = out(["git", "show", f"origin/{base}:{mroot}/{RECEIPT}"], cwd=real)
+    try:
+        carried = json.loads(receipt).get("delivered_digest")
+    except Exception:
+        carried = None
+    if not carried or carried != delivered_digest(release_sha):
+        return _refuse("RELEASE NOT ON ORIGIN", f"origin/{base} does not carry the release yet "
+                       "(PR not merged?); main checkout left alone")
+    if ahead:
+        stamp = (today or datetime.now(timezone.utc).strftime("%Y%m%d"))
+        backup = f"{BACKUP_PREFIX}{stamp}"
+        have = out(["git", "rev-parse", "--verify", "--quiet", f"refs/heads/{backup}"], cwd=real)
+        head = out(["git", "rev-parse", "HEAD"], cwd=real)
+        if have and have != head:
+            return _refuse("BACKUP EXISTS", f"{backup} exists at a different commit")
+        if not have:
+            sh(["git", "branch", backup, "HEAD"], cwd=real)
+        if sh(["git", "push", "origin", backup], cwd=real).returncode != 0:
+            return _refuse("BACKUP PUSH REFUSED", f"{backup} could not be pushed; main not moved")
+        if head not in out(["git", "ls-remote", "origin", f"refs/heads/{backup}"], cwd=real):
+            return _refuse("BACKUP NOT ON REMOTE", f"{backup} not visible on origin; main not moved")
+    replica = (mroot.rstrip("/") + "/",) + tuple(s + "/" for s in MANAGED_EXTRA)
+    owned = [p for p, xy in porcelain(real).items() if p.startswith(replica) and xy != "??"]
+    note = ""
+    if owned:
+        patch = sh(["git", "diff", "HEAD", "--", *owned], cwd=real).stdout
+        gd = out(["git", "rev-parse", "--git-dir"], cwd=real)
+        pf = (Path(real) / gd / f"bmad-align-saved-{release_sha[:12]}.patch")
+        pf.write_text(patch)
+        note = f"; {len(owned)} stale replica edit(s) saved to {pf}"
+    if sh(["git", "reset", "--mixed", "-q", f"origin/{base}"], cwd=real).returncode != 0:
+        return _refuse("RESET REFUSED", "could not move the main checkout")
+    stale = [p for p, xy in porcelain(real).items() if p.startswith(replica) and xy != "??"]
+    if stale:
+        sh(["git", "checkout", f"origin/{base}", "--", *stale], cwd=real)
+    left = [p for p in porcelain(real)]
+    return ("aligned", f"main now at origin/{base}; {len(ahead)} local release commit(s) "
+            f"preserved on the backup branch{note}; {len(left)} other path(s) left as they were")
+
+
 # ------------------------------------------------------------- classification
 def classify(t, release_sha):
     """-> (state, detail). Read-only."""
@@ -635,7 +852,7 @@ def cmd_publish(args):
         return 1
 
     import importlib.util as _ilu
-    results, exceptions = [], []
+    results, exceptions, proposed = [], [], []
     try:
         # A fresh worktree has no node_modules, so the suite cannot run there at all
         # (it dies on `Cannot find module 'yaml'` before the first case). Link the fork's
@@ -668,7 +885,9 @@ def cmd_publish(args):
                 print(f"  SKIP {t['id']} — {why}")
                 continue
             state, detail = classify(t, release_sha)
-            if state == "LOCAL_DRIFT" and not args.force_drift:
+            # --via-pr builds on a fresh branch from origin/main, so the main checkout's
+            # drift is never read, written or deleted: it is not a reason to skip.
+            if state == "LOCAL_DRIFT" and not args.force_drift and not args.via_pr:
                 exceptions.append((t["id"], f"LOCAL_DRIFT: {detail}"))
                 print(f"  SKIP {t['id']} — {detail}")
                 continue
@@ -685,6 +904,12 @@ def cmd_publish(args):
             except Exception as e:
                 exceptions.append((t["id"], f"lane lock: {str(e).splitlines()[0]}"))
                 print(f"  DENIED {t['id']} — {str(e).splitlines()[0]}")
+                continue
+
+            if args.via_pr:
+                print(f"  delivering {t['id']} by pull request")
+                record_pr_delivery(t, real, wt, release_sha, release_tree, tmp,
+                                   results, proposed, exceptions)
                 continue
 
             print(f"  publishing {t['id']}")
@@ -796,20 +1021,40 @@ def cmd_publish(args):
         sh(["git", "worktree", "remove", "--force", str(wt)])
         shutil.rmtree(tmp, ignore_errors=True)
 
-    LEDGER.parent.mkdir(parents=True, exist_ok=True)
-    with LEDGER.open("a") as fh:
-        fh.write(json.dumps({
-            "at": now(), "release_commit": release_sha, "release_tree": release_tree,
-            "channel": CHANNEL, "tool_version": TOOL_VERSION,
-            "delivered": [t for t, _ in results],
-            "exceptions": [{"target": t, "reason": r} for t, r in exceptions],
-        }) + "\n")
+    write_ledger(release_sha, release_tree, results, proposed, exceptions)
 
-    print(f"\ndelivered {len(results)}, exceptions {len(exceptions)}")
+    print(f"\ndelivered {len(results)}, PRs opened {len(proposed)}, exceptions {len(exceptions)}")
+    for p in proposed:
+        print(f"  PR {p['target']}: {p['pr']}  (merge it through the project's own gate, "
+              f"then: bmad-release.py align-main --target {p['target']})")
     for t, r in exceptions:
         print(f"  EXCEPTION {t}: {r}")
     print(f"ledger: {LEDGER}")
     return 0 if not exceptions else 2
+
+
+def cmd_align_main(args):
+    print(f"BMAD ALIGN MAIN — {now()}\n")
+    release_sha, _ = source_gate(fetch=not args.no_fetch)
+    reg = load_registry()
+    chosen = [t for t in reg["targets"] if t["id"] == args.target]
+    if not chosen:
+        print(f"no registered target {args.target!r}")
+        return 1
+    t = chosen[0]
+    f, real = validate_target(t, {})
+    if real is None or [m for lvl, m in f if lvl == "BLOCK"]:
+        print(f"REFUSED -- target failed preflight: {f[0][1] if f else 'unresolved'}")
+        return 1
+    status, detail = align_main(t, real, release_sha)
+    print(f"{status.upper()} -- {detail}")
+    if status == "refused":
+        with LEDGER.open("a") as fh:
+            fh.write(json.dumps({"at": now(), "release_commit": release_sha, "channel": CHANNEL,
+                                 "tool_version": TOOL_VERSION, "delivered": [],
+                                 "exceptions": [{"target": t["id"], "reason": detail}]}) + "\n")
+        return 2
+    return 0
 
 
 def main():
@@ -828,6 +1073,14 @@ def main():
             p.add_argument("--no-test", action="store_true", help="skip the release suite")
             p.add_argument("--force-drift", action="store_true",
                            help="publish over LOCAL_DRIFT, DELETING those edits")
+            p.add_argument("--via-pr", action="store_true",
+                           help="deliver each target as a pull request from a fresh branch on "
+                                "origin/main (the project's main checkout is never touched)")
+    pa = sub.add_parser("align-main", help="after the release PR merged: level the target's "
+                        "main checkout with origin/main, stranded commits backed up first")
+    pa.add_argument("--target", required=True)
+    pa.add_argument("--no-fetch", action="store_true")
+    pa.set_defaults(fn=cmd_align_main)
     args = ap.parse_args()
     return args.fn(args)
 
