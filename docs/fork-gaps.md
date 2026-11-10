@@ -11117,3 +11117,76 @@ search is not "where might I be wrong" — which returns everything and therefor
 but "which of my current beliefs have I never actually looked at, because they arrived
 already labelled as fine". That list is short, and today it contained the answer every
 time.
+
+
+## FG-2026-08-31-08 — the pre-push gate cannot verify a dependency-bump branch, and fails it with 46 false test failures
+
+```yaml
+id: FG-2026-08-31-08
+class: enforcement
+scope: project
+target: "inbound-flow `.githooks/pre-push` — resolves vitest from the main checkout's inventory-manager/node_modules while running the worktree's source"
+marker: "MODULES_DIR="
+fix_scope: project-only
+state: open
+fix: none          # none | partial | done
+delivery: n/a      # n/a | owed | done
+routing: recorded
+owner: mason
+```
+
+(Written 31 Aug 2026 as a second FG-2026-08-31-02, left uncommitted in the fork checkout; renumbered, given its record header and committed 10 Nov 2026 so the id is unique.)
+
+### Incident
+
+`.githooks/pre-push` resolves its tools from the MAIN checkout while running against
+the WORKTREE's source:
+
+    MAIN_ROOT="$(dirname "$GIT_COMMON")"
+    MODULES_DIR="$MAIN_ROOT/inventory-manager/node_modules"
+    VITEST="$MODULES_DIR/.bin/vitest"
+    cd "$WORK_DIR"          # = the worktree
+
+That is deliberate and correct for the common case: a fresh worktree has no
+`node_modules`, so the hook links the main checkout's in and the checks "run for real"
+(its own comment, lines 42-44). The assumption baked in is *a worktree never has its
+own dependencies*.
+
+**A dependency bump breaks that assumption by definition.** To verify a lockfile change
+you must install it, so the worktree necessarily has its own `node_modules` — and then
+the hook loads vitest and its internals from the main tree while the test files resolve
+their imports from the worktree tree. Two copies of the same packages in one process.
+
+Measured on the 2026-08-31 transitive security bump (five packages, lockfile only):
+
+| tools | source | result |
+|---|---|---|
+| worktree | worktree | 603 files, **7526 passed**, exit 0 |
+| main | main | 571 files, **6887 passed**, exit 0 |
+| **main** | **worktree** | **46 failed** / 7480 passed, exit 1 |
+
+Both trees are individually clean. The failures exist only in the mixture the hook
+creates, and they are not reproducible by any honest verification of the change.
+
+**Why this matters more than one annoying push.** The gate is the last thing between a
+broken commit and Railway auto-deploy. Its failure mode here is indistinguishable from a
+real one — it names 46 failing tests — so the rational response is `--no-verify`, which
+disables the gate for genuinely broken pushes too. A guard that cries wolf on the one
+change class that most needs verifying trains the reader to bypass it.
+
+**Shape of the fix.** Prefer the worktree's own `node_modules` when present, falling back
+to the main checkout's only when it is absent:
+
+    if [ -d "$WORK_DIR/node_modules" ]; then
+      MODULES_DIR="$WORK_DIR/node_modules"
+    else
+      MODULES_DIR="$MAIN_ROOT/inventory-manager/node_modules"
+    fi
+
+That preserves the existing behaviour for every ordinary worktree and makes a
+dependency-bump branch verifiable. Deliberately NOT bundled into the security commit —
+a shared-gate change is its own reviewable unit, not a rider on a lockfile patch.
+
+Related: the existing entry on the flaky full-suite pre-push gate forcing `--no-verify`
+(2026-07-11) describes the same symptom from a different cause; this one is deterministic
+and reproducible, not load-dependent.

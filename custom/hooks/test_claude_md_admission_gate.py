@@ -52,12 +52,10 @@ The shared sheet id is `1zWEL`.
 
 
 def workspace(tmp: Path, name: str = "proj") -> Path:
-    """A directory the gate will recognise as a project root: CLAUDE.md beside a package.json,
-    with a .claude/ alongside. Mirrors the real repo and a real worktree, both of which were
-    checked against the live paths on 2026-09-17."""
+    """A directory the gate will recognise as a project root: CLAUDE.md at a git repository
+    root (a .git directory). No package.json: the gate judges any repo (fixed 2026-11-10)."""
     root = tmp / name
-    (root / ".claude").mkdir(parents=True, exist_ok=True)
-    (root / "package.json").write_text("{}", encoding="utf-8")
+    (root / ".git").mkdir(parents=True, exist_ok=True)
     (root / "CLAUDE.md").write_text(BASE, encoding="utf-8")
     return root
 
@@ -251,9 +249,57 @@ def build_cases(tmp: Path):
     bare = tmp / "bare"
     bare.mkdir(parents=True, exist_ok=True)
     (bare / "CLAUDE.md").write_text(BASE, encoding="utf-8")
+    (bare / "package.json").write_text("{}", encoding="utf-8")
+    (bare / ".claude").mkdir(exist_ok=True)
     cases.append((
-        "a CLAUDE.md with no package.json beside it — not a project root",
+        "a CLAUDE.md beside package.json and .claude/ but with no .git - not a repo root",
         edit(bare / "CLAUDE.md", "x", "## A new rule\n\nBody."),
+        "silent",
+    ))
+    # A CLAUDE.md in a subdirectory of a repo: .git sits one level up, so it is not at the root.
+    sub = root / "packages" / "inner"
+    sub.mkdir(parents=True, exist_ok=True)
+    (sub / "CLAUDE.md").write_text(BASE, encoding="utf-8")
+    cases.append((
+        "a CLAUDE.md that is not at a repo root (nested directory)",
+        edit(sub / "CLAUDE.md", "x", "## A new rule\n\nBody."),
+        "silent",
+    ))
+    # A Python repo: .git and CLAUDE.md, no package.json (brand-source-finder shape).
+    pyrepo = tmp / "pyrepo"
+    (pyrepo / ".git").mkdir(parents=True)
+    (pyrepo / "pyproject.toml").write_text("", encoding="utf-8")
+    (pyrepo / "CLAUDE.md").write_text(BASE, encoding="utf-8")
+    cases.append((
+        "a Python repo with no package.json gaining a section",
+        edit(pyrepo / "CLAUDE.md", "## Google Sheets Access", "## Py rule\n\nBody.\n\n## Google Sheets Access"),
+        "notice",
+    ))
+    cases.append((
+        "a Python repo with no package.json: a runaway edit asks",
+        edit(pyrepo / "CLAUDE.md", "Some preamble about what this repo is.",
+             "Some preamble. " + ("Procedure paragraph. " * 700)),
+        "ask",
+    ))
+    cases.append((
+        "a Python repo with no package.json: a scripted write asks",
+        {"tool_name": "Bash", "tool_input": {"command": f"echo '## x' >> {pyrepo / 'CLAUDE.md'}"}},
+        "ask",
+    ))
+    # A git worktree: .git is a FILE pointing at the main checkout.
+    wt = tmp / "worktree"
+    wt.mkdir()
+    (wt / ".git").write_text("gitdir: /elsewhere/.git/worktrees/wt\n", encoding="utf-8")
+    (wt / "CLAUDE.md").write_text(BASE, encoding="utf-8")
+    cases.append((
+        "a worktree whose .git is a file gaining a section",
+        edit(wt / "CLAUDE.md", "## Google Sheets Access", "## WT rule\n\nBody.\n\n## Google Sheets Access"),
+        "notice",
+    ))
+    # Under ~/.claude: silent whatever sits beside it (~/.claude is itself a repo).
+    cases.append((
+        "a CLAUDE.md under ~/.claude",
+        edit(Path.home() / ".claude" / "projects" / "x" / "CLAUDE.md", "x", "## A new rule\n\nBody."),
         "silent",
     ))
 
@@ -326,7 +372,7 @@ def build_cases(tmp: Path):
                       {"tool_name": "Bash", "tool_input": {"command": command}}, "silent"))
 
     # The global and workspace files stay out of scope under the shell path too, the same way
-    # they do under Edit — by marker, not by path. Neither has a package.json beside it.
+    # they do under Edit — by marker, not by path. Neither is at a git repo root.
     cases.append((
         "a scripted write to the GLOBAL ~/.claude/CLAUDE.md",
         {"tool_name": "Bash", "tool_input":
@@ -385,13 +431,33 @@ def main() -> int:
         if proc.returncode != 0 or proc.stdout.strip():
             failures.append("empty stdin: expected a silent exit 0")
 
-        total = len(cases) + 2
+        # The cited policy must resolve: the project's own file when it ships one, else the
+        # global scoring sheet that exists on this machine.
+        add = "## Py rule\n\nBody.\n\n## Google Sheets Access"
+        py = tmp / "pyrepo"
+        def notice_text() -> str:
+            out = run(edit(py / "CLAUDE.md", "## Google Sheets Access", add))
+            return json.loads(out)["hookSpecificOutput"]["additionalContext"] if out else ""
+
+        notice = notice_text()
+        if "~/.claude/docs/global-claude-md-admission-test.md" not in notice:
+            failures.append("repo without its own policy: notice must cite the global scoring sheet")
+        if not Path("~/.claude/docs/global-claude-md-admission-test.md").expanduser().is_file():
+            failures.append("the global scoring sheet the notice cites does not exist here")
+        (py / "docs").mkdir()
+        (py / "docs" / "claude-md-admission-policy.md").write_text("policy", encoding="utf-8")
+        notice = notice_text()
+        if "docs/claude-md-admission-policy.md" not in notice or "global-claude-md" in notice:
+            failures.append("repo with its own policy: notice must cite that policy")
+
+        total = len(cases) + 4
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
     for f in failures:
         print("FAIL:", f)
     silent = sum(1 for c in cases if c[2] == "silent") + 2  # + the two malformed-input cases
+    # (the two policy-path checks above count in the total, not as silence)
     print(f"{total - len(failures)}/{total} cases passed  ({silent} of them assert SILENCE)")
     return 1 if failures else 0
 
