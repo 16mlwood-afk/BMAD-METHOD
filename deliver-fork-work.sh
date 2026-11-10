@@ -264,8 +264,11 @@ if $DO_SYNC && [[ ${#delivered[@]} -gt 0 ]]; then
     ( cd "$proj" || exit 0
       git rev-parse --abbrev-ref HEAD 2>/dev/null | grep -q '^main$' || exit 0
       ahead=$(git rev-list --count origin/main..HEAD 2>/dev/null || echo 0)
-      [[ "${ahead:-0}" -gt 0 ]] && git push -q 2>/dev/null \
-        && printf '    pushed %s (%s commit(s))\n' "$(basename "$proj")" "$ahead"
+      # NEVER push a project's main, and never swallow the gap: a delivery commit that is
+      # not on origin/main is stranded work (FG-2026-08-31-05). Name it; the route is a PR.
+      [[ "${ahead:-0}" -gt 0 ]] \
+        && printf '    NOT ON ORIGIN %s: %s local commit(s) ahead of origin/main -- deliver by PR: python3 tools/bmad-release.py publish --via-pr --target %s\n' \
+             "$(basename "$proj")" "$ahead" "$(basename "$proj")"
     ) || true
   done < "$HOME/.bmad-targets"
 fi
