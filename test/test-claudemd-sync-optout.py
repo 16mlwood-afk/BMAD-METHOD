@@ -27,7 +27,14 @@ BASE = "# Proj\n\n## Agent Behavior Rules\n\n### ALWAYS Use Worktrees\nx\n"
 CASES = {
     "compacted (archive pointer)": BASE + "\nFull text: docs/claude-md-archive/old.md\n",
     "explicit marker": BASE + "\n<!-- bmad:claudemd-sync off -->\n",
+    "swept to five blocks": "# Proj\n\nSwept on 2026-11-10 against the global CLAUDE.md.\n\n## What it is\nx\n",
+    "swept, italic stamp": "# Proj\n\n_Swept on 2026-11-10._\n\n## What it is\nx\n",
+    # The form inbound-flow's swept file actually carries (no archive pointer here,
+    # so only the Swept-on signal can protect it).
+    "swept, day-month-year stamp": "# Proj\n\nSwept on 10 Nov 2026 by the legacy-content method.\n\n## What it is\nx\n",
 }
+# Not a stamp: prose mentioning a sweep mid-sentence must not opt a file out.
+NOT_SWEPT = BASE + "\nWe have not swept on any date yet.\n"
 
 print("claudemd-sync opt-out cases:\n")
 with tempfile.TemporaryDirectory() as d:
@@ -46,6 +53,11 @@ with tempfile.TemporaryDirectory() as d:
     f.write_text(BASE)
     r = run("--sync", f)
     check("control: ordinary project still receives sections", f.read_text() != BASE and r.stdout != "", True)
+
+    f = Path(d) / "mention.md"
+    f.write_text(NOT_SWEPT)
+    r = run("--sync", f)
+    check("control: a mid-sentence 'swept on' is not a stamp", f.read_text() != NOT_SWEPT and r.stdout != "", True)
 
 print(f"\n{len(PASS)} passed, {len(FAIL)} failed")
 sys.exit(1 if FAIL else 0)
