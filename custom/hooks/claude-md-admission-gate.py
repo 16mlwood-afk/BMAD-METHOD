@@ -102,6 +102,19 @@ BUDGET_CHARS = 124317
 RUNAWAY_NET_CHARS = 13243
 
 POLICY = "docs/claude-md-admission-policy.md"
+#: The project policy exists only in some projects. Where it does not, the notice names this
+#: machine-wide scoring sheet, which holds the same admission test (T1/T2 are the policy's § 1).
+GLOBAL_POLICY = "~/.claude/docs/global-claude-md-admission-test.md"
+
+
+def policy_for(target: Path) -> str:
+    """The policy to cite for this project: its own if it ships one, else the global sheet."""
+    try:
+        if (target.parent / POLICY).is_file():
+            return POLICY
+    except OSError:
+        pass
+    return GLOBAL_POLICY
 
 HEADING = re.compile(r"^(##|###) \S")
 
@@ -174,10 +187,8 @@ def is_project_claude_md(raw: str, cwd: str | None = None) -> Path | None:
     decision claude-md-drift.py makes and for the same reason.
 
     Identified by markers rather than by a hardcoded path: the file is named CLAUDE.md and sits
-    beside a package.json in a directory that also holds a .claude/. Verified 2026-09-17
-    against all four real candidates on this machine — the repo root and a live worktree both
-    match; ~/.claude/CLAUDE.md and /Users/masonwood/code/CLAUDE.md have no package.json and do
-    not.
+    at a git repository or worktree root (a .git directory or a .git file), outside ~/.claude.
+    /Users/masonwood/code/CLAUDE.md is not at a repo root and stays out of scope.
     """
     if not raw:
         return None
@@ -203,8 +214,10 @@ def is_project_claude_md(raw: str, cwd: str | None = None) -> Path | None:
     except (OSError, RuntimeError):
         pass
 
-    parent = path.parent
-    if (parent / "package.json").exists() and (parent / ".claude").is_dir():
+    # A repository or worktree root: .git is a directory in a clone and a FILE in a git worktree.
+    # package.json is deliberately NOT required (fixed 2026-11-10, WF-20261110-059): requiring it
+    # left every Python/other-stack project unjudged, silently.
+    if (path.parent / ".git").exists():
         return path
     return None
 
@@ -455,7 +468,7 @@ def main() -> int:
                 ceiling=RUNAWAY_NET_CHARS,
                 current=current,
                 budget=BUDGET_CHARS,
-                policy=POLICY,
+                policy=policy_for(target),
             ),
         )
         return 0
@@ -506,7 +519,7 @@ def main() -> int:
             ASK.format(
                 net=net,
                 ceiling=RUNAWAY_NET_CHARS,
-                policy=POLICY,
+                policy=policy_for(target),
                 headings=named + "\n",
                 current=current,
                 budget=BUDGET_CHARS,
@@ -520,7 +533,7 @@ def main() -> int:
             "allow",
             NOTICE.format(
                 headings=named,
-                policy=POLICY,
+                policy=policy_for(target),
                 current=current,
                 budget=BUDGET_CHARS,
                 over=over,
