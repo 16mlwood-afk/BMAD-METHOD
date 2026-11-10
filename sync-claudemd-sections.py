@@ -47,8 +47,13 @@ import sys
 #   2. the compaction convention: the file points at a claude-md-archive/
 #      directory (the context-compaction skill's archive home).
 # Skipped means --check reports nothing missing (exit 0) and --sync writes nothing.
+#   3. the file has been swept to the five-block shape (a "Swept on <date>" line,
+#      owner ruling 10 Nov 2026: behaviour lives only in ~/.claude/CLAUDE.md, a
+#      project file has no behaviour block, so these sections must not be put back;
+#      ~/.claude/docs/decisions/2026-11-10-claude-md-legacy-content-across-projects.md).
 OPT_OUT_RE = re.compile(r'<!--\s*bmad:claudemd-sync\s+off\s*-->')
 COMPACTION_ARCHIVE_RE = re.compile(r'claude-md-archive/')
+SWEPT_RE = re.compile(r'^[\W_]*Swept on \d', re.MULTILINE | re.IGNORECASE)
 
 
 def opt_out_reason(project_text):
@@ -57,6 +62,8 @@ def opt_out_reason(project_text):
         return 'explicit marker <!-- bmad:claudemd-sync off -->'
     if COMPACTION_ARCHIVE_RE.search(project_text):
         return 'file is compacted (points at claude-md-archive/)'
+    if SWEPT_RE.search(project_text):
+        return 'file is swept to the five-block shape (Swept on <date>); behaviour lives in ~/.claude/CLAUDE.md'
     return None
 
 
