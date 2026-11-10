@@ -40,7 +40,34 @@ hits=$(grep -iE "$signals" "$F" 2>/dev/null \
         | grep -ivE "$pointer_markers" \
         | grep -ioE "$signals" \
         | sort -uf | wc -l | tr -d ' ')
+MSG=""
 if [ "${hits:-0}" -ge 3 ]; then
-  emit "CLAUDE.md drift: this project's CLAUDE.md matches ${hits} shared-doctrine signals — it may be RESTATING shared standards instead of pointing at them. Consider thinning it per STD-CLAUDE-001 (point to STD-* by ID; see shared/claude-md-standard.md + the cash-recovery reference)."
+  MSG="CLAUDE.md drift: this project's CLAUDE.md matches ${hits} shared-doctrine signals — it may be RESTATING shared standards instead of pointing at them. Consider thinning it per STD-CLAUDE-001 (point to STD-* by ID; see shared/claude-md-standard.md + the cash-recovery reference)."
 fi
+
+# Stale sweep stamp (owner ruling 10 Nov 2026): a swept project CLAUDE.md is re-swept at least every
+# 90 days. Warn-only, and repeated EVERY session while true (a standing condition, never "shown once").
+# The date arithmetic lives in the one checker script; if it cannot be read, say so (never silent).
+case "$(head -n 30 "$F" 2>/dev/null)" in
+  *"Swept on "*)
+    CHECKER="${CLAUDE_MD_SWEEP_CHECKER:-$HOME/.claude/scripts/claude-md-sweep/claude-md-tag-check.py}"
+    STALE_MSG=""
+    if [ -f "$CHECKER" ] && command -v python3 >/dev/null 2>&1; then
+      AGE=$(python3 "$CHECKER" --file "$F" --stamp-age-days 2>&1)
+      RC=$?
+      if [ "$RC" -eq 0 ] && [ "${AGE:-0}" -gt 90 ] 2>/dev/null; then
+        STALE_MSG="CLAUDE.md sweep is STALE: the 'Swept on' stamp is ${AGE} days old (limit 90). Re-sweep this project's CLAUDE.md with ~/.claude/docs/claude-md-sweep-method.md, then update the stamp."
+      elif [ "$RC" -ne 0 ]; then
+        STALE_MSG="CLAUDE.md sweep stamp: COULD NOT CHECK its age — ${AGE}"
+      fi
+    else
+      STALE_MSG="CLAUDE.md sweep stamp: COULD NOT CHECK its age — checker script (${CHECKER}) or python3 not available."
+    fi
+    if [ -n "$STALE_MSG" ]; then
+      MSG="${MSG:+$MSG }$STALE_MSG"
+    fi
+    ;;
+esac
+
+[ -n "$MSG" ] && emit "$MSG"
 exit 0

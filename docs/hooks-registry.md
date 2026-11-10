@@ -111,6 +111,18 @@ from `custom/hooks/`. Source of truth for every row: `~/bmad-method-v6/custom/ho
 | owner-step-handback-warn | Stop | A step handed to the owner must name why it needs him | warn |
 | stash-untracked-guard | PreToolUse(Bash) | The stash stack is shared across worktrees — refuse `stash -u` | enforce (gate) |
 
+| Gate (git event) | Purpose | Level |
+|---|---|---|
+| check-claude-md-shape (pre-commit, `.githooks/gates.d/claude-md-shape.conf`) | A project's root CLAUDE.md with a "Swept on" line must keep the approved five-block shape (tags, real G-ids, no 12-word copy of the global file); an unswept file only gets a notice | enforce (refuses when swept) / warn (unswept) |
+| check-claude-md-drift stale-stamp (SessionStart, in `check-claude-md-drift.sh`) | A "Swept on" stamp older than 90 days is reported at every session start until re-swept | warn |
+
+The shape gate (owner ruling 10 Nov 2026) CALLS `~/.claude/scripts/claude-md-sweep/claude-md-tag-check.py` on the
+staged text and holds no checking logic of its own. It is enabled by default for every project (the gates.d drop-in
+is always distributed; the script is inert unless CLAUDE.md is staged). An unreadable `~/.claude/CLAUDE.md` or checker
+prints `CLAUDE.md shape: COULD NOT CHECK` and allows. Override (logged to `~/.claude/logs/claude-md-shape-overrides.jsonl`):
+`CLAUDE_MD_PROJECT_SHAPE_OVERRIDE="<12+ chars>"`. It cannot see whether a FACT is true, a STRICTER reason is true,
+or whether a FACT belongs in block 2 or 3. Golden suite: `npm run test:claudemd-shape-gate`.
+
 **A tenth script, added 2026-10-05: `worktree-edit-guard.py`** — PreToolUse(Edit\|Write\|NotebookEdit),
 enforce (gate). It is the `bmad-worktree-guard` decision table that used to be a 2,900-character
 inline shell command in the template, moved into a script so it can be read and tested: an edit
