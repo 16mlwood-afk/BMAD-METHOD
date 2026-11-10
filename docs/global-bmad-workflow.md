@@ -79,6 +79,24 @@ is never ambiguous.
 
 **Never modify workflows directly in `_bmad/bmm/workflows/`.** Changes made in projects will be overwritten on next sync. Instead, modify `~/bmad-method-v6/custom/workflows/` and re-sync, or use `--pull` to bring project changes back to the source first.
 
+### A release reaches a project's ORIGIN by pull request, never as a local commit
+
+`python3 tools/bmad-release.py publish --via-pr [--target <id>]` is the delivery path for a
+project whose main checkout is dirty, behind or diverged (the plain `publish` commits in the
+main checkout, and nothing pushes that commit — 11 projects stranded 6–13 of them for five
+weeks). It makes a throwaway worktree of the target on `bmad/release-<sha12>` from
+`origin/<default>`, runs the distributor into it, commits only the release-owned paths,
+pushes, and opens a PR. The project's main checkout is not read or written. Skips with no PR when origin/main already carries the release's delivered digest.
+Every refusal is printed under a name (`FETCH REFUSED`, `PUSH REFUSED`, `PR REFUSED`,
+`DISTRIBUTOR REFUSED`, `BRANCH EXISTS`, …), appended to `docs/release-ledger.jsonl` as an
+exception, and makes the run exit 2. Merge the PR through the project's own gate
+(its CLAUDE.md), then `bmad-release.py align-main --target <id>`: it refuses unless every
+local-only commit is a `chore(bmad):` commit and origin/main carries the release, pushes
+those commits to `bmad-backup/local-main-<date>` and reads it back from the remote, then
+moves main (`reset --mixed`, so no working-tree byte is lost) and restores only replica-scope
+files and files provably unchanged since the old local main. Everything else (project edits,
+untracked work) stays as it was. Golden cases: `test/test-release-by-pr.py`.
+
 ### The core lane (`_bmad/core/workflows/`) is UNMANAGED — shadow, don't patch
 
 The sync maps `custom/workflows/` → `_bmad/bmm/workflows/` only. Core workflows (`_bmad/core/workflows/*` — e.g. `brainstorming`, `party-mode`) are frozen at whatever the original install shipped: they are NOT in the fork lane, the sync never touches them, and the managed-path edit guard blocks in-place edits with nowhere to redirect. That is by design, not an oversight — but it means a core workflow can drift from fork doctrine with no in-place fix.

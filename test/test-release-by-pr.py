@@ -73,7 +73,10 @@ def fixture(td):
     wt = td / "wt"
     wt.mkdir()
     sync = wt / "sync-bmad-workflows.sh"
+    # Strict like the real distributor: the targets file (BMAD_TARGETS_FILE) must hold a
+    # line ending in /_bmad/bmm/workflows, and --only must name that project's root.
     sync.write_text('#!/bin/bash\nwhile [[ $# -gt 0 ]]; do [[ "$1" == "--only" ]] && T="$2"; shift; done\n'
+                    'grep -q "^$T/_bmad/bmm/workflows$" "$BMAD_TARGETS_FILE" || { echo "SKIP  $T (not registered)"; exit 0; }\n'
                     'mkdir -p "$T/_bmad/bmm/workflows"; echo "new release" > "$T/_bmad/bmm/workflows/demo.md"\n')
     sync.chmod(0o755)
     return proj, origin, wt

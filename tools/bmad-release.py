@@ -475,7 +475,8 @@ def deliver_by_pr(t, real, wt, release_sha, release_tree, tmp):
             return ("current", f"origin/{base} already carries this release's delivered content")
 
         targets = tmp / f"targets-{tid}"
-        targets.write_text(str(pwt) + "\n")
+        # The distributor only accepts a target line that ends in the workflows path.
+        targets.write_text(f"{pwt}/{mroot}/bmm/workflows\n")
         env = dict(_ENV, BMAD_TARGETS_FILE=str(targets))
         pre = porcelain(pwt)
         r = subprocess.run([str(wt / "sync-bmad-workflows.sh"), "--only", str(pwt),
@@ -534,6 +535,10 @@ def deliver_by_pr(t, real, wt, release_sha, release_tree, tmp):
         return ("pr", url)
     finally:
         sh(["git", "worktree", "remove", "--force", str(pwt)], cwd=real)
+        # A branch that never reached origin is our own debris: leaving it would make the
+        # retry refuse with BRANCH EXISTS. A pushed branch is kept -- it is the PR's head.
+        if not out(["git", "ls-remote", "--heads", "origin", branch], cwd=real):
+            sh(["git", "branch", "-D", branch], cwd=real)
 
 
 def record_pr_delivery(t, real, wt, release_sha, release_tree, tmp, results, proposed, exceptions):
@@ -594,9 +599,13 @@ def align_main(t, real, release_sha, today=None):
     if not carried or carried != delivered_digest(release_sha):
         return _refuse("RELEASE NOT ON ORIGIN", f"origin/{base} does not carry the release yet "
                        "(PR not merged?); main checkout left alone")
+    stamp = (today or datetime.now(timezone.utc).strftime("%Y%m%d"))
+    backup = f"{BACKUP_PREFIX}{stamp}"
+    # What "unchanged since the old local main" is measured against: the backup branch
+    # (the old main, preserved) when there is one, else the current HEAD.
+    basis = (f"refs/heads/{backup}" if out(["git", "rev-parse", "--verify", "--quiet",
+                                            f"refs/heads/{backup}"], cwd=real) else "HEAD")
     if ahead:
-        stamp = (today or datetime.now(timezone.utc).strftime("%Y%m%d"))
-        backup = f"{BACKUP_PREFIX}{stamp}"
         have = out(["git", "rev-parse", "--verify", "--quiet", f"refs/heads/{backup}"], cwd=real)
         head = out(["git", "rev-parse", "HEAD"], cwd=real)
         if have and have != head:
@@ -619,6 +628,17 @@ def align_main(t, real, release_sha, today=None):
     if sh(["git", "reset", "--mixed", "-q", f"origin/{base}"], cwd=real).returncode != 0:
         return _refuse("RESET REFUSED", "could not move the main checkout")
     stale = [p for p, xy in porcelain(real).items() if p.startswith(replica) and xy != "??"]
+    # Outside the replica scopes a file is restored only when it provably holds NOTHING of
+    # the project's own: its bytes equal what the old local main committed (a release the
+    # fork wrote), or it never existed locally at all. Anything else is an edit and stays.
+    for p, xy in porcelain(real).items():
+        if xy == "??" or p in stale:
+            continue
+        old = subprocess.run(["git", "show", f"{basis}:{p}"], cwd=real, capture_output=True, env=_ENV)
+        cur = Path(real) / p
+        if (old.returncode == 0 and cur.is_file() and cur.read_bytes() == old.stdout) \
+                or (old.returncode != 0 and not cur.exists()):
+            stale.append(p)
     if stale:
         sh(["git", "checkout", f"origin/{base}", "--", *stale], cwd=real)
     left = [p for p in porcelain(real)]
