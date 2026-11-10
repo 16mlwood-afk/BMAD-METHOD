@@ -31,7 +31,7 @@ metadata:
 
 **Key Insight:** Claude Design's "Set up your design system" is a **web form** (no API) that **seeds a persistent, self-generating workspace** (see "HOW CLAUDE DESIGN SETUP ACTUALLY WORKS" below). Its strongest inputs are, in order: the **GitHub repo link** ("What works best: code and designs"), a **company name + blurb**, freeform **notes**, and optional **.fig / fonts / assets**. Three facts follow directly:
 
-1. **What you seed is the load-bearing decision.** On setup Claude Design copies the connected source into a workspace and GENERATES a reusable UI kit + example product pages from it, one-shot, with no later re-curation gate. So the system you live with is derived from the seed — making *what* you connect far more consequential than merely *whether it is on main*.
+1. **What you seed is the load-bearing decision.** On setup Claude Design copies the connected source into a workspace and GENERATES a reusable UI kit + example product pages from it at setup (updatable later with Remix, but the seed sets the default every project inherits). So the system you live with is derived from the seed — making *what* you connect far more consequential than merely *whether it is on main*.
 2. **Code beats prose — so deliver the CURATED, current-UI-FREE BUNDLE.** A markdown brand-identity doc underfeeds the form, so the system must also exist as renderable code (`tokens.css` + a fuller `sample.html`). But "code" means the curated vocabulary bundle (tokens + an *idealized* component sample) — NOT the live app repo or its `src/` frontend. Seeding current product screens re-encodes the very UI a redesign exists to escape.
 3. **The bundle must be on `origin/main` before the link is pasted** — a secondary delivery requirement. Claude Design fetches from GitHub; an un-delivered bundle is invisible to it (the 2026-05-28 fail-find failure `delivery-to-main.md` prevents). "On main" is necessary but NOT sufficient: the link must point at the bundle *subfolder*, never the whole repo.
 
@@ -41,7 +41,7 @@ This workflow is the only "set up a design system" front door that closes all th
 
 ## HOW CLAUDE DESIGN SETUP ACTUALLY WORKS — READ FIRST
 
-The claude.ai/design "Set up your design system" form is **not** a passive GitHub fetch. It is a **ONE-TIME seeding event** that creates a **persistent, self-generating workspace** — a project containing `src/`, `ui_kits/`, `preview/`, `docs/`, `assets/`, `stories/`, generated `.html` product pages, plus a README/manifest and `SKILL.md`.
+The claude.ai/design "Set up your design system" form is **not** a passive GitHub fetch. It is a **seeding event** (done once, updatable later; see the correction below) that creates a **persistent, self-generating workspace** — a project containing `src/`, `ui_kits/`, `preview/`, `docs/`, `assets/`, `stories/`, generated `.html` product pages, plus a README/manifest and `SKILL.md`.
 
 On setup, Claude Design:
 
@@ -49,13 +49,15 @@ On setup, Claude Design:
 2. **Copies selected files** into the workspace. (Observed: connecting a whole repo copies `src/`, `_bmad/`, `_bmad-output/` etc. in.)
 3. **Generates**, one-shot, its own `colors_and_type.css`, a README, preview cards, and — most importantly — a reusable **UI KIT of components and example product pages**, all **derived from the seed**.
 
-That UI kit is **high-leverage and permanent**: it becomes the basis for **every future prototype** in the system. There is **no later "re-curate the seed" gate**. What you seed is what you live with.
+That UI kit is **high-leverage**: it becomes the basis for **every future prototype** in the system. Anthropic, admin guide (support.claude.com/en/articles/14604406, read 2026-11-10): *"Once a designer sets up your organization's design system, all projects created within that organization automatically use it."*
+
+**Correction, 2026-11-10 (primary source over observation).** This section used to say the seed is permanent, with "no later re-curate gate" and a contaminated seed that "cannot be un-learned without rebuilding the workspace". Anthropic's own setup article (support.claude.com/en/articles/14604397, read 2026-11-10) contradicts that: *"When your design system changes, you can update it within Claude Design"* (organization settings, then **Remix**), and the launch post (anthropic.com/news/claude-design-anthropic-labs, 17 Apr 2026) says *"You can refine the system over time, and teams can maintain more than one."* Projects started from the home screen use the system only once its **Published** toggle is on. So the seed is the strong default, not a one-way door: fix a bad seed with Remix before rebuilding. The rule below (seed the look, not screens) stays as OUR practice; Anthropic recommends codebases as input and gives no warning against them, so the rule rests on our observation, not on their documentation.
 
 **The consequence that governs this entire workflow:** because generation is derived from the seed, the seed's *composition* leaks into the kit. **If you point setup at the live app repo or its `src/` frontend, Claude Design templates its UI kit FROM your current screens** — re-encoding the exact layout/IA a redesign exists to escape. This is the *same* anti-bias failure `design-handoff` exists to prevent, sneaking in through the setup door.
 
 **THE ONE HARD RULE:** Seed the system from a **curated, current-UI-FREE *vocabulary* bundle** — design tokens (color/type/spacing/radius/status) + an **idealized** component sample. It must encode HOW THE SYSTEM LOOKS, never the current page COMPOSITIONS. **Never connect the live app repo, the `src/` frontend, or the whole codebase at setup.**
 
-**The test for any candidate seed file:** *"Does this teach the system a visual primitive (a token or an idealized component), or does it teach the system the shape of an existing screen?"* Primitives go in; screens stay out. When in doubt, exclude — a sparse seed can be enriched; a contaminated seed silently poisons every future prototype and cannot be un-learned without rebuilding the workspace.
+**The test for any candidate seed file:** *"Does this teach the system a visual primitive (a token or an idealized component), or does it teach the system the shape of an existing screen?"* Primitives go in; screens stay out. When in doubt, exclude — a sparse seed can be enriched; a contaminated seed shapes every future prototype until it is corrected (Remix in organization settings; see the correction above).
 
 **Setup ≠ handoff (do not conflate).** Connecting GitHub for per-page `design-handoff` work later is **fine and safe** — there the bias filter is the **brief**, which is bias-free by construction (it deliberately omits current layout). Repo access in the handoff path is only so Claude Design can READ the brief, schema, and tokens; it designs *against the clean workspace UI kit*, not the live app. **The danger is ONLY the system-setup seed.**
 
