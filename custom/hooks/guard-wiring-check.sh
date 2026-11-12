@@ -45,8 +45,16 @@ SETTINGS_LOCAL="$PROJECT/.claude/settings.local.json"
 SETTINGS_TRACKED="$PROJECT/.claude/settings.json"
 LEGACY_TELL="edit-equivalent (sed -i / cat >"
 fail=0
+# OUTPUT BUDGET (WF-20261112-046, 12 Nov 2026). On SessionStart the project wrapper prefixes
+# "GUARD WIRING: " and the context register budgets the whole notice at 60 characters; the
+# full sentences ran to ~400. Default output is now ONE line of at most 46 characters naming
+# the count and the command; `--detail` (or GUARD_WIRING_DETAIL=1) prints every finding.
+DETAIL=0
+{ [ "${1:-}" = "--detail" ] || [ "${GUARD_WIRING_DETAIL:-}" = "1" ]; } && DETAIL=1
+findings=0
+details=""
 
-bad() { printf '  ✗ %s\n' "$1"; fail=1; }
+bad() { details="${details}  ✗ $1"$'\n'; findings=$((findings + 1)); fail=1; }
 
 if [ ! -f "$GUARD" ]; then
   bad "reviewed guard missing at .claude/hooks/bash_edit_guard.py"
@@ -96,7 +104,12 @@ for _h in $_inventory; do
 done
 
 if [ "$fail" -ne 0 ]; then
-  printf '  → run: bash .claude/hooks/guard-health-check.sh   (full diagnosis)\n'
+  if [ "$DETAIL" -eq 1 ]; then
+    printf '%s' "$details"
+    printf '  → run: bash .claude/hooks/guard-health-check.sh   (full diagnosis)\n'
+  else
+    printf '%s broken; run guard-wiring-check.sh --detail\n' "$findings"
+  fi
 fi
 # Silent when healthy: a session-start check that speaks on every boot gets ignored,
 # and an ignored check is indistinguishable from an absent one.
