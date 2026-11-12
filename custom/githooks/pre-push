@@ -1,0 +1,195 @@
+#!/usr/bin/env sh
+# .githooks/pre-push — fork-distributed gate dispatcher (STD-HOOKACTIVATE-001).
+#
+# THIN BY DESIGN. The gate LOGIC lives in ./scripts/* (distributed via the fork
+# scripts rail). This entrypoint only wires git → those gates, reading the list
+# from .githooks/gates.conf (project-owned) and .githooks/gates.d/*.conf
+# (fork-owned drop-ins — gap 496, so a new fork gate retrofits the fleet without
+# a per-repo gates.conf edit). A gate script not present in this repo is skipped,
+# so the conf can name the full fleet set without breaking a repo that lacks one.
+# Do not list one script in both registries (it would run twice); fork gates live in gates.d.
+#
+# ---------------------------------------------------------------------------
+# FORK-CANON 2026-09-20 — IT USED TO PASS OVER NOTHING, AND SAY NOTHING.
+#
+# Where core.hooksPath is the ABSOLUTE path of the shared checkout's .githooks/,
+# this file runs for a push from every worktree. But it looked for its
+# registry under `git rev-parse --show-toplevel` — the pushing WORKTREE — where
+# .githooks/ did not exist (it was untracked), and an absent registry returned
+# 0. So from every worktree the hook ran no gate, printed nothing and passed.
+#
+# What it does now:
+#   1. Finds the registry in this order, and says so when it falls back:
+#        a. <pushing checkout>/.githooks/gates.conf   (tracked, so normally here)
+#        b. the directory this dispatcher lives in    (where core.hooksPath points)
+#        c. the main worktree's .githooks/            (via --git-common-dir)
+#   2. REFUSES (non-zero) when none holds a registry, naming every place it
+#      looked — and refuses when a registry is read but ZERO gates execute.
+#      A check that passes over nothing has not passed.
+#   3. Runs gates from the pushing checkout's root with git's repository-
+#      locating variables unset (the list comes from `git rev-parse
+#      --local-env-vars`). Git exports GIT_DIR to hooks; a test that builds a
+#      temporary repository under an inherited GIT_DIR writes into THIS one.
+#      That happened on 2026-09-09 and again on 2026-09-19. Nothing is printed
+#      about the environment — the variables are only unset, never shown.
+#   4. Names the gates it ran on the way out, so quiet cannot read as clean.
+#
+# Proved in amazon-removal-assistant by src/githooks-pre-push.test.ts (real
+# pushes from a worktree-shaped path); that test fails loudly if a sync ever
+# replaces this file with an older copy. A project whose .githooks/ is UNTRACKED
+# keeps the pre-existing gap this cannot reach: git resolves a RELATIVE
+# core.hooksPath per worktree, so a fresh worktree has no hook to run at all.
+# ---------------------------------------------------------------------------
+#
+# Enforcement class: best-effort GATE (deterministic only when activated via
+# core.hooksPath; bypassable with `git push --no-verify`, which git logs).
+# The fail-CLOSED guarantee is the CI tier (deferred) — NOT this hook.
+set -eu
+
+# --- 0. a push that only deletes refs sends no code (WF-20260925-066) --------
+# Git feeds "<local ref> <local sha> <remote ref> <remote sha>" lines on stdin.
+# Read it once. When every line's local sha is all zeros the push deletes refs
+# and nothing else, so there is no code for any gate to check — say so and let
+# it through. Empty stdin (a manual run) and any push that updates a ref run
+# every gate as before, and the lines are passed on to each gate.
+PUSH_REFS=""
+[ -t 0 ] || PUSH_REFS="$(cat)"
+if [ -n "$PUSH_REFS" ]; then
+  DELETE_ONLY=1
+  SEEN=0
+  while read -r _lref _lsha _rref _rsha; do
+    [ -n "${_lref}${_lsha}" ] || continue
+    SEEN=1
+    if ! printf '%s' "$_lsha" | grep -Eq '^0+$'; then
+      DELETE_ONLY=0
+    fi
+  done <<EOF
+$PUSH_REFS
+EOF
+  if [ "$SEEN" -eq 1 ] && [ "$DELETE_ONLY" -eq 1 ]; then
+    printf 'pre-push: every ref in this push is a deletion, no code is sent, so no gate ran.\n' >&2
+    exit 0
+  fi
+fi
+
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+COMMON="$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
+HOOK_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" 2>/dev/null && pwd -P || true)"
+MAIN_ROOT=""
+[ -n "$COMMON" ] && MAIN_ROOT="$(dirname -- "$COMMON")"
+
+status=0
+RAN=""         # dedup: a script listed in both gates.conf and gates.d runs only once
+GATES_RAN=0    # gates that actually EXECUTED — zero is a refusal, not a pass
+GATE_NAMES=""
+
+# --- 1. locate the registry ------------------------------------------------
+REGISTRY_DIR=""
+for candidate in "$ROOT/.githooks" "$HOOK_DIR" "${MAIN_ROOT:+$MAIN_ROOT/.githooks}"; do
+  [ -n "$candidate" ] || continue
+  if [ -f "$candidate/gates.conf" ]; then
+    REGISTRY_DIR="$candidate"
+    break
+  fi
+done
+
+if [ -z "$REGISTRY_DIR" ]; then
+  cat >&2 <<EOF
+
+  pre-push REFUSED: no gate registry (gates.conf) was found, so no gate ran
+  and nothing was verified. This is deliberately not a silent pass.
+
+  Looked for gates.conf in:
+    $ROOT/.githooks/          (the checkout being pushed)
+    ${HOOK_DIR:-<could not resolve>}/          (where this dispatcher lives)
+    ${MAIN_ROOT:-<could not resolve>}/.githooks/          (the main worktree)
+
+  Fix:      restore .githooks/ in the checkout being pushed. Where it is
+            tracked: git checkout -- .githooks
+  Override: git push --no-verify   (logged by git)
+
+EOF
+  exit 1
+fi
+
+if [ "$REGISTRY_DIR" != "$ROOT/.githooks" ]; then
+  printf 'pre-push: %s has no .githooks/gates.conf; using the registry at %s.\n' "$ROOT" "$REGISTRY_DIR" >&2
+  printf 'pre-push: gates still run against %s. Give that checkout its own .githooks/gates.conf to stop seeing this.\n' "$ROOT" >&2
+fi
+
+# --- 3. run gates from the pushing checkout, repository variables unset ----
+cd "$ROOT"
+for v in $(git rev-parse --local-env-vars 2>/dev/null); do
+  unset "$v" 2>/dev/null || true
+done
+
+# Run every gate registered for event $2 in conf file $1.
+run_gates_from() {
+  conf="$1"
+  want="$2"
+  [ -f "$conf" ] || return 0
+  while IFS= read -r line || [ -n "$line" ]; do
+    case "$line" in '' | \#*) continue ;; esac
+    event=$(printf '%s' "$line" | awk '{print $1}')
+    [ "$event" = "$want" ] || continue
+    # strip the event, any trailing inline "# comment", and trailing whitespace —
+    # without the comment strip, "$ROOT/$cmd" includes the comment, [ -f ] fails,
+    # and the gate is SILENTLY skipped (bit every gates.d conf, which carry
+    # inline comments — the design-brief/dataflow gates were inert fleet-wide)
+    cmd=$(printf '%s' "$line" | sed 's/^[^[:space:]]*[[:space:]]*//; s/[[:space:]]*#.*$//; s/[[:space:]]*$//')
+    [ -n "$cmd" ] || continue
+    case "$RAN" in *"|$cmd|"*) continue ;; esac   # already ran this script
+    RAN="$RAN|$cmd|"
+    script="$ROOT/$cmd"
+    if [ ! -f "$script" ]; then
+      # A fork gate kept in .githooks/ may be missing from an older checkout;
+      # use the copy beside the registry rather than skipping it.
+      case "$cmd" in
+        .githooks/*) script="$REGISTRY_DIR/${cmd#.githooks/}" ;;
+      esac
+    fi
+    [ -f "$script" ] || continue   # gate absent in this repo → no-op (by design)
+    printf 'pre-push gate: %s\n' "$cmd" >&2
+    GATES_RAN=$((GATES_RAN + 1))
+    GATE_NAMES="$GATE_NAMES $cmd"
+    if [ -n "$PUSH_REFS" ]; then
+      gate_ok=1
+      printf '%s\n' "$PUSH_REFS" | sh "$script" || gate_ok=0
+    else
+      gate_ok=1
+      sh "$script" </dev/null || gate_ok=0
+    fi
+    if [ "$gate_ok" -eq 0 ]; then
+      printf 'pre-push BLOCKED by %s. Override (logged): git push --no-verify\n' "$cmd" >&2
+      status=1
+    fi
+  done < "$conf"
+}
+
+run_gates_from "$REGISTRY_DIR/gates.conf" pre-push
+if [ -d "$REGISTRY_DIR/gates.d" ]; then
+  for drop in "$REGISTRY_DIR"/gates.d/*.conf; do
+    [ -f "$drop" ] || continue
+    run_gates_from "$drop" pre-push
+  done
+fi
+
+# --- 2b / 4. zero gates is a refusal; otherwise name what ran ---------------
+if [ "$GATES_RAN" -eq 0 ]; then
+  cat >&2 <<EOF
+
+  pre-push REFUSED: the registry at $REGISTRY_DIR was read and ZERO gates
+  ran, so nothing was verified. Either no pre-push gate is registered, or
+  every registered gate's script is missing from $ROOT.
+
+  Override: git push --no-verify   (logged by git)
+
+EOF
+  exit 1
+fi
+
+if [ "$status" -eq 0 ]; then
+  printf 'pre-push: %s gate(s) ran and passed:%s\n' "$GATES_RAN" "$GATE_NAMES" >&2
+fi
+
+exit "$status"
