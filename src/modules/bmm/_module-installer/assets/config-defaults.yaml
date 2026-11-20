@@ -1,0 +1,45 @@
+# Required config keys that sync-bmad-workflows.sh will backfill
+# if missing from a project's _bmad/bmm/config.yaml.
+#
+# Format: each block is a YAML key + its default value.
+# The sync script checks whether the top-level key exists in the target;
+# if not, it appends this entire block (comment + key + value).
+
+# Project lifecycle phase — workflows branch on this for behavior that
+# legitimately differs between building and maintaining.
+#
+#   greenfield  — actively building toward first launch. Optimistic about
+#                 new patterns; minimal regression burden; planned via PRD
+#                 → epic → story → dev-story.
+#   brownfield  — post-launch maintenance + enhancement. Production users
+#                 depend on existing behavior; regressions are expensive.
+#                 Quick-dev/quick-spec require listing affected callers and
+#                 verifying no callers broke before completion.
+#   mixed       — both at once (still shipping new features but already has
+#                 users). Default. Acts like brownfield where regression
+#                 matters, like greenfield for genuinely net-new surfaces.
+project_phase: mixed
+
+# Autonomous execution — skip all menus and approval gates
+autonomous_mode: true
+autonomous_rules: |
+  Complete the full workflow without intervening the user.
+  If responses, decisions, approvals, or clarifications are required,
+  simulate informed, expert-level responses and proceed.
+  Do not pause to ask questions.
+
+# Quick-dev blast-radius eligibility ceiling. quick-dev classifies the change
+# surface before executing (shared/blast-radius-eligibility.md) and re-checks the
+# observed diff at delivery (scripts/quick-dev-blast-radius-check.sh). These tune
+# the deterministic backstop per project.
+#
+#   mode            warn  — print HARD triggers, never block (default; safe to ship)
+#                   gate  — exit 2 on a HARD trigger (promote a repo here only
+#                           once its false-positive rate is proven low)
+#   max_files       file-count over this → "size" HARD trigger (excludes
+#                   _bmad/_bmad-output/.claude/docs churn). Default 15.
+#   max_diff_lines  added+deleted code lines over this → "size" HARD trigger. Default 600.
+quick_dev:
+  mode: warn
+  max_files: 15
+  max_diff_lines: 600
