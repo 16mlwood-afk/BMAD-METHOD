@@ -35,6 +35,7 @@
 - [ ] The approved submission action ({pending_submit_action}) called exactly once, after approval; ambiguous outcomes blocked, never retried
 - [ ] Confirmation reference captured (or an honest BLOCKED state — no guessed success)
 - [ ] Post-submit box check run against the transmission protocol (PASS, FAIL named in a BLOCKED box, or "owed" under Open items — never silently skipped)
+- [ ] Receipt carries the "Portal summary probe" line (visible before submit yes/no/unknown, where, figures verbatim, or "none")
 - [ ] Receipt artifact written to {implementation_artifacts}/filing-receipts/ with no blank sections
 - [ ] BOTH markers (pre-flight + approval) deleted at session close
 
