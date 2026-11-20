@@ -23,6 +23,8 @@ Emit `▶ PHASE 2/7 — Data pull`.
 - Fallback (de-vat-audit not connected): read-only admin API (`sql-query`) for the period's German-VAT-relevant invoices. Read-only means read-only: SELECT queries exclusively.
 - Store `{return_data}`: invoice list (count, ids), per-rate totals, any PDFs/artifacts the portal upload needs.
 
+- **Acquisition documents for the box check (step-04 needs these).** From the same read-only pull, store `{acquisition_docs}`: every purchase invoice AND credit note for `{period}` from an EU supplier whose goods came into Germany zero-rated (Amazon EU S.a r.l. and any other EU supplier). One entry per document, fields exactly as `audit_check_boxes` takes them: `number`, `docType` (`invoice` | `credit_note`), `netCents`, `departureCountry` (where the goods left from, ISO-2), `deRate` (the German rate on arrival, 19 or 7), `buyerVatNumber`, `destinationCountry`, `vatChargedCents`. A value the data does not hold is `null`, never a guess: the check lists that document as unplaced and says COULD NOT CHECK. Credit notes ride in this list with `docType: credit_note`; never drop them and never map them anywhere but here.
+
 Emit `✔ PHASE 2/7 — Data pull complete: {invoice count} invoices, totals gathered` (or a BLOCKED box if the source is unreachable).
 
 ### 2. Phase 3 — Validation
