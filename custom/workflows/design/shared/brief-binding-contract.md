@@ -118,6 +118,14 @@ own document. What changes is how the fork's workflows **treat** it:
   rule exists only for consistency across the product, it is labelled `[tradeable]` so a better idea
   can be traded against it.
 
+**Owner-ruled numbers are the exception (22 Nov 2026).** Where the owner has ruled that a number named by the
+project's design system binds, the project's design policy records it with his words and date, and it binds here
+even though it is a density or styling number. The first case: row height. Owner, 22 Nov 2026, "y" to *"Row height:
+keep Cabinet's dense rows as the binding numbers, and use your references for layout only"* (inbound-flow ask
+OA-20261122-004) — Cabinet's row-height tokens bind the reviewer; a reference never binds a row height, a gap or any
+spacing. This overrides "density is advisory" (the 19 Sep 2026 ruling) **only for numbers the project's policy lists as
+owner-ruled**; everything else in this paragraph stays advisory. The project policy section is the source, not this file.
+
 **The classification test (one question):** *if a design broke this rule, could a reader come away
 believing something false about the data, the money, the state of the work, or who may see what?*
 Yes → truth rule, binding. No → advisory.
