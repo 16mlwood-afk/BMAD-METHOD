@@ -29,6 +29,12 @@ Empty result → run this workflow with `--artifact`. Non-empty → run `design-
 
 ---
 
+## NO OPEN-ENDED CRITIQUE — ONE ANCHORED ENTRY POINT (owner, 22 Nov 2026)
+
+Owner, 22 Nov 2026, ask OA-20261122-006 (inbound-flow): *"dont allow the user to do this (me)"*. A screen is never critiqued open-ended ("what is wrong with this UI?"), even when the owner asks. Where the project provides the anchored review entry point (inbound-flow: `docs/design-source/auto_design_review.py critique <source> --page <page> --screen <screen>`; a returned design goes through `run`), this audit goes through it: the screen beside its ONE assigned reference (none assigned: it refuses and names the missing reference), the constrained Art Director prompt, the explicit AI-tell check (tinted notice boxes, decorative icons, unnecessary card wrappers, pastel status pills, airy rows), and a mechanical punch-list as the only output. The hierarchy, information-architecture and density read below is then made against that reference and Cabinet's tokens, not from taste. Legacy screens being salvaged go through the same door. Full text: `../design-tuning/workflow.md`, "NO OPEN-ENDED CRITIQUE".
+
+---
+
 ## WORKFLOW ARCHITECTURE
 
 Single step: `steps/step-01-audit.md`. No fix phase. No verify phase.

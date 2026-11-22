@@ -42,6 +42,19 @@ The evidence discipline below (treatment reads source, composition reads pixels,
 
 ---
 
+## NO OPEN-ENDED CRITIQUE — ONE ANCHORED ENTRY POINT (owner, 22 Nov 2026) — CRITICAL
+
+Owner, 22 Nov 2026, ask OA-20261122-006 (inbound-flow), about "what is wrong with this UI?" critiques: *"dont allow the user to do this (me)"*. **Never run a screen critique open-ended, even when the owner asks for one.** Where the project provides an anchored review entry point (inbound-flow: `python3 -I docs/design-source/auto_design_review.py` — `run <return> --page <page>` for a returned design, `critique <source> --page <page> --screen <screen>` for any other screen or image, legacy screens included), **this workflow calls it instead of critiquing freely**, and the correction message is built from its `CORRECTION.md`:
+
+1. the screen beside its ONE assigned reference (the project's `review-pairs.json`); **with no reference assigned it refuses and names the missing reference — it does not critique freely;**
+2. the constrained prompt: *"You are an Art Director enforcing a dense, finance-grade design system. Image 1 is the screen under review. Image 2 is the Golden Reference. Ignore the data values. List exactly where Image 1 fails to match the reference's structure, and where it breaks the Cabinet tokens for density, padding and type hierarchy."*;
+3. an explicit AI-tell check: tinted notice boxes, decorative icons, unnecessary card wrappers, pastel status pills, airy rows;
+4. output only a mechanical punch-list of fixes.
+
+The job is split (owner-adopted advice, 22 Nov 2026): the reference image judges structure, density, alignment and composition; a short rule list judges only pass or fail truth. A project with no such entry point and no reference assigned to the screen reports that, and stops: it does not fall back to a free critique. **Owner-ruled numbers bind** (`../shared/brief-binding-contract.md` §2): row height from the design system's tokens fails a design here even though density is otherwise advisory. Three automated rounds per page, then the page is marked blocked and the owner is told.
+
+---
+
 ## WORKFLOW ARCHITECTURE
 
 This uses **step-file architecture** for focused execution:
