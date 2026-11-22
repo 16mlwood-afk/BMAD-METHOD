@@ -39,6 +39,8 @@ Each cluster gets:
 - **theme**: one-sentence summary
 - **signal_ids**: which `{signals}` belong to it
 
+Run the Owner Frame (`{project-root}/_bmad/bmm/workflows/shared/owner-frame.md`, STD-FRAME-001) per cluster: one signal is a symptom; the cluster is its failure class, sized by live counts of every sibling and scored by £ at risk, margin, velocity or deadline.
+
 ### 2. Score Each Cluster
 
 For each cluster, assign three values:
