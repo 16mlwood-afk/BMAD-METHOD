@@ -10,7 +10,7 @@ description: 'Execute story implementation following a context filled story spec
 **Your Role:** Developer implementing the story.
 - Communicate all responses in {communication_language} and language MUST be tailored to {user_skill_level}
 - Generate all documents in {document_output_language}
-- Only modify the story file in these areas: Tasks/Subtasks checkboxes, Dev Agent Record (Debug Log, Completion Notes), File List, Change Log, and Status
+- Only modify the story file in these areas: YAML frontmatter `baseline_commit`, Tasks/Subtasks checkboxes, Dev Agent Record (Debug Log, Completion Notes), File List, Change Log, and Status
 - Execute ALL steps in exact order; do NOT skip steps
 - Absolutely DO NOT stop because of "milestones", "significant progress", or "session boundaries". Continue in a single execution until the story is COMPLETE (all ACs satisfied and all tasks/subtasks checked) UNLESS a HALT condition is triggered or the USER gives other instruction.
 - Do NOT schedule a "next session" or request review pauses unless a HALT condition applies. Only Step 9 decides completion.
@@ -54,6 +54,7 @@ Load config from `{project-root}/_bmad/bmm/config.yaml` and resolve:
 - `user_skill_level`
 - `implementation_artifacts`
 - `date` as system-generated current datetime
+- `project_context` = `**/project-context.md` (load if exists)
 
 ### Step 5: Greet the User
 
@@ -63,7 +64,7 @@ Greet `{user_name}`, speaking in `{communication_language}`.
 
 Execute each entry in `{workflow.activation_steps_append}` in order.
 
-Activation is complete. Begin the workflow below.
+Activation is complete. If `activation_steps_prepend` or `activation_steps_append` were non-empty, confirm every entry was executed in order before proceeding. Do not begin the main workflow until all activation steps have been completed.
 
 ## Paths
 
@@ -75,7 +76,7 @@ Activation is complete. Begin the workflow below.
 <workflow>
   <critical>Communicate all responses in {communication_language} and language MUST be tailored to {user_skill_level}</critical>
   <critical>Generate all documents in {document_output_language}</critical>
-  <critical>Only modify the story file in these areas: Tasks/Subtasks checkboxes, Dev Agent Record (Debug Log, Completion Notes), File List,
+  <critical>Only modify the story file in these areas: YAML frontmatter `baseline_commit`, Tasks/Subtasks checkboxes, Dev Agent Record (Debug Log, Completion Notes), File List,
     Change Log, and Status</critical>
   <critical>Execute ALL steps in exact order; do NOT skip steps</critical>
   <critical>Absolutely DO NOT stop because of "milestones", "significant progress", or "session boundaries". Continue in a single execution
@@ -83,6 +84,7 @@ Activation is complete. Begin the workflow below.
     other instruction.</critical>
   <critical>Do NOT schedule a "next session" or request review pauses unless a HALT condition applies. Only Step 9 decides completion.</critical>
   <critical>User skill level ({user_skill_level}) affects conversation style ONLY, not code updates.</critical>
+  <critical>PARALLEL-SAFE STORY HANDLING. Other agent sessions may be running dev-story on this same project at the same time. Before doing ANY work on a story you must (a) RECONCILE its two state records and (b) atomically CLAIM it — and you must REFUSE a story already claimed by a live session. The full protocol is `{project-root}/_bmad/bmad-shared/parallel-sessions.md` §C (claim token, reconcile, dead-claim detection). Step 1 performs the claim + reconcile; do not skip it, and do not invent a second worktree or a second parallel-session warning — §C reuses the §A1 worktree identity.</critical>
 
   <step n="1" goal="Find next ready story and load it" tag="sprint-status">
     <check if="{{story_path}} is provided">
@@ -191,6 +193,29 @@ Activation is complete. Begin the workflow below.
 
     <anchor id="task_check" />
 
+    <!-- PARALLEL-SAFE: RECONCILE the two state records, then atomically CLAIM the story.
+         Full protocol: {project-root}/_bmad/bmad-shared/parallel-sessions.md §C. Runs for BOTH the
+         sprint-discovered story and a user-/path-provided story. Skip ONLY the sprint-status side
+         when no sprint-status.yaml exists (story-file Status is then the sole record). -->
+    <check if="{{sprint_status}} file exists">
+      <action>RECONCILE (parallel-sessions §C3): re-read {{sprint_status}} FRESH (a parallel session may have just changed it — do not trust an earlier in-context copy). Compare {{story_key}}'s story-file `Status:` against development_status[{{story_key}}] and its claim token (trailing `# claim: owner=… session=… at=… baseline=…` comment).</action>
+      <action>Gather drift evidence ONCE: `git log {{baseline_commit or HEAD}}..HEAD --oneline` (and `git log --all --oneline` for a possibly-merged PR) for the story's code paths; count checked `[x]` task boxes; check for a "Senior Developer Review (AI)" section / merged PR.</action>
+      <action if="DRIFT CLASS 1 — sprint says done/review but story shows an earlier state AND evidence shows work landed">Evidence is authoritative: heal BOTH ledgers UP to the highest justified state (done if a merged PR exists, else review), check the satisfied task boxes (or add a Dev Agent Record note that boxes were not individually back-verified), per §C3. Do NOT re-open finished work. This story is NOT claimable as fresh work — emit the reconcile note and <goto step="9">treat as already-complete / completion path</goto> or return to discovery for the next free story.</action>
+      <action if="DRIFT CLASS 2 — claimed/in-progress but baseline==HEAD, zero commits past baseline, no checked boxes (zombie)">Run the dead-claim check (§C4). If the holding session is dead (worktree branch gone AND pid not running, or session=unknown) or there is no token: RESET to free — clear the claim token, set both ledgers to ready-for-dev, discard the stale story-file `baseline_commit`. Emit the 🧟 reset note. Then continue to CLAIM below.</action>
+
+      <action>CLAIM (parallel-sessions §C2): inspect development_status[{{story_key}}]'s value + claim token on the FRESH read:
+        - `ready-for-dev`, no token → FREE. Flip value to `in-progress` and write the claim token `# claim: owner={user_name} session={{session_sig}} at={iso8601-utc} baseline={{baseline_commit or HEAD}}` as a §B1 per-key edit, then re-read the line to confirm YOUR `session=` landed.
+        - token `session=` is YOURS → you already hold it; resume.
+        - token `session=` is ANOTHER session AND that session is LIVE (§C4) → REFUSE: emit `⛔ {{story_key}} is claimed by {owner}/{session} since {at} — skipping to the next free story.`, return to the discovery scan, take the NEXT ready-for-dev story, and repeat reconcile+claim.
+        - token `session=` is DEAD (§C4) → reclaim (rewrite session= to yours; keep/refresh baseline per the reconcile result).
+      </action>
+      <action>Compute {{session_sig}} ONCE for this run: if in a worktree, `git rev-parse --abbrev-ref HEAD` (branch slug — preferred, teammate-verifiable via `git worktree list`); else the controlling claude PID (`echo $PPID`); else `unknown`.</action>
+      <action if="you LOST the claim race (re-read shows a different session=)">Return to discovery, pick the next free story, repeat. NEVER two sessions on one key.</action>
+    </check>
+    <check if="{{sprint_status}} file does NOT exist">
+      <action>No shared claim ledger exists — reconcile is story-file-only. If the story-file `Status:` is `in-progress` with a `baseline_commit` but there are zero commits past baseline and no checked boxes, treat as a zombie (reset `Status:` to ready-for-dev, discard baseline) before proceeding; otherwise proceed.</action>
+    </check>
+
     <action>Parse sections: Story, Acceptance Criteria, Tasks/Subtasks, Dev Notes, Dev Agent Record, File List, Change Log, Status</action>
 
     <action>Load comprehensive context from story file's Dev Notes section</action>
@@ -260,26 +285,42 @@ Activation is complete. Begin the workflow below.
   </step>
 
   <step n="4" goal="Mark story in-progress" tag="sprint-status">
+    <critical>The atomic CLAIM + RECONCILE already happened in Step 1 (parallel-sessions §C2/§C3). Step 4 only mirrors the in-progress lifecycle into the story file and confirms the claim token is intact — it does NOT re-claim and must NOT overwrite another session's claim token. If a fresh read of {{sprint_status}} now shows {{story_key}}'s claim token carries a DIFFERENT `session=` than yours, a race was lost after Step 1: HALT with `⛔ Lost claim on {{story_key}} to {owner}/{session} — stopping to avoid double-work.`</critical>
+    <action>If story file YAML frontmatter already contains `baseline_commit`, preserve the existing value and do not overwrite it</action>
+
     <check if="{{sprint_status}} file exists">
       <action>Load the FULL file: {{sprint_status}}</action>
       <action>Read all development_status entries to find {{story_key}}</action>
-      <action>Get current status value for development_status[{{story_key}}]</action>
+      <action>Set {{current_status}} to development_status[{{story_key}}]</action>
+    </check>
 
-      <check if="current status == 'ready-for-dev' OR review_continuation == true">
-        <action>Update the story in the sprint status report to = "in-progress"</action>
+    <check if="{{sprint_status}} file does NOT exist">
+      <action>Set {{current_status}} to the story file Status section value</action>
+    </check>
+
+    <check if="{{current_status}} == 'ready-for-dev' AND story file YAML frontmatter does NOT contain baseline_commit">
+      <action>Run `git rev-parse HEAD` to capture current commit into {{baseline_commit}}; if git/version control is unavailable, set {{baseline_commit}} = `NO_VCS`</action>
+      <action>If story file YAML frontmatter exists, add `baseline_commit: {{baseline_commit}}` to the frontmatter</action>
+      <action>If story file has no YAML frontmatter, create frontmatter at the top containing only `baseline_commit: {{baseline_commit}}`</action>
+    </check>
+
+    <check if="{{sprint_status}} file exists">
+      <check if="{{current_status}} == 'ready-for-dev' OR (review_continuation == true AND {{current_status}} != 'in-progress')">
+        <action>Set development_status[{{story_key}}] = "in-progress" AND ensure the claim token from Step 1 is present on that key as a §B1 per-key edit: `in-progress  # claim: owner={user_name} session={{session_sig}} at={iso8601-utc} baseline={{baseline_commit}}`. (If Step 1 already wrote it during the claim, this is a confirm-no-op, not a second write.)</action>
         <action>Update last_updated field to current date</action>
         <output>🚀 Starting work on story {{story_key}}
-          Status updated: ready-for-dev → in-progress
+          Status updated: {{current_status}} → in-progress (claimed by {user_name}/{{session_sig}})
         </output>
       </check>
 
-      <check if="current status == 'in-progress'">
+      <check if="{{current_status}} == 'in-progress'">
+        <action>Confirm the claim token's `session=` is yours (parallel-sessions §C4). If it is a DIFFERENT live session, HALT per the Step-4 critical rule above. If it is yours or dead-and-reclaimed in Step 1, proceed.</action>
         <output>⏯️ Resuming work on story {{story_key}}
-          Story is already marked in-progress
+          Story is already marked in-progress (claim: {{session_sig}})
         </output>
       </check>
 
-      <check if="current status is neither ready-for-dev nor in-progress">
+      <check if="{{current_status}} is neither ready-for-dev nor in-progress">
         <output>⚠️ Unexpected story status: {{current_status}}
           Expected ready-for-dev or in-progress. Continuing anyway...
         </output>
@@ -419,11 +460,11 @@ Activation is complete. Begin the workflow below.
     <check if="{sprint_status} file exists AND {{current_sprint_status}} != 'no-sprint-tracking'">
       <action>Load the FULL file: {sprint_status}</action>
       <action>Find development_status key matching {{story_key}}</action>
-      <action>Verify current status is "in-progress" (expected previous state)</action>
-      <action>Update development_status[{{story_key}}] = "review"</action>
+      <action>Verify current status is "in-progress" (expected previous state) AND that its claim token's `session=` is yours (parallel-sessions §C). If the claim token belongs to a different session, HALT — another session owns this story and you must not flip it to review.</action>
+      <action>Update development_status[{{story_key}}] = "review" AND REMOVE the claim token comment (a completed story carries no active claim — leaving it would read as a zombie to the next session). This is a §B1 per-key edit.</action>
       <action>Update last_updated field to current date</action>
       <action>Save file, preserving ALL comments and structure including STATUS DEFINITIONS</action>
-      <output>✅ Story status updated to "review" in sprint-status.yaml</output>
+      <output>✅ Story status updated to "review" in sprint-status.yaml (claim released)</output>
     </check>
 
     <check if="{sprint_status} file does NOT exist OR {{current_sprint_status}} == 'no-sprint-tracking'">

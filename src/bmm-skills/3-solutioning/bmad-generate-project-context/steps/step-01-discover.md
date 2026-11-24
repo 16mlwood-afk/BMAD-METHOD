@@ -26,7 +26,7 @@
 
 ## YOUR TASK:
 
-Discover the project's technology stack, existing patterns, and critical implementation rules that AI agents must follow when writing code.
+Discover the product concept and end-to-end flow FIRST, then the project's technology stack, existing patterns, and critical implementation rules that AI agents must follow when writing code.
 
 ## DISCOVERY SEQUENCE:
 
@@ -37,6 +37,16 @@ First, check if project context already exists:
 - Look for file at `{project_knowledge}/project-context.md or {project-root}/**/project-context.md`
 - If exists: Read complete file to understand existing rules
 - Present to user: "Found existing project context with {number_of_sections} sections. Would you like to update this or create a new one?"
+
+### 1a. Discover the Product Concept & End-to-End Flow (do this FIRST — the product, not the code)
+
+Before any technology/pattern discovery, establish WHAT THE PRODUCT IS. This is the section agents most need and the one most often missing — its absence lets an agent reason about a project bottom-up from the task tracker and invert the product's cause/effect. Read the PRODUCT docs, not the task tracker:
+
+- **Brief / PRD** — `{planning_artifacts}/*brief*.md`, `{planning_artifacts}/*prd*.md` (or `briefs/` / `prds/` subdirs): the one-line concept, the value stream(s), the actors.
+- **Architecture spine / concept** — `{planning_artifacts}/*architecture*/**/ARCHITECTURE-SPINE.md`, any `*concept*.md`: the end-to-end flow and which events are pipeline OUTPUTS vs INPUTS.
+- **Graceful fallback (brownfield / no planning artifacts):** if no brief/PRD/architecture exists, derive the concept from the codebase entry points + a direct question to the user — do NOT halt, and do NOT infer the concept from the task tracker alone.
+
+Capture, for the template's Product Concept section: the **one-line concept**, the **value-flow & spine**, the **cause/effect** (name the pipeline OUTPUTS so they can't be mistaken for preconditions), and any **project-specific forbidden behaviours**.
 
 ### 2. Discover Project Technology Stack
 
